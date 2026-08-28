@@ -1,7 +1,7 @@
 # 行动执行合约与 Join 边界
 
 Type: grilling
-Status: open
+Status: claimed
 Blocked by: 01
 
 ## Question
