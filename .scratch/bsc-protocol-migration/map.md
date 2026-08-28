@@ -17,7 +17,7 @@
 
 <!-- 只列已关闭的子票据；当前已在启动讨论中确认的基线见 Notes。 -->
 
-- [四阶段与轮次模型](issues/01-phase-round-model.md) — 由 `LOVE20Phase` 统一维护四阶段时间线、轮次映射、历史记录和动态校准；`Round` 仅表示从 1 开始的轮次编号。
+- [四阶段与轮次模型](issues/01-phase-round-model.md) — `LOVE20Phase` 只维护无语义时间片；轮次和阶段名称由各上层使用层自行组合定义。
 
 ## Not yet specified
 
