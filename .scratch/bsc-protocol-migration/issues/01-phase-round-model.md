@@ -1,7 +1,7 @@
 # 四阶段与轮次模型
 
 Type: grilling
-Status: open
+Status: claimed
 Blocked by:
 
 ## Question
