@@ -1,7 +1,7 @@
 # 公共验证者竞选与验证
 
 Type: grilling
-Status: open
+Status: claimed
 Blocked by: 01, 02
 
 ## Question
