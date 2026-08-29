@@ -11,3 +11,5 @@ Blocked by: 09
 ## Comments
 
 用户确认各业务仓库采用条件式最低文档标准：`README.md`、`AGENTS.md` 必须存在；只有存在独立领域术语时才维护 `CONTEXT.md`；只有不可逆架构取舍才创建 `docs/adr/` 中的 ADR；只有需要跨任务协作或 Wayfinder 时才启用 `.scratch` tracker；测试启动和验证命令直接写入 `README.md`，不重复建立测试说明文档。
+
+用户确认组织级仓库清单、依赖关系和发布状态统一维护在 `matt-gov/docs/repositories.md`；各业务仓库只维护自己的 `README.md`，Wayfinder 地图只记录决策，不承担长期状态清单。

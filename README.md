@@ -18,5 +18,6 @@
 ## 当前地图
 
 - [LOVE20BSC 协议与组织迁移地图](.scratch/bsc-protocol-migration/map.md)
+- [LOVE20BSC 仓库清单](docs/repositories.md)
 
 组织根目录 `LOVE20BSC` 只是工作区，不作为 Git 仓库维护。
