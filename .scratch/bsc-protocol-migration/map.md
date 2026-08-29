@@ -21,6 +21,7 @@
 - [行动 Target 与参与登记边界](issues/02-action-executor-and-join.md) — `ActionTarget` 统一行动提案初始化、行动登记和应急清理；行动类型内部业务负责资产和具体逻辑，零地址行动额度在准备奖励时归本行动自动销毁。
 - [公共验证者竞选与验证](issues/03-public-verifier-election.md) — 链群行动执行合约按候选排名和阶段分割线开放验证，首个有效批次锁定 `MemberNFT` 验证者，必须完成全部链群快照才产生链群服务相关激励。
 - [链群行动与服务者激励](issues/06-chain-group-economics.md) — 服务行动执行合约一次性取得服务激励并分配公共验证者与链群 owner 份额，统一全精度计算避免旧版舍入下溢，比例使用 `1e18`，100% 二次分配安全收敛且不包含 gas 补偿。
+- [BSC 部署与独立前端](issues/10-bsc-frontend-and-deployment.md) — 固定四个 BSC profile、按新仓库重建 Anvil 部署图、隔离地址/ABI/密钥和 `interface-test` 验收；首个代币通过旧 Burn 的公开 Airdrop 作为一次性部署依赖。
 - [两层主架构与提案 Target 边界](issues/12-contract-layer-boundaries.md) — 核心治理层与提案扩展层分离；当前社群行动使用 `ActionTarget`，其内部组件不构成协议级第三层，`LOVE20Phase` 作为跨层时间基础设施。
 - [提案、提案执行与行动扩展边界](issues/13-proposal-and-action-boundaries.md) — 行动类提案使用 `proposalTarget + proposalTargetMode`，经 `ActionTarget` 初始化并交由类型内部业务处理；`proposalDetails` 在行动类型中作为 `verificationRule`，其他验证字段通过初始化 KV 传递。
 - [仓库迁移矩阵与依赖边界](issues/09-repository-migration-matrix.md) — 公共验证者取代 `GroupVerify` 的群级 delegate；`group-chat` delegate 仅限 Chat 内部；`LOVE20TokenFactory` 作为 `core` 子币部署的技术拆分保留，业务扩展工厂删除。
@@ -34,7 +35,6 @@
 - 提案初始化回调与投票回调的最终 ABI，以及初始化回调失败时是否回滚提案创建。
 - `proposalTarget` 为零地址时的提案激励处理规则。
 - 旧组织只读/归档时机、迁移执行顺序、Anvil 部署图和 Matt 文档最低标准。
-- BSC 网络、初始空投、ABI/地址配置、独立主题和正式发布验收。
 - gas 优化范围和是否需要独立性能基线。
 
 ## Out of scope

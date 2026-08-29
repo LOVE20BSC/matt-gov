@@ -104,6 +104,14 @@
 - **链群验证激励结算**：公共验证者必须完成当轮全部链群验证才有激励；验证不完整时，该链群行动及其行动者、链群服务、公共验证者和链群 owner 奖励全部为 `0`，不影响独立的底层治理激励。
 - **链群服务舍入修复**：旧版链群服务曾因服务者总额与单链群份额分别向下取整，导致二次分配 100% 时累计分配超过可铸 `mintReward`，领取在减法处回滚。BSC 版必须用统一全精度分母计算理论激励与链群份额，并保持累计分配不超过可铸预算；100% 分配应可成功，舍入余数归链群 owner。
 
+## BSC 部署与前端
+
+- **网络 profile**：使用 `anvil`（31337）、`bsc97_dev`（97）、`bsc56_public_test`（56）和 `bsc56_public`（56）；两个 chain ID `56` profile 的地址、配置、代币符号和前端环境完全隔离。
+- **部署产物**：各仓库在 `script/network/<profile>/` 保存网络参数和地址文件，ABI 以当前 BSC 仓库 Foundry 产物为准；`love20-anvil` 只编排新仓库并汇总状态，不复制旧协议部署图。
+- **密钥边界**：公开网络部署使用 Foundry keystore，密码通过弹窗或交互输入；密码、Token 和私钥不得进入仓库或日志。Anvil 默认私钥仅限本地测试。
+- **初始空投来源**：首个代币也通过 `distributionTarget` 接收。正式 BSC 部署使用旧 [`LOVE20TKM/burn`](https://github.com/LOVE20TKM/burn) 的 [`Airdrop.sol`](https://github.com/LOVE20TKM/burn/blob/main/src/Airdrop.sol)，部署记录保存 Burn 提交、来源区块、Merkle Root 和 Airdrop 地址；Burn 业务不迁入新组织。
+- **前端边界**：BSC 前端只在 `interface-test` 开发和验收，使用独立主题、网络、地址和 ABI；验收通过后人工同步到 `interface` 正式发布。
+
 ## 跨层约束
 
 - **比例精度**：所有比例分配统一使用 `1e18` 精度，取值范围为 `0` 到 `1e18`。
