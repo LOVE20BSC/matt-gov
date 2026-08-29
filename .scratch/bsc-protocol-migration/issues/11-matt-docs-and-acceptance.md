@@ -1,7 +1,7 @@
 # Matt 文档与组织验收标准
 
 Type: grilling
-Status: open
+Status: claimed
 Blocked by: 09
 
 ## Question
