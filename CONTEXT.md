@@ -36,7 +36,7 @@
 - **Proposal（提案）**：底层治理框架的对象，由 `Submit` 创建、由 `Vote` 表决，并由 `Mint` 结算提案激励；底层使用 `proposalId`。
 - **`proposalDetails`（提案详情）**：底层提案的通用详情字段，不带验证语义；在行动框架中，同一字段按行动语义称为 `verificationRule`，不重复存储。
 - **`proposalTarget`（提案目标地址）**：提案激励接收地址，配合 `proposalTargetMode` 使用；`RewardOnly` 只接收激励，`Callback` 才触发回调。
-- **提案回调**：通用接口只传递 `tokenAddress`、`proposalId` 和不透明 KV；`proposer`、`proposalDetails`、当前轮次及 `voter`、`memberId`、`votes` 等字段不作为通用参数，目标按 `proposalId` 查询或在 KV 中按业务约定传递。具体 KV 编码由提案回调票据确认。`RewardOnly` 的 KV 必须为空；`Callback` 仅在 KV 非空时触发，目标没有合约代码或数组长度不一致则回滚。
+- **提案回调**：通用接口只传递 `tokenAddress`、`proposalId`、`bytes32[] keys` 和 `bytes[] values`；`proposer`、`proposalDetails`、当前轮次及 `voter`、`memberId`、`votes` 等字段不作为通用参数，目标按 `proposalId` 查询或在 KV 中按业务约定传递。`RewardOnly` 的 KV 必须为空；`Callback` 仅在 KV 非空时触发，目标没有合约代码或数组长度不一致则回滚。
 
 ## 两层主架构
 
@@ -54,7 +54,7 @@
 
 - **投票回调**：`Vote` 不解析或理解提案或扩展业务，只将通用提案上下文和治理者附带的 KV 资料交给 `proposalTarget` 处理；行动类提案由 `ActionTarget` 按自身业务规则转发或处理，回调失败回滚整笔投票交易。
 - **投票回调触发条件**：只有 `proposalTargetMode = Callback` 且投票 KV 非空时才调用投票回调。
-- **批量投票 KV**：多提案批量投票中每个 `proposalId` 可拥有独立 KV；外层数组长度必须与提案数量一致，内层键值长度相等。具体 KV 类型由提案回调票据确认。提案扩展的私有字段由对应 `Target` 及其内部业务组件自行放入并解析，通用回调不包含特定业务字段。
+- **批量投票 KV**：多提案批量投票中每个 `proposalId` 可拥有独立的 `bytes32[]` / `bytes[]` KV；外层数组长度必须与提案数量一致，内层键值长度相等。提案扩展的私有字段由对应 `Target` 及其内部业务组件自行放入并解析，通用回调不包含特定业务字段。
 
 ## 通用行动边界
 
