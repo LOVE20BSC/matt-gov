@@ -36,7 +36,7 @@
 
 ## Not yet specified
 
-- [Gas 优化范围与性能基线](issues/17-gas-baseline-scope.md) — 待确定首发前必做的安全/可执行性优化、代表性交易集合和最小性能记录方式。
+- [Gas 优化范围与性能基线](issues/17-gas-baseline-scope.md) — 首发只阻断无界循环、不可分批和超过目标网络区块 gas 上限 80% 的写交易；按代表性交易记录中位数，不设固定绝对 gas 数值。
 
 ## Out of scope
 
