@@ -113,6 +113,13 @@
 - **初始空投来源**：首个代币也通过 `distributionTarget` 接收。正式 BSC 部署使用旧 [`LOVE20TKM/burn`](https://github.com/LOVE20TKM/burn) 的 [`Airdrop.sol`](https://github.com/LOVE20TKM/burn/blob/main/src/Airdrop.sol)，部署记录保存 Burn 提交、来源区块、Merkle Root 和 Airdrop 地址；Burn 业务不迁入新组织。
 - **前端边界**：BSC 前端只在 `interface-test` 开发和验收，使用独立主题、网络、地址和 ABI；验收通过后人工同步到 `interface` 正式发布。
 
+## 迁移执行顺序
+
+- **来源证据冻结**：先按合约核对 `thinkium70001_public` 链上代码，记录旧仓库、源提交、部署地址、区块和 runtime bytecode hash；仅已部署合约及其必要依赖进入迁移清单。旧仓库在正式切换前继续保留原网络运行。
+- **依赖顺序**：先实现并测试 `core`，再以其接口和地址实现 `launch`、`action`、`group-chat`；随后接入 `periphery`、`script`、`love20-anvil`，`batch-transfer` 可并行迁移。Anvil 通过后依次验证 `bsc97_dev`、`bsc56_public_test`，最后部署 `bsc56_public`。
+- **前端同步**：BSC 前端日常只改 `interface-test`；公测验收通过后人工同步到 `interface`。
+- **旧组织归档**：`bsc56_public` 正式发布和验收完成前，旧组织不归档、不删除、不重写影响 Thinkium 已部署系统的内容。正式发布后，按旧 Thinkium 是否仍需维护逐仓库标记只读或归档；公开 URL、部署文档、链上地址和源提交永久保留。
+
 ## 跨层约束
 
 - **比例精度**：所有比例分配统一使用 `1e18` 精度，取值范围为 `0` 到 `1e18`。

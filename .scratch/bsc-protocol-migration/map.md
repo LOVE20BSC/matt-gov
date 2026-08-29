@@ -26,6 +26,7 @@
 - [提案、提案执行与行动扩展边界](issues/13-proposal-and-action-boundaries.md) — 行动类提案使用 `proposalTarget + proposalTargetMode`，经 `ActionTarget` 初始化并交由类型内部业务处理；`proposalDetails` 在行动类型中作为 `verificationRule`，其他验证字段通过初始化 KV 传递。
 - [提案回调 ABI 与初始化原子性](issues/14-proposal-callback-abi.md) — 回调只传 `tokenAddress`、`proposalId` 和 `bytes32[]/bytes[]` KV；提案元数据由目标按 ID 查询，批量投票任一回调失败则整笔交易回滚。
 - [提案目标与零地址激励](issues/15-zero-proposal-target-reward.md) — `proposalTarget` 必须是非零 EOA 或合约；不为 Proposal 增加零地址自动销毁分支，行动层 `executor == 0` 规则独立保留。
+- [迁移执行顺序与旧组织归档](issues/16-migration-order-and-archive.md) — 先冻结链上来源证据，再按 `core`、业务仓库、配套仓库、Anvil/前端、公测、正式发布推进；正式发布验收前旧组织不归档，之后按旧 Thinkium 责任逐仓库只读或归档。
 - [仓库迁移矩阵与依赖边界](issues/09-repository-migration-matrix.md) — 公共验证者取代 `GroupVerify` 的群级 delegate；`group-chat` delegate 仅限 Chat 内部；`LOVE20TokenFactory` 作为 `core` 子币部署的技术拆分保留，业务扩展工厂删除。
 - [Matt 文档与组织验收标准](issues/11-matt-docs-and-acceptance.md) — 各仓库采用条件式最低文档标准，组织级仓库状态和跨仓库验收分别维护在 `docs/repositories.md` 与 `docs/acceptance.md`，首个 `core` 真实小任务用 agent 自审验证协作闭环。
 - [体验资产与行动撤回](issues/07-experience-and-withdrawal.md) — 体验资产按提供者独立归属，部分撤回以行动快照为边界，行动结束由类型内部业务结算，`forceExit` 只作首版不开放的登记清理兜底。
@@ -34,7 +35,6 @@
 
 ## Not yet specified
 
-- 旧组织只读/归档时机、迁移执行顺序、Anvil 部署图和 Matt 文档最低标准。
 - gas 优化范围和是否需要独立性能基线。
 
 ## Out of scope
