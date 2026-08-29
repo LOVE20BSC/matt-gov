@@ -22,6 +22,7 @@
 - [两层主架构与提案 Target 边界](issues/12-contract-layer-boundaries.md) — 核心治理层与提案扩展层分离；当前社群行动使用 `ActionTarget`，其内部组件不构成协议级第三层，`LOVE20Phase` 作为跨层时间基础设施。
 - [提案、提案执行与行动扩展边界](issues/13-proposal-and-action-boundaries.md) — 行动类提案使用 `proposalTarget + proposalTargetMode`，经 `ActionTarget` 初始化并交由类型内部业务处理；`proposalDetails` 在行动类型中作为 `verificationRule`，其他验证字段通过初始化 KV 传递。
 - [仓库迁移矩阵与依赖边界](issues/09-repository-migration-matrix.md) — 公共验证者取代 `GroupVerify` 的群级 delegate；`group-chat` delegate 仅限 Chat 内部；`LOVE20TokenFactory` 作为 `core` 子币部署的技术拆分保留，业务扩展工厂删除。
+- [Matt 文档与组织验收标准](issues/11-matt-docs-and-acceptance.md) — 各仓库采用条件式最低文档标准，组织级仓库状态和跨仓库验收分别维护在 `docs/repositories.md` 与 `docs/acceptance.md`，首个 `core` 真实小任务用 agent 自审验证协作闭环。
 
 ## Not yet specified
 
