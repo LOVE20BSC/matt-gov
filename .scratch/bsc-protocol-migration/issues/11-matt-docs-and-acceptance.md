@@ -15,3 +15,5 @@ Blocked by: 09
 用户确认组织级仓库清单、依赖关系和发布状态统一维护在 `matt-gov/docs/repositories.md`；各业务仓库只维护自己的 `README.md`，Wayfinder 地图只记录决策，不承担长期状态清单。
 
 用户确认跨仓库验收标准统一维护在 `matt-gov/docs/acceptance.md`；各业务仓库只在自己的 `README.md` 保留启动和测试命令，避免重复维护。
+
+用户修正：协作闭环不把 Claude 或其他外部 reviewer 设为前置条件；由当前负责 agent 完成第二遍自审，外部 review 仅作为可选协作。
