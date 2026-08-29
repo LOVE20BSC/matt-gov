@@ -1,7 +1,7 @@
 # 发射 NFT 与子币发射
 
 Type: grilling
-Status: open
+Status: claimed
 Blocked by: 01, 05
 
 ## Question
