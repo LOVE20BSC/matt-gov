@@ -19,6 +19,7 @@
 
 - [四阶段与轮次模型](issues/01-phase-round-model.md) — `LOVE20Phase` 只维护无语义时间片；轮次和阶段名称由各上层使用层自行组合定义。
 - [行动执行地址与 Join 边界](issues/02-action-executor-and-join.md) — 执行地址负责行动激励领取与行动逻辑；零地址行动额度在准备奖励时归本行动自动销毁，`Join` 合并扩展登记并提供强制退出。
+- [三层合约架构与职责边界](issues/12-contract-layer-boundaries.md) — 治理核心、通用行动框架和具体行动执行层分离，`LOVE20Phase` 作为跨层时间基础设施。
 
 ## Not yet specified
 
