@@ -32,7 +32,7 @@
 
 ## Not yet specified
 
-- [提案回调 ABI 与初始化原子性](issues/14-proposal-callback-abi.md) 的 KV 编码及初始化上下文参数仍需确认；回滚和触发边界已明确。
+- [提案回调 ABI 与初始化原子性](issues/14-proposal-callback-abi.md) 的 KV 编码仍需确认；提案元数据按 `proposalId` 查询，回滚和触发边界已明确。
 - `proposalTarget` 为零地址时的提案激励处理规则。
 - 旧组织只读/归档时机、迁移执行顺序、Anvil 部署图和 Matt 文档最低标准。
 - gas 优化范围和是否需要独立性能基线。
