@@ -1,7 +1,7 @@
 # 治理质押、融合与资产生命周期
 
 Type: grilling
-Status: open
+Status: claimed
 Blocked by: 01
 
 ## Question
