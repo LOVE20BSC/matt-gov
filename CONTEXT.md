@@ -116,6 +116,7 @@
 ## 迁移执行顺序
 
 - **来源证据冻结**：先按合约核对 `thinkium70001_public` 链上代码，记录旧仓库、源提交、部署地址、区块和 runtime bytecode hash；仅已部署合约及其必要依赖进入迁移清单。旧仓库在正式切换前继续保留原网络运行。
+- **旧组织只读**：`LOVE20TKM` 全部代码库在整个迁移期间只读，只用于读取源码、提交历史和链上部署证据；不得编辑、格式化、更新依赖、提交、推送或删除。所有 BSC 改造、清理和迁移提交只发生在 `LOVE20BSC` 新仓库。
 - **依赖顺序**：先实现并测试 `core`，再以其接口和地址实现 `launch`、`action`、`group-chat`；随后接入 `periphery`、`script`、`love20-anvil`，`batch-transfer` 可并行迁移。Anvil 通过后依次验证 `bsc97_dev`、`bsc56_public_test`，最后部署 `bsc56_public`。
 - **前端同步**：BSC 前端日常只改 `interface-test`；公测验收通过后人工同步到 `interface`。
 - **旧组织归档**：`bsc56_public` 正式发布和验收完成前，旧组织不归档、不删除、不重写影响 Thinkium 已部署系统的内容。正式发布后，按旧 Thinkium 是否仍需维护逐仓库标记只读或归档；公开 URL、部署文档、链上地址和源提交永久保留。
