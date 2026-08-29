@@ -36,7 +36,7 @@ Blocked by:
 
 用户确认：新建独立 `launch` 代码库，维护子币发射后的分发及配套合约；旧 `burn` 不迁移，旧 `core` 的发射资格、`LOVE20LaunchNFT` 和发射流程继续归入新 `core`。
 
-用户确认：`v2-periphery` 不迁移；它没有 `thinkium70001_public` 部署地址，且来源为 Uniswap 官方仓库，继续作为外部依赖。PancakeSwap V2 与 Uniswap V2 的兼容性留到实现 LP/发射相关代码时，以接口、字节码和实际调用验证。
+用户确认：`v2-periphery` 不迁移；它没有 `thinkium70001_public` 部署地址，且来源为 Uniswap 官方仓库，继续作为外部依赖。BSC 使用与 Uniswap V2 兼容的 PancakeSwap；其接口、字节码和实际调用兼容性留到实现 LP/发射相关代码时验证，不把依赖表述写死为某个 PancakeSwap 版本。
 
 用户确认：旧网络虽已部署，但被 BSC 新协议明确删除或替代的 `SL/ST`、`Verify`、`Random`、旧 `Join` 等合约不迁移；`core` 只保留并重写新的 `Stake`、`Submit`、`Vote`、`Mint`、发射、`MemberNFT` 和 `Phase`。
 
