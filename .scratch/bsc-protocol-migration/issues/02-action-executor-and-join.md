@@ -50,9 +50,13 @@ Blocked by: 01
 
 用户确认：行动类提案统一使用 `LOVE20Action` 作为 `proposalExecutor`；提案创建时由初始化 KV 建立 `proposalId` 与具体行动执行合约的关联，初始化成功后该 `proposalId` 才作为有效 `actionId` 使用；投票 KV 由 `LOVE20Action` 转发给对应行动执行合约。
 
+用户修订：提案激励接收地址和回调地址合并为单一 `proposalTarget`，并用 `proposalTargetMode` 区分 `RewardOnly` 与 `Callback`；行动类提案使用 `LOVE20Action + Callback`。
+
+用户修订：`verificationRule`、`verificationKeys`、`verificationKeyGuides` 等附加验证信息不再作为底层提案固定字段，而通过行动初始化 KV 交给 `LOVE20Action` 转发，由具体行动执行合约保存和解释。
+
 ## Answer
 
-- 行动保存 `executor`、`executorKeys`、`executorValues`、`title`、`verificationRule`、`verificationKeys` 和 `verificationKeyGuides`。`executor` 可以是合约地址或 EOA；不要求统一 `IActionExecutor` 接口，也不为每个行动通过工厂创建执行合约，不提供核心默认执行合约。
+- 行动初始化通过 KV 保存 `executor`、`executorKeys`、`executorValues`、`title` 及具体执行合约需要的验证信息；`verificationRule`、`verificationKeys`、`verificationKeyGuides` 等字段不再属于底层提案固定结构，由具体 `ActionExecutor` 自行保存和解释。`executor` 可以是合约地址或 EOA；不要求统一 `IActionExecutor` 接口，也不为每个行动通过工厂创建执行合约，不提供核心默认执行合约。
 - `executor` 是该行动激励的唯一铸造授权地址。`LOVE20Mint.mintActionReward(tokenAddress, round, actionId)` 由它一次性领取该行动该轮的全部行动激励，返回实际铸造数量，不接收 `memberId` 或 `amount`，后续分配由执行地址自行完成。
 - `executor == address(0)` 仍按本轮规则为该行动计算并保留行动激励额度；额度不转给其他行动，也不存在可领取者。`LOVE20Mint.prepareReward` 准备该轮奖励时直接将这笔本行动额度记为已销毁/已消费，并保留重复铸造保护和供应上限核算。
 - `LOVE20Action` 合并原 `ExtensionCenter` 的参与登记职责，删除随机抽取地址及相关逻辑。链上只维护行动当前可参与状态、参与关系和执行地址登记；参与资产由执行地址处理，行动参与与验证规则也由执行地址实现，核心不再保留 `LOVE20Verify`。行动合法性由治理投票决定，前端只与可信扩展交互。

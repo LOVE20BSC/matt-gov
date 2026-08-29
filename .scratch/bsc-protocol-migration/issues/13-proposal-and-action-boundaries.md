@@ -14,13 +14,18 @@ Blocked by: 12
 
 用户补充确认：行动类提案统一使用 `LOVE20Action` 作为 `proposalExecutor`。创建提案时，`LOVE20Action` 通过初始化 KV 建立 `proposalId` 与具体行动执行合约的关联并完成行动初始化；初始化成功后，该 `proposalId` 才能称为有效 `actionId`。投票 KV 先到达 `LOVE20Action`，再转发给对应的行动执行合约。
 
+用户确认：不拆分提案激励接收地址和回调地址。提案使用单一 `proposalTarget` 地址和 `proposalTargetMode` 模式（`RewardOnly` 或 `Callback`）；行动类提案使用 `LOVE20Action + Callback`。
+
+用户确认：提案中的 `verificationRule`、`verificationKeys`、`verificationKeyGuides` 等附加验证信息移出底层 `Proposal`，放入行动初始化 KV；`LOVE20Action` 只负责转发，具体 `ActionExecutor` 自行保存、解释和使用。
+
 ## Answer
 
 - **Proposal（提案）**是底层治理框架的对象，由 `Submit` 创建、由 `Vote` 表决，并由 `Mint` 结算提案激励。底层接口和数据使用 `proposalId` 语义。
-- **`proposalExecutor`（提案执行地址）**是提案激励领取地址，可以是 EOA 或合约地址。它不是因为名字叫 executor 就必须实现合约接口。
-- 当 `proposalExecutor` 是合约地址且附带非空初始化 KV 时，创建提案时触发初始化回调；当它是合约地址且某次投票附带非空 KV 时，投票时触发投票回调。EOA 不触发任何回调；没有 KV 时也不触发回调。
+- **`proposalTarget`（提案目标地址）**是提案激励接收地址，配合 `proposalTargetMode` 使用。`RewardOnly` 只接收激励、不触发回调；`Callback` 要求目标是合约，并在对应 KV 非空时触发初始化或投票回调。
+- 行动类提案固定使用 `proposalTarget = LOVE20Action`、`proposalTargetMode = Callback`；`LOVE20Action` 接收提案激励并负责行动初始化及投票 KV 转发。
 - `Submit` 和 `Vote` 只负责传递不透明 KV，不解析提案扩展业务。投票回调继续遵循回滚整笔投票交易的规则；初始化回调的具体 ABI 和失败处理另行确定。
-- **Action（行动）**和 **ActionExecutor（行动执行合约）**是底层 `Proposal`/`proposalExecutor` 在行动扩展中的概念映射。行动类提案统一将 `proposalExecutor` 设置为 `LOVE20Action`；它通过初始化 KV 建立 `proposalId` 与具体 `ActionExecutor` 的关系并初始化行动。初始化成功后，该 `proposalId` 才是行动框架中的有效 `actionId`；普通提案没有 `actionId`。
+- **Action（行动）**和 **ActionExecutor（行动执行合约）**是底层 `Proposal`/`proposalTarget` 在行动扩展中的概念映射。行动类提案统一将 `proposalTarget` 设置为 `LOVE20Action`；它通过初始化 KV 建立 `proposalId` 与具体 `ActionExecutor` 的关系并初始化行动。初始化成功后，该 `proposalId` 才是行动框架中的有效 `actionId`；普通提案没有 `actionId`。
 - 行动类提案的投票回调先由 `Vote` 传给 `LOVE20Action`，再由 `LOVE20Action` 按已建立的映射将 KV 原样转发给对应的 `ActionExecutor`；行动资产、参与、验证和行动激励二次分配仍由具体行动执行层自行定义。
-- `LOVE20Action` 领取的提案激励与具体 `ActionExecutor` 领取的行动激励是两类独立激励；提案激励是否由 `LOVE20Action` 转发给具体执行合约另行确定。
+- `LOVE20Action` 领取的提案激励与具体 `ActionExecutor` 领取的行动激励是两类独立激励；提案激励不因行动激励的二次分配规则而改变。
+- `verificationRule`、`verificationKeys`、`verificationKeyGuides` 等验证信息属于行动初始化数据，不进入底层 `Proposal` 固定字段；`LOVE20Action` 不解析，具体 `ActionExecutor` 自行处理。
 - 将来可以在底层治理框架之上增加与行动框架并列的其他业务扩展框架，不强行套用 `Action` 命名。
