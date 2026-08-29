@@ -1,7 +1,7 @@
 # Gas 优化范围与性能基线
 
 Type: grilling
-Status: claimed
+Status: resolved
 Blocked by: 16
 
 ## Question
