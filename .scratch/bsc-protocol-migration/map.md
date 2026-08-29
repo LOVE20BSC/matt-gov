@@ -18,9 +18,9 @@
 <!-- 只列已关闭的子票据；当前已在启动讨论中确认的基线见 Notes。 -->
 
 - [四阶段与轮次模型](issues/01-phase-round-model.md) — `LOVE20Phase` 只维护无语义时间片；轮次和阶段名称由各上层使用层自行组合定义。
-- [行动执行地址与 LOVE20Action 边界](issues/02-action-executor-and-join.md) — `LOVE20Action` 统一行动提案初始化、行动登记和应急清理；具体执行地址负责行动资产和行动逻辑，零地址行动额度在准备奖励时归本行动自动销毁。
-- [三层合约架构与职责边界](issues/12-contract-layer-boundaries.md) — 治理核心、业务扩展框架层和具体扩展执行层分离，`LOVE20Phase` 作为跨层时间基础设施。
-- [提案、提案执行与行动扩展边界](issues/13-proposal-and-action-boundaries.md) — 行动类提案使用 `proposalTarget + proposalTargetMode`，经 `LOVE20Action` 初始化并映射到具体 `ActionExecutor`；`proposalDetails` 在行动框架中作为 `verificationRule`，其他验证字段通过初始化 KV 传递。
+- [行动 Target 与参与登记边界](issues/02-action-executor-and-join.md) — `ActionTarget` 统一行动提案初始化、行动登记和应急清理；行动类型内部业务负责资产和具体逻辑，零地址行动额度在准备奖励时归本行动自动销毁。
+- [两层主架构与提案 Target 边界](issues/12-contract-layer-boundaries.md) — 核心治理层与提案扩展层分离；当前社群行动使用 `ActionTarget`，其内部组件不构成协议级第三层，`LOVE20Phase` 作为跨层时间基础设施。
+- [提案、提案执行与行动扩展边界](issues/13-proposal-and-action-boundaries.md) — 行动类提案使用 `proposalTarget + proposalTargetMode`，经 `ActionTarget` 初始化并交由类型内部业务处理；`proposalDetails` 在行动类型中作为 `verificationRule`，其他验证字段通过初始化 KV 传递。
 - [仓库迁移矩阵与依赖边界](issues/09-repository-migration-matrix.md) — 公共验证者取代 `GroupVerify` 的群级 delegate；`group-chat` delegate 仅限 Chat 内部；`LOVE20TokenFactory` 作为 `core` 子币部署的技术拆分保留，业务扩展工厂删除。
 
 ## Not yet specified

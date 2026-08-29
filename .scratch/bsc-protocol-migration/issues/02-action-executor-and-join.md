@@ -1,4 +1,4 @@
-# 行动执行地址与 LOVE20Action 边界
+# 行动 Target 与参与登记边界
 
 Type: grilling
 Status: resolved
@@ -58,9 +58,9 @@ Blocked by: 01
 
 ## Answer
 
-- 行动初始化通过 KV 保存 `executor`、`executorKeys`、`executorValues`、`title` 及具体执行合约需要的行动专属验证信息；底层 `proposalDetails` 在行动框架中作为 `verificationRule` 使用，不重复放入 KV。`verificationKeys` 和 `verificationKeyGuides` 等字段由具体 `ActionExecutor` 自行保存和解释。`executor` 可以是合约地址或 EOA；不要求统一 `IActionExecutor` 接口，也不为每个行动通过工厂创建执行合约，不提供核心默认执行合约。
+- 行动初始化通过 KV 保存 `executor`、`executorKeys`、`executorValues`、`title` 及行动类型内部需要的专属验证信息；底层 `proposalDetails` 在行动类型中作为 `verificationRule` 使用，不重复放入 KV。`verificationKeys` 和 `verificationKeyGuides` 等字段由行动类型内部业务自行保存和解释。`executor` 可以是合约地址或 EOA；不要求统一 `IActionExecutor` 接口，也不为每个行动通过工厂创建业务组件，不提供核心默认执行合约。
 - `executor` 是该行动激励的唯一铸造授权地址。`LOVE20Mint.mintActionReward(tokenAddress, round, actionId)` 由它一次性领取该行动该轮的全部行动激励，返回实际铸造数量，不接收 `memberId` 或 `amount`，后续分配由执行地址自行完成。
 - `executor == address(0)` 仍按本轮规则为该行动计算并保留行动激励额度；额度不转给其他行动，也不存在可领取者。`LOVE20Mint.prepareReward` 准备该轮奖励时直接将这笔本行动额度记为已销毁/已消费，并保留重复铸造保护和供应上限核算。
-- `LOVE20Action` 合并原 `ExtensionCenter` 的参与登记职责，删除随机抽取地址及相关逻辑。链上只维护行动当前可参与状态、参与关系和执行地址登记；参与资产由执行地址处理，行动参与与验证规则也由执行地址实现，核心不再保留 `LOVE20Verify`。行动合法性由治理投票决定，前端只与可信扩展交互。
-- `LOVE20Action.forceExit(tokenAddress, actionId, memberId)` 是执行合约失效时的最后兜底，仅清理通用参与登记，不调用执行合约，也不承诺返还任何资产；正常加入、退出和资产取回均由具体行动执行合约负责。前端首版不提供该入口，后续按需要开放。
+- `ActionTarget` 合并原 `ExtensionCenter` 的参与登记职责，删除随机抽取地址及相关逻辑。链上只维护行动当前可参与状态、参与关系和业务组件登记；参与资产由行动类型内部业务处理，行动参与与验证规则也由内部业务实现，核心不再保留 `LOVE20Verify`。行动合法性由治理投票决定，前端只与可信扩展交互。
+- `ActionTarget.forceExit(tokenAddress, actionId, memberId)` 是行动类型内部业务失效时的最后兜底，仅清理通用参与登记，不调用内部业务，也不承诺返还任何资产；正常加入、退出和资产取回均由行动类型内部业务负责。前端首版不提供该入口，后续按需要开放。
 - `LOVE20Submit` 删除 `minStake`、`maxRandomAccounts` 和 `whiteListAddress` 等旧参数；行动参与门槛由执行地址决定。
