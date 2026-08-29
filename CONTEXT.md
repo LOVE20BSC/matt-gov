@@ -36,6 +36,7 @@
 - **Proposal（提案）**：底层治理框架的对象，由 `Submit` 创建、由 `Vote` 表决，并由 `Mint` 结算提案激励；底层使用 `proposalId`。
 - **`proposalDetails`（提案详情）**：底层提案的通用详情字段，不带验证语义；在行动框架中，同一字段按行动语义称为 `verificationRule`，不重复存储。
 - **`proposalTarget`（提案目标地址）**：提案激励接收地址，配合 `proposalTargetMode` 使用；`RewardOnly` 只接收激励，`Callback` 才触发回调。
+- **提案目标约束**：`proposalTarget` 创建时必须为非零 EOA 或合约；Proposal 不使用零地址作为自动销毁哨兵。行动层 `executor == address(0)` 的行动激励自动销毁规则独立保留。
 - **提案回调**：通用接口只传递 `tokenAddress`、`proposalId`、`bytes32[] keys` 和 `bytes[] values`；`proposer`、`proposalDetails`、当前轮次及 `voter`、`memberId`、`votes` 等字段不作为通用参数，目标按 `proposalId` 查询或在 KV 中按业务约定传递。`RewardOnly` 的 KV 必须为空；`Callback` 仅在 KV 非空时触发，目标没有合约代码或数组长度不一致则回滚。
 
 ## 两层主架构
