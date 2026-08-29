@@ -35,7 +35,7 @@
 
 ## Not yet specified
 
-- gas 优化范围和是否需要独立性能基线。
+- [Gas 优化范围与性能基线](issues/17-gas-baseline-scope.md) — 待确定首发前必做的安全/可执行性优化、代表性交易集合和最小性能记录方式。
 
 ## Out of scope
 
