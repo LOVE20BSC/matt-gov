@@ -20,6 +20,7 @@
 - [四阶段与轮次模型](issues/01-phase-round-model.md) — `LOVE20Phase` 只维护无语义时间片；轮次和阶段名称由各上层使用层自行组合定义。
 - [行动 Target 与参与登记边界](issues/02-action-executor-and-join.md) — `ActionTarget` 统一行动提案初始化、行动登记和应急清理；行动类型内部业务负责资产和具体逻辑，零地址行动额度在准备奖励时归本行动自动销毁。
 - [公共验证者竞选与验证](issues/03-public-verifier-election.md) — 链群行动执行合约按候选排名和阶段分割线开放验证，首个有效批次锁定 `MemberNFT` 验证者，必须完成全部链群快照才产生链群服务相关激励。
+- [链群行动与服务者激励](issues/06-chain-group-economics.md) — 服务行动执行合约一次性取得服务激励并分配公共验证者与链群 owner 份额，比例使用 `1e18`，100% 二次分配安全收敛且不包含 gas 补偿。
 - [两层主架构与提案 Target 边界](issues/12-contract-layer-boundaries.md) — 核心治理层与提案扩展层分离；当前社群行动使用 `ActionTarget`，其内部组件不构成协议级第三层，`LOVE20Phase` 作为跨层时间基础设施。
 - [提案、提案执行与行动扩展边界](issues/13-proposal-and-action-boundaries.md) — 行动类提案使用 `proposalTarget + proposalTargetMode`，经 `ActionTarget` 初始化并交由类型内部业务处理；`proposalDetails` 在行动类型中作为 `verificationRule`，其他验证字段通过初始化 KV 传递。
 - [仓库迁移矩阵与依赖边界](issues/09-repository-migration-matrix.md) — 公共验证者取代 `GroupVerify` 的群级 delegate；`group-chat` delegate 仅限 Chat 内部；`LOVE20TokenFactory` 作为 `core` 子币部署的技术拆分保留，业务扩展工厂删除。
