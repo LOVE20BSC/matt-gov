@@ -14,6 +14,7 @@
 ## 提案模型
 
 - **Proposal（提案）**：底层治理框架的对象，由 `Submit` 创建、由 `Vote` 表决，并由 `Mint` 结算提案激励；底层使用 `proposalId`。
+- **`proposalDetails`（提案详情）**：底层提案的通用详情字段，不带验证语义；在行动框架中，同一字段按行动语义称为 `verificationRule`，不重复存储。
 - **`proposalTarget`（提案目标地址）**：提案激励接收地址，配合 `proposalTargetMode` 使用；`RewardOnly` 只接收激励，`Callback` 才触发回调。
 - **提案回调**：`proposalTargetMode = Callback` 时，目标必须是合约；初始化 KV 或投票 KV 非空时才分别触发对应回调。`RewardOnly` 和空 KV 均不触发。
 
@@ -35,7 +36,7 @@
 - **上层行动流程**：通用框架提供参与登记和基础生命周期；行动执行合约自行把底层时间片组合成投票、行动、验证和铸币等阶段。
 - **行动执行地址**：行动激励的唯一铸造授权地址，可以是合约或 EOA；零地址不改变该行动按规则获得的激励额度，只表示该额度在准备奖励时自动销毁，且不转给其他行动。
 - **行动扩展标识**：行动类提案经 `LOVE20Action` 初始化成功后，底层 `proposalId` 才可在行动框架中作为有效 `actionId` 使用；普通提案没有 `actionId`。
-- **行动验证信息**：`verificationRule`、`verificationKeys`、`verificationKeyGuides` 等字段属于行动初始化 KV，不是底层 `Proposal` 固定字段；`LOVE20Action` 只转发，具体 `ActionExecutor` 自行保存和解释。
+- **行动验证信息**：行动框架将底层 `proposalDetails` 解释为 `verificationRule`；`verificationKeys`、`verificationKeyGuides` 等其余验证信息属于行动初始化 KV。`LOVE20Action` 不解析，具体 `ActionExecutor` 自行保存和解释。
 - **行动资产托管**：参与资产、扩展资产及其返还和行动内分配均由具体行动执行合约自行接收、记账和处理；`LOVE20Action` 不接收、持有或返还行动资产。
 - **正常行动流程**：加入、退出和资产取回均通过具体行动执行合约完成；前端首版只提供执行合约定义的正常流程。
 - **强制退出**：`forceExit` 仅是执行合约失效时的最后兜底，用于清理通用参与登记，绕过执行合约可能导致资产无法返还；前端默认不提供，首版不开放。

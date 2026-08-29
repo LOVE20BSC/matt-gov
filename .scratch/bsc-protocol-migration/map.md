@@ -20,7 +20,7 @@
 - [四阶段与轮次模型](issues/01-phase-round-model.md) — `LOVE20Phase` 只维护无语义时间片；轮次和阶段名称由各上层使用层自行组合定义。
 - [行动执行地址与 LOVE20Action 边界](issues/02-action-executor-and-join.md) — `LOVE20Action` 统一行动提案初始化、行动登记和应急清理；具体执行地址负责行动资产和行动逻辑，零地址行动额度在准备奖励时归本行动自动销毁。
 - [三层合约架构与职责边界](issues/12-contract-layer-boundaries.md) — 治理核心、业务扩展框架层和具体扩展执行层分离，`LOVE20Phase` 作为跨层时间基础设施。
-- [提案、提案执行与行动扩展边界](issues/13-proposal-and-action-boundaries.md) — 行动类提案使用 `proposalTarget + proposalTargetMode`，经 `LOVE20Action` 初始化并映射到具体 `ActionExecutor`；验证信息通过行动初始化 KV 传递。
+- [提案、提案执行与行动扩展边界](issues/13-proposal-and-action-boundaries.md) — 行动类提案使用 `proposalTarget + proposalTargetMode`，经 `LOVE20Action` 初始化并映射到具体 `ActionExecutor`；`proposalDetails` 在行动框架中作为 `verificationRule`，其他验证字段通过初始化 KV 传递。
 
 ## Not yet specified
 
