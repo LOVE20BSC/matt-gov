@@ -24,12 +24,12 @@
 - [仓库迁移矩阵与依赖边界](issues/09-repository-migration-matrix.md) — 公共验证者取代 `GroupVerify` 的群级 delegate；`group-chat` delegate 仅限 Chat 内部；`LOVE20TokenFactory` 作为 `core` 子币部署的技术拆分保留，业务扩展工厂删除。
 - [Matt 文档与组织验收标准](issues/11-matt-docs-and-acceptance.md) — 各仓库采用条件式最低文档标准，组织级仓库状态和跨仓库验收分别维护在 `docs/repositories.md` 与 `docs/acceptance.md`，首个 `core` 真实小任务用 agent 自审验证协作闭环。
 - [体验资产与行动撤回](issues/07-experience-and-withdrawal.md) — 体验资产按提供者独立归属，部分撤回以行动快照为边界，行动结束由类型内部业务结算，`forceExit` 只作首版不开放的登记清理兜底。
+- [治理质押、融合与资产生命周期](issues/05-stake-fusion-and-lifecycle.md) — 质押按 `memberId` 归属，SL 凭证内置为 `Stake` 份额账本，两类质押统一解锁；融合按社区和投票状态隔离，多轮奖励独立铸造。
 
 ## Not yet specified
 
 - 公共验证者候选资格、排名起始时间、分批验证、首次提交锁定和治理监督规则。
 - 治理激励额度如何触发 `LOVE20LaunchNFT`，以及去中心化/中心化发射的授权边界。
-- 无 SL/ST 后治理质押、解锁、融合、行动部分撤回、体验资产和多轮铸造的完整状态模型。
 - 提案初始化回调与投票回调的最终 ABI，以及初始化回调失败时是否回滚提案创建。
 - `proposalTarget` 为零地址时的提案激励处理规则。
 - 链群行动服务者分配、gas 补偿、二次分配溢出保护和验证者角色拆分。
