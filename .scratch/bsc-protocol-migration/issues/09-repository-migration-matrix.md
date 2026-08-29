@@ -40,6 +40,8 @@ Blocked by:
 
 用户确认：旧网络虽已部署，但被 BSC 新协议明确删除或替代的 `SL/ST`、`Verify`、`Random`、旧 `Join` 等合约不迁移；`core` 只保留并重写新的 `Stake`、`Submit`、`Vote`、`Mint`、发射、`MemberNFT` 和 `Phase`。
 
+用户补充确认：`LOVE20TokenFactory` 保留在 `core`，作为子币部署的技术拆分，可能用于规避组合后的合约体积或部署限制；这不改变删除旧扩展业务工厂的决定。
+
 ## Answer
 
 已确认 `GroupVerify` 与 `group-chat` delegate 的边界：
@@ -48,3 +50,5 @@ Blocked by:
 - `group-chat` 的 delegate 保留，但只在 `group-chat` 代码库内生效。它可以被 `GroupChat`、`GroupAdmin`、`GroupMember`、`GroupBanList` 等 Chat 组件使用，用于 Chat 内部管理和运营权限。
 - Chat delegate 不进入 `core` 的通用身份或权限模型，不被 `action`、`launch` 或其他业务代码库使用，也不影响 `MemberNFT` 所有权、行动参与或公共验证者资格。
 - 旧 `group/src/GroupDelegate.sol` 不作为全局权限合约迁入 `core`；BSC 版在 `group-chat` 内只重写或迁入 Chat 所需的委托逻辑，具体实现名称由该代码库确定。
+- `LOVE20TokenFactory` 是 `core` 的技术工厂例外：保留用于子币部署拆分，不创建 `ActionExecutor` 或其他业务扩展实例；旧 `Extension*Factory`、群行动工厂和 LP 扩展工厂仍不迁移，外部 DEX Factory 只保留接口调用。
+- 当前 `group-chat` 使用一个 `GroupChat` 合约按 `groupId` 管理多个群，没有按群部署独立合约的 `GroupChatFactory`；除非未来改变为“一群一合约”，否则不新增该工厂。

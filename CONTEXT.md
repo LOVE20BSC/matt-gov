@@ -27,7 +27,7 @@
 
 ## 代码库分层
 
-- **`core` 代码库**：维护第一层核心框架，包括底层治理框架、发射基础设施、`MemberNFT` 和 `LOVE20Phase`。发射资格与 `LOVE20LaunchNFT` 也属于这一层。
+- **`core` 代码库**：维护第一层核心框架，包括底层治理框架、发射基础设施、`MemberNFT` 和 `LOVE20Phase`。发射资格与 `LOVE20LaunchNFT` 也属于这一层；`LOVE20TokenFactory` 保留为子币部署的技术拆分，用于规避组合后的合约体积或部署限制。
 - **`launch` 代码库**：维护子币成功发射后的分发及配套合约，不承载核心发射资格或发射 NFT。
 - **`action` 代码库**：当前唯一的业务扩展代码库，同时维护第二层社群行动框架 `LOVE20Action` 和第三层常用 `ActionExecutor`；未来出现并列业务框架时再按框架拆分新的代码库。
 
@@ -68,6 +68,13 @@
 - **Chat 专属 delegate**：delegate 只属于 `group-chat` 代码库，是群聊内部的管理和运营授权组件；`GroupChat`、`GroupAdmin`、`GroupMember`、`GroupBanList` 等 Chat 组件可以使用它。
 - **禁止跨层授权**：Chat delegate 不进入 `core` 的通用身份或权限模型，不被 `action`、`launch` 或其他业务代码库作为权限来源，也不影响 `MemberNFT` 所有权、行动参与或公共验证者验证资格。
 - **迁移实现**：不把旧 `group/src/GroupDelegate.sol` 作为全局合约迁入 `core`；BSC 版在 `group-chat` 内重写或迁入 Chat 所需的最小委托逻辑，具体实现名称在该代码库内确定（可采用 `GroupChatDelegate`）。
+
+## 工厂边界
+
+- **技术工厂例外**：`core` 保留 `LOVE20TokenFactory`，只负责按部署需要创建子币合约及其必要的核心配套，不负责创建行动或扩展执行合约；BSC 版移除旧 `SL/ST` 等已删除协议耦合，具体参数由发射票据确定。
+- **业务工厂删除**：`action` 不保留按行动创建 `ActionExecutor` 的工厂；旧 `Extension*Factory`、群行动工厂和 LP 扩展工厂均不迁移。
+- **`group-chat` 当前部署模型**：一个 `GroupChat` 合约按 `groupId` 管理多个群，不按群部署独立 Chat 合约，因此当前不新增 `GroupChatFactory`；只有未来明确改为“一群一合约”时才重新评估。
+- **外部 DEX 工厂**：PancakeSwap/Uniswap V2 Factory 属于外部依赖，只通过接口调用，不把实现作为 LOVE20 业务工厂迁入。
 
 ## 链群服务行动执行层
 
