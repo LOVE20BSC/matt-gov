@@ -21,6 +21,7 @@
 - **发射额度**：按 `tokenAddress + memberId` 累计实际治理激励铸造量；达到当前剩余未铸造量乘以配置比例时，消耗一份额度并自动铸造一枚 `LaunchNFT`，剩余额度随 NFT 转移。
 - **治理激励与发射 NFT**：达到额度的 `LaunchNFT` 在治理激励铸造的同一笔交易中原子铸造；奖励和销毁状态必须防止重复结算。
 - **发射分配机制**：任何持有 `LaunchNFT` 的钱包或合约都可触发发射；中心化与去中心化只描述首批代币接收地址后续的分配方式，核心不介入分配逻辑。
+- **发射分配目标**：发射使用 `distributionTarget + distributionTargetMode`，并可携带不透明 `distributionKeys` / `distributionValues` KV；核心不解析接收方业务数据。
 
 ## 阶段与轮次
 
