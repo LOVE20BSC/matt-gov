@@ -44,11 +44,13 @@ Blocked by: 01
 
 用户补充确认：`executor == address(0)` 并不表示该行动没有行动激励，也不将额度分配给其他行动；该行动仍按本轮规则获得自己的行动激励额度，`Mint.prepareReward` 时将该额度自动销毁。
 
+用户修正：资产托管不属于通用行动框架；参与资产、扩展资产及其返还和行动内分配均由具体行动执行合约自行处理，`LOVE20Join` 不接收或持有行动资产。
+
 ## Answer
 
 - 行动保存 `executor`、`executorKeys`、`executorValues`、`title`、`verificationRule`、`verificationKeys` 和 `verificationKeyGuides`。`executor` 可以是合约地址或 EOA；不要求统一 `IActionExecutor` 接口，也不为每个行动通过工厂创建执行合约，不提供核心默认执行合约。
 - `executor` 是该行动激励的唯一铸造授权地址。`LOVE20Mint.mintActionReward(tokenAddress, round, actionId)` 由它一次性领取该行动该轮的全部行动激励，返回实际铸造数量，不接收 `memberId` 或 `amount`，后续分配由执行地址自行完成。
 - `executor == address(0)` 仍按本轮规则为该行动计算并保留行动激励额度；额度不转给其他行动，也不存在可领取者。`LOVE20Mint.prepareReward` 准备该轮奖励时直接将这笔本行动额度记为已销毁/已消费，并保留重复铸造保护和供应上限核算。
 - `LOVE20Join` 合并原 `ExtensionCenter` 的参与登记职责，删除随机抽取地址及相关逻辑。链上只判断行动当前可参与、参与资产和执行地址登记；行动参与与验证规则由执行地址实现，核心不再保留 `LOVE20Verify`。行动合法性由治理投票决定，前端只与可信扩展交互。
-- `LOVE20Join.forceExit(tokenAddress, actionId, memberId)` 允许用户退出异常行动，退回 `Join` 托管的基础参与资产；不调用执行地址，也不猜测或代领执行地址自行托管的扩展资产。
+- `LOVE20Join.forceExit(tokenAddress, actionId, memberId)` 允许用户从通用参与登记中退出异常行动；`Join` 不托管或返还资产，具体行动执行合约负责其参与资产和扩展资产的退出结算。
 - `LOVE20Submit` 删除 `minStake`、`maxRandomAccounts` 和 `whiteListAddress` 等旧参数；行动参与门槛由执行地址决定。
