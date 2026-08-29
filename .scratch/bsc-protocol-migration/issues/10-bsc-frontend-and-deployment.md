@@ -1,7 +1,7 @@
 # BSC 部署与独立前端
 
 Type: grilling
-Status: open
+Status: claimed
 Blocked by: 01, 04, 09
 
 ## Question
