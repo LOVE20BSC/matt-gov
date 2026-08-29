@@ -1,7 +1,7 @@
 # Chat 的 Member NFT 身份模型
 
 Type: grilling
-Status: open
+Status: claimed
 Blocked by:
 
 ## Question
