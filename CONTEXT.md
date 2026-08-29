@@ -22,7 +22,7 @@
 - **治理激励与发射 NFT**：达到额度的 `LaunchNFT` 在治理激励铸造的同一笔交易中原子铸造；奖励和销毁状态必须防止重复结算。
 - **发射分配机制**：任何持有 `LaunchNFT` 的钱包或合约都可触发发射；中心化与去中心化只描述首批代币接收地址后续的分配方式，核心不介入分配逻辑。
 - **发射分配目标**：发射使用 `distributionTarget + distributionTargetMode`，并可携带不透明 `distributionKeys` / `distributionValues` KV；核心不解析接收方业务数据。
-- **首个代币初始分配**：协议首次部署产生的首个代币也必须填写 `distributionTarget`。BSC 正式部署时该目标为旧 `LOVE20TKM/burn` 代码库部署的 `Airdrop` 合约，由其按 Merkle 快照完成初始分配；Burn 业务代码本身不迁入 `LOVE20BSC`。
+- **首个代币初始分配**：协议首次部署产生的首个代币也必须填写 `distributionTarget`。BSC 正式部署时该目标为旧 [`LOVE20TKM/burn`](https://github.com/LOVE20TKM/burn) 代码库部署的 [`Airdrop.sol`](https://github.com/LOVE20TKM/burn/blob/main/src/Airdrop.sol) 合约，由其按 Merkle 快照完成初始分配；Burn 业务代码本身不迁入 `LOVE20BSC`。部署记录必须同时注明实际使用的 Burn 提交、来源区块、Merkle Root 和 Airdrop 地址。
 
 ## 阶段与轮次
 

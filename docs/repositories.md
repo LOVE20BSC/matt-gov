@@ -17,4 +17,4 @@
 | `docs` | 面向用户和开发者的协议文档 | 各业务仓库 | 规划中 |
 | `batch-transfer` | 独立批量转账工具 | 无 | 规划中 |
 
-`extension`、`extension-group`、`extension-lp` 的业务迁入 `action`；`burn`、未部署的 `chat` 和外部 `v2-periphery` 不在本组织清单中。
+`extension`、`extension-group`、`extension-lp` 的业务迁入 `action`；`burn`、未部署的 `chat` 和外部 `v2-periphery` 不在本组织清单中。`burn` 虽不迁移，但 BSC 正式部署使用的初始空投来源必须公开指向 [`LOVE20TKM/burn`](https://github.com/LOVE20TKM/burn) 及其 [`Airdrop.sol`](https://github.com/LOVE20TKM/burn/blob/main/src/Airdrop.sol)、[`DeployAirdrop.s.sol`](https://github.com/LOVE20TKM/burn/blob/main/script/DeployAirdrop.s.sol) 和 [`airdrop-design.md`](https://github.com/LOVE20TKM/burn/blob/main/docs/airdrop-design.md)。
