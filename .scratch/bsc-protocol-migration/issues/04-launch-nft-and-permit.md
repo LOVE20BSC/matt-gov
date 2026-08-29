@@ -32,6 +32,8 @@ Blocked by:
 
 用户确认：每枚 `LaunchNFT` 在铸造时绑定产生它的父代币社区 `tokenAddress`；发射时根据 NFT 绑定关系创建子币，不允许调用者另传或修改父币地址。其他链已发射并作为保留代币导入的代币没有本地发射资格，不能触发新的发射。
 
+用户补充确认：所有发射（包括协议首次部署产生的首个代币）都必须填写首批代币接收地址，并统一通过 `distributionTarget` / `distributionTargetMode` 表达；首个代币在 BSC 正式部署时将该目标设置为旧 `burn` 代码库部署的 `Airdrop` 合约。
+
 ## Answer
 
 - **发射额度**：按 `tokenAddress + memberId` 累计实际治理激励铸造量。阈值为本次治理激励铸造前的 `maxSupply - totalSupply` 乘以全局初始化比例（`1e18` 精度），不扣除预留奖励。达到阈值即消耗一份额度；一次铸造跨过多个阈值时，自动铸造对应数量的 `LaunchNFT`，余数保留并随 NFT 转移。
