@@ -19,7 +19,8 @@
 
 - [四阶段与轮次模型](issues/01-phase-round-model.md) — `LOVE20Phase` 只维护无语义时间片；轮次和阶段名称由各上层使用层自行组合定义。
 - [行动执行地址与 Join 边界](issues/02-action-executor-and-join.md) — 执行地址负责行动资产和行动逻辑；零地址行动额度在准备奖励时归本行动自动销毁，`Join` 合并扩展登记并保留应急清理入口。
-- [三层合约架构与职责边界](issues/12-contract-layer-boundaries.md) — 治理核心、通用行动框架和具体行动执行层分离，`LOVE20Phase` 作为跨层时间基础设施。
+- [三层合约架构与职责边界](issues/12-contract-layer-boundaries.md) — 治理核心、业务扩展框架层和具体扩展执行层分离，`LOVE20Phase` 作为跨层时间基础设施。
+- [提案、提案执行与行动扩展边界](issues/13-proposal-and-action-boundaries.md) — 底层使用 `Proposal`/`proposalId` 和可为 EOA 的 `proposalExecutor`；`Action`/`ActionExecutor` 保留给上层业务扩展。
 
 ## Not yet specified
 
@@ -27,6 +28,8 @@
 - 治理激励额度如何触发 `LOVE20LaunchNFT`，以及去中心化/中心化发射的授权边界。
 - 无 SL/ST 后治理质押、解锁、融合、行动部分撤回、体验资产和多轮铸造的完整状态模型。
 - 执行合约自行托管资产后的应急 `forceExit` 开放时机和清理边界；正常资产退出不属于通用框架。
+- 提案初始化回调与投票回调的最终 ABI，以及初始化回调失败时是否回滚提案创建。
+- `proposalExecutor` 为零地址时的提案激励处理规则。
 - 链群行动服务者分配、gas 补偿、二次分配溢出保护和验证者角色拆分。
 - P2P Chat 以 Member NFT 为主体后的数据、权限、费用和转移语义。
 - 旧仓库到新组织的最终矩阵、仓库命名、迁移顺序、Anvil 部署图和 Matt 文档最低标准。
