@@ -1,8 +1,8 @@
 # 发射 NFT 与子币发射
 
 Type: grilling
-Status: claimed
-Blocked by: 01, 05
+Status: resolved
+Blocked by:
 
 ## Question
 
@@ -29,3 +29,14 @@ Blocked by: 01, 05
 用户确认：首批分配接收地址采用 `distributionTarget + distributionTargetMode`，并支持 `distributionKeys` / `distributionValues` 不透明 KV 数组，供接收目标后续扩展；发射核心不解析 KV，只按模式决定是否回调。
 
 用户确认：沿用 `Proposal` 的回调触发规则；`RewardOnly` 不回调且 KV 必须为空，`Callback` 仅在 KV 非空时回调，两个 KV 数组长度必须一致，KV 为空时只发送首批代币。
+
+用户确认：每枚 `LaunchNFT` 在铸造时绑定产生它的父代币社区 `tokenAddress`；发射时根据 NFT 绑定关系创建子币，不允许调用者另传或修改父币地址。其他链已发射并作为保留代币导入的代币没有本地发射资格，不能触发新的发射。
+
+## Answer
+
+- **发射额度**：按 `tokenAddress + memberId` 累计实际治理激励铸造量。阈值为本次治理激励铸造前的 `maxSupply - totalSupply` 乘以全局初始化比例（`1e18` 精度），不扣除预留奖励。达到阈值即消耗一份额度；一次铸造跨过多个阈值时，自动铸造对应数量的 `LaunchNFT`，余数保留并随 NFT 转移。
+- **原子铸造**：治理激励和达到额度的 `LaunchNFT` 在同一笔交易中完成；不提供独立的手动铸造调用。`Mint` 必须使用明确的已铸造/已销毁状态，防止重复结算，任何一步失败则整体回滚。
+- **NFT 生命周期**：`LaunchNFT` 铸造给治理激励的当前领取主体；任意持有该 NFT 的钱包或合约都可触发发射。发射成功后 NFT 不在自身合约内销毁，而是永久转移到对应子币合约；发射合约记录 NFT 与子币关系，Token ID 递增且不复用，枚举包含已锁定 NFT。
+- **发射参数**：发射必须填写 `distributionTarget` 和 `distributionTargetMode`，并可附带 `distributionKeys` / `distributionValues` 不透明 KV。`RewardOnly` 要求 KV 为空且只发送首批代币；`Callback` 仅在 KV 非空、目标为合约时回调，两个数组长度必须一致。回调失败时整笔发射回滚。
+- **中心化与去中心化**：两者不是发射权限差异，而是 `distributionTarget` 后续分配方式的差异；核心只创建子币并发送首批代币，不解析或干预接收方的分配业务。
+- **社区绑定**：`LaunchNFT` 铸造时绑定父社区 `tokenAddress`，发射函数不再接收父币地址。其他链已发射的保留代币不在本地发射登记中，不能触发新的子币发射。
