@@ -1,4 +1,4 @@
-# 行动执行地址与 Join 边界
+# 行动执行地址与 LOVE20Action 边界
 
 Type: grilling
 Status: resolved
@@ -10,7 +10,7 @@ Blocked by: 01
 
 ## Comments
 
-用户确认：用户必须可以强制退出，避免错误的行动执行合约长期占用用户的已参与行动列表；`ExtensionCenter` 的参与登记职责并入 `LOVE20Join`，不再保留独立中心合约；`LOVE20Join` 删除旧版随机抽取账号及其相关逻辑。
+用户确认：用户必须可以强制退出，避免错误的行动执行合约长期占用用户的已参与行动列表；`ExtensionCenter` 的参与登记职责并入行动框架合约 `LOVE20Action`，不再保留独立中心合约；`LOVE20Action` 删除旧版随机抽取账号及其相关逻辑。
 
 用户补充确认：强制退出必须显式传入 `tokenAddress`，因为 `actionId` 按子币隔离，且退出涉及明确的资产归属。建议接口为 `forceExit(tokenAddress, actionId, memberId)`。
 
@@ -44,15 +44,17 @@ Blocked by: 01
 
 用户补充确认：`executor == address(0)` 并不表示该行动没有行动激励，也不将额度分配给其他行动；该行动仍按本轮规则获得自己的行动激励额度，`Mint.prepareReward` 时将该额度自动销毁。
 
-用户修正：资产托管不属于通用行动框架；参与资产、扩展资产及其返还和行动内分配均由具体行动执行合约自行处理，`LOVE20Join` 不接收或持有行动资产。
+用户修正：资产托管不属于通用行动框架；参与资产、扩展资产及其返还和行动内分配均由具体行动执行合约自行处理，`LOVE20Action` 不接收或持有行动资产。
 
 用户补充确认：`forceExit` 只在执行合约失效等无法正常退出的情况下作为最后兜底，用于清理已参与行动列表；它绕过执行合约，可能导致资产无法返还。正常加入、退出和资产取回都必须通过行动执行合约完成，前端默认不提供该入口，首版不开放，后续确有需要再启用。
+
+用户确认：行动类提案统一使用 `LOVE20Action` 作为 `proposalExecutor`；提案创建时由初始化 KV 建立 `proposalId` 与具体行动执行合约的关联，初始化成功后该 `proposalId` 才作为有效 `actionId` 使用；投票 KV 由 `LOVE20Action` 转发给对应行动执行合约。
 
 ## Answer
 
 - 行动保存 `executor`、`executorKeys`、`executorValues`、`title`、`verificationRule`、`verificationKeys` 和 `verificationKeyGuides`。`executor` 可以是合约地址或 EOA；不要求统一 `IActionExecutor` 接口，也不为每个行动通过工厂创建执行合约，不提供核心默认执行合约。
 - `executor` 是该行动激励的唯一铸造授权地址。`LOVE20Mint.mintActionReward(tokenAddress, round, actionId)` 由它一次性领取该行动该轮的全部行动激励，返回实际铸造数量，不接收 `memberId` 或 `amount`，后续分配由执行地址自行完成。
 - `executor == address(0)` 仍按本轮规则为该行动计算并保留行动激励额度；额度不转给其他行动，也不存在可领取者。`LOVE20Mint.prepareReward` 准备该轮奖励时直接将这笔本行动额度记为已销毁/已消费，并保留重复铸造保护和供应上限核算。
-- `LOVE20Join` 合并原 `ExtensionCenter` 的参与登记职责，删除随机抽取地址及相关逻辑。链上只维护行动当前可参与状态、参与关系和执行地址登记；参与资产由执行地址处理，行动参与与验证规则也由执行地址实现，核心不再保留 `LOVE20Verify`。行动合法性由治理投票决定，前端只与可信扩展交互。
-- `LOVE20Join.forceExit(tokenAddress, actionId, memberId)` 是执行合约失效时的最后兜底，仅清理通用参与登记，不调用执行合约，也不承诺返还任何资产；正常加入、退出和资产取回均由具体行动执行合约负责。前端首版不提供该入口，后续按需要开放。
+- `LOVE20Action` 合并原 `ExtensionCenter` 的参与登记职责，删除随机抽取地址及相关逻辑。链上只维护行动当前可参与状态、参与关系和执行地址登记；参与资产由执行地址处理，行动参与与验证规则也由执行地址实现，核心不再保留 `LOVE20Verify`。行动合法性由治理投票决定，前端只与可信扩展交互。
+- `LOVE20Action.forceExit(tokenAddress, actionId, memberId)` 是执行合约失效时的最后兜底，仅清理通用参与登记，不调用执行合约，也不承诺返还任何资产；正常加入、退出和资产取回均由具体行动执行合约负责。前端首版不提供该入口，后续按需要开放。
 - `LOVE20Submit` 删除 `minStake`、`maxRandomAccounts` 和 `whiteListAddress` 等旧参数；行动参与门槛由执行地址决定。

@@ -50,4 +50,4 @@ Blocked by: 01, 02
 
 用户确认：公共验证者、候选投票、验证集合和链群 owner 均属于链群行动执行层；链群服务激励及其分配属于链群服务行动执行层，不属于底层 `Stake`、`Submit`、`Vote`、`Mint`。底层 `Vote` 只提供逐提案 KV 传输和回调机制，不理解这些业务。
 
-用户补充：底层投票对象统一称为 `Proposal`，通用回调的定位使用 `proposalId`；`actionId` 仅在行动扩展自己的 KV 和业务语境中使用。
+用户补充：底层投票对象统一称为 `Proposal`，通用回调的定位使用 `proposalId`；行动类提案经 `LOVE20Action` 初始化成功后，该 `proposalId` 才作为有效 `actionId` 使用。
