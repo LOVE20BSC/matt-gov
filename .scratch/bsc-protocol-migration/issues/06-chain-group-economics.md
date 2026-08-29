@@ -1,7 +1,7 @@
 # 链群行动与服务者激励
 
 Type: grilling
-Status: open
+Status: claimed
 Blocked by: 01, 02, 03
 
 ## Question
