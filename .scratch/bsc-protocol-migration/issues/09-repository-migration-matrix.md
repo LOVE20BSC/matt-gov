@@ -1,7 +1,7 @@
 # 仓库迁移矩阵与依赖边界
 
 Type: grilling
-Status: claimed
+Status: resolved
 Blocked by:
 
 ## Question
@@ -39,3 +39,12 @@ Blocked by:
 用户确认：`v2-periphery` 不迁移；它没有 `thinkium70001_public` 部署地址，且来源为 Uniswap 官方仓库，继续作为外部依赖。PancakeSwap V2 与 Uniswap V2 的兼容性留到实现 LP/发射相关代码时，以接口、字节码和实际调用验证。
 
 用户确认：旧网络虽已部署，但被 BSC 新协议明确删除或替代的 `SL/ST`、`Verify`、`Random`、旧 `Join` 等合约不迁移；`core` 只保留并重写新的 `Stake`、`Submit`、`Vote`、`Mint`、发射、`MemberNFT` 和 `Phase`。
+
+## Answer
+
+已确认 `GroupVerify` 与 `group-chat` delegate 的边界：
+
+- BSC 版 `GroupVerify` 不再按群设置验证委托，移除 `setGroupDelegate`、`delegateByGroupId` 以及基于群级 delegate 的 `canVerify` 授权。链群行动只认本轮按排名锁定的公共验证者 `memberId`，由其当前 `MemberNFT` 持有人直接完成验证。
+- `group-chat` 的 delegate 保留，但只在 `group-chat` 代码库内生效。它可以被 `GroupChat`、`GroupAdmin`、`GroupMember`、`GroupBanList` 等 Chat 组件使用，用于 Chat 内部管理和运营权限。
+- Chat delegate 不进入 `core` 的通用身份或权限模型，不被 `action`、`launch` 或其他业务代码库使用，也不影响 `MemberNFT` 所有权、行动参与或公共验证者资格。
+- 旧 `group/src/GroupDelegate.sol` 不作为全局权限合约迁入 `core`；BSC 版在 `group-chat` 内只重写或迁入 Chat 所需的委托逻辑，具体实现名称由该代码库确定。

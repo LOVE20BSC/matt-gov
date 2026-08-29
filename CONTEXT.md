@@ -59,8 +59,15 @@
 - **本轮验证集合**：行动阶段结束时至少有一个成员参与的链群 NFT 快照；空链群不计入，后续链群状态变化不影响本轮集合。
 - **公共验证者**：按本轮候选排名获得提交资格并由首个有效批次锁定的唯一验证主体，负责完成全部快照链群验证。
 - **公共验证者授权**：本轮锁定 `memberId` 而非钱包地址，每次批次提交要求该 `MemberNFT` 当前持有人直接调用；NFT 转移后由新持有人继续，不支持代理。
+- **群级验证委托**：BSC 版不按 `groupId` 设置验证委托；`GroupVerify` 不保留 `setGroupDelegate`、`delegateByGroupId` 或基于群级 delegate 的验证授权，验证权限只来自本轮锁定的公共验证者 `memberId`。
 - **公共验证者监督**：不保留不信任投票、理由、扣分或历史重算；治理者在下一轮投票阶段通过不给问题候选人投票来监督，不回溯修改上一轮奖励。
 - **链群验证批次**：每个链群按本轮成员历史顺序维护连续游标；首个有效批次锁定整轮，必须完成全部快照链群验证。
+
+## 群聊委托边界
+
+- **Chat 专属 delegate**：delegate 只属于 `group-chat` 代码库，是群聊内部的管理和运营授权组件；`GroupChat`、`GroupAdmin`、`GroupMember`、`GroupBanList` 等 Chat 组件可以使用它。
+- **禁止跨层授权**：Chat delegate 不进入 `core` 的通用身份或权限模型，不被 `action`、`launch` 或其他业务代码库作为权限来源，也不影响 `MemberNFT` 所有权、行动参与或公共验证者验证资格。
+- **迁移实现**：不把旧 `group/src/GroupDelegate.sol` 作为全局合约迁入 `core`；BSC 版在 `group-chat` 内重写或迁入 Chat 所需的最小委托逻辑，具体实现名称在该代码库内确定（可采用 `GroupChatDelegate`）。
 
 ## 链群服务行动执行层
 

@@ -21,6 +21,7 @@
 - [行动执行地址与 LOVE20Action 边界](issues/02-action-executor-and-join.md) — `LOVE20Action` 统一行动提案初始化、行动登记和应急清理；具体执行地址负责行动资产和行动逻辑，零地址行动额度在准备奖励时归本行动自动销毁。
 - [三层合约架构与职责边界](issues/12-contract-layer-boundaries.md) — 治理核心、业务扩展框架层和具体扩展执行层分离，`LOVE20Phase` 作为跨层时间基础设施。
 - [提案、提案执行与行动扩展边界](issues/13-proposal-and-action-boundaries.md) — 行动类提案使用 `proposalTarget + proposalTargetMode`，经 `LOVE20Action` 初始化并映射到具体 `ActionExecutor`；`proposalDetails` 在行动框架中作为 `verificationRule`，其他验证字段通过初始化 KV 传递。
+- [仓库迁移矩阵与依赖边界](issues/09-repository-migration-matrix.md) — 公共验证者取代 `GroupVerify` 的群级 delegate；`group-chat` delegate 仅作为 Chat 代码库内部权限组件，不进入核心或其他业务层。
 
 ## Not yet specified
 
@@ -31,7 +32,7 @@
 - 提案初始化回调与投票回调的最终 ABI，以及初始化回调失败时是否回滚提案创建。
 - `proposalTarget` 为零地址时的提案激励处理规则。
 - 链群行动服务者分配、gas 补偿、二次分配溢出保护和验证者角色拆分。
-- 旧仓库到新组织的最终矩阵、仓库命名、迁移顺序、Anvil 部署图和 Matt 文档最低标准。
+- 旧组织只读/归档时机、迁移执行顺序、Anvil 部署图和 Matt 文档最低标准。
 - BSC 网络、初始空投、ABI/地址配置、独立主题和正式发布验收。
 - gas 优化范围和是否需要独立性能基线。
 
