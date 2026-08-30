@@ -22,7 +22,7 @@ Blocked by:
 
 用户确认：上述配套代码库整体迁移，再按 BSC 新协议清理无关或废弃内容。
 
-用户确认代码库分层：`core` 独立维护底层治理框架、发射次数/子币创建基础设施、`MemberNFT` 和 `LOVE20Phase`；提案扩展按业务框架拆分代码库。当前只建设社群行动业务，因此由 `action` 统一维护 `ActionTarget` 和常用行动执行合约。公平发射后的复杂分配机制本阶段暂不创建 `launch` 代码库，未来需求明确后再独立建立。
+用户确认代码库分层：`core` 独立维护底层治理框架、基础子币发射能力、`MemberNFT` 和 `LOVE20Phase`；提案扩展按业务框架拆分代码库。当前社群行动业务由 `action` 统一维护 `ActionTarget`、LP 行动执行合约、链群行动执行合约和链群服务行动执行合约。公平发射后的复杂分配机制本阶段暂不创建 `launch` 代码库，未来需求明确后再独立建立。
 
 用户确认：`ActionTarget` 内部是否再拆分执行器、验证器或分配器属于社群行动业务内部结构；代码库层面统一由 `action` 维护。未来出现并列提案扩展类型时，再按业务框架拆分新的代码库。
 
@@ -36,7 +36,7 @@ Blocked by:
 
 用户确认：`interface` 与 `interface-test` 都迁移到新组织，但日常只修改 `interface-test`；验收后手动同步到 `interface` 正式发布，两者不合并。
 
-用户确认：迁移阶段不创建独立 `launch` 代码库；旧 `burn` 不迁移，旧 `core` 中与发射相关的必要能力按 BSC 规则重写进新 `core`，发射次数直接附加到 MemberNFT 的 `tokenAddress + memberId` 账本并支持部分融合。未来若需要复杂分配机制，再另建 `launch`。
+用户确认：迁移阶段不创建独立 `launch` 代码库；旧 `burn` 不迁移，旧 `core` 中与发射相关的必要能力按 BSC 规则重写进新 `core`，由 `core` 负责基础子币发射流程，发射次数直接附加到 MemberNFT 的 `tokenAddress + memberId` 账本并支持部分融合。未来若需要复杂分配机制，再另建 `launch`。
 
 用户确认：`v2-periphery` 不迁移；它没有 `thinkium70001_public` 部署地址，且来源为 Uniswap 官方仓库，继续作为外部依赖。BSC 使用与 Uniswap V2 兼容的 PancakeSwap；不把依赖表述写死为某个 PancakeSwap 版本，接入前必须验证其接口和关键内部行为。
 

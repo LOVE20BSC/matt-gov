@@ -11,7 +11,7 @@
 - 领域：LOVE20 BSC 协议、合约组织迁移、独立 BSC 前端和跨仓库测试。
 - 技能：`wayfinder`、`domain-modeling`、`grilling`；进入实现阶段再按仓库使用 LOVE20 合约、集成、前端和发布技能。
 - Issue tracker：Wayfinder 继续使用本仓库 `.scratch/` 下的本地 Markdown tracker；仓库远程已配置为 GitHub `LOVE20BSC/matt-gov`。
-- 已确认基线：BSC 是独立协议代际，不兼容旧合约存储、地址和历史状态；统一参与主体为 `LOVE20Member`；`memberId` 是核心业务主键；不部署地址到默认 NFT 的链上映射；治理质押不再产生 SL/ST 凭证，资产随 Member NFT 整体转移；发射次数按 `tokenAddress + memberId` 记录并支持部分融合；`LOVE20MemberMarket` 不迁移；Burn 不参与；`batch-transfer` 独立迁移；`love20-anvil` 保留为集成测试编排器；前端开发只改 `interface-test`，测试完成后再人工同步到 `interface` 正式发布。
+- 已确认基线：BSC 是独立协议代际，不兼容旧合约存储、地址和历史状态；统一参与主体为 `LOVE20Member`；`memberId` 是核心业务主键；不部署地址到默认 NFT 的链上映射；治理质押不再产生 SL/ST 凭证，资产随 Member NFT 整体转移；`core` 负责基础子币发射流程，发射次数按 `tokenAddress + memberId` 记录并支持部分融合；`LOVE20MemberMarket` 不迁移；Burn 不参与；`batch-transfer` 独立迁移；`love20-anvil` 保留为集成测试编排器；前端开发只改 `interface-test`，测试完成后再人工同步到 `interface` 正式发布。
 - 迁移硬约束：`LOVE20TKM` 全部代码库在整个迁移期间只读，仅用于源码、提交历史和 `thinkium70001_public` 链上部署证据；任何 BSC 改造、清理、提交和推送只发生在 `LOVE20BSC` 新仓库。
 
 ## Decisions so far
