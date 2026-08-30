@@ -10,7 +10,7 @@ Blocked by:
 
 ## Comments
 
-用户确认：P2P `Chat` 继续作为独立代码库，不并入 `core` 或 `LOVE20Action`；它只依赖 `MemberNFT` 的身份查询与当前持有人授权接口。`group-chat` 只共享 Member 身份接口，不共享 P2P 消息业务状态。
+用户确认：P2P `Chat` 继续作为独立代码库，不并入 `core` 或 `action`；它只依赖 `MemberNFT` 的身份查询与当前持有人授权接口。`group-chat` 只共享 Member 身份接口，不共享 P2P 消息业务状态。
 
 用户确认：消息的 `sender`、`receiver` 和投递索引都记录不可变的 `memberId`；钱包地址只代表当前调用者或付款者，不作为消息身份。
 
