@@ -21,7 +21,7 @@
 - **Proposal Target 回调**：覆盖 Proposal 创建、提案推举、提案投票三类回调；覆盖 `submitterId`、`voterId`、增量票和 KV 透传，以及回调失败时对应外层交易整体回滚。
 - **公共验证者失联**：覆盖首个验证批次永久锁定后验证者停止提交时，本轮行动层激励保持为 `0`，底层 Proposal 激励仍可按规则铸造或销毁，且不允许未经授权的其他候选人接管。
 - **Phase 与候选边界**：覆盖每轮起始区块和阶段区块数历史记录、最近观测点的 `±10%` 动态校准及历史不可回写；覆盖无候选人、候选票为零、平票按 `applicationId` 排序、申请版本切换和排名锁定规则。
-- **ActionRound 统一性**：覆盖 LP、链群行动和链群服务行动共用 `Vote`/`Action`/`Verify`/`Mint` 四个时间槽位；链群服务和 LP 的 `Verify` 为空操作但仍使用统一轮次，且各执行合约独立判断 `canMint`。
+- **ActionRound 统一性**：覆盖 LP、链群行动和链群服务行动共用 `Vote`/`Join`/`Verify`/`Mint` 四个时间槽位；链群服务和 LP 的 `Verify` 为空操作但仍使用统一轮次，且各执行合约独立判断 `canMint`。
 - **LP 兼容性**：覆盖目标 PancakeSwap Factory/Pair/Router 在 `Stake` 场景下的 LP 份额、手续费结算、兑换报价、储备更新和失败回滚；不得仅以 ABI 可编译作为兼容性结论。
 
 ## 证据记录
