@@ -39,7 +39,7 @@
 ## 架构与仓库关系
 
 - **核心治理层**：`core` 提供 `Stake`、`Submit`、`Vote`、`Mint`、`MemberNFT`、`LOVE20Phase` 和发射次数/子币创建基础设施等通用能力。核心治理激励不依赖具体提案扩展的业务结果。
-- **提案扩展层**：按 Proposal 类型实现 Target。当前社群行动类型由 `action` 代码库维护；其内部是否拆分执行器、验证器或分配器属于该业务自身。
+- **提案扩展层**：按 Proposal 类型实现 Target。当前社群行动类型由 `action` 代码库维护，包含链群行动和由旧 `extension-lp` V2 重写而来的 LP 行动执行合约；其内部是否拆分执行器、验证器或分配器属于该业务自身。
 - **发射分配层**：公平发射后的复杂分配机制本阶段不创建 `launch` 代码库；未来需求明确后再作为独立扩展建立，不影响 `core` 的发射基础能力。
 - **群聊边界**：`group-chat` 独立维护群聊业务，其中的权限委托统一称为 **Group Chat Delegate**，只在该代码库内生效，不进入核心身份、行动或发射权限模型。
 - **配套仓库**：`periphery`、`script`、`love20-anvil`、`interface-test`、`interface`、`batch-transfer` 和 `docs` 是外围、部署、集成测试、前端或文档仓库，不改变核心领域关系。
