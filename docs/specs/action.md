@@ -118,7 +118,23 @@ effectiveAmount = joinedAmount - deduction
 
 体验模式下，Provider MemberNFT 先把指定额度托管给链群 Executor，体验成员选择 Provider 使用该额度加入；体验成员不能追加体验额度。体验成员退出或 Provider 代为退出时，额度返还 Provider，体验成员获得的行动激励仍归体验成员。自有资产和体验资产互不影响。
 
-链群 Executor 同时维护当前链群归属：每个 `tokenAddress + actionId + memberId` 最多关联一个 `groupId`，并以 `groupId + memberId` 的当前参与计数聚合该 Executor 服务的所有代币社区和所有链群行动。某成员首次在一个行动中加入链群时计数加一；追加和部分撤回不重复增加；通过 Executor 正常全部退出时计数减一。`isMemberOfGroup(groupId, memberId)` 直接返回该计数是否大于零，不扫描 Proposal 或参与者列表。只要该 MemberNFT 仍在任意社区的任意链群行动中参与该链群，查询就返回 `true`；MemberNFT 转移不改变归属。
+链群 Executor 以当前有效的 `tokenAddress + actionId + groupId + memberId` 参与关系为事实来源；每个 `tokenAddress + actionId + memberId` 最多关联一个 `groupId`。同一关系首次建立时写入索引，追加和部分撤回不重复写入；只有通过 Executor 正常全部退出该行动时才删除该关系。MemberNFT 转移不改变关系。
+
+Executor 必须维护下列 17 组跨其所有代币社区和链群行动的可枚举全局索引：
+
+- Group ID：`gGroupIds`、`gGroupIdsByMemberId`、`gGroupIdsByTokenAddress`、`gGroupIdsByTokenAddressByMemberId`、`gGroupIdsByTokenAddressByActionId`；
+- Token Address：`gTokenAddresses`、`gTokenAddressesByMemberId`、`gTokenAddressesByGroupId`、`gTokenAddressesByGroupIdByMemberId`；
+- Action ID：`gActionIdsByTokenAddress`、`gActionIdsByTokenAddressByMemberId`、`gActionIdsByTokenAddressByGroupId`、`gActionIdsByTokenAddressByGroupIdByMemberId`；
+- Member ID：`gMemberIds`、`gMemberIdsByGroupId`、`gMemberIdsByTokenAddress`、`gMemberIdsByTokenAddressByGroupId`。
+
+每组索引都提供同名全量数组查询、追加 `Count` 的数量查询和追加 `AtIndex` 的单项查询；`AtIndex` 在原查询参数后追加 `index`。例如：
+
+- `gTokenAddressesByGroupIdByMemberId(groupId, memberId) -> address[]`；
+- `gTokenAddressesByGroupIdByMemberIdCount(groupId, memberId) -> uint256`；
+- `gTokenAddressesByGroupIdByMemberIdAtIndex(groupId, memberId, index) -> address`；
+- `gActionIdsByTokenAddressByGroupIdByMemberId(tokenAddress, groupId, memberId) -> uint256[]`，以及对应的 `Count` 和 `AtIndex`。
+
+`Count + AtIndex` 就是客户端分页接口，不额外提供 `offset/limit` 查询；同一轮分页读取应固定在同一区块，索引顺序不作为业务语义。退出一个行动时，只有在较低维度已不存在其他有效参与关系后，才能逐层删除对应的 Member ID、Action ID、Token Address 或 Group ID 上层索引。例如，成员退出某链群的一个行动后，只要仍在任意代币社区的任意行动中参与该链群，`gTokenAddressesByGroupIdByMemberIdCount(groupId, memberId)` 就仍大于 `0`。
 
 ### 6.3 公共验证者申请
 
@@ -241,4 +257,4 @@ theoreticalReward(m) = verifierTheory(m) + ownerTheory(m)
 
 ## 9. 验收场景
 
-至少覆盖：三类 Proposal 回调和原子回滚；ActionTarget 映射、查询和 forceExit；四槽位 ActionRound；LP 时间加权、治理票上限和部分撤回；链群激活、配置更新、成员/体验参与、跨社区和跨行动的链群归属计数、最后一次正常退出和 forceExit 状态边界、候选申请版本切换、排名平票、前 `n + 1` 开放、快照批次连续性、NFT 转移续验、无候选/失联导致行动层激励为零；完整验证后的成员和链群激励；服务跨整个社区聚合、同币/父币服务、公共验证者比例、100% 二次分配和全精度舍入边界。
+至少覆盖：三类 Proposal 回调和原子回滚；ActionTarget 映射、查询和 forceExit；四槽位 ActionRound；LP 时间加权、治理票上限和部分撤回；链群激活、配置更新、成员/体验参与、17 组链群全局索引的全量/Count/AtIndex 一致性、跨社区和跨行动关系、逐层清理、最后一次正常退出和 forceExit 状态边界、候选申请版本切换、排名平票、前 `n + 1` 开放、快照批次连续性、NFT 转移续验、无候选/失联导致行动层激励为零；完整验证后的成员和链群激励；服务跨整个社区聚合、同币/父币服务、公共验证者比例、100% 二次分配和全精度舍入边界。

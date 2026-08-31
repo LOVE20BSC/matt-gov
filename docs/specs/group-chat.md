@@ -239,7 +239,7 @@ interface IAfterPostPlugin {
 链群 Chat 提供两个标准 `scopeSource`：
 
 - `GroupMemberScope`：只读取管理员维护的 `groupId -> memberId` 成员名单；
-- `GroupJoinScopeSource`：部署时固定 `GroupMember` 和可复用的链群行动 Executor。成员名单命中时直接允许，否则调用 Executor 的 `isMemberOfGroup(groupId, senderId)`；该查询覆盖该 Executor 服务的所有代币社区和所有链群行动。
+- `GroupJoinScopeSource`：部署时固定 `GroupMember` 和可复用的链群行动 Executor。成员名单命中时直接允许，否则检查 `gTokenAddressesByGroupIdByMemberIdCount(groupId, senderId) > 0`；该查询覆盖该 Executor 服务的所有代币社区和所有链群行动。
 
 链群行动 Executor 是链群当前参与归属的唯一依据；Group Chat 不复制归属状态，也不遍历 ActionTarget。成员通过 Executor 正常退出其在该链群的最后一个行动后资格立即失效。`forceExit` 只清除 ActionTarget 的通用参与登记，不修改 Executor 的资产或链群归属，因此不会单独改变链群 Chat 资格。
 
