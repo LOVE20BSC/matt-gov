@@ -2,7 +2,7 @@
 
 本文件定义 BSC 版各代码库规格文档的组织方式。各代码库的 `SPEC.md` 是该代码库当前行为的规范入口；本文件只维护跨仓库的文档边界，不重复协议细节。
 
-在 `core`、`action`、`group-chat` 代码库正式创建前，规格暂存于本仓库的 `docs/specs/`：`core.md`、`action.md`、`group-chat.md` 分别对应未来代码库根目录的 `SPEC.md`。代码库创建后，将对应文件原样移入目标代码库并在本仓库保留迁移记录；不得在两个位置长期维护两份可能分叉的规范。
+在 `core`、`action`、`group-chat`、`compatibility` 代码库正式创建前，规格暂存于本仓库的 `docs/specs/`，分别对应未来代码库根目录的 `SPEC.md`。代码库创建后，将对应文件原样移入目标代码库并在本仓库保留迁移记录；不得在两个位置长期维护两份可能分叉的规范。
 
 ## 规范层级
 
@@ -17,8 +17,9 @@
 | `core` | 创建前 `matt-gov/docs/specs/core.md`；创建后 `core/SPEC.md` | `Stake`、`Submit`、`Vote`、`Mint`、`MemberNFT`、`Phase`、基础子币发射和跨层回调边界 |
 | `action` | 创建前 `matt-gov/docs/specs/action.md`；创建后 `action/SPEC.md` | `ActionTarget`、`ActionRound`、LP 行动、链群行动、链群服务行动及行动层激励 |
 | `group-chat` | 创建前 `matt-gov/docs/specs/group-chat.md`；创建后 `group-chat/SPEC.md` | 群聊业务和 **Group Chat Delegate** |
+| `compatibility` | 创建前 `matt-gov/docs/specs/compatibility.md`；创建后 `compatibility/SPEC.md` | WBNB/WETH9、PancakeSwap 与 Uniswap V2 参考实现的接口、行为、数值和 `Stake` 场景兼容性 |
 
-`launch` 本阶段不创建，因此暂不建立 `launch/SPEC.md`。`compatibility`、`periphery`、`script`、`love20-anvil`、`interface-test`、`interface`、`batch-transfer` 和 `docs` 使用各自的 `README.md`、部署说明或测试说明，不承担协议规格入口职责。
+`launch` 本阶段不创建，因此暂不建立 `launch/SPEC.md`。`periphery`、`script`、`love20-anvil`、`interface-test`、`interface`、`batch-transfer` 和 `docs` 使用各自的 `README.md`、部署说明或测试说明，不承担协议规格入口职责。`compatibility` 使用独立的 `SPEC.md`，因为它有固定的测试边界、判定标准和跨仓库发布门槛，但仍不提供生产运行时依赖。
 
 ## `SPEC.md` 最小章节
 
@@ -36,7 +37,7 @@
 
 `action/SPEC.md` 应在同一文件内分别说明 `ActionTarget`、LP 行动、链群行动和链群服务行动；不要求所有执行合约共享相同的业务接口，但必须遵守 `ActionTarget` 和 `ActionRound` 的公共边界。
 
-`compatibility` 的测试说明至少应记录：本地 Uniswap V2/WETH9 参考实现、目标网络外部地址、接口调用结果、储备和供应量变化、手续费/兑换报价差异、测试区块和提交。兼容性测试仓库不得被业务仓库反向导入。
+`compatibility/SPEC.md` 至少应记录：本地 Uniswap V2/WETH9 参考实现、目标网络外部地址、接口调用结果、储备和供应量变化、手续费/兑换报价差异、测试区块和提交。兼容性测试仓库不得被业务仓库反向导入。
 
 ## 更新规则
 

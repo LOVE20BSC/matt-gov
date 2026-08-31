@@ -6,7 +6,7 @@
 | --- | --- | --- | --- |
 | `matt-gov` | 组织治理、迁移决策和验收记录 | 无 | 活跃 |
 | `core` | 核心治理、`MemberNFT`、`Phase` 和基础子币发射能力 | 外部 PancakeSwap `Factory`/`Pair`/`Router` 接口 | 规划中 |
-| `compatibility` | 外部 WBNB/WETH9 与 PancakeSwap V2 兼容性测试 | 外部 WBNB、Factory、Pair、Router 和本地 Uniswap V2 参考实现 | 规划中 |
+| `compatibility` | 外部 WBNB/WETH9 与 Uniswap V2 兼容的 PancakeSwap 测试 | 外部 WBNB、Factory、Pair、Router 和本地 Uniswap V2 参考实现 | 规划中 |
 | `action` | `ActionTarget`、LP/链群行动及链群服务行动执行合约 | `core` | 规划中 |
 | `group-chat` | 群聊业务和 **Group Chat Delegate** | `core` | 规划中 |
 | `interface-test` | BSC 前端开发、集成和验收 | `core`、`action`、`group-chat` | 规划中；日常修改入口 |

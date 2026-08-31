@@ -57,6 +57,7 @@ Blocked by:
 - `LOVE20TokenFactory` 是 `core` 的技术工厂例外：保留用于子币部署拆分，不创建 `ActionExecutor` 或其他业务扩展实例；旧 `Extension*Factory`、群行动工厂和 LP 扩展工厂仍不迁移，外部 DEX Factory 只保留接口调用。
 - 旧 `extension-lp` 的 V2 LP 业务迁移到 `action`，作为 LP 行动执行合约按 BSC 版 `ActionTarget`、`MemberNFT`、Proposal 激励和 PancakeSwap 兼容接口重写；V1 LP 实现及 V1/V2 旧工厂部署方式均不迁移。
 - `core` 对 PancakeSwap 只依赖外部 `Factory`、`Pair`、`Router` 接口。接入门槛不是仅检查 ABI 编译通过：必须在目标链和 Anvil 夹具中逐项核对 `getPair/createPair`、Pair 的 `token0/token1/getReserves/totalSupply/mint/burn/swap` 返回值与状态更新、Router 的 `getAmountsOut/swapExactTokensForTokens` 路径和 `amountOutMin` 语义、手续费口径以及失败回滚行为，并证明 `Stake` 的功能和数值结果正确；若差异影响这些结果，才不得直接接入 `Stake`，改为适配层或停止集成。
+- 外部依赖兼容性单独维护在 `compatibility` 代码库：对 `anvil`、`bsc97_dev`、`bsc56_public_test` 和 `bsc56_public` 分别保存 WBNB/WETH9、PancakeSwap Factory/Pair/Router 与本地 Uniswap V2 参考实现的接口、行为、数值和 `Stake` 场景证据。该仓库不提供生产合约，也不得成为 `core` 或 `action` 的运行时依赖；未通过兼容性验收的外部地址不得进入部署配置。
 - 已知差异必须显式处理：PancakeSwap fork 的 `swap` 手续费常量可能与 Uniswap V2 不同（例如 `1000/2` 对比 `1000/3`）。因此“接口一致”不是充分条件，也不要求无关内部代码完全相同；必须证明 `Stake` 的实际结算、兑换和 LP 数值结果正确。若差异不影响结果，可直接接入并记录目标版本；若影响结果，必须按实际语义改写适配层或停止集成，不能硬编码 Uniswap V2 费率。
 - 旧 `group` 仓库只按合约级迁移已部署且仍需要的 `LOVE20Group`：并入 `core` 后重命名为 `LOVE20Member`（`MemberNFT`），名称唯一性语义保留，最大长度改为 32 个 UTF-8 字节。`GroupDefaults` 只是地址到默认 NFT 的便利映射，BSC 版不迁移、不部署；不新增独立的 `group` 代码库。`GroupDelegate` 不进入 `core`，Chat 所需的最小委托逻辑只在 `group-chat` 内实现。
 - 链群业务中的 `groupId` 是 `MemberNFT` 的业务标识，不是第二套 `GroupNFT` 身份。`action` 和 `group-chat` 均依赖 `core` 的 Member 接口。
