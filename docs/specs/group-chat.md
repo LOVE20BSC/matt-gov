@@ -209,7 +209,7 @@ interface IAfterPostPlugin {
 | 代币行动治理 Chat | 最近若干 Round 给行动投票 | 行动投票权重黑名单 |
 | 链群服务 Chat | 被群管理员列入成员，或满足指定链群行动参与条件 | 管理员黑名单 |
 
-所有条件都以 `memberId` 和当前 MemberNFT 控制权判断。涉及代币余额时，Manager 读取 `senderId` 当前控制者的余额，仅作为实时资格，不保存地址主体状态；治理票、Proposal 投票和行动参与直接按 `memberId` 查询。具体 Manager 可以在激活时一次性配置四个规则槽位；typed Manager 激活后不提供人工更新入口，普通 owner 管理型 Chat 则按第 3.2 节更新。
+所有条件都以 `memberId` 和当前 MemberNFT 控制权判断。持币资格严格按 `token.balanceOf(MemberNFT.ownerOf(senderId)) > 1` 判断，其中 `1` 表示一个代币最小单位；该余额仅作为实时资格，不保存地址主体状态。治理票、Proposal 投票和行动参与直接按 `memberId` 查询。具体 Manager 可以在激活时一次性配置四个规则槽位；typed Manager 激活后不提供人工更新入口，普通 owner 管理型 Chat 则按第 3.2 节更新。
 
 ### 7.1 群成员和管理员
 
