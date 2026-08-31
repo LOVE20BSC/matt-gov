@@ -49,13 +49,15 @@ ActionTarget 提供两类按治理 Round 的只读查询：
 
 ## 3. ActionRound
 
-行动时间线把 `Phase` 的无语义时间片组合为从 `1` 开始的 ActionRound，并固定四个时间槽位：`Vote -> Join -> Verify -> Mint`。每个槽位恰好对应一个底层 `Phase`，因此一个 ActionRound 使用四个阶段记录；四个阶段可以拥有各自生效的 `phaseBlocks`，不能假定同一 ActionRound 的四个阶段区块数相同。
+行动层把 `Phase` 的无语义时间片投影为从 `1` 开始的四个 ActionRound 槽位。设当前 `Phase` 编号为 `p`，四个无参数查询固定返回：`currentMintRound() = p - 3`、`currentVerifyRound() = p - 2`、`currentJoinRound() = p - 1`、`currentVoteRound() = p`。这四个值是同一时间点上四个槽位的轮次标签，不表示交易执行顺序；各槽位使用的区块边界仍由 `Phase` 的历史记录决定。
+
+当某个计算结果小于 `1` 时，该槽位轮次尚未开始，查询回滚 `RoundNotStarted`，不返回 `0`。因此 `Phase 1` 至 `Phase 3` 是行动轮次的启动窗口，`Phase 4` 才是四个槽位都具有有效轮次的首个时间点。
 
 四个槽位同时属于不同的滚动 Round，不表示串行交易顺序。`Join` 表示加入、追加、退出和其他行动参与状态变化。
 
 LP、链群行动和链群服务行动共用四个槽位和同一 Mint 时间窗口：LP 和链群服务的 Verify 槽位为空操作，链群行动在 Verify 槽位执行公共验证。每个 Executor 自己实现 `canMint(actionId, round)`；统一时间槽位不等于统一铸造资格。
 
-ActionTarget 提供无参数只读接口 `currentVoteRound()`、`currentJoinRound()`、`currentVerifyRound()` 和 `currentMintRound()`，直接从 `Phase` 推导，不保存 ActionRound 历史，也不提供带通用阶段参数的 `currentRound`、`ActionRoundInfo` 或 `ActionRoundOf`。
+ActionTarget 提供无参数只读接口 `currentVoteRound()`、`currentJoinRound()`、`currentVerifyRound()` 和 `currentMintRound()`，按上述公式直接从 `Phase` 推导，不保存 ActionRound 历史，也不提供带通用阶段参数的 `currentRound`、`ActionRoundInfo` 或 `ActionRoundOf`。
 
 ## 4. 共同参与模型
 
