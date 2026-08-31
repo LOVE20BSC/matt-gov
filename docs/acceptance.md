@@ -19,7 +19,7 @@
 - **MemberNFT 发射次数边界**：覆盖本次铸造前剩余供应量的阈值向上取整、治理激励累计进入 `launchCredit`、一次治理激励跨过多个完整阈值、整数除法余数继续累计、每个社区达到 `maxLaunchCount = X` 后停止新增次数、调用者只控制来源 MemberNFT 时向他人持有的目标 MemberNFT 部分融合整数次数但不转移 `launchCredit`、源次数扣减/目标次数增加的原子性，以及次数消耗后不能再次发射。
 - **子币发射分发边界**：覆盖非零 `distributor`、`RewardOnly`/`Callback` 两种分配模式、KV 长度校验、回调失败回滚、首次代币使用 Airdrop 目标，以及保留代币没有本地发射次数。
 - **MemberNFT 转移归属**：覆盖转移前后质押、解锁倒计时、治理激励和行动内部未铸造激励均由当前持有人继续操作；旧持有人不能代铸，历史投票、快照、已结算激励和事件不回写。
-- **Group Chat MemberNFT 主体**：覆盖四类 typed Manager、普通 owner 管理型 Chat、规则槽位、插件、消息与分页行为；覆盖成员、管理员、委托、发言、提及、黑名单目标和黑名单投票者均按 `memberId` 运行，并确认不存在默认 MemberNFT 映射、默认身份发言入口、地址黑名单/投票/查询或其他地址主体接口。owner 快照及消息/事件调用地址只用于 NFT 转移有效性和审计，不得成为业务主体。
+- **Group Chat MemberNFT 主体**：覆盖四类 typed Manager、普通 owner 管理型 Chat、规则槽位、插件、消息与分页行为；覆盖成员、管理员、委托、发言、提及、黑名单目标和黑名单投票者均按 `memberId` 运行，并确认不存在默认 MemberNFT 映射、默认身份发言入口、地址黑名单/投票/查询或其他地址主体接口。治理黑名单覆盖代币治理票与行动 Proposal 投票两类票权、全社区治理票分母、支持票严格超过反对票 `10` 倍且达到 `0.3%` 的双阈值、撤票和任何人刷新。owner 快照及消息/事件调用地址只用于 NFT 转移有效性和审计，不得成为业务主体。
 - **Target 组合与幂等性**：覆盖 `RewardOnly`/`Callback` 与 EOA/合约的合法组合、Callback + EOA 拒绝、缺少 executor 保留项的行动创建 KV 拒绝、仅 executor 项可创建，以及同一 `tokenAddress + proposalId` 重复创建回调回滚。
 - **ActionTarget / Executor 状态边界**：覆盖仅关联 Executor 可登记/正常清除、当前 MemberNFT 持有人可 `forceExit`、强制退出后 ActionTarget 当前参与查询清除而 Executor 资产状态不回写，以及不通过旧 Executor 状态自动恢复登记。
 - **Proposal Target 回调**：覆盖 Proposal 创建、提案推举、提案投票三类回调；覆盖 `submitterId`、`voterId`、增量票和 KV 透传，以及回调失败时对应外层交易整体回滚。

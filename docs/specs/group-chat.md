@@ -221,6 +221,15 @@ interface IAfterPostPlugin {
 
 管理员黑名单只维护 `groupId -> senderId`。治理投票黑名单按 `groupId + targetSenderId + voterId` 记录支持/反对票，并从 `voterId` 对应的治理状态读取权重；不存在地址黑名单目标、地址投票者或地址维度汇总。
 
+治理投票黑名单沿用统一的实时结算规则，但所有投票主体和目标都使用 MemberNFT：
+
+- 代币社区 Chat、代币治理 Chat 的 `voteWeightOf(groupId, voterId)` 为该代币社区中 `voterId` 当前有效治理票；
+- 代币行动 Chat、代币行动治理 Chat 的 `voteWeightOf(groupId, voterId)` 为当前 Vote Round 中该行动 Proposal 的 `voterId` 累计投票数；
+- 四类 Chat 的 `totalVoteWeight(groupId)` 都是所属代币社区当前总有效治理票，不因 Chat 类型改变；
+- 投票者调用投票或撤票接口时必须控制自己的 `voterId`；每个 `voterId` 对同一目标只有一个当前立场，可支持、反对或撤票；任何地址都可以调用刷新接口，使该立场按最新票权重新结算，票权变为零时删除该立场；
+- 目标进入已结算黑名单必须同时满足 `supportWeight > opposeWeight × 10` 和 `supportWeight × 1e18 >= totalVoteWeight × 3e15`。其中 `10` 倍和 `0.3%` 是固定常量，不是按群配置的参数；
+- 每次投票、反对、撤票或刷新后同步该目标的黑名单状态；后续治理质押或行动投票变化不会自动遍历刷新其他目标。
+
 ### 7.2 Manager
 
 沿用旧版四类 typed Manager：`TokenMainManager`、`TokenGovManager`、`TokenActionMainManager` 和 `TokenActionGovManager`。Manager 创建并持有一个 MemberNFT，把该 `memberId` 作为 `groupId` 激活到同一个 `GroupChat` 合约，并一次性注入规则模块；它不创建独立 Chat 合约，不复制 MemberNFT、不创建治理状态、不改变行动状态。
