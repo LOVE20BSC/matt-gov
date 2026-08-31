@@ -62,3 +62,4 @@ Blocked by:
 - 旧 `group` 仓库只按合约级迁移已部署且仍需要的 `LOVE20Group`：并入 `core` 后重命名为 `LOVE20Member`（`MemberNFT`），名称唯一性语义保留，最大长度改为 32 个 UTF-8 字节。`GroupDefaults` 只是地址到默认 NFT 的便利映射，BSC 版不迁移、不部署；不新增独立的 `group` 代码库。`GroupDelegate` 不进入 `core`，Chat 所需的最小委托逻辑只在 `group-chat` 内实现。
 - 链群业务中的 `groupId` 是 `MemberNFT` 的业务标识，不是第二套 `GroupNFT` 身份。`action` 和 `group-chat` 均依赖 `core` 的 Member 接口。
 - 当前 `group-chat` 使用一个 `GroupChat` 合约按 `groupId` 管理多个群，没有按群部署独立合约的 `GroupChatFactory`；除非未来改变为“一群一合约”，否则不新增该工厂。
+- BSC `group-chat` 完整沿用旧版生命周期、四类 typed Manager、规则槽位、插件、成员/管理员、Group Chat Delegate、消息索引和分页查询逻辑；迁移差异只统一参与主体。成员、管理员、委托者、发言者、被提及者、黑名单目标和治理黑名单投票者全部使用 `MemberNFT/memberId`。删除 `GroupDefaults`、`postAsDefaultSender`、地址黑名单及其投票/分页/查询，以及规则源和插件中作为业务身份传递的 `senderAddress`；合约地址、`msg.sender`、owner 快照及消息/事件调用地址仍可用于依赖、控制权校验和审计，但不得作为业务主体。
