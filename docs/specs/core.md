@@ -208,7 +208,7 @@ KV 使用等长的 `bytes32[] keys` 和 `bytes[] values`。`RewardOnly` 要求�
 
 ### 7.4 投票
 
-拥有有效治理权的 MemberNFT 在 Vote 时间片使用不超过自身 `validGovVotes` 的治理票。同一 Round 可以多次投票，每次只写入本次新增票数；数组长度必须一致，每个增量大于零，Proposal 必须已在本 Round 推举。累计票数超过可用治理票时回滚。
+拥有有效治理权的 MemberNFT 在 Vote 时间片使用不超过自身 `validGovVotes` 的治理票；每次投票都读取当时的 `validGovVotes`，不在首次投票时冻结。LP 质押或等待期增加后，后续投票可以使用新增的治理票；解锁、质押减少或融合使当前可用治理票不足时，后续超额投票回滚，已记录的历史票数不回写。同一 Round 可以多次投票，每次只写入本次新增票数；数组长度必须一致，每个增量大于零，Proposal 必须已在本 Round 推举。
 
 Vote 保存 Round 总票、Proposal 总票、成员总票、成员对 Proposal 的票、当轮有票 Proposal 列表和各 Proposal 的投票成员列表。
 
@@ -283,13 +283,15 @@ proposalVotes >= totalVotes × PROPOSAL_REWARD_MIN_VOTE_PER_THOUSAND / 1000
 
 发射次数按 `tokenAddress + memberId` 记录整数 `launchCount`，每个社区另记录累计已产生次数 `issuedLaunchCount`。
 
-治理激励铸造时，以本次铸造前的剩余供应量计算阈值，并向上取整：
+治理激励铸造时，以本次铸造前的剩余供应量计算本次阈值，并向上取整：
 
 ```text
-threshold = ceil((maxSupply - totalSupply) × launchRatio / 1e18)
+threshold = ceil((maxSupply - totalSupplyBeforeMint) × launchRatio / 1e18)
 ```
 
-一次铸造可以跨过多个阈值，余数继续累计。每个社区最多产生 `maxLaunchCount = X` 次；达到 `X` 后治理激励仍可铸造，但不再增加次数。次数消耗或融合不降低 `issuedLaunchCount`。
+本次治理激励实际铸造量除以 `threshold`，只产生完整阈值对应的整数次数；一次铸造可以跨过多个阈值，整数除法的余数直接忽略，不保存或累计 `launchRemainder`。每个社区最多产生 `maxLaunchCount = X` 次；达到 `X` 后治理激励仍可铸造，但不再增加次数。新增次数按 `tokenAddress + memberId` 写入 `launchCount`，并增加社区的 `issuedLaunchCount`；次数消耗或融合不降低 `issuedLaunchCount`。
+
+社区初始化的 `launchRatio` 和 `maxLaunchCount` 必须为正数。新增次数受 `X - issuedLaunchCount` 限制；当剩余可产生次数为零时，不再增加任何成员的发射次数。
 
 ### 9.2 发射
 

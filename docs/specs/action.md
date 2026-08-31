@@ -141,11 +141,11 @@ openBlock = verifyPhaseStartBlock + openOffset
 
 Join 槽位结束时，Executor 快照所有至少有一个成员参与的链群 `groupId`；空链群不进入集合。之后群停用、恢复或新增不改变本 Round 集合。
 
-每个链群按快照中的成员顺序保存验证游标。验证调用必须满足 `startIndex == verifiedCount`，批次连续，不得重复、跳过或乱序。首个有效批次永久锁定公共验证者 `memberId`；后续批次只能由该 MemberNFT 当前持有人提交，不设置失效、接管或代理。NFT 转移后由新持有人继续完成本 Round。
+每个链群按快照中的成员顺序保存验证游标。验证调用必须满足 `startIndex == verifiedCount`，批次连续，不得重复、跳过或乱序。本 Round 本行动的首个有效验证批次永久锁定一个公共验证者 `memberId`，该验证者负责本行动全部快照链群的验证；后续批次只能由该 MemberNFT 当前持有人提交，不设置失效、接管或代理。NFT 转移后由新持有人继续完成本 Round。
 
 公共验证者对每个成员提交原始得分 `0..100`，成员最终得分为 `rawScore × joinedAmount`；链群总分为成员最终得分之和，行动总分为所有完成验证链群总分之和。必须完成全部快照链群验证才算完整。
 
-无有效候选、候选总票为零、首个验证批次未能完成或任一链群验证不完整时，本 Round 的链群行动者、公共验证者、链群 owner 和链群服务行动层激励全部为零。底层 Proposal 激励仍可铸造，Executor 可以按规则销毁，但不能进行行动层分配。治理监督通过下一 Round 是否继续投票完成，不回溯历史激励。
+无有效候选、候选总票为零、锁定的公共验证者未完成全部快照验证或任一链群验证不完整时，本 Round 的链群行动者、公共验证者、链群 owner 和链群服务行动层激励全部为零。没有任何成员参与的行动无法提交验证，该行动的公共验证者和链群 owner 也没有激励；该行动的 Proposal 激励仍可由 Executor 铸造后立即销毁，不能进行行动层分配。治理监督通过下一 Round 是否继续投票完成，不回溯历史激励。
 
 ### 6.5 链群行动激励
 
@@ -167,36 +167,65 @@ Executor 可在内部把行动激励分配给参与者；ActionTarget 不留余�
 
 ### 7.3 服务激励聚合
 
-服务 Executor 在 Mint 槽位通过 ActionTarget 一次性取得 `servicePool`，来源是 `serviceTokenAddress` 社区对应服务 Proposal 的冻结 Proposal 激励；之后按 MemberNFT 分人结算，不把底层 Proposal 激励拆成多个独立铸造请求。随后只对 `actionTokenAddress` 社区的完整链群行动进行聚合：
+服务 Executor 在 Mint 槽位通过 ActionTarget 一次性取得 `servicePool`，来源是 `serviceTokenAddress` 社区对应服务 Proposal 的冻结 Proposal 激励；之后按 MemberNFT 分人结算，不把底层 Proposal 激励拆成多个独立铸造请求。随后逐个检查 `actionTokenAddress` 社区的链群行动：
 
 1. 通过 ActionTarget 使用 `actionExecutor` 查询 `actionTokenAddress` 社区关联的全部 Proposal；
-2. 按核心治理门槛筛出有资格铸造行动激励的 Proposal；
-3. 过滤无公共验证者或未完成全部链群快照验证的行动；
-4. 按完整行动的行动激励权重分摊服务 Proposal 的实际铸造预算；
-5. 对每个链群行动按公共验证者申请时冻结的比例 `r` 计算公共验证者份额；所有公共验证者份额从 `servicePool` 中先行扣除，余款形成链群主激励池；
-6. 按链群主名下链群的行动激励铸造量占全部链群行动激励铸造量的比例，计算该链群主的链群主激励；
-7. 链群主激励按该链群主名下各链群的行动激励铸造量拆分，并按链群配置的接收主体和比例执行二次分配。公共验证者激励不进入链群主二次分配。
+2. 对每个 Proposal 确认本轮至少有一个成员参与、全部快照链群均已完成验证、行动激励已经最终确定，并确认实际锁定的公共验证者及其申请分成比例。任一条件不满足时，该行动的行动激励权重为 `0`，不进入服务激励分母；该行动的 Proposal 激励只能由 Executor 销毁；
+3. 设符合条件的行动 `a` 的行动激励权重为 `A[a]`，全部符合条件行动的权重为 `T = Σ A[a]`。`A[a]` 使用行动 Executor 记录的最终行动激励，不使用尚未确定的 Proposal 预估值；
+4. 当 `T > 0` 时，对每个行动只读取一次实际锁定的公共验证者 `verifierId[a]`、其申请分成比例 `r[a]`，以及每个 MemberNFT 在该行动名下链群产生的行动激励 `ownerActionReward(a, m)`，并累计两类权重：
+
+   ```text
+   verifierWeightNumerator(m) = Σ(A[a] × r[a])
+       // 仅对 verifierId[a] == m 的行动累加
+
+   ownerWeightNumerator(m) = Σ(ownerActionReward(a, m) × (1e18 - r[a]))
+
+   theoreticalVerifierReward(m) =
+       servicePool × verifierWeightNumerator(m) / (T × 1e18)
+
+   theoreticalOwnerReward(m) =
+       servicePool × ownerWeightNumerator(m) / (T × 1e18)
+   ```
+
+   `ownerActionReward(a, m)` 由行动 Executor 返回，表示 MemberNFT `m` 名下链群在行动 `a` 中产生的行动激励。每个行动的公共验证者分成先按该行动的实际比例折算为公共验证者权重，链群 owner 权重使用同一行动的剩余比例；所有行动的权重分别累加后再计算分子/分母，不建立跨行动的全局 ownerPool。全局服务激励计算直接向下取整，不维护、不补发舍入余数；未分配的最小单位留在服务 Executor 中。
+5. 对同一 MemberNFT，将两类理论激励合并后只进行一次治理占比封顶：
+
+   ```text
+   theoreticalReward(m) =
+       theoreticalVerifierReward(m) + theoreticalOwnerReward(m)
+   ```
+
+   ```text
+   govRatio(m) = validGovVotes(actionTokenAddress, m) × 1e18
+                 / totalGovVotes(actionTokenAddress)
+
+   capRatio(m) = govRatio(m) × govRatioMultiplier
+
+   actualReward(m) = min(
+       theoreticalReward(m),
+       servicePool × capRatio(m) / 1e18
+   )
+   ```
+
+   `totalGovVotes == 0` 时 `govRatio` 按 `0` 处理；`govRatioMultiplier == 0` 表示不封顶。将 `theoreticalReward(m) - actualReward(m)` 销毁。实际激励按同一缩放比例拆回公共验证者和链群 owner 两部分：公共验证者部分直接给实际锁定的验证者，链群 owner 部分再按其名下链群的行动激励权重拆分，并按链群配置的接收主体和比例执行二次分配。`theoreticalReward(m) == 0` 时两类实际激励均为 `0`，不进行缩放除法。
 
 公共验证者激励来自链群服务 Proposal，不从链群行动 Proposal 扣除。服务激励不存在 gas 补偿。
 
-设全部完整链群行动的行动激励铸造量之和为 `totalActionReward`；成员 `m` 名下链群的行动激励铸造量之和为 `ownerActionReward(m)`；成员 `m` 作为已锁定公共验证者所对应链群的 `actionReward × r` 之和为 `verifierActionReward(m)`；所有公共验证者份额之和为 `totalVerifierReward = Σ(actionReward × r)`。则：
+设成员 `m` 在所有符合条件行动中累计得到的公共验证者理论激励为 `verifierTheory(m)`，链群 owner 理论激励为 `ownerTheory(m)`：
 
 ```text
-verifierReward(m) = servicePool × verifierActionReward(m) / totalActionReward
-ownerPool = servicePool - servicePool × totalVerifierReward / totalActionReward
-ownerReward(m) = ownerPool × ownerActionReward(m) / totalActionReward
-theoreticalReward(m) = verifierReward(m) + ownerReward(m)
+theoreticalReward(m) = verifierTheory(m) + ownerTheory(m)
 ```
 
-同一 MemberNFT 同时是公共验证者和链群 owner 时，两部分相加；只有链群 owner 时只计算链群主激励，只有公共验证者时只计算公共验证者激励。治理占比封顶规则继续作用于 `theoreticalReward(m)`：`govRatioMultiplier == 0` 时不封顶，否则按服务 Proposal 所属治理社区的有效治理票占比计算实际铸造量，差额销毁。每个 `memberId` 在该服务 Proposal 的该 Round 只能结算一次。
+同一 MemberNFT 同时是公共验证者和链群 owner 时，两部分合并后只封顶一次；只有链群 owner 时只计算链群 owner 激励，只有公共验证者时只计算公共验证者激励。该治理票占比在每个 `memberId` 首次结算本服务 Proposal 的该 Round 时冻结；每个 `memberId` 在该服务 Proposal 的该 Round 只能结算一次。
 
-`ownerActionReward(m)` 是该 MemberNFT 作为链群 owner 名下链群产生的行动激励铸造量，不包含公共验证者分成；公共验证者分成只由其申请时冻结的 `r` 决定。服务激励的治理票快照在该 Round 首次结算时冻结。
+`A[a]` 只有该行动完成全部验证且行动激励最终确定时才进入 `T`。若 `T == 0`，所有行动层服务激励均为 `0`；已经铸造的 `servicePool` 必须整体销毁，不能分配给其他行动或 MemberNFT。公共验证者分成只由该行动实际锁定的候选申请比例决定。
 
 ### 7.4 二次分配和舍入
 
-所有比例使用 `1e18`。每个链群的接收比例总和不得超过 `1e18`，允许正好为 `1e18`。各接收金额向下取整，累计分配不能超过该链群预算，舍入余数归链群 owner；比例为 100% 时 owner 金额可以为零。
+所有比例使用 `1e18`。每个链群的接收比例总和不得超过 `1e18`，允许正好为 `1e18`。全局服务激励和各角色激励均直接向下取整，不维护、不补发舍入余数，未分配的最小单位留在服务 Executor 中。链群 owner 的二次分配沿用旧版逻辑：各接收金额向下取整，`groupBudget - distributed` 的余数归该链群 owner；比例为 100% 时 owner 金额可以为零。
 
-预算分配使用未提前截断的同一组分子/分母进行全精度计算；任何中间结果不得因独立向下取整导致累计份额超过服务 Proposal 实际铸造量。铸造、销毁、转账和状态更新必须在同一笔交易中完成，不能因 `budget - distributed` 下溢而回滚。
+预算分配使用同一组分子/分母计算；任何中间结果不得因独立向下取整导致累计份额超过服务 Proposal 实际铸造量。若出现 `distributed > budget`，属于非法超额分配，必须回滚；不能用静默截断掩盖错误。铸造、销毁、转账和状态更新必须在同一笔交易中完成。
 
 ## 8. 铸造闭环、事件和错误
 
