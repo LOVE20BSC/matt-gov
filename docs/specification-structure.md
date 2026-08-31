@@ -14,7 +14,7 @@
 
 | 代码库 | 规格入口 | 规格内容 |
 | --- | --- | --- |
-| `core` | 创建前 `matt-gov/docs/specs/core.md`；创建后 `core/SPEC.md` | `Stake`、`Submit`、`Vote`、`Mint`、`MemberNFT`、`LOVE20Phase`、基础子币发射和跨层回调边界 |
+| `core` | 创建前 `matt-gov/docs/specs/core.md`；创建后 `core/SPEC.md` | `Stake`、`Submit`、`Vote`、`Mint`、`MemberNFT`、`Phase`、基础子币发射和跨层回调边界 |
 | `action` | 创建前 `matt-gov/docs/specs/action.md`；创建后 `action/SPEC.md` | `ActionTarget`、`ActionRound`、LP 行动、链群行动、链群服务行动及行动层激励 |
 | `group-chat` | 创建前 `matt-gov/docs/specs/group-chat.md`；创建后 `group-chat/SPEC.md` | 群聊业务和 **Group Chat Delegate** |
 

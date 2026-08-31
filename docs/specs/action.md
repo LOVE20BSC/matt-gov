@@ -13,7 +13,7 @@
 - 链群行动执行合约；
 - 链群服务行动执行合约。
 
-组件依赖 `core` 的 `MemberNFT`、`Stake`、`Submit`、`Vote`、`Mint` 和 `LOVE20Phase` 接口。核心只传递 Proposal 上下文、治理票增量和不透明 KV；候选人、链群、LP、资产托管和服务分配由本代码库解释。
+组件依赖 `core` 的 `MemberNFT`、`Stake`、`Submit`、`Vote`、`Mint` 和 `Phase` 接口。核心只传递 Proposal 上下文、治理票增量和不透明 KV；候选人、链群、LP、资产托管和服务分配由本代码库解释。
 
 执行合约可以同时服务多个代币社区和多个 Proposal。所有可复用状态至少按 `tokenAddress + actionId + ActionRound` 隔离。
 
@@ -48,13 +48,13 @@ ActionTarget 提供两类按治理 Round 的只读查询：
 
 ## 3. ActionRound
 
-行动时间线把 `LOVE20Phase` 的无语义 Phase 组合为从 `1` 开始的 ActionRound，并固定四个时间槽位：`Vote -> Join -> Verify -> Mint`。
+行动时间线把 `Phase` 的无语义时间片组合为从 `1` 开始的 ActionRound，并固定四个时间槽位：`Vote -> Join -> Verify -> Mint`。
 
 四个槽位同时属于不同的滚动 Round，不表示串行交易顺序。`Join` 表示加入、追加、退出和其他行动参与状态变化。
 
 LP、链群行动和链群服务行动共用四个槽位和同一 Mint 时间窗口：LP 和链群服务的 Verify 槽位为空操作，链群行动在 Verify 槽位执行公共验证。每个 Executor 自己实现 `canMint(actionId, round)`；统一时间槽位不等于统一铸造资格。
 
-ActionTarget 提供无参数只读接口 `currentVoteRound()`、`currentJoinRound()`、`currentVerifyRound()` 和 `currentMintRound()`，直接从 `LOVE20Phase` 推导，不保存 ActionRound 历史，也不提供带通用阶段参数的 `currentRound`、`ActionRoundInfo` 或 `ActionRoundOf`。
+ActionTarget 提供无参数只读接口 `currentVoteRound()`、`currentJoinRound()`、`currentVerifyRound()` 和 `currentMintRound()`，直接从 `Phase` 推导，不保存 ActionRound 历史，也不提供带通用阶段参数的 `currentRound`、`ActionRoundInfo` 或 `ActionRoundOf`。
 
 ## 4. 共同参与模型
 

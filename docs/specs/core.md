@@ -15,8 +15,8 @@ LOVE20 是社群铸币协议。每个代币都有一个父币（根代币除外�
 - `Submit`：Proposal 创建和推举；
 - `Vote`：治理投票及 Proposal Target 回调；
 - `Mint`：轮次激励准备、治理激励和 Proposal 激励铸造；
-- `LOVE20Phase`：无语义的动态 Phase 时间线；
-- `LOVE20Token`、`LOVE20TokenFactory`：代币树和代币实例创建；
+- `Phase`：无语义的动态时间片时间线；
+- `LOVE20Token`、`TokenFactory`：代币树和代币实例创建；
 - 基础子币发射次数账本、次数融合、次数消耗和首批代币分发。
 
 核心不解释任何具体 Proposal 扩展的业务字段。扩展只通过 Proposal Target 的通用接口接入。
@@ -49,7 +49,7 @@ LOVE20 是社群铸币协议。每个代币都有一个父币（根代币除外�
 
 ### 3.2 TokenFactory
 
-`LOVE20TokenFactory` 负责创建子币并初始化核心依赖：
+`TokenFactory` 负责创建子币并初始化核心依赖：
 
 1. 校验父币是已登记的 LOVE20 代币；
 2. 校验符号长度、格式和全局唯一性；
@@ -65,11 +65,11 @@ LOVE20 是社群铸币协议。每个代币都有一个父币（根代币除外�
 
 MemberNFT 的转移不复制、不拆分、不重置任何历史。依赖身份的合约必须实时读取 `ownerOf(memberId)`，不能缓存钱包地址作为长期权限。
 
-## 5. LOVE20Phase 与 Round
+## 5. Phase 与 Round
 
 ### 5.1 Phase
 
-`LOVE20Phase` 只维护连续的无语义时间片，不命名 Vote、Join、Verify、Mint 等业务阶段，也不定义上层 Round。
+`Phase` 只维护连续的无语义时间片，不命名 Vote、Join、Verify、Mint 等业务阶段，也不定义上层 Round。
 
 部署构造参数：
 
