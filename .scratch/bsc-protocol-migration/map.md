@@ -33,7 +33,7 @@
 - [Matt 文档与组织验收标准](issues/11-matt-docs-and-acceptance.md) — 各仓库采用条件式最低文档标准，组织级仓库状态和跨仓库验收分别维护在 `docs/repositories.md` 与 `docs/acceptance.md`，首个 `core` 真实小任务用 agent 自审验证协作闭环。
 - [体验资产与行动撤回](issues/07-experience-and-withdrawal.md) — 体验资产按提供者独立归属，部分撤回以行动快照为边界，行动结束由类型内部业务结算，首版部署 `forceExit` 但由前端隐藏，仅作登记清理兜底。
 - [治理质押、融合与资产生命周期](issues/05-stake-fusion-and-lifecycle.md) — 质押按 `memberId` 归属，不再产生 SL/ST 凭证，份额直接由 `Stake` 账本维护；两类质押统一解锁，融合按社区和投票状态隔离，多轮激励独立铸造。
-- [MemberNFT 发射次数与子币发射](issues/04-launch-count-and-permit.md) — 治理激励按本次铸造前剩余供应量计算向上取整阈值，只按完整阈值原子增加 MemberNFT 的社区发射次数，余数直接忽略且不保存；社区累计达到 `maxLaunchCount = X` 后停止新增；次数可部分融合转移，发射消耗次数并把首批代币交给指定 `distributor`。
+- [MemberNFT 发射次数与子币发射](issues/04-launch-count-and-permit.md) — 治理激励累计进入 MemberNFT 的社区发射额度，按本次铸造前剩余供应量计算向上取整阈值；每产生完整次数就扣除对应额度，余数继续累计；社区累计达到 `maxLaunchCount = X` 后停止新增；已有整数次数可部分融合转移，发射消耗次数并把首批代币交给指定 `distributor`。
 
 ## Not yet specified
 

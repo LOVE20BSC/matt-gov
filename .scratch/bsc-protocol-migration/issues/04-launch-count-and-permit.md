@@ -17,7 +17,7 @@ Blocked by:
 ## Answer
 
 - **发射次数账本**：发射权直接附加到 MemberNFT 的 `memberId`，由 `core` 按 `tokenAddress + memberId` 记录可用 `launchCount`。治理激励铸造达到阈值时，在同一笔交易中增加发射次数；治理激励和次数更新必须原子完成。
-- **阈值与余数**：阈值按本次治理激励铸造前的 `maxSupply - totalSupply` 乘以初始化比例计算，并采用向上取整：`threshold = ceil((maxSupply - totalSupplyBeforeMint) × launchRatio / 1e18)`；剩余供应量为 `0` 时不再产生阈值。一次铸造跨过多个阈值时增加对应的整数次数，整数除法的余数直接忽略，不保存或累计 `launchRemainder`。旧版 Mint 的重复铸造/重复销毁状态判断必须修复。
+- **阈值与余数**：阈值按本次治理激励铸造前的 `maxSupply - totalSupply` 乘以初始化比例计算，并采用向上取整：`threshold = ceil((maxSupply - totalSupplyBeforeMint) × launchRatio / 1e18)`；剩余供应量为 `0` 时不再产生阈值。本次实际铸造的治理激励先加入 `tokenAddress + memberId` 的 `launchCredit`，每产生一个完整次数就扣除一个当次阈值，未满阈值的余数继续保留并与下一次治理激励累计；一次铸造可以跨过多个阈值。达到 `maxLaunchCount = X` 后不再产生新次数或累计新的发射额度。旧版 Mint 的重复铸造/重复销毁状态判断必须修复。
 - **比例配置**：阈值比例是 `core` 发射基础设施的部署初始化参数，必须大于 `0`，所有代币社区共用，使用 `1e18` 精度，部署后不可修改。
 - **社区上限**：协议初始化参数设定每个代币社区最多可产生的子币发射次数 `maxLaunchCount = X`，`X` 必须大于 `0`；并用按 `tokenAddress` 隔离的累计已产生次数限制总量。单次治理激励铸造新增次数不得超过 `X - issuedLaunchCount`；次数被消耗或融合转移不会降低已产生次数。达到 `X` 后，后续治理激励仍可正常铸造，但不再记入发射次数阈值账本或增加新的 `launchCount`。
 - **发射次数融合**：提供类似 `mergeLaunchCount(tokenAddress, sourceMemberId, targetMemberId, count)` 的原子操作。`count` 为正整数；源、目标必须不同；调用者必须同时是两个 MemberNFT 的当前控制者；源可用次数必须不少于 `count`；只能在同一 `tokenAddress` 社区内操作。成功后源次数减少、目标次数增加，目标其他质押、解锁、投票和历史状态不变；不回写已发生的发射或治理历史。该操作独立于质押融合，不强行合并为一个接口。

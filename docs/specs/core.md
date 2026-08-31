@@ -281,7 +281,7 @@ proposalVotes >= totalVotes × PROPOSAL_REWARD_MIN_VOTE_PER_THOUSAND / 1000
 
 ### 9.1 发射次数
 
-发射次数按 `tokenAddress + memberId` 记录整数 `launchCount`，每个社区另记录累计已产生次数 `issuedLaunchCount`。
+发射次数按 `tokenAddress + memberId` 记录整数 `launchCount` 和未消耗的累计发射额度 `launchCredit`，每个社区另记录累计已产生次数 `issuedLaunchCount`。
 
 治理激励铸造时，以本次铸造前的剩余供应量计算本次阈值，并向上取整：
 
@@ -289,9 +289,18 @@ proposalVotes >= totalVotes × PROPOSAL_REWARD_MIN_VOTE_PER_THOUSAND / 1000
 threshold = ceil((maxSupply - totalSupplyBeforeMint) × launchRatio / 1e18)
 ```
 
-本次治理激励实际铸造量除以 `threshold`，只产生完整阈值对应的整数次数；一次铸造可以跨过多个阈值，整数除法的余数直接忽略，不保存或累计 `launchRemainder`。每个社区最多产生 `maxLaunchCount = X` 次；达到 `X` 后治理激励仍可铸造，但不再增加次数。新增次数按 `tokenAddress + memberId` 写入 `launchCount`，并增加社区的 `issuedLaunchCount`；次数消耗或融合不降低 `issuedLaunchCount`。
+本次实际铸造的治理激励先加入该 `tokenAddress + memberId` 的 `launchCredit`。使用本次阈值计算完整次数：
 
-社区初始化的 `launchRatio` 和 `maxLaunchCount` 必须为正数。新增次数受 `X - issuedLaunchCount` 限制；当剩余可产生次数为零时，不再增加任何成员的发射次数。
+```text
+newCount = min(launchCredit / threshold, X - issuedLaunchCount)
+launchCredit -= newCount × threshold
+launchCount[tokenAddress][memberId] += newCount
+issuedLaunchCount[tokenAddress] += newCount
+```
+
+一次铸造可以跨过多个阈值；整数除法的余数保留在 `launchCredit`，继续与下一次实际铸造的治理激励累计。每个社区最多产生 `maxLaunchCount = X` 次；达到 `X` 后治理激励仍可铸造，但不再增加次数或累计新的发射额度。次数消耗或融合不降低 `issuedLaunchCount`。
+
+社区初始化的 `launchRatio` 和 `maxLaunchCount` 必须为正数。新增次数受 `X - issuedLaunchCount` 限制；当剩余可产生次数为零时，不再增加任何成员的发射次数。发射次数融合只转移已有的整数 `launchCount`，不转移 `launchCredit`，也不回写治理激励历史。
 
 ### 9.2 发射
 
@@ -310,7 +319,7 @@ threshold = ceil((maxSupply - totalSupplyBeforeMint) × launchRatio / 1e18)
 
 ## 10. 事件、错误和验收
 
-事件至少覆盖：MemberNFT 铸造/转移、质押/解锁/提取/融合、Phase 生成/同步、Proposal 创建/推举/投票、激励准备/铸造/销毁、发射次数增加/融合/消耗、子币创建/分发、Pair 手续费结算和销毁。事件主键使用 `tokenAddress`、`memberId`、`proposalId`、`round`。
+事件至少覆盖：MemberNFT 铸造/转移、质押/解锁/提取/融合、Phase 生成/同步、Proposal 创建/推举/投票、激励准备/铸造/销毁、发射额度和次数增加/融合/消耗、子币创建/分发、Pair 手续费结算和销毁。事件主键使用 `tokenAddress`、`memberId`、`proposalId`、`round`。
 
 以下情况必须回滚：无效成员或控制者、零地址 Target/Distributor、非法模式、KV 长度不等、Proposal 或推举重复、投票超额、Round 未结束或未准备、重复铸造/销毁、待解锁时追加或融合、等待期不足、跨社区次数操作、发射次数不足或超社区上限、外部 Pair/Router 调用失败和任何 Target 回调失败。
 
