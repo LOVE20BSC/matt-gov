@@ -48,7 +48,7 @@ ActionTarget 提供两类按治理 Round 的只读查询：
 
 ## 3. ActionRound
 
-行动时间线把 `Phase` 的无语义时间片组合为从 `1` 开始的 ActionRound，并固定四个时间槽位：`Vote -> Join -> Verify -> Mint`。
+行动时间线把 `Phase` 的无语义时间片组合为从 `1` 开始的 ActionRound，并固定四个时间槽位：`Vote -> Join -> Verify -> Mint`。每个槽位恰好对应一个底层 `Phase`，因此一个 ActionRound 使用四个阶段记录；四个阶段可以拥有各自生效的 `phaseBlocks`，不能假定同一 ActionRound 的四个阶段区块数相同。
 
 四个槽位同时属于不同的滚动 Round，不表示串行交易顺序。`Join` 表示加入、追加、退出和其他行动参与状态变化。
 
@@ -131,7 +131,7 @@ Executor 可在内部把行动激励分配给参与者；ActionTarget 不留余�
 
 ### 7.1 服务范围和初始化
 
-一个链群服务 Proposal 面向整个 `actionTokenAddress` 社区的链群行动集合，不绑定单个源 `actionId`。Proposal 的激励代币为 `rewardTokenAddress`，可以与行动代币相同，也可以使用父币激励子币社区；父子关系由服务 Executor 校验。
+一个链群服务 Proposal 面向整个 `actionTokenAddress` 社区的链群行动集合，不绑定单个源 `actionId`。该 Proposal 的 `tokenAddress` 记为 `serviceTokenAddress`，同时是服务 Proposal 所属治理社区和服务激励的铸币代币；服务 Proposal 可铸造的总激励只由 `serviceTokenAddress` 社区的治理轮次决定，与被服务的 `actionTokenAddress` 社区治理无关。两者相同时自然使用同一治理社区；不同时，`actionTokenAddress` 只用于筛选被服务行动和读取行动层状态。父子关系由服务 Executor 校验。
 
 服务创建 KV 除第 `0` 项 `executor` 外，包含 `actionTokenAddress` 和 `govRatioMultiplier`。链群行动的验证分割线、链群 owner 接收主体和每个行动/链群的分配比例属于对应业务状态，不是服务全局初始化参数。
 
@@ -141,7 +141,7 @@ Executor 可在内部把行动激励分配给参与者；ActionTarget 不留余�
 
 ### 7.3 服务激励聚合
 
-服务 Executor 在 Mint 槽位：
+服务 Executor 在 Mint 槽位取得的 `servicePool` 来自 `serviceTokenAddress` 社区对应服务 Proposal 的冻结 Proposal 激励；随后只对 `actionTokenAddress` 社区的完整链群行动进行聚合：
 
 1. 通过 ActionTarget 查询本服务 Executor 在 `actionTokenAddress` 社区关联的全部 Proposal；
 2. 按核心治理门槛筛出有资格铸造行动激励的 Proposal；

@@ -6,7 +6,7 @@
 
 ## 1. 协议模型
 
-LOVE20 是社群铸币协议。每个代币都有一个父币（根代币除外），多个代币组成有向树。代币供应受 `maxSupply` 限制，协议按治理规则持续铸造激励；代币和治理状态全部在链上维护。
+LOVE20 是社群铸币协议。每个 LOVE20 代币都有一个 `parentTokenAddress`。首个 LOVE20 代币的父币是公链原生代币的封装代币（BSC 为 WBNB）；该封装代币是协议树外的根父币，不是由 LOVE20 创建的代币。后续子币的父币是已登记的 LOVE20 代币。代币供应受 `maxSupply` 限制，协议按治理规则持续铸造激励；代币和治理状态全部在链上维护。
 
 核心治理层包含：
 
@@ -38,12 +38,12 @@ LOVE20 是社群铸币协议。每个代币都有一个父币（根代币除外�
 
 每个 `LOVE20Token` 至少包含：
 
-- `parentTokenAddress`；
+- `parentTokenAddress`；首个代币固定为部署时配置的 WBNB，后续子币必须指向已登记的 LOVE20 代币；
 - `maxSupply`；
 - 核心 `minter`；
 - ERC20 的 `totalSupply`、余额和授权。
 
-只有 `minter` 可以铸造，且 `totalSupply + amount <= maxSupply`。持有人可以销毁自己持有的代币。根代币的父资产、名称、符号、首批供应量和分发者在部署时设定。
+只有 `minter` 可以铸造，且 `totalSupply + amount <= maxSupply`。持有人可以销毁自己持有的代币。首个代币的父币、名称、符号、首批供应量和分发者在协议首次部署时设定。
 
 核心不维护父币托底池或通过销毁子币兑换父币的业务。流动性质押手续费中的父币由 `Stake` 通过 Router 买入社区代币后销毁。
 
@@ -107,15 +107,16 @@ MemberNFT 的转移不复制、不拆分、不重置任何历史。依赖身份�
 
 质押状态按 `tokenAddress + memberId` 隔离，直接存储在 `Stake`。每个社区至少维护：
 
-- `lpShares`：标准化流动性质押份额；
-- `withdrawableLp`：扣除已结算手续费后的可赎回 LP；
+- `totalLpShares`：社区全部流动性质押股份；
+- `lpShares`：某个 `memberId` 持有的内部股份单位，不等同于 Pair 的 LP Token 数量；
+- `withdrawableLp`：扣除已结算 `feeLp` 后，社区所有治理者共同拥有的可赎回 Pair LP 净资产；
 - `boostStake`：加速质押数量；
 - `promisedWaitingPhases`；
 - `govVotes`；
 - 统一解锁申请的 Phase、等待期和状态；
 - 按 Round 的加速质押快照和累计历史。
 
-流动性质押产生治理票；加速质押只参与治理激励的加速部分，不能单独取得治理资格。只有有有效流动性质押治理权的 MemberNFT 才能增加加速质押。
+流动性质押产生治理票；加速质押只参与治理激励的加速部分，不能单独取得治理资格。只有有有效流动性质押治理权的 MemberNFT 才能增加加速质押。某个 `memberId` 当前可赎回的 LP 为 `lpShares × withdrawableLp / totalLpShares`；提取时按该比例减少其股份和社区净资产。手续费结算减少 `withdrawableLp`，不减少 `totalLpShares`，因此不会改变股份比例，但会降低每份股份对应的净资产。
 
 治理票公式：
 
@@ -165,13 +166,15 @@ govVotes = lpShares × promisedWaitingPhases
 3. 父币按固定路径 `[parentTokenAddress, tokenAddress]` 经 Router 换成社区代币后销毁；
 4. 更新全局累计销毁量和按 `tokenAddress` 的社区累计销毁量。
 
-手续费结算减少 `withdrawableLp`，不改变 `lpShares` 总账。退出按当前份额对应的剩余 LP 计算。兑换最小输出量按同一交易的当前储备计算，调用者不能传入任意路径。Pair、Router、销毁或统计更新失败时整笔交易回滚。
+手续费结算从 Pair 移除并销毁属于 `feeLp` 的净资产；`feeLp` 不归任何治理者。结算减少社区 `withdrawableLp`，不改变 `totalLpShares` 或任何成员的 `lpShares`。退出或部分提取按 `memberLpShares × withdrawableLp / totalLpShares` 计算当前可赎回 LP，再按该份额从 Pair 取回资产。兑换最小输出量按同一交易的当前储备计算，调用者不能传入任意路径。Pair、Router、销毁或统计更新失败时整笔交易回滚。
 
 ## 7. Proposal
 
 ### 7.1 数据结构
 
-Proposal 由 `tokenAddress + proposalId` 定位：
+Proposal 由 `tokenAddress + proposalId` 定位。这里的 `tokenAddress` 同时表示该 Proposal 所属的治理社区和 Proposal 激励的铸币代币；Proposal 激励池由该社区的治理轮次决定。
+
+Proposal 结构为：
 
 - `ProposalHead`：`id`、`author`、`createAtBlock`；
 - `ProposalBody`：`title`、`details`；`title` 非空，`details` 可为空；
@@ -226,7 +229,7 @@ onProposalVoted(address tokenAddress, uint256 proposalId,
 
 ### 8.1 轮次激励池
 
-Vote 时间片结束后，任何地址可以调用 `prepareProposalRewards(tokenAddress, round)`。该调用只写入一次 Round 级冻结状态，不枚举、不预写每个 Proposal 的金额。状态至少包括治理激励池、Proposal 激励池、达到门槛的 Proposal 总票数、预留量、已铸造量和已销毁量。
+Vote 时间片结束后，任何地址可以调用 `prepareProposalRewards(tokenAddress, round)`。该调用只写入一次 Round 级冻结状态，不枚举、不预写每个 Proposal 的金额。状态至少包括治理激励池、Proposal 激励池、达到门槛的 Proposal 总票数、各池预留量/已铸造量/已销毁量，以及社区级跨轮次汇总的预留量/已铸造量/已销毁量。社区级汇总用于控制 `maxSupply`，各池账用于防止治理池和 Proposal 池重复消费同一额度。
 
 设：
 
@@ -247,7 +250,7 @@ proposalVotes >= totalVotes × PROPOSAL_REWARD_MIN_VOTE_PER_THOUSAND / 1000
 
 准备时冻结所有合格 Proposal 的总票数作为分母。未达门槛的 Proposal 不参与 Proposal 池分配。
 
-如果本 Round 没有合格 Proposal，`eligibleProposalVotes = 0`，本轮没有 Proposal 可以铸造；对应池子只能通过一次性的显式销毁/结算路径处理，不能转给其他 Round 或 Proposal。
+如果本 Round 没有任何治理投票，治理池和 Proposal 池均为 `0`，本轮不产生激励。若有投票但没有合格 Proposal，则 `eligibleProposalVotes = 0`，本轮没有 Proposal 可以铸造；对应池子只能通过一次性的显式销毁/结算路径处理，不能转给其他 Round 或 Proposal。
 
 ### 8.2 Proposal 激励铸造
 
@@ -263,14 +266,14 @@ proposalVotes >= totalVotes × PROPOSAL_REWARD_MIN_VOTE_PER_THOUSAND / 1000
 
 ### 8.3 治理激励
 
-治理激励按 `tokenAddress + round + memberId` 隔离，返回 `(verifyIncentive, boostIncentive, overflowIncentive)`：
+治理激励按 `tokenAddress + round + memberId` 隔离，返回 `(verifyIncentive, boostIncentive, overflowIncentive)`。治理池固定分为两个各占 50% 的部分（`GOV_VERIFY_SHARE = 0.5e18`、`GOV_BOOST_SHARE = 0.5e18`）；总治理票为 `0` 时三项均为 `0`：
 
-- `verifyIncentive = govPool / 2 × memberVotes / totalVotes`；
-- `theoreticalBoost = govPool / 2 × memberBoost / totalBoost`，`totalBoost == 0` 时为零；
-- `boostIncentive = min(theoreticalBoost, verifyIncentive × MAX_GOV_BOOST_REWARD_MULTIPLIER)`；
+- `verifyIncentive = govPool × GOV_VERIFY_SHARE / 1e18 × memberVotes / totalVotes`；
+- `theoreticalBoost = govPool × GOV_BOOST_SHARE / 1e18 × memberBoost / totalBoost`，`totalBoost == 0` 时为零；
+- `boostIncentive = min(theoreticalBoost, verifyIncentive × 2)`；
 - `overflowIncentive = theoreticalBoost - boostIncentive`，溢出部分销毁。
 
-`memberBoost` 和 `totalBoost` 使用投票时已记录的加速质押快照。当前 MemberNFT 持有人可以铸造该成员尚未铸造的治理激励；治理激励只能成功铸造一次，溢出只能成功销毁一次。
+`memberBoost` 和 `totalBoost` 使用投票时已记录的加速质押快照。50%/50% 划分和 2 倍上限是固定协议常量，不是部署参数。当前 MemberNFT 持有人可以铸造该成员尚未铸造的治理激励；治理激励只能成功铸造一次，溢出只能成功销毁一次。
 
 治理和 Proposal 激励按社区、Round 和主体完全隔离。不同 Round 可以同时准备并按任意顺序铸造；已准备 Round 的冻结状态不受之后质押、退出或融合影响。
 
