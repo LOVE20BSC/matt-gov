@@ -94,29 +94,30 @@ MemberNFT 的转移不复制、不拆分、不重置任何历史。依赖身份�
 - `initialPhaseBlocks > 0`；
 - `targetDays > 0`。
 
-第一个 Phase 编号为 `1`。每条已生成记录保存 `startBlock`、生效的 `phaseBlocks`、`syncBlock` 和 `syncTimestamp`。同步观测时间戳不是阶段起始区块时间戳。
+第一个 Phase 编号为 `1`。Phase 记录与同步观测记录分开：Phase 记录只保存 `startBlock` 和生效的 `phaseBlocks`；同步观测记录按调用顺序从 `1` 开始编号，保存 `blockNumber`、`timestamp`、调用前后的默认 `phaseBlocks` 和新参数开始生效的 `effectivePhase`。`effectivePhase = 0` 表示本次没有调整。观测时间戳不是 Phase 起始区块时间戳。
 
 公开能力：
 
 - `currentPhase()`：当前区块对应的 Phase；
-- `phaseInfo(phaseNumber)`：阶段起始区块、阶段区块数和同步数据；
+- `phaseInfo(phaseNumber)`：阶段起始区块和阶段区块数；
 - `phaseAtBlock(blockNumber)`：指定区块的 Phase；
+- `syncObservationsCount()`、`syncObservation(observationId)`：同步观测数量和按 1-based ID 查询观测；
 - `sync()`：任何地址可调用的校准入口。
 
-未发生交互的空阶段不逐个写入。查询使用最近历史锚点，在已记录锚点之间二分定位，再按锚点当时的 `phaseBlocks` 推导目标阶段。已经生成的阶段记录不可回写。
+未发生交互的空阶段不逐个写入。查询使用最近历史锚点，在已记录锚点之间二分定位，再按锚点当时的 `phaseBlocks` 推导目标阶段。下一 Phase 的 `startBlock` 是上一 Phase 结束后的首个区块；已经生成的 Phase 记录不可回写。
 
 ### 5.2 动态校准
 
-每次 `sync()` 都记录当前观测点，即使不调整参数。只检查最近一个满足 `currentBlock - syncBlock >= currentPhaseBlocks` 的有效观测点；没有有效点时只记录观测。
+每次 `sync()` 都先追加当前观测点，即使不调整参数。校准只使用此前观测中满足 `currentBlock - observation.blockNumber >= currentPhaseBlocks` 的最近一条；实现按单调递增的观测区块二分定位，不从末尾线性扫描。没有有效历史观测时只记录本次观测。
 
 设 `targetSeconds = targetDays × 86400`，观测区块差为 `elapsedBlocks`，时间戳差为 `elapsedSeconds`：
 
 - `elapsedSeconds == 0` 时不调整；
 - 实际时长在目标的 `±10%` 内时不调整；
-- 超出范围时，尚未生成阶段使用 `newPhaseBlocks = max(1, elapsedBlocks × targetSeconds / elapsedSeconds)`；
-- 已经生成的下一阶段不回写，参数从之后第一个尚未生成的阶段生效。
+- 超出范围时，尚未生成 Phase 使用 `newPhaseBlocks = max(1, elapsedBlocks × targetSeconds / elapsedSeconds)`；
+- 已经生成的下一 Phase 不回写，新参数从之后第一个尚未生成的 Phase 生效，并把该编号写入本次观测的 `effectivePhase`。
 
-上层按自身业务把 Phase 组合成 Round。治理 Round 和行动 Round 都从 `1` 开始；不同层的同号 Round 不代表同一对象。
+核心 `Submit` 和 `Vote` 把 `Phase N` 一对一解释为治理 `Round N`，并提供无参数的 `currentRound()`。创建、推举和投票只写入当前治理 Round；当 `Phase.currentPhase() > N` 时，治理 Round N 的 Vote 时间片结束，`Vote` 对外返回该 Round 已结束，核心激励可以准备和铸造。`Mint` 只读取 `Vote` 的结束判断，不重复解释 Phase。行动层可以在同一时间线上采用自己的槽位映射；不同层的同号 Round 不代表同一业务对象。
 
 ## 6. Stake
 
@@ -215,7 +216,9 @@ KV 使用等长的 `bytes32[] keys` 和 `bytes[] values`。`RewardOnly` 要求�
 
 目标代币社区中，有效治理票占总治理票达到 `SUBMIT_MIN_PER_THOUSAND / 1000` 的 MemberNFT 当前持有人可以创建或推举 Proposal。创建新 Proposal 时可以在同一交易中完成本轮推举；已有 Proposal 可在后续 Round 推举。
 
-同一 Proposal 在同一 Round 只能推举一次；同一推举者在同一 Round 只能推举一个 Proposal。创建和推举的校验、状态写入及回调顺序固定：
+每个治理 Round 的首个成功推举在写入 Proposal 推举状态前自动调用一次 `Phase.sync()`；其他地址仍可在任意区块直接调用 `sync()`。如果后续校验或 Target 回调回滚，自动同步产生的观测也随外层交易回滚，不算成功观测。
+
+同一 Proposal 在同一 Round 只能推举一次；同一推举者在同一 Round 只能推举一个 Proposal。`onProposalCreated` 只在 Proposal 首次创建时调用一次；创建时同时完成本轮推举，则随后再调用 `onProposalSubmitted`。推举已有 Proposal 只调用 `onProposalSubmitted`，绝不再次调用创建回调。新建并同时推举时的校验、状态写入及回调顺序固定：
 
 ```text
 核心校验 -> 写入状态 -> onProposalCreated -> onProposalSubmitted

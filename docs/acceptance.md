@@ -23,9 +23,9 @@
 - **Group Chat MemberNFT 主体**：覆盖四类 typed Manager、普通 owner 管理型 Chat、规则槽位、插件、消息与分页行为；覆盖成员、管理员、委托、发言、提及、黑名单目标和黑名单投票者均按 `memberId` 运行，并确认不存在默认 MemberNFT 映射、默认身份发言入口、地址黑名单/投票/查询或其他地址主体接口。治理黑名单覆盖代币治理票与行动 Proposal 投票两类票权、全社区治理票分母、支持票严格超过反对票 `10` 倍且达到 `0.3%` 的双阈值、撤票和任何人刷新。链群 Chat 覆盖纯成员名单和“成员名单或链群 Executor 当前归属”标准资格源，验证归属查询跨该 Executor 服务的所有社区和行动、最后一次正常退出使资格失效，并确认 ActionTarget 的 `forceExit` 不修改 Executor 的链群归属。owner 快照及消息/事件调用地址只用于 NFT 转移有效性和审计，不得成为业务主体。
 - **Target 组合与幂等性**：覆盖 `RewardOnly`/`Callback` 与 EOA/合约的合法组合、Callback + EOA 拒绝、缺少 executor 保留项的行动创建 KV 拒绝、仅 executor 项可创建，以及同一 `tokenAddress + proposalId` 重复创建回调回滚。
 - **ActionTarget / Executor 状态边界**：覆盖仅关联 Executor 可登记/正常清除、当前 MemberNFT 持有人可 `forceExit`、强制退出后 ActionTarget 当前参与查询清除而 Executor 资产及链群归属状态不回写，以及不通过旧 Executor 状态自动恢复登记。
-- **Proposal Target 回调**：覆盖 Proposal 创建、提案推举、提案投票三类回调；覆盖 `submitterId`、`voterId`、增量票和 KV 透传，以及回调失败时对应外层交易整体回滚。
+- **Proposal Target 回调**：覆盖 Proposal 创建、提案推举、提案投票三类回调；覆盖创建回调只发生一次、推举已有 Proposal 不重复创建回调、`submitterId`、`voterId`、增量票和 KV 透传，以及回调失败时对应外层交易整体回滚。
 - **公共验证者失联**：覆盖首个验证批次永久锁定后验证者停止提交时，本轮行动层激励保持为 `0`，底层 Proposal 激励仍可按规则铸造或销毁，且不允许未经授权的其他候选人接管。
-- **Phase 与候选边界**：覆盖每轮起始区块和阶段区块数历史记录、最近观测点的 `±10%` 动态校准及历史不可回写；覆盖无候选人、候选票为零、平票按 `applicationId` 排序、申请版本切换、排名锁定、分割线按排名映射、开放区块向上取整和阈值区块包含判断。
+- **Phase 与候选边界**：覆盖 Phase 边界与同步观测分账、每次同步追加观测、按区块二分选择最近有效观测、`±10%` 动态校准、首个成功推举自动同步、治理 Round 与 Phase 的一对一映射及历史不可回写；覆盖无候选人、候选票为零、平票按 `applicationId` 排序、申请版本切换、排名锁定、分割线按排名映射、开放区块向上取整和阈值区块包含判断。
 - **ActionRound 统一性**：覆盖 `Phase 1..3` 对尚未开始槽位回滚且不返回 `0`、`Phase 4` 首次形成四个有效槽位，以及 LP、链群行动和链群服务行动共用 `Vote`/`Join`/`Verify`/`Mint` 四个时间槽位；链群服务和 LP 的 `Verify` 为空操作但仍使用统一轮次，且各执行合约独立判断 `canMint`。
 - **LP 兼容性**：覆盖目标 PancakeSwap Factory/Pair/Router 在 `Stake` 场景下的 LP 份额、手续费结算、兑换报价、储备更新和失败回滚；不得仅以 ABI 可编译作为兼容性结论。
 - **外部依赖兼容性**：`compatibility` 必须分别对本地 Uniswap V2/WETH9 参考实现和目标网络 WBNB、PancakeSwap Factory/Pair/Router 执行测试，覆盖接口返回值、Pair 创建和 LP 铸造/销毁、Swap 手续费与储备变化、Router 报价和实际输出、Token 顺序、失败回滚及协议计算所需的 `sqrt(k)` 数据；测试记录目标链、合约地址、区块高度和提交，任何未验证的外部地址不得进入 BSC 部署配置。
