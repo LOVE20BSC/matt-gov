@@ -15,7 +15,8 @@
 - **Proposal 激励闭环**：覆盖投票阶段结束前后准备、准备只写轮次级总状态且不逐个预写 Proposal、重复准备不改写、非 Target 铸造拒绝、各 Proposal Target 按冻结状态单独计算并铸造且单 Proposal 只能成功一次、行动类 `ActionTarget -> Mint -> executor` 转发，以及铸造失败整笔回滚。
 - **LP 行动执行合约**：覆盖旧 `extension-lp` V2 业务在 `action` 中的重写路径，包括 MemberNFT 参与、部分撤回、LP 手续费结算、行动激励铸造和失败回滚；不验收或迁移 V1 LP 实现。
 - **行动公式零值边界**：覆盖 LP 时间扣减封顶、`totalEffectiveAmount`/`totalGovVotes` 为零、链群 `totalVotes`/`totalGroupScore`/`groupScore` 为零时不除零且行动层激励为零，并验证底层 Proposal 激励仍可独立处理。
-- **MemberNFT 发射次数边界**：覆盖本次铸造前剩余供应量的阈值向上取整、治理激励累计进入 `launchCredit`、一次治理激励跨过多个完整阈值、整数除法余数继续累计、每个社区达到 `maxLaunchCount = X` 后停止新增次数、同一社区源 MemberNFT 向目标 MemberNFT 部分融合转移整数次数但不转移 `launchCredit`、源次数扣减/目标次数增加的原子性，以及次数消耗后不能再次发射。
+- **治理融合与激励铸造**：覆盖调用者只控制来源 MemberNFT 时，可以把指定社区的治理质押单向融合进他人持有的有效目标 MemberNFT；目标既有资产不能减少。覆盖同一成员单轮铸造、显式 Round 数组的批量多轮铸造、逐轮三类结果和任一 Round 失败时整笔回滚。
+- **MemberNFT 发射次数边界**：覆盖本次铸造前剩余供应量的阈值向上取整、治理激励累计进入 `launchCredit`、一次治理激励跨过多个完整阈值、整数除法余数继续累计、每个社区达到 `maxLaunchCount = X` 后停止新增次数、调用者只控制来源 MemberNFT 时向他人持有的目标 MemberNFT 部分融合整数次数但不转移 `launchCredit`、源次数扣减/目标次数增加的原子性，以及次数消耗后不能再次发射。
 - **子币发射分发边界**：覆盖非零 `distributor`、`RewardOnly`/`Callback` 两种分配模式、KV 长度校验、回调失败回滚、首次代币使用 Airdrop 目标，以及保留代币没有本地发射次数。
 - **MemberNFT 转移归属**：覆盖转移前后质押、解锁倒计时、治理激励和行动内部未铸造激励均由当前持有人继续操作；旧持有人不能代铸，历史投票、快照、已结算激励和事件不回写。
 - **Group Chat MemberNFT 主体**：覆盖四类 typed Manager、普通 owner 管理型 Chat、规则槽位、插件、消息与分页行为；覆盖成员、管理员、委托、发言、提及、黑名单目标和黑名单投票者均按 `memberId` 运行，并确认不存在默认 MemberNFT 映射、默认身份发言入口、地址黑名单/投票/查询或其他地址主体接口。owner 快照及消息/事件调用地址只用于 NFT 转移有效性和审计，不得成为业务主体。

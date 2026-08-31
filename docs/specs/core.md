@@ -25,7 +25,7 @@ LOVE20 是社群铸币协议。每个 LOVE20 代币都有一个 `parentTokenAddr
 
 - 所有业务主体都是 `MemberNFT`，以 `memberId` 作为不可变身份主键。钱包地址只是当前控制者或交易调用者。
 - `author`、`submitterId`、`voterId` 以及需要主体身份的其他参数均为 `memberId`。
-- 代表成员写入状态时必须验证 `MemberNFT.ownerOf(memberId) == msg.sender`。
+- 减少或处分某个 MemberNFT 的资产、权益或业务状态时，必须验证 `MemberNFT.ownerOf(memberId) == msg.sender`；明确为单向融合目标的 MemberNFT 只增加状态，不要求由调用者持有。
 - MemberNFT 转移只改变当前控制者，不改变身份、历史投票、快照、已结算激励或历史事件；当前未铸造权益由新控制者继续操作。
 - Phase、治理 Round、ActionRound 和 MemberNFT 的有效编号从 `1` 开始；Proposal ID 由 `Submit` 单调分配并保持稳定，不把某个具体起始值当作通用哨兵。
 - 比例采用 `1e18` 精度；按比例分配的整数金额默认向下取整，发射阈值明确使用向上取整。
@@ -149,13 +149,13 @@ govVotes = lpShares × promisedWaitingPhases
 
 ### 6.5 融合
 
-融合接口显式接收 `tokenAddress`，每个代币社区独立处理。源、目标 MemberNFT 必须不同，调用者必须同时控制两者。以下情况禁止融合：
+融合接口显式接收 `tokenAddress`，每个代币社区独立处理。源、目标 MemberNFT 必须不同且都已存在；调用者只需控制源 MemberNFT，不要求控制目标 MemberNFT。以下情况禁止融合：
 
 - 任一方存在待处理解锁申请；
 - 当前投票 Round 中任一方已经发生非零投票；
 - 目标等待期小于源等待期。
 
-融合只处理尚未使用的当前质押状态。源的 LP 份额、加速质押和当前治理状态并入目标，合并后采用目标等待期；源身份保留但当前质押清零。已发生的投票、快照、已结算激励和事件仍归源 `memberId`。
+融合只处理尚未使用的当前质押状态。源的 LP 份额、加速质押和当前治理状态单向并入目标，不能修改或取走目标原有资产；合并后采用目标等待期。源身份保留但当前质押清零，已发生的投票、快照、已结算激励和事件仍归源 `memberId`。
 
 ### 6.6 LP 手续费和销毁统计
 
@@ -275,6 +275,10 @@ proposalVotes >= totalVotes × PROPOSAL_REWARD_MIN_VOTE_PER_THOUSAND / 1000
 
 `memberBoost` 和 `totalBoost` 使用投票时已记录的加速质押快照。50%/50% 划分和 2 倍上限是固定协议常量，不是部署参数。当前 MemberNFT 持有人可以铸造该成员尚未铸造的治理激励；治理激励只能成功铸造一次，溢出只能成功销毁一次。
 
+治理激励同时提供单轮和批量多轮铸造。批量入口接收同一 `tokenAddress + memberId` 的非空 `rounds[]`，按输入顺序逐轮执行与单轮入口相同的准备状态、归属、重复铸造和供应上限校验，并返回与 `rounds` 等长的三类激励结果数组；任一 Round 失败则整笔交易回滚。每个 Round 独立更新铸造/销毁状态和发射额度，批量调用不能合并账目或绕过单轮只能成功一次的限制，重复 Round 会在第二次处理时按重复铸造回滚。
+
+接口形式为 `mintGovReward(tokenAddress, memberId, round)` 和 `mintGovRewards(tokenAddress, memberId, rounds[])`；两者都要求调用者是该 `memberId` 当前的 MemberNFT 持有人，不能传入钱包地址作为奖励主体。批量接口返回按输入 Round 对齐的 `(verifyIncentive[], boostIncentive[], overflowIncentive[])`。
+
 治理和 Proposal 激励按社区、Round 和主体完全隔离。不同 Round 可以同时准备并按任意顺序铸造；已准备 Round 的冻结状态不受之后质押、退出或融合影响。
 
 ## 9. 基础子币发射
@@ -315,12 +319,12 @@ issuedLaunchCount[tokenAddress] += newCount
 
 ### 9.3 发射次数融合
 
-`mergeLaunchCount(tokenAddress, sourceMemberId, targetMemberId, count)` 支持同一社区的部分次数融合。源、目标不同，`count > 0`，调用者必须同时控制两个 MemberNFT，源次数必须足够。成功后源次数减少、目标次数增加；其他质押、投票、历史发射和事件不改变。
+`mergeLaunchCount(tokenAddress, sourceMemberId, targetMemberId, count)` 支持同一社区的部分次数融合。源、目标必须是不同且已存在的 MemberNFT，`count > 0`，调用者只需控制源 MemberNFT，不要求控制目标 MemberNFT，且源次数必须足够。成功后源次数减少、目标次数增加；目标原有次数及其他状态不减少，其他质押、投票、历史发射和事件不改变。
 
 ## 10. 事件、错误和验收
 
 事件至少覆盖：MemberNFT 铸造/转移、质押/解锁/提取/融合、Phase 生成/同步、Proposal 创建/推举/投票、激励准备/铸造/销毁、发射额度和次数增加/融合/消耗、子币创建/分发、Pair 手续费结算和销毁。事件主键使用 `tokenAddress`、`memberId`、`proposalId`、`round`。
 
-以下情况必须回滚：无效成员或控制者、零地址 Target/Distributor、非法模式、KV 长度不等、Proposal 或推举重复、投票超额、Round 未结束或未准备、重复铸造/销毁、待解锁时追加或融合、等待期不足、跨社区次数操作、发射次数不足或超社区上限、外部 Pair/Router 调用失败和任何 Target 回调失败。
+以下情况必须回滚：无效成员或来源控制者、零地址 Target/Distributor、非法模式、KV 长度不等、Proposal 或推举重复、投票超额、Round 未结束或未准备、重复铸造/销毁、批量治理激励中存在任一无效 Round、待解锁时追加或融合、等待期不足、跨社区次数操作、发射次数不足或超社区上限、外部 Pair/Router 调用失败和任何 Target 回调失败。
 
-验收至少覆盖：NFT 转移后的权限连续性、统一解锁和融合、LP 份额与手续费销毁统计、PancakeSwap 兼容性、Phase 空阶段和动态校准、Proposal/投票回调原子性、Round 级准备与 Proposal 单项铸造、治理激励三段结果和投票增量补差、发射阈值向上取整/多阈值/社区上限/部分融合，以及两种 Distributor 模式。
+验收至少覆盖：NFT 转移后的权限连续性、统一解锁和向非调用者持有目标 NFT 的融合、LP 份额与手续费销毁统计、PancakeSwap 兼容性、Phase 空阶段和动态校准、Proposal/投票回调原子性、Round 级准备与 Proposal 单项铸造、治理激励三段结果/投票增量补差/批量多轮铸造原子性、发射阈值向上取整/多阈值/社区上限/向非调用者持有目标 NFT 部分融合，以及两种 Distributor 模式。

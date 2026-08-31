@@ -203,13 +203,13 @@ interface IAfterPostPlugin {
 
 | 类型 | 发言资格 | 黑名单 |
 | --- | --- | --- |
-| 代币社区 Chat | 持有社区代币余额大于 `1`、拥有有效治理票或参与过该社区行动之一 | 治理票加权黑名单 |
+| 代币社区 Chat | 持有社区代币余额大于 `1`、拥有有效治理票或当前已登记参与该社区至少一个行动 | 治理票加权黑名单 |
 | 代币治理 Chat | 拥有该代币有效治理票 | 治理票加权黑名单 |
-| 代币行动 Chat | 最近若干 Round 给行动投票，或通过核心/行动合约参与过该行动 | 行动投票权重黑名单 |
-| 代币行动治理 Chat | 最近若干 Round 给行动投票 | 行动投票权重黑名单 |
+| 代币行动 Chat | 最近 `RECENT_ROUNDS` 轮给行动投过票，或当前已在 ActionTarget 登记参与该行动 | 行动投票权重黑名单 |
+| 代币行动治理 Chat | 最近 `RECENT_ROUNDS` 轮给行动投过票 | 行动投票权重黑名单 |
 | 链群服务 Chat | 被群管理员列入成员，或满足指定链群行动参与条件 | 管理员黑名单 |
 
-所有条件都以 `memberId` 和当前 MemberNFT 控制权判断。持币资格严格按 `token.balanceOf(MemberNFT.ownerOf(senderId)) > 1` 判断，其中 `1` 表示一个代币最小单位；该余额仅作为实时资格，不保存地址主体状态。治理票、Proposal 投票和行动参与直接按 `memberId` 查询。具体 Manager 可以在激活时一次性配置四个规则槽位；typed Manager 激活后不提供人工更新入口，普通 owner 管理型 Chat 则按第 3.2 节更新。
+所有条件都以 `memberId` 和当前 MemberNFT 控制权判断。持币资格严格按 `token.balanceOf(MemberNFT.ownerOf(senderId)) > 1` 判断，其中 `1` 表示一个代币最小单位；该余额仅作为实时资格，不保存地址主体状态。治理票、Proposal 投票和行动参与直接按 `memberId` 查询。两个 Action Manager 的 `RECENT_ROUNDS` 是必须大于 `0` 的不可变构造参数，BSC 部署值为 `3`；查询从当前 Vote Round 开始向前检查，包含当前轮并最多检查 `RECENT_ROUNDS` 轮，到 Round `1` 停止。ActionTarget 的 `forceExit` 或正常退出清除参与登记后，对应行动参与资格立即失效。具体 Manager 可以在激活时一次性配置四个规则槽位；typed Manager 激活后不提供人工更新入口，普通 owner 管理型 Chat 则按第 3.2 节更新。
 
 ### 7.1 群成员和管理员
 
