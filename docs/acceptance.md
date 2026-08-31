@@ -23,6 +23,7 @@
 - **Phase 与候选边界**：覆盖每轮起始区块和阶段区块数历史记录、最近观测点的 `±10%` 动态校准及历史不可回写；覆盖无候选人、候选票为零、平票按 `applicationId` 排序、申请版本切换和排名锁定规则。
 - **ActionRound 统一性**：覆盖 LP、链群行动和链群服务行动共用 `Vote`/`Join`/`Verify`/`Mint` 四个时间槽位；链群服务和 LP 的 `Verify` 为空操作但仍使用统一轮次，且各执行合约独立判断 `canMint`。
 - **LP 兼容性**：覆盖目标 PancakeSwap Factory/Pair/Router 在 `Stake` 场景下的 LP 份额、手续费结算、兑换报价、储备更新和失败回滚；不得仅以 ABI 可编译作为兼容性结论。
+- **外部依赖兼容性**：`compatibility` 必须分别对本地 Uniswap V2/WETH9 参考实现和目标网络 WBNB、PancakeSwap Factory/Pair/Router 执行测试，覆盖接口返回值、Pair 创建和 LP 铸造/销毁、Swap 手续费与储备变化、Router 报价和实际输出、Token 顺序、失败回滚及协议计算所需的 `sqrt(k)` 数据；测试记录目标链、合约地址、区块高度和提交，任何未验证的外部地址不得进入 BSC 部署配置。
 
 ## 证据记录
 

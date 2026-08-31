@@ -250,7 +250,7 @@ proposalVotes >= totalVotes × PROPOSAL_REWARD_MIN_VOTE_PER_THOUSAND / 1000
 
 准备时冻结所有合格 Proposal 的总票数作为分母。未达门槛的 Proposal 不参与 Proposal 池分配。
 
-如果本 Round 没有任何治理投票，治理池和 Proposal 池均为 `0`，本轮不产生激励。若有投票但没有合格 Proposal，则 `eligibleProposalVotes = 0`，本轮没有 Proposal 可以铸造；对应池子只能通过一次性的显式销毁/结算路径处理，不能转给其他 Round 或 Proposal。
+如果本 Round 没有任何治理投票，治理池和 Proposal 池均为 `0`，本轮不产生激励。若有投票但没有合格 Proposal，则 `eligibleProposalVotes = 0`，本轮没有 Proposal 可以铸造，Proposal 池直接记为 `0`，不预留、不延后结算，也不转给其他 Round 或 Proposal。
 
 ### 8.2 Proposal 激励铸造
 

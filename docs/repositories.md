@@ -6,6 +6,7 @@
 | --- | --- | --- | --- |
 | `matt-gov` | 组织治理、迁移决策和验收记录 | 无 | 活跃 |
 | `core` | 核心治理、`MemberNFT`、`Phase` 和基础子币发射能力 | 外部 PancakeSwap `Factory`/`Pair`/`Router` 接口 | 规划中 |
+| `compatibility` | 外部 WBNB/WETH9 与 PancakeSwap V2 兼容性测试 | 外部 WBNB、Factory、Pair、Router 和本地 Uniswap V2 参考实现 | 规划中 |
 | `action` | `ActionTarget`、LP/链群行动及链群服务行动执行合约 | `core` | 规划中 |
 | `group-chat` | 群聊业务和 **Group Chat Delegate** | `core` | 规划中 |
 | `interface-test` | BSC 前端开发、集成和验收 | `core`、`action`、`group-chat` | 规划中；日常修改入口 |
@@ -17,6 +18,8 @@
 | `batch-transfer` | 独立批量转账工具 | 无 | 规划中 |
 
 `launch` 本阶段暂不创建。`core` 负责基础子币发射流程，包括发射次数账本、次数融合、次数消耗和子币创建；公平发射后的复杂分配机制未来需求明确后再另建独立代码库。
+
+`compatibility` 只保存外部依赖兼容性测试、参考实现夹具、目标网络地址清单和测试证据，不提供生产合约，也不作为 `core` 的运行时依赖。它验证接口和实际状态/数值行为，尤其是 WBNB/WETH9、PancakeSwap Factory/Pair/Router 与 Uniswap V2 参考实现的差异；测试通过后才允许把对应外部地址用于 BSC 部署。
 
 旧 `extension`、`extension-group` 的业务迁入 `action`；旧 `extension-lp` 仅迁移 V2 LP 业务，重写为 `action` 内的 LP 行动执行合约，V1 LP 实现及旧 LP 工厂不迁移。`burn`、未部署的 `chat` 和外部 `v2-periphery` 不在本组织清单中。`burn` 虽不迁移，但 BSC 正式部署使用的初始空投来源必须公开指向 [`LOVE20TKM/burn`](https://github.com/LOVE20TKM/burn) 及其 [`Airdrop.sol`](https://github.com/LOVE20TKM/burn/blob/main/src/Airdrop.sol)、[`DeployAirdrop.s.sol`](https://github.com/LOVE20TKM/burn/blob/main/script/DeployAirdrop.s.sol) 和 [`airdrop-design.md`](https://github.com/LOVE20TKM/burn/blob/main/docs/airdrop-design.md)。
 

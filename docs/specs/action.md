@@ -24,12 +24,13 @@
 行动类 Proposal 必须使用 `target = ActionTarget` 和 `targetMode = Callback`。Proposal 创建 KV 的第 `0` 项是保留项：`key = keccak256("executor")`，`value = abi.encode(executorAddress)`。
 
 `executorAddress` 必须是非零且包含合约代码的地址。第 `0` 项之外的 KV 可以为空，业务字段和校验完全由 Executor 负责。
+因此行动 Proposal 的创建 KV 至少包含第 `0` 项；“空初始化 KV”仅表示没有额外业务项，不能省略 `executor` 项。
 
 ActionTarget 以 `tokenAddress + proposalId` 为唯一键保存 Executor，把完整创建 KV 原样转发给 Executor，不删除保留项、不重新分配数组。Executor 的 Proposal 创建回调就是该 Proposal 的初始化，重复初始化必须回滚；只有 ActionTarget 可以调用 Executor 的三个回调。
 
 核心回调名称及标准参数为 `onProposalCreated(tokenAddress, proposalId, keys, values)`、`onProposalSubmitted(tokenAddress, proposalId, submitterId, keys, values)` 和 `onProposalVoted(tokenAddress, proposalId, voterId, votes, keys, values)`。
 
-ActionTarget 不解析 `verificationRule`、`verificationKeys`、候选人 Member ID 或其他业务字段。推举回调使用 `submitterId`；投票回调的 `votes` 只表示本次新增治理票，候选 Member ID 等信息放在投票 KV 中。
+ActionTarget 不解析 `verificationRule`、`verificationKeys`、`verifierCandidateId` 或其他业务字段。推举回调使用 `submitterId`；投票回调的 `votes` 只表示本次新增治理票，`verifierCandidateId` 等信息放在投票 KV 中。
 
 ### 2.2 参与登记
 
@@ -109,7 +110,9 @@ LP Executor 至少配置参与 LP Token 地址、`govRatioMultiplier`、`minGovR
 
 验证阶段分割线在 Executor 初始化时传入，数组必须严格递增且每项满足 `0 < split < 1e18`。有 `n` 个分割线时，排名前 `n + 1` 名可验证；第 1 名在 Verify 槽位开始即可提交。排名按累计候选票降序、`applicationId` 升序。
 
-完整候选申请列表用于前端分页查询；合约内部只维护前 `n + 1` 名和 `applicationId -> rankIndex`。投票只对收到新增票的候选增量更新：榜内候选向前交换，榜外候选只和末位比较，不扫描完整列表、不自动补位；榜满时平票不替换末位。候选 Member ID 由投票 KV 传入，标准回调提供投票人的 `voterId` 和本次治理票增量。Executor 根据候选 Member ID 查找当前申请，当前申请为 `0` 时拒绝；本次全部治理票增量记给该申请。治理者同一 Round 可多次投票，但投给所有候选申请的累计候选票不得超过其对该行动的累计治理票。
+链群行动投票 KV 使用 `key = keccak256("verifierCandidateId")`，`value = abi.encode(uint256 verifierCandidateId)`；该 ID 是候选人的 MemberNFT ID，不是 `applicationId`。
+
+完整候选申请列表用于前端分页查询；合约内部只维护前 `n + 1` 名和 `applicationId -> rankIndex`。投票只对收到新增票的候选增量更新：榜内候选向前交换，榜外候选只和末位比较，不扫描完整列表、不自动补位；榜满时平票不替换末位。`verifierCandidateId` 由投票 KV 传入，其值是候选人的 MemberNFT ID；标准回调提供投票人的 `voterId` 和本次治理票增量。Executor 根据 `verifierCandidateId` 查找当前申请，当前申请为 `0` 时拒绝；本次全部治理票增量记给该申请。治理者同一 Round 可多次投票，但投给所有候选申请的累计候选票不得超过其对该行动的累计治理票。
 
 ### 6.4 快照和批量验证
 
@@ -133,7 +136,7 @@ Executor 可在内部把行动激励分配给参与者；ActionTarget 不留余�
 
 一个链群服务 Proposal 面向整个 `actionTokenAddress` 社区的链群行动集合，不绑定单个源 `actionId`。该 Proposal 的 `tokenAddress` 记为 `serviceTokenAddress`，同时是服务 Proposal 所属治理社区和服务激励的铸币代币；服务 Proposal 可铸造的总激励只由 `serviceTokenAddress` 社区的治理轮次决定，与被服务的 `actionTokenAddress` 社区治理无关。两者相同时自然使用同一治理社区；不同时，`actionTokenAddress` 只用于筛选被服务行动和读取行动层状态。父子关系由服务 Executor 校验。
 
-服务创建 KV 除第 `0` 项 `executor` 外，包含 `actionTokenAddress` 和 `govRatioMultiplier`。链群行动的验证分割线、链群 owner 接收主体和每个行动/链群的分配比例属于对应业务状态，不是服务全局初始化参数。
+服务执行合约部署时在构造函数传入可复用的链群行动执行合约 `actionExecutor`，该地址必须是非零合约地址。服务创建 KV 除第 `0` 项 `executor` 外，包含 `actionTokenAddress` 和 `govRatioMultiplier`；不再在每个 Proposal 的 KV 中传入 `actionExecutor`。链群行动的验证分割线、链群 owner 接收主体和每个行动/链群的分配比例属于对应业务状态，不是服务全局初始化参数。
 
 ### 7.2 服务加入
 
@@ -141,20 +144,30 @@ Executor 可在内部把行动激励分配给参与者；ActionTarget 不留余�
 
 ### 7.3 服务激励聚合
 
-服务 Executor 在 Mint 槽位取得的 `servicePool` 来自 `serviceTokenAddress` 社区对应服务 Proposal 的冻结 Proposal 激励；随后只对 `actionTokenAddress` 社区的完整链群行动进行聚合：
+服务 Executor 在 Mint 槽位通过 ActionTarget 一次性取得 `servicePool`，来源是 `serviceTokenAddress` 社区对应服务 Proposal 的冻结 Proposal 激励；之后按 MemberNFT 分人结算，不把底层 Proposal 激励拆成多个独立铸造请求。随后只对 `actionTokenAddress` 社区的完整链群行动进行聚合：
 
-1. 通过 ActionTarget 查询本服务 Executor 在 `actionTokenAddress` 社区关联的全部 Proposal；
+1. 通过 ActionTarget 使用 `actionExecutor` 查询 `actionTokenAddress` 社区关联的全部 Proposal；
 2. 按核心治理门槛筛出有资格铸造行动激励的 Proposal；
 3. 过滤无公共验证者或未完成全部链群快照验证的行动；
 4. 按完整行动的行动激励权重分摊服务 Proposal 的实际铸造预算；
-5. 对每个行动按公共验证者申请时冻结的比例 `r` 分配验证者份额，余款进入链群 owner 分配；
-6. 按链群配置的接收主体和比例执行二次分配。
+5. 对每个链群行动按公共验证者申请时冻结的比例 `r` 计算公共验证者份额；所有公共验证者份额从 `servicePool` 中先行扣除，余款形成链群主激励池；
+6. 按链群主名下链群的行动激励铸造量占全部链群行动激励铸造量的比例，计算该链群主的链群主激励；
+7. 链群主激励按该链群主名下各链群的行动激励铸造量拆分，并按链群配置的接收主体和比例执行二次分配。公共验证者激励不进入链群主二次分配。
 
 公共验证者激励来自链群服务 Proposal，不从链群行动 Proposal 扣除。服务激励不存在 gas 补偿。
 
-服务参与者的理论激励按其服务的完整行动/链群行动激励占完整行动总激励的比例计算：`theoretical = servicePool × generatedActionRewardByOwner(memberId) / totalCompleteActionReward`。治理占比为 `govRatio = validGovVotes(memberId) × 1e18 / govVotesNum(actionTokenAddress)`；当 `govRatioMultiplier == 0` 时 `effectiveRatio = 1e18`，否则 `effectiveRatio = min(1e18, govRatio × govRatioMultiplier / 1e18)`；实际铸造为 `mint = theoretical × effectiveRatio`，溢出为 `overflow = theoretical - mint`，并销毁溢出。`govRatioMultiplier` 使用 `1e18` 表示 1 倍。
+设全部完整链群行动的行动激励铸造量之和为 `totalActionReward`；成员 `m` 名下链群的行动激励铸造量之和为 `ownerActionReward(m)`；成员 `m` 作为已锁定公共验证者所对应链群的 `actionReward × r` 之和为 `verifierActionReward(m)`；所有公共验证者份额之和为 `totalVerifierReward = Σ(actionReward × r)`。则：
 
-`generatedActionRewardByOwner` 表示链群 owner 作为服务主体产生的未封顶服务份额；公共验证者的 `r` 份额按行动预算单独计算。治理票占比在服务激励铸造时冻结。
+```text
+verifierReward(m) = servicePool × verifierActionReward(m) / totalActionReward
+ownerPool = servicePool - servicePool × totalVerifierReward / totalActionReward
+ownerReward(m) = ownerPool × ownerActionReward(m) / totalActionReward
+theoreticalReward(m) = verifierReward(m) + ownerReward(m)
+```
+
+同一 MemberNFT 同时是公共验证者和链群 owner 时，两部分相加；只有链群 owner 时只计算链群主激励，只有公共验证者时只计算公共验证者激励。治理占比封顶规则继续作用于 `theoreticalReward(m)`：`govRatioMultiplier == 0` 时不封顶，否则按服务 Proposal 所属治理社区的有效治理票占比计算实际铸造量，差额销毁。每个 `memberId` 在该服务 Proposal 的该 Round 只能结算一次。
+
+`ownerActionReward(m)` 是该 MemberNFT 作为链群 owner 名下链群产生的行动激励铸造量，不包含公共验证者分成；公共验证者分成只由其申请时冻结的 `r` 决定。服务激励的治理票快照在该 Round 首次结算时冻结。
 
 ### 7.4 二次分配和舍入
 

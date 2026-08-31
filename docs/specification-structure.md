@@ -18,7 +18,7 @@
 | `action` | 创建前 `matt-gov/docs/specs/action.md`；创建后 `action/SPEC.md` | `ActionTarget`、`ActionRound`、LP 行动、链群行动、链群服务行动及行动层激励 |
 | `group-chat` | 创建前 `matt-gov/docs/specs/group-chat.md`；创建后 `group-chat/SPEC.md` | 群聊业务和 **Group Chat Delegate** |
 
-`launch` 本阶段不创建，因此暂不建立 `launch/SPEC.md`。`periphery`、`script`、`love20-anvil`、`interface-test`、`interface`、`batch-transfer` 和 `docs` 使用各自的 `README.md`、部署说明或测试说明，不承担协议规格入口职责。
+`launch` 本阶段不创建，因此暂不建立 `launch/SPEC.md`。`compatibility`、`periphery`、`script`、`love20-anvil`、`interface-test`、`interface`、`batch-transfer` 和 `docs` 使用各自的 `README.md`、部署说明或测试说明，不承担协议规格入口职责。
 
 ## `SPEC.md` 最小章节
 
@@ -35,6 +35,8 @@
 - 验收场景
 
 `action/SPEC.md` 应在同一文件内分别说明 `ActionTarget`、LP 行动、链群行动和链群服务行动；不要求所有执行合约共享相同的业务接口，但必须遵守 `ActionTarget` 和 `ActionRound` 的公共边界。
+
+`compatibility` 的测试说明至少应记录：本地 Uniswap V2/WETH9 参考实现、目标网络外部地址、接口调用结果、储备和供应量变化、手续费/兑换报价差异、测试区块和提交。兼容性测试仓库不得被业务仓库反向导入。
 
 ## 更新规则
 
