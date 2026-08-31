@@ -78,9 +78,19 @@ LP Executor 至少配置参与 LP Token 地址、`govRatioMultiplier`、`minGovR
 
 ### 5.2 加入和时间权重
 
-只有本轮已获得治理投票的 Proposal 可以加入。首次加入的 MemberNFT 必须满足当前有效治理票占社区总治理票的 `minGovRatio`；后续加入按行动规则允许追加。每次加入记录区块和数量，用于时间加权：`deduction = amount × (currentBlock - joinRoundStartBlock) / phaseBlocks`，`effectiveAmount = joinedAmount - deduction`。
+只有本轮已获得治理投票的 Proposal 可以加入。首次加入的 MemberNFT 必须满足当前有效治理票占社区总治理票的 `minGovRatio`；后续加入按行动规则允许追加。每次加入记录区块和数量，用于按下述规则计算时间加权。
 
-行动 Round 的总有效数量为所有参与者 `effectiveAmount` 之和。加入、追加、验证信息更新和部分撤回由 LP Executor 自己执行；退出返还该 Executor 记录的资产。
+行动 Round 的总有效数量为所有参与者 `effectiveAmount` 之和。加入、追加、验证信息更新和部分撤回由 LP Executor 自己执行；退出返还该 Executor 记录的资产。时间扣减沿用旧版的线性规则，并显式封顶避免阶段结束后的整数下溢：
+
+```text
+deduction = min(
+    joinedAmount,
+    joinedAmount × (currentBlock - joinRoundStartBlock) / phaseBlocks
+)
+effectiveAmount = joinedAmount - deduction
+```
+
+当 `totalEffectiveAmount == 0` 或 `totalGovVotes == 0` 时，LP 行动层激励为 `0`，不执行比例除法。
 
 ### 5.3 LP 激励
 
@@ -98,7 +108,7 @@ LP Executor 至少配置参与 LP Token 地址、`govRatioMultiplier`、`minGovR
 
 链群以 MemberNFT 的 `groupId` 标识，链群 owner 是该 NFT 主体，不是钱包地址。owner 当前持有人可以按规则激活、更新或取消激活链群；激活时检查治理票占比并锁定激活质押。配置更新对新加入和后续状态生效，不追溯已记录参与者。取消激活后禁止新增或追加，未完成验证的链群不能提交验证，历史参与者仍可按行动规则结算；激活质押返还当前群 NFT 持有人。
 
-单个成员的最大参与量按行动规则计算，常用形式为 `maxJoinAmount = mintedJoinTokenSupply × maxJoinAmountRatio / 1e18 × actionVotes / totalVotes`。
+单个成员的最大参与量按行动规则计算，常用形式为 `maxJoinAmount = mintedJoinTokenSupply × maxJoinAmountRatio / 1e18 × actionVotes / totalVotes`。当 `totalVotes == 0` 时，最大参与量为 `0`，不能激活或加入。
 
 ### 6.2 加入、退出和体验模式
 
@@ -141,7 +151,7 @@ Join 槽位结束时，Executor 快照所有至少有一个成员参与的链群
 
 链群行动 Proposal 的行动激励由关联 Executor 一次性通过 ActionTarget 铸造。完整验证时按得分分配：`groupReward = actionReward × groupScore / totalGroupScore`，`memberReward = groupReward × memberScore / groupScore`。
 
-Executor 可在内部把行动激励分配给参与者；ActionTarget 不留余额。Verify 结果、快照和激励状态按 `tokenAddress + actionId + round` 冻结。
+Executor 可在内部把行动激励分配给参与者；ActionTarget 不留余额。Verify 结果、快照和激励状态按 `tokenAddress + actionId + round` 冻结。完整验证但 `totalGroupScore == 0` 时，行动层激励为 `0`；单个 `groupScore == 0` 时，该链群激励为 `0`，均不执行比例除法。底层 Proposal 激励仍可按核心规则铸造，Executor 可以按规则销毁。
 
 ## 7. 链群服务行动执行合约
 
