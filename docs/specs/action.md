@@ -34,7 +34,9 @@ ActionTarget 不解析 `verificationRule`、`verificationKeys`、`verifierCandid
 
 ### 2.2 参与登记
 
-ActionTarget 维护通用的“MemberNFT 是否参与某个行动”登记，并提供指定 `tokenAddress + actionId + memberId` 的当前参与判断、指定社区和成员的当前参与行动数量及已参与行动列表。指定社区的参与数量随登记写入和清除同步增减，供 `TokenMainManager` 常数时间判断社区行动参与资格；`TokenActionMainManager` 直接读取指定行动的当前登记。ActionTarget 不接收或持有行动资产，不实现加入、退出、验证、结算和行动层分配。ActionTarget 登记是前端“当前已参与行动”列表的唯一依据；Executor 的资产和业务状态由 Executor 自己维护，是资产与结算查询的唯一依据。
+ActionTarget 维护通用的“MemberNFT 是否参与某个行动”登记，并提供指定 `tokenAddress + actionId + memberId` 的当前参与判断、指定社区和成员的当前参与行动数量及列表，以及指定成员跨社区的全局当前参与列表。全局列表元素包含 `tokenAddress + actionId + executor`。指定社区和全局列表随登记写入和清除同步更新，供 `TokenMainManager` 常数时间判断社区行动参与资格、`TokenActionMainManager` 读取指定行动登记，以及链群 Chat 筛选链群归属。ActionTarget 不接收或持有行动资产，不实现加入、退出、验证、结算和行动层分配。ActionTarget 登记是前端“当前已参与行动”列表的唯一依据；Executor 的资产和业务状态由 Executor 自己维护，是资产与结算查询的唯一依据。
+
+“当前是否参与行动”在所有调用方都只以 ActionTarget 为准。具体 Executor 可以保存行动内部的角色、资产和归属关系，但不能建立另一套独立的当前参与判定。链群行动 Executor 只需提供指定 `tokenAddress + actionId + memberId` 所属 `groupId` 的查询，链群 Chat 据此在 ActionTarget 返回的当前参与行动中筛选链群归属。
 
 正常流程由 Executor 完成：加入、追加、部分撤回、全部退出、资产返还、行动结束结算和登记清理。登记写入和正常清除只允许该 Proposal 关联的 Executor 调用；Executor 不能把未通过自身业务校验的记录写入 ActionTarget。Executor 失效时，当前 MemberNFT 持有人可以调用 `forceExit(tokenAddress, actionId, memberId)`，直接清除 ActionTarget 的通用登记并触发事件。该入口不调用 Executor、不转移资产、不承诺资产返还，前端默认隐藏，只作为最后兜底。
 

@@ -207,7 +207,7 @@ interface IAfterPostPlugin {
 | 代币治理 Chat | 拥有该代币有效治理票 | 治理票加权黑名单 |
 | 代币行动 Chat | 最近 `RECENT_ROUNDS` 轮给行动投过票，或当前已在 ActionTarget 登记参与该行动 | 行动投票权重黑名单 |
 | 代币行动治理 Chat | 最近 `RECENT_ROUNDS` 轮给行动投过票 | 行动投票权重黑名单 |
-| 链群服务 Chat | 被群管理员列入成员，或满足指定链群行动参与条件 | 管理员黑名单 |
+| 链群 Chat | 被群管理员列入成员，或当前参与至少一个归属该链群的链群行动 | 管理员黑名单 |
 
 所有条件都以 `memberId` 和当前 MemberNFT 控制权判断。持币资格严格按 `token.balanceOf(MemberNFT.ownerOf(senderId)) > 1` 判断，其中 `1` 表示一个代币最小单位；该余额仅作为实时资格，不保存地址主体状态。治理票、Proposal 投票和行动参与直接按 `memberId` 查询。两个 Action Manager 的 `RECENT_ROUNDS` 是必须大于 `0` 的不可变构造参数，BSC 部署值为 `3`；查询从当前 Vote Round 开始向前检查，包含当前轮并最多检查 `RECENT_ROUNDS` 轮，到 Round `1` 停止。ActionTarget 的 `forceExit` 或正常退出清除参与登记后，对应行动参与资格立即失效。具体 Manager 可以在激活时一次性配置四个规则槽位；typed Manager 激活后不提供人工更新入口，普通 owner 管理型 Chat 则按第 3.2 节更新。
 
@@ -234,7 +234,16 @@ interface IAfterPostPlugin {
 
 沿用旧版四类 typed Manager：`TokenMainManager`、`TokenGovManager`、`TokenActionMainManager` 和 `TokenActionGovManager`。Manager 创建并持有一个 MemberNFT，把该 `memberId` 作为 `groupId` 激活到同一个 `GroupChat` 合约，并一次性注入规则模块；它不创建独立 Chat 合约，不复制 MemberNFT、不创建治理状态、不改变行动状态。
 
-链群服务 Chat 不使用 Manager，由链群 owner 持有的 MemberNFT 直接作为 `groupId` 激活和管理。`group-chat` 不新增 GroupChat 工厂。
+链群 Chat 不使用 Manager，由链群 owner 持有的 MemberNFT 直接作为 `groupId` 激活和管理。`group-chat` 不新增 GroupChat 工厂。
+
+链群 Chat 提供两个标准 `scopeSource`：
+
+- `GroupMemberScope`：只读取管理员维护的 `groupId -> memberId` 成员名单；
+- `GroupJoinScopeSource`：部署时固定 `GroupMember`、ActionTarget 和可复用的链群行动 Executor。成员名单命中时直接允许，否则读取 ActionTarget 中 `senderId` 跨社区的全局当前参与列表，只保留 `executor` 等于该链群行动 Executor 的项目，再查询该成员在 `tokenAddress + actionId` 中的 `groupId`；存在任一 `groupId` 等于当前 Chat 的记录时允许。
+
+ActionTarget 是行动当前参与状态的唯一依据，链群行动 Executor 只提供链群归属。正常退出或 `forceExit` 从 ActionTarget 清除登记后，该行动立即不再提供链群 Chat 资格，不要求 Group Chat 或 Executor 维护第二套参与计数。
+
+链群 owner 在激活时传入所需的 `scopeSource`、`banSource` 和插件；激活后，链群 owner 或有效 Group Chat Delegate 可以按第 3.2 节更新这些规则槽位。这是普通 owner 管理型 Chat 的通用配置能力，不是链群服务激励或行动 Executor 的权限。标准链群配置使用上述两个 scope source 之一和管理员黑名单；`scopeSource = address(0)` 表示公开发言。
 
 ## 8. 事件、错误和安全性
 
@@ -264,4 +273,4 @@ interface IAfterPostPlugin {
 - 正文、提及、mention-all、引用和 1-based 消息 ID 边界；
 - 按 Round/sender/mention/mention-all 查询、空 Round、反向分页和越界返回；
 - 成员/管理员批量操作、当前 owner 实时授权和 MemberNFT 不存在回滚；
-- 四类 typed Manager 和链群服务 owner 管理型 Chat 的资格、黑名单与不可重配边界，以及所有业务状态只按 `memberId` 记录。
+- 四类 typed Manager 的资格、黑名单和不可重配边界，链群 owner 管理型 Chat 的标准资格源与可重配边界，以及所有业务状态只按 `memberId` 记录。
