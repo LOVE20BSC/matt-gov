@@ -112,6 +112,15 @@ LP Executor 至少配置参与 LP Token 地址、`govRatioMultiplier`、`minGovR
 
 验证阶段分割线在 Executor 初始化时传入，数组必须严格递增且每项满足 `0 < split < 1e18`。有 `n` 个分割线时，排名前 `n + 1` 名可验证；第 1 名在 Verify 槽位开始即可提交。排名按累计候选票降序、`applicationId` 升序。
 
+对排名为 `rank >= 2` 的候选人，`splits[rank - 2]` 是其开放比例。开放区块按本轮验证槽位对应的 Phase 记录计算：
+
+```text
+openOffset = ceil(verifyPhaseBlocks × splits[rank - 2] / 1e18)
+openBlock = verifyPhaseStartBlock + openOffset
+```
+
+当 `block.number >= openBlock` 时该排名开放。`splits = []` 时只有第 1 名可验证；向上取整避免整数截断导致候选人在分割线之前提前开放。
+
 链群行动投票 KV 使用 `key = keccak256("verifierCandidateId")`，`value = abi.encode(uint256 verifierCandidateId)`；该 ID 是候选人的 MemberNFT ID，不是 `applicationId`。
 
 完整候选申请列表用于前端分页查询；合约内部只维护前 `n + 1` 名和 `applicationId -> rankIndex`。投票只对收到新增票的候选增量更新：榜内候选向前交换，榜外候选只和末位比较，不扫描完整列表、不自动补位；榜满时平票不替换末位。`verifierCandidateId` 由投票 KV 传入，其值是候选人的 MemberNFT ID；标准回调提供投票人的 `voterId` 和本次治理票增量。Executor 根据 `verifierCandidateId` 查找当前申请，当前申请为 `0` 时拒绝；本次全部治理票增量记给该申请。治理者同一 Round 可多次投票，但投给所有候选申请的累计候选票不得超过其对该行动的累计治理票。
