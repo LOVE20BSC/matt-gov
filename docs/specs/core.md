@@ -63,7 +63,24 @@ LOVE20 是社群铸币协议。每个 LOVE20 代币都有一个 `parentTokenAddr
 
 `MemberNFT` 是协议唯一的通用身份 NFT。质押、Proposal、投票、发射次数和所有扩展参与关系均使用 `memberId` 关联；同一 MemberNFT 可以在多个代币社区拥有互相独立的状态。
 
+合约名为 `MemberNFT`，ERC721 名称为 `LOVE20 Member NFT`，符号为 `Member`。`memberId` 从 `1` 开始单调递增且永不复用；`0` 始终表示未设置。`mint(memberName)` 把 NFT 铸造给调用者并返回 `(memberId, mintCost)`。
+
+`memberName` 按 UTF-8 字节校验，必须非空且最多 `32 bytes`。名称保留用户提交的原始形式，但唯一性键只把 ASCII `A-Z` 转为小写，因此 ASCII 大小写不敏感且名称永久不能复用。名称不得包含 ASCII 空格、控制字符、DEL、Unicode 空白、零宽字符、行/段分隔符、方向控制字符、不可见数学运算符、废弃格式字符、无效或非最短 UTF-8、UTF-16 代理区编码和超出 `U+10FFFF` 的码点。公开查询至少支持按 `memberId` 取原始名称、判断名称是否已使用、按名称取 `memberId` 和返回规范化名称。
+
+铸造费用采用短名称稀缺性公式。设首个 LOVE20 代币的剩余未铸造量为 `unmintedSupply`：
+
+```text
+baseCost = unmintedSupply / baseDivisor
+mintCost = byteLength >= bytesThreshold
+    ? baseCost
+    : baseCost × multiplier ^ (bytesThreshold - byteLength)
+```
+
+`baseDivisor`、`bytesThreshold` 和 `multiplier` 均在部署时确定且必须大于零。铸造时从调用者转入 `mintCost` 并立即销毁，累计到 `totalBurnedForMint`；费用转入、销毁或安全铸造任一步失败时整笔回滚。
+
 MemberNFT 的转移不复制、不拆分、不重置任何历史。依赖身份的合约必须实时读取 `ownerOf(memberId)`，不能缓存钱包地址作为长期权限。
+
+供应量和按持有人查询使用标准 `ERC721Enumerable` 接口。若提供独立持有人数量接口，其状态更新必须显式忽略 `from == to` 的自转账，并与 `balanceOf` 的 `0 <-> 1` 边界一致；实现不得把可能因自转账失真的缓存统计作为权威数据。
 
 ## 5. Phase 与 Round
 

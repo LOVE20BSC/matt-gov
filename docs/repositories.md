@@ -23,4 +23,4 @@
 
 旧 `extension`、`extension-group` 的业务迁入 `action`；旧 `extension-lp` 仅迁移 V2 LP 业务，重写为 `action` 内的 LP 行动执行合约，V1 LP 实现及旧 LP 工厂不迁移。`burn`、未部署的 `chat` 和外部 `v2-periphery` 不在本组织清单中。`burn` 虽不迁移，但 BSC 正式部署使用的初始空投来源必须公开指向 [`LOVE20TKM/burn`](https://github.com/LOVE20TKM/burn) 及其 [`Airdrop.sol`](https://github.com/LOVE20TKM/burn/blob/main/src/Airdrop.sol)、[`DeployAirdrop.s.sol`](https://github.com/LOVE20TKM/burn/blob/main/script/DeployAirdrop.s.sol) 和 [`airdrop-design.md`](https://github.com/LOVE20TKM/burn/blob/main/docs/airdrop-design.md)。
 
-旧 `group` 仓库中已部署且仍需要的 `LOVE20Group` 只迁移合约级实现，并入 `core` 后重命名为 `LOVE20Member`（`MemberNFT`）。`GroupDefaults` 属于地址到默认 NFT 的便利映射，BSC 版不迁移、不部署；不新增独立的 `group` 代码库。旧 `GroupDelegate` 不进入 `core`，Chat 所需的委托逻辑仅在 `group-chat` 内实现，并统一称为 **Group Chat Delegate**。
+旧 `group` 仓库中已部署且仍需要的 `LOVE20Group` 只迁移合约级实现，并入 `core` 后重命名为 `MemberNFT`。`GroupDefaults` 属于地址到默认 NFT 的便利映射，BSC 版不迁移、不部署；不新增独立的 `group` 代码库。旧 `GroupDelegate` 不进入 `core`，Chat 所需的委托逻辑仅在 `group-chat` 内实现，并统一称为 **Group Chat Delegate**。

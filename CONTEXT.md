@@ -18,7 +18,7 @@
 - **统一解锁**：流动性质押和加速质押不能分别解锁；等待期按底层 `Phase` 时间片理解，不使用上层业务 `Round` 计数。
 - **质押融合**：按 `tokenAddress` 社区隔离，只处理尚未使用的当前质押状态；已发生的治理、投票和激励历史仍归原 `memberId`。
 - **发射次数**：发射权直接记录在 `tokenAddress + memberId` 的 `launchCount` 账本中，并保留未消耗的累计发射额度 `launchCredit`；每次治理激励实际铸造后，按本次铸造前剩余供应量计算并向上取整阈值，达到完整阈值就增加整数次数并扣除对应额度，余数继续累计。每个代币社区累计最多 `X` 次，达到上限后不再新增次数，发射时消耗次数。`X` 为协议初始化的每社区上限。
-- **发射次数融合**：同一代币社区内，源 MemberNFT 可向目标 MemberNFT 原子转移部分整数次数；源、目标由同一当前控制者操作，不能跨社区或回写历史发射记录。它与质押融合是两个独立操作。
+- **发射次数融合**：同一代币社区内，源 MemberNFT 可向目标 MemberNFT 原子转移部分整数次数；调用者只需控制来源 MemberNFT，不要求控制目标 MemberNFT，且不能跨社区或回写历史发射记录。它与质押融合是两个独立操作。
 - **发射分配**：发射者必须指定非零的首批代币 `distributor`；中心化或去中心化只描述 `distributor` 后续分配方式，不是发射调用权限。零地址不表示销毁或丢弃。
 
 ## Phase 与 Round
@@ -34,6 +34,7 @@
 - **Proposal Target**：Proposal 的激励铸造接收主体。Target 可以是普通地址或合约；合约型 Target 是否接收回调由 `targetMode` 决定。代币由协议按规则铸造，不表述为某人发放代币。
 - **ActionTarget**：当前社群行动提案类型的 Proposal Target。它把 Proposal 与行动执行合约关联，并提供该提案类型的通用参与登记和应急清理边界。
 - **行动执行合约**：由 `ActionTarget` 关联的业务合约，负责具体行动的参与、验证、资产处理和行动层激励分配。`executor` 不属于底层治理框架的通用业务角色。
+- **链群参与归属**：链群行动执行合约同时维护跨其所有代币社区和行动的当前链群归属，是链群 Chat 判断 `memberId` 是否属于 `groupId` 的唯一来源；ActionTarget 的强制退出不修改该业务状态。
 - **proposalId 与 actionId**：`proposalId` 是所有 Proposal 的统一 ID；只有部分行动类 Proposal 使用 `actionId` 作为业务别名，二者数值完全相同，`actionId` 是 `proposalId` 的子集，不创建第二个 ID。
 - **回调与 KV**：Proposal 创建、提案推举和提案投票分别触发对应 Target 回调；回调名称为 `onProposalCreated`、`onProposalSubmitted`、`onProposalVoted`；推举回调使用 `submitterId`，投票回调使用 `voterId` 和本次增量票数；核心只传递标准 Proposal 上下文和不透明 KV，不解释提案扩展业务；具体字段由对应 Target 或行动执行合约定义。
 

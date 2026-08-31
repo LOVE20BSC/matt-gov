@@ -72,7 +72,7 @@ Group Chat Delegate 不能激活未激活 Chat，不能替换群 owner，不能�
 
 ### 3.3 Group Chat Delegate
 
-Group Chat Delegate 沿用旧版 NFT 委托语义：每个 `groupId` 最多设置一个 `delegateId`，并保留被委托群列表、委托方白名单开关和白名单分页查询。只有群 owner 当前控制者可以设置或撤销 `delegateId`；delegate MemberNFT 当前控制者可以清理委托给自己的群，并管理自己是否只接受白名单群的委托。
+Group Chat Delegate 使用 NFT 委托语义：每个 `groupId` 最多设置一个 `delegateId`，并保留被委托群列表、委托方白名单开关和白名单分页查询。只有群 owner 当前控制者可以设置或撤销 `delegateId`；delegate MemberNFT 当前控制者可以清理委托给自己的群，并管理自己是否只接受白名单群的委托。
 
 委托权限只在指定 `groupId` 和指定管理操作中有效：
 
@@ -209,13 +209,13 @@ interface IAfterPostPlugin {
 | 代币行动治理 Chat | 最近 `RECENT_ROUNDS` 轮给行动投过票 | 行动投票权重黑名单 |
 | 链群 Chat | 被群管理员列入成员，或当前参与至少一个归属该链群的链群行动 | 管理员黑名单 |
 
-所有条件都以 `memberId` 和当前 MemberNFT 控制权判断。持币资格严格按 `token.balanceOf(MemberNFT.ownerOf(senderId)) > 1` 判断，其中 `1` 表示一个代币最小单位；该余额仅作为实时资格，不保存地址主体状态。治理票、Proposal 投票和行动参与直接按 `memberId` 查询。两个 Action Manager 的 `RECENT_ROUNDS` 是必须大于 `0` 的不可变构造参数，BSC 部署值为 `3`；查询从当前 Vote Round 开始向前检查，包含当前轮并最多检查 `RECENT_ROUNDS` 轮，到 Round `1` 停止。ActionTarget 的 `forceExit` 或正常退出清除参与登记后，对应行动参与资格立即失效。具体 Manager 可以在激活时一次性配置四个规则槽位；typed Manager 激活后不提供人工更新入口，普通 owner 管理型 Chat 则按第 3.2 节更新。
+所有条件都以 `memberId` 和当前 MemberNFT 控制权判断。持币资格严格按 `token.balanceOf(MemberNFT.ownerOf(senderId)) > 1` 判断，其中 `1` 表示一个代币最小单位；该余额仅作为实时资格，不保存地址主体状态。治理票、Proposal 投票和行动参与直接按 `memberId` 查询。两个 Action Manager 的 `RECENT_ROUNDS` 是必须大于 `0` 的不可变构造参数，BSC 部署值为 `3`；查询从当前 Vote Round 开始向前检查，包含当前轮并最多检查 `RECENT_ROUNDS` 轮，到 Round `1` 停止。ActionTarget 的 `forceExit` 或正常退出清除参与登记后，对应代币社区或代币行动 Chat 的参与资格立即失效；链群 Chat 资格单独以链群行动 Executor 的归属状态判断。具体 Manager 可以在激活时一次性配置四个规则槽位；typed Manager 激活后不提供人工更新入口，普通 owner 管理型 Chat 则按第 3.2 节更新。
 
 ### 7.1 群成员和管理员
 
 群聊可以维护 `groupId -> memberId` 成员集合，并提供批量新增、移除、存在性判断和分页查询。只有群 owner、有效 Group Chat Delegate 或有效群管理员可以修改成员集合；加入集合的目标 MemberNFT 必须存在且不能为 `0`。
 
-管理员集合同样使用 MemberNFT。群 owner 或有效 Delegate 可以批量新增/移除管理员，受部署时的最大数量限制。沿用旧版 owner 快照：添加管理员时保存群和管理员 MemberNFT 的 owner；任一当前 owner 与快照不一致时该管理员暂时失效，恢复为快照 owner 时可以自动恢复；历史管理员记录不因转移删除。管理员执行操作时显式提供 `adminId`，不再通过钱包地址的默认 NFT 映射推导。
+管理员集合同样使用 MemberNFT。群 owner 或有效 Delegate 可以批量新增/移除管理员，受部署时的最大数量限制。添加管理员时保存群和管理员 MemberNFT 的 owner 快照；任一当前 owner 与快照不一致时该管理员暂时失效，恢复为快照 owner 时可以自动恢复；历史管理员记录不因转移删除。管理员执行操作时显式提供 `adminId`，不再通过钱包地址的默认 NFT 映射推导。
 
 管理员可以执行明确授权的群管理操作（例如黑名单维护和 `mentionAll`），不能修改核心代币、治理或行动状态。
 
@@ -232,16 +232,16 @@ interface IAfterPostPlugin {
 
 ### 7.2 Manager
 
-沿用旧版四类 typed Manager：`TokenMainManager`、`TokenGovManager`、`TokenActionMainManager` 和 `TokenActionGovManager`。Manager 创建并持有一个 MemberNFT，把该 `memberId` 作为 `groupId` 激活到同一个 `GroupChat` 合约，并一次性注入规则模块；它不创建独立 Chat 合约，不复制 MemberNFT、不创建治理状态、不改变行动状态。
+协议提供四类 typed Manager：`TokenMainManager`、`TokenGovManager`、`TokenActionMainManager` 和 `TokenActionGovManager`。Manager 创建并持有一个 MemberNFT，把该 `memberId` 作为 `groupId` 激活到同一个 `GroupChat` 合约，并一次性注入规则模块；它不创建独立 Chat 合约，不复制 MemberNFT、不创建治理状态、不改变行动状态。
 
 链群 Chat 不使用 Manager，由链群 owner 持有的 MemberNFT 直接作为 `groupId` 激活和管理。`group-chat` 不新增 GroupChat 工厂。
 
 链群 Chat 提供两个标准 `scopeSource`：
 
 - `GroupMemberScope`：只读取管理员维护的 `groupId -> memberId` 成员名单；
-- `GroupJoinScopeSource`：部署时固定 `GroupMember`、ActionTarget 和可复用的链群行动 Executor。成员名单命中时直接允许，否则读取 ActionTarget 中 `senderId` 跨社区的全局当前参与列表，只保留 `executor` 等于该链群行动 Executor 的项目，再查询该成员在 `tokenAddress + actionId` 中的 `groupId`；存在任一 `groupId` 等于当前 Chat 的记录时允许。
+- `GroupJoinScopeSource`：部署时固定 `GroupMember` 和可复用的链群行动 Executor。成员名单命中时直接允许，否则调用 Executor 的 `isMemberOfGroup(groupId, senderId)`；该查询覆盖该 Executor 服务的所有代币社区和所有链群行动。
 
-ActionTarget 是行动当前参与状态的唯一依据，链群行动 Executor 只提供链群归属。正常退出或 `forceExit` 从 ActionTarget 清除登记后，该行动立即不再提供链群 Chat 资格，不要求 Group Chat 或 Executor 维护第二套参与计数。
+链群行动 Executor 是链群当前参与归属的唯一依据；Group Chat 不复制归属状态，也不遍历 ActionTarget。成员通过 Executor 正常退出其在该链群的最后一个行动后资格立即失效。`forceExit` 只清除 ActionTarget 的通用参与登记，不修改 Executor 的资产或链群归属，因此不会单独改变链群 Chat 资格。
 
 链群 owner 在激活时传入所需的 `scopeSource`、`banSource` 和插件；激活后，链群 owner 或有效 Group Chat Delegate 可以按第 3.2 节更新这些规则槽位。这是普通 owner 管理型 Chat 的通用配置能力，不是链群服务激励或行动 Executor 的权限。标准链群配置使用上述两个 scope source 之一和管理员黑名单；`scopeSource = address(0)` 表示公开发言。
 
@@ -273,4 +273,4 @@ ActionTarget 是行动当前参与状态的唯一依据，链群行动 Executor 
 - 正文、提及、mention-all、引用和 1-based 消息 ID 边界；
 - 按 Round/sender/mention/mention-all 查询、空 Round、反向分页和越界返回；
 - 成员/管理员批量操作、当前 owner 实时授权和 MemberNFT 不存在回滚；
-- 四类 typed Manager 的资格、黑名单和不可重配边界，链群 owner 管理型 Chat 的标准资格源与可重配边界，以及所有业务状态只按 `memberId` 记录。
+- 四类 typed Manager 的资格、黑名单和不可重配边界，链群 owner 管理型 Chat 的标准资格源与可重配边界，链群归属跨社区和跨行动查询，以及所有业务状态只按 `memberId` 记录。

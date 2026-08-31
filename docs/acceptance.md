@@ -19,9 +19,10 @@
 - **MemberNFT 发射次数边界**：覆盖本次铸造前剩余供应量的阈值向上取整、治理激励累计进入 `launchCredit`、一次治理激励跨过多个完整阈值、整数除法余数继续累计、每个社区达到 `maxLaunchCount = X` 后停止新增次数、调用者只控制来源 MemberNFT 时向他人持有的目标 MemberNFT 部分融合整数次数但不转移 `launchCredit`、源次数扣减/目标次数增加的原子性，以及次数消耗后不能再次发射。
 - **子币发射分发边界**：覆盖非零 `distributor`、`RewardOnly`/`Callback` 两种分配模式、KV 长度校验、回调失败回滚、首次代币使用 Airdrop 目标，以及保留代币没有本地发射次数。
 - **MemberNFT 转移归属**：覆盖转移前后质押、解锁倒计时、治理激励和行动内部未铸造激励均由当前持有人继续操作；旧持有人不能代铸，历史投票、快照、已结算激励和事件不回写。
-- **Group Chat MemberNFT 主体**：覆盖四类 typed Manager、普通 owner 管理型 Chat、规则槽位、插件、消息与分页行为；覆盖成员、管理员、委托、发言、提及、黑名单目标和黑名单投票者均按 `memberId` 运行，并确认不存在默认 MemberNFT 映射、默认身份发言入口、地址黑名单/投票/查询或其他地址主体接口。治理黑名单覆盖代币治理票与行动 Proposal 投票两类票权、全社区治理票分母、支持票严格超过反对票 `10` 倍且达到 `0.3%` 的双阈值、撤票和任何人刷新。链群 Chat 覆盖纯成员名单和“ActionTarget 当前参与 + Executor 链群归属”两种标准资格源，并验证正常退出或 `forceExit` 后资格立即失效。owner 快照及消息/事件调用地址只用于 NFT 转移有效性和审计，不得成为业务主体。
+- **MemberNFT 铸造和统计**：覆盖 `LOVE20 Member NFT`/`Member` 元数据、从 `1` 开始且不复用的 ID、名称 `32 bytes` 上限、UTF-8 与不可见字符校验、ASCII 大小写不敏感唯一性、短名称费用和原子销毁，以及标准 ERC721Enumerable 查询和自转账不会破坏可选的持有人统计。
+- **Group Chat MemberNFT 主体**：覆盖四类 typed Manager、普通 owner 管理型 Chat、规则槽位、插件、消息与分页行为；覆盖成员、管理员、委托、发言、提及、黑名单目标和黑名单投票者均按 `memberId` 运行，并确认不存在默认 MemberNFT 映射、默认身份发言入口、地址黑名单/投票/查询或其他地址主体接口。治理黑名单覆盖代币治理票与行动 Proposal 投票两类票权、全社区治理票分母、支持票严格超过反对票 `10` 倍且达到 `0.3%` 的双阈值、撤票和任何人刷新。链群 Chat 覆盖纯成员名单和“成员名单或链群 Executor 当前归属”标准资格源，验证归属查询跨该 Executor 服务的所有社区和行动、最后一次正常退出使资格失效，并确认 ActionTarget 的 `forceExit` 不修改 Executor 的链群归属。owner 快照及消息/事件调用地址只用于 NFT 转移有效性和审计，不得成为业务主体。
 - **Target 组合与幂等性**：覆盖 `RewardOnly`/`Callback` 与 EOA/合约的合法组合、Callback + EOA 拒绝、缺少 executor 保留项的行动创建 KV 拒绝、仅 executor 项可创建，以及同一 `tokenAddress + proposalId` 重复创建回调回滚。
-- **ActionTarget / Executor 状态边界**：覆盖仅关联 Executor 可登记/正常清除、当前 MemberNFT 持有人可 `forceExit`、强制退出后 ActionTarget 当前参与查询清除而 Executor 资产状态不回写，以及不通过旧 Executor 状态自动恢复登记。
+- **ActionTarget / Executor 状态边界**：覆盖仅关联 Executor 可登记/正常清除、当前 MemberNFT 持有人可 `forceExit`、强制退出后 ActionTarget 当前参与查询清除而 Executor 资产及链群归属状态不回写，以及不通过旧 Executor 状态自动恢复登记。
 - **Proposal Target 回调**：覆盖 Proposal 创建、提案推举、提案投票三类回调；覆盖 `submitterId`、`voterId`、增量票和 KV 透传，以及回调失败时对应外层交易整体回滚。
 - **公共验证者失联**：覆盖首个验证批次永久锁定后验证者停止提交时，本轮行动层激励保持为 `0`，底层 Proposal 激励仍可按规则铸造或销毁，且不允许未经授权的其他候选人接管。
 - **Phase 与候选边界**：覆盖每轮起始区块和阶段区块数历史记录、最近观测点的 `±10%` 动态校准及历史不可回写；覆盖无候选人、候选票为零、平票按 `applicationId` 排序、申请版本切换、排名锁定、分割线按排名映射、开放区块向上取整和阈值区块包含判断。

@@ -34,13 +34,13 @@ ActionTarget 不解析 `verificationRule`、`verificationKeys`、`verifierCandid
 
 ### 2.2 参与登记
 
-ActionTarget 维护通用的“MemberNFT 是否参与某个行动”登记，并提供指定 `tokenAddress + actionId + memberId` 的当前参与判断、指定社区和成员的当前参与行动数量及列表，以及指定成员跨社区的全局当前参与列表。全局列表元素包含 `tokenAddress + actionId + executor`。指定社区和全局列表随登记写入和清除同步更新，供 `TokenMainManager` 常数时间判断社区行动参与资格、`TokenActionMainManager` 读取指定行动登记，以及链群 Chat 筛选链群归属。ActionTarget 不接收或持有行动资产，不实现加入、退出、验证、结算和行动层分配。ActionTarget 登记是前端“当前已参与行动”列表的唯一依据；Executor 的资产和业务状态由 Executor 自己维护，是资产与结算查询的唯一依据。
+ActionTarget 维护通用的“MemberNFT 是否参与某个行动”登记，并提供指定 `tokenAddress + actionId + memberId` 的当前参与判断，以及指定社区和成员的当前参与行动数量及列表。参与数量随登记写入和清除同步更新，供 `TokenMainManager` 常数时间判断社区行动参与资格，`TokenActionMainManager` 直接读取指定行动登记。ActionTarget 不维护成员跨所有社区的全局参与列表，也不接收或持有行动资产，不实现加入、退出、验证、结算和行动层分配。对于普通行动，ActionTarget 登记是前端“当前已参与行动”列表和外部参与资格判断的依据；Executor 的资产和业务状态由 Executor 自己维护，是资产与结算查询的依据。
 
-“当前是否参与行动”在所有调用方都只以 ActionTarget 为准。具体 Executor 可以保存行动内部的角色、资产和归属关系，但不能建立另一套独立的当前参与判定。链群行动 Executor 只需提供指定 `tokenAddress + actionId + memberId` 所属 `groupId` 的查询，链群 Chat 据此在 ActionTarget 返回的当前参与行动中筛选链群归属。
+链群行动是明确例外：链群行动 Executor 同时承担链群参与关系的维护职责，并作为“某个 `memberId` 当前是否属于某个 `groupId`”的唯一判断来源。该状态服务于链群业务和链群 Chat，不由 ActionTarget 推导。
 
 正常流程由 Executor 完成：加入、追加、部分撤回、全部退出、资产返还、行动结束结算和登记清理。登记写入和正常清除只允许该 Proposal 关联的 Executor 调用；Executor 不能把未通过自身业务校验的记录写入 ActionTarget。Executor 失效时，当前 MemberNFT 持有人可以调用 `forceExit(tokenAddress, actionId, memberId)`，直接清除 ActionTarget 的通用登记并触发事件。该入口不调用 Executor、不转移资产、不承诺资产返还，前端默认隐藏，只作为最后兜底。
 
-强制退出后，ActionTarget 查询立即不再返回该参与记录；Executor 的历史参与和资产状态不回写，资产是否仍可由 Executor 自行恢复由其业务决定。Executor 不能利用旧状态重新把该记录视为已参与行动或自动恢复 ActionTarget 登记；需要资产恢复时必须由 Executor 提供独立的恢复流程。
+强制退出后，ActionTarget 查询立即不再返回该参与记录；Executor 的历史参与、资产和链群归属等业务状态均不回写。Executor 不能利用旧状态自动恢复 ActionTarget 登记；需要资产恢复时必须由 Executor 提供独立的恢复流程。链群归属只在链群 Executor 的正常退出流程中更新，因此 `forceExit` 本身不改变链群 Chat 资格。
 
 ### 2.3 查询
 
@@ -66,7 +66,7 @@ ActionTarget 提供无参数只读接口 `currentVoteRound()`、`currentJoinRoun
 ## 4. 共同参与模型
 
 - 行动参与主体统一为 MemberNFT 的 `memberId`；钱包地址只作为当前控制者。
-- 可复用行动状态至少按 `tokenAddress + actionId + round` 隔离；跨社区或跨行动读取必须拒绝。
+- 可复用行动状态至少按 `tokenAddress + actionId + round` 隔离；除本规格明确要求的链群跨社区、跨行动聚合查询外，跨社区或跨行动读取必须拒绝。
 - 体验资产按 `tokenAddress + memberId + actionId + providerMemberId` 独立记账，归 Provider MemberNFT 所有，退出时返还对应 Provider。
 - 自有资产和体验资产可以同时存在；部分撤回只减少指定账本，不互相抵扣。
 - 行动快照前撤回会减少当轮参与权、验证权重和可得激励；快照后撤回不回写当轮验证集合、验证结果或激励，只影响后续 Round；余额归零后才清除通用登记。
@@ -82,7 +82,7 @@ LP Executor 至少配置参与 LP Token 地址、`govRatioMultiplier`、`minGovR
 
 只有本轮已获得治理投票的 Proposal 可以加入。首次加入的 MemberNFT 必须满足当前有效治理票占社区总治理票的 `minGovRatio`；后续加入按行动规则允许追加。每次加入记录区块和数量，用于按下述规则计算时间加权。
 
-行动 Round 的总有效数量为所有参与者 `effectiveAmount` 之和。加入、追加、验证信息更新和部分撤回由 LP Executor 自己执行；退出返还该 Executor 记录的资产。时间扣减沿用旧版的线性规则，并显式封顶避免阶段结束后的整数下溢：
+行动 Round 的总有效数量为所有参与者 `effectiveAmount` 之和。加入、追加、验证信息更新和部分撤回由 LP Executor 自己执行；退出返还该 Executor 记录的资产。时间扣减采用以下线性规则，并显式封顶避免阶段结束后的整数下溢：
 
 ```text
 deduction = min(
@@ -117,6 +117,8 @@ effectiveAmount = joinedAmount - deduction
 仅当 Proposal 在当前治理 Round 获得投票时可加入。MemberNFT 首次加入必须达到链群设置的最小参与量，并同时满足成员上限、链群容量、成员数量和行动最大参与量；可以在 Join 槽位追加并更新验证信息。正常退出、部分撤回、全部资产返还和行动结束清理由链群 Executor 完成。
 
 体验模式下，Provider MemberNFT 先把指定额度托管给链群 Executor，体验成员选择 Provider 使用该额度加入；体验成员不能追加体验额度。体验成员退出或 Provider 代为退出时，额度返还 Provider，体验成员获得的行动激励仍归体验成员。自有资产和体验资产互不影响。
+
+链群 Executor 同时维护当前链群归属：每个 `tokenAddress + actionId + memberId` 最多关联一个 `groupId`，并以 `groupId + memberId` 的当前参与计数聚合该 Executor 服务的所有代币社区和所有链群行动。某成员首次在一个行动中加入链群时计数加一；追加和部分撤回不重复增加；通过 Executor 正常全部退出时计数减一。`isMemberOfGroup(groupId, memberId)` 直接返回该计数是否大于零，不扫描 Proposal 或参与者列表。只要该 MemberNFT 仍在任意社区的任意链群行动中参与该链群，查询就返回 `true`；MemberNFT 转移不改变归属。
 
 ### 6.3 公共验证者申请
 
@@ -225,7 +227,7 @@ theoreticalReward(m) = verifierTheory(m) + ownerTheory(m)
 
 ### 7.4 二次分配和舍入
 
-所有比例使用 `1e18`。每个链群的接收比例总和不得超过 `1e18`，允许正好为 `1e18`。全局服务激励和各角色激励均直接向下取整，不维护、不补发舍入余数，未分配的最小单位留在服务 Executor 中。链群 owner 的二次分配沿用旧版逻辑：各接收金额向下取整，`groupBudget - distributed` 的余数归该链群 owner；比例为 100% 时 owner 金额可以为零。
+所有比例使用 `1e18`。每个链群的接收比例总和不得超过 `1e18`，允许正好为 `1e18`。全局服务激励和各角色激励均直接向下取整，不维护、不补发舍入余数，未分配的最小单位留在服务 Executor 中。链群 owner 二次分配的各接收金额向下取整，`groupBudget - distributed` 的余数归该链群 owner；比例为 100% 时 owner 金额可以为零。
 
 预算分配使用同一组分子/分母计算；任何中间结果不得因独立向下取整导致累计份额超过服务 Proposal 实际铸造量。若出现 `distributed > budget`，属于非法超额分配，必须回滚；不能用静默截断掩盖错误。铸造、销毁、转账和状态更新必须在同一笔交易中完成。
 
@@ -239,4 +241,4 @@ theoreticalReward(m) = verifierTheory(m) + ownerTheory(m)
 
 ## 9. 验收场景
 
-至少覆盖：三类 Proposal 回调和原子回滚；ActionTarget 映射、查询和 forceExit；四槽位 ActionRound；LP 时间加权、治理票上限和部分撤回；链群激活、配置更新、成员/体验参与、候选申请版本切换、排名平票、前 `n + 1` 开放、快照批次连续性、NFT 转移续验、无候选/失联导致行动层激励为零；完整验证后的成员和链群激励；服务跨整个社区聚合、同币/父币服务、公共验证者比例、100% 二次分配和全精度舍入边界。
+至少覆盖：三类 Proposal 回调和原子回滚；ActionTarget 映射、查询和 forceExit；四槽位 ActionRound；LP 时间加权、治理票上限和部分撤回；链群激活、配置更新、成员/体验参与、跨社区和跨行动的链群归属计数、最后一次正常退出和 forceExit 状态边界、候选申请版本切换、排名平票、前 `n + 1` 开放、快照批次连续性、NFT 转移续验、无候选/失联导致行动层激励为零；完整验证后的成员和链群激励；服务跨整个社区聚合、同币/父币服务、公共验证者比例、100% 二次分配和全精度舍入边界。
