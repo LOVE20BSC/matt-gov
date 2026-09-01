@@ -20,7 +20,7 @@
 
 - [四阶段与轮次模型](issues/01-phase-round-model.md) — `Phase` 只维护无语义时间片；`action` 层统一使用 `Vote`/`Join`/`Verify`/`Mint` 四槽位 `ActionRound`，链群服务和 LP 的 `Verify` 为空操作但轮次和 `Mint` 槽位与链群行动一致。
 - [行动 Target 与参与登记边界](issues/02-action-executor-and-join.md) — `ActionTarget` 统一行动提案创建、行动登记和应急清理；关联 `executor` 发起激励铸造，`ActionTarget` 经 `Mint` 接收后转给执行合约，由行动类型内部业务负责后续分配；按执行合约查询返回 `proposalId[]`，无执行合约参数时返回本轮已投票的 `(proposalId, executor)`。
-- [公共验证者竞选与验证](issues/03-public-verifier-election.md) — 链群行动执行合约按候选排名和阶段分割线开放验证，首个有效批次永久锁定 `MemberNFT` 验证者；必须完成全部链群快照才产生链群服务相关激励，失联时本轮行动层激励预期为 `0`。
+- [公共验证者竞选与验证](issues/03-public-verifier-election.md) — 链群参与由逐笔交易自然形成 Round 历史；候选按排名和阶段分割线开放验证，首个有效批次永久锁定 `MemberNFT` 验证者，必须完成目标 Round 的全部链群，失联时本轮行动层激励预期为 `0`。
 - [链群行动与服务者激励](issues/06-chain-group-economics.md) — 服务行动执行合约沿用旧版范围，按 `actionTokenAddress` 聚合整个代币社区达到投票门槛的链群行动，可用同币或父币 Proposal 激励子币社区；服务加入仅接受链群 owner 或公共验证者候选 `MemberNFT`，创建 KV 保留 `actionTokenAddress` 与 `govRatioMultiplier`，取消工厂但不改变业务公式；完整验证行动按行动权重分摊服务激励，再按各自冻结比例分给公共验证者与链群 owner，统一全精度计算避免旧版舍入下溢，比例使用 `1e18`，100% 二次分配安全收敛且不包含 gas 补偿。
 - [BSC 部署与独立前端](issues/10-bsc-frontend-and-deployment.md) — 固定四个 BSC profile、按新仓库重建 Anvil 部署图、隔离地址/ABI/密钥和 `interface-test` 验收；首个代币通过旧 Burn 的公开 Airdrop 作为一次性部署依赖。
 - [两层主架构与提案 Target 边界](issues/12-contract-layer-boundaries.md) — 核心治理层与提案扩展层分离；当前社群行动使用 `ActionTarget`，其内部组件不构成协议级第三层，`Phase` 作为跨层时间基础设施。

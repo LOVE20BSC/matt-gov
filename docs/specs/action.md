@@ -77,7 +77,7 @@ ActionTarget 提供无参数只读接口 `currentRoundVote()`、`currentRoundJoi
 - 可复用行动状态至少按 `tokenAddress + actionId + round` 隔离；除本规格明确要求的链群跨社区、跨行动聚合查询外，跨社区或跨行动读取必须拒绝。
 - 体验资产按 `tokenAddress + memberId + actionId + providerMemberId` 独立记账，归 Provider MemberNFT 所有，退出时返还对应 Provider。
 - 自有资产和体验资产可以同时存在；部分撤回只减少指定账本，不互相抵扣。
-- 对使用参与快照的 Executor，快照前撤回会减少当轮参与权、验证权重和可得激励；快照后撤回不回写当轮验证集合、验证结果或激励，只影响后续 Round。未使用参与快照的 Executor 按自身冻结点结算；余额归零后才清除通用登记。
+- 对使用按 Round 参与历史的 Executor，Join 槽位内的撤回直接更新该 Round 的参与权、验证权重和可得激励；Join 槽位结束后，该 Round 的参与历史不再改变，后续撤回只写入后续 Round。未使用参与历史的 Executor 按自身冻结点结算；余额归零后才清除通用登记。
 - MemberNFT 转移不改变已发生的快照、投票、验证或已结算状态，新持有人继续操作当前未铸造权益。
 
 ## 5. LP 行动执行合约
@@ -191,17 +191,19 @@ openBlock = verifyPhaseStartBlock + openOffset
 
 完整候选申请列表用于前端分页查询；合约内部只维护前 `n + 1` 名和 `applicationId -> rankIndex`。投票只对收到新增票的候选增量更新：榜内候选向前交换，榜外候选只和末位比较，不扫描完整列表、不自动补位；榜满时平票不替换末位。`verifierCandidateId` 由投票 KV 传入，其值是候选人的 MemberNFT ID；标准回调提供投票人的 `voterId` 和本次治理票增量。Executor 根据 `verifierCandidateId` 查找当前申请，当前申请为 `0` 时拒绝；本次全部治理票增量记给该申请。治理者同一 Round 可多次投票，但投给所有候选申请的累计候选票不得超过其对该行动的累计治理票。
 
-### 6.4 快照和批量验证
+### 6.4 按 Round 参与历史和批量验证
 
-Join 槽位结束时，Executor 快照所有至少有一个成员参与的链群 `groupId`；空链群不进入集合。之后群停用、恢复或新增不改变本 Round 集合。
+链群 Executor 通过 Join 槽位内逐笔发生的加入、追加、体验加入、部分撤回和全部退出交易，自然形成每轮参与快照。每笔交易都以 `currentRoundJoin()` 为键更新该行动的 Round 历史。历史至少包含：本 Round 有参与成员的 `groupId` 集合、各链群的 `memberId` 集合及顺序、各成员的链群归属和参与量、各链群参与总量及行动参与总量。
 
-快照生成必须使用有界批次，不能在单笔交易中遍历全部链群或成员。首个快照批次冻结本 Round 的源链群数量、顺序及每个链群的成员数量和顺序；后续调用必须满足 `startIndex == snapshottedCount`，不得重复、跳过或重排。链群列表与成员列表分别保存连续游标，只有全部链群及其成员完成快照后才标记 `snapshotFinalized = true`；未完成时任何验证提交都回滚。快照生成过程中不得通过退出修改已经冻结的本轮源集合，相关退出只影响后续 Round。
+同一 Round 内的多笔交易持续更新该 Round 的最终值，不为同一 Round 重复创建版本。首次成员加入时把链群加入本 Round 的链群集合；最后一名成员全部退出时移除该链群；追加和仍有余额的部分撤回不重复增删成员或链群。查询某一 Round 时，已有该 Round 记录就直接读取；没有记录则读取不晚于该 Round 的最近一次历史值，没有任何更早记录时返回空集合或 `0`。因此整轮无人交互时自然继承上一轮状态，不需要复制或同步交易。
 
-每个链群按快照中的成员顺序保存验证游标。验证调用必须满足 `startIndex == verifiedCount`，批次连续，不得重复、跳过或乱序。本 Round 本行动的首个有效验证批次永久锁定一个公共验证者 `memberId`，该验证者负责本行动全部快照链群的验证；后续批次只能由该 MemberNFT 当前持有人提交，不设置失效、接管或代理。NFT 转移后由新持有人继续完成本 Round。
+Join 槽位结束后，任何参与变更只能写入后续 Round，目标 Round 的最终历史状态就是验证依据。Verify 槽位按同一 Round 直接读取链群集合、成员顺序和参与量，无需其他状态准备交易；空链群不在集合内，后续链群停用、恢复、新增或成员变更均不得回写该 Round。实现按 Round 记录集合数量、索引项和成员反向索引，使加入和退出交易直接形成可查询的历史。
 
-公共验证者对每个成员提交原始得分 `0..100`，成员最终得分为 `rawScore × joinedAmount`；链群总分为成员最终得分之和，行动总分为所有完成验证链群总分之和。必须完成全部快照链群验证才算完整。
+公共验证者可以分批提交验证。每个链群按目标 Round 历史中的成员顺序保存验证游标；调用必须满足 `startIndex == verifiedCount`，批次连续，不得重复、跳过或乱序，且只能验证目标 Round 链群集合中的成员。本 Round 本行动的首个有效验证批次永久锁定一个公共验证者 `memberId`，该验证者负责完成目标 Round 历史集合内全部链群的验证；后续批次只能由该 MemberNFT 当前持有人提交，不设置失效、接管或代理。NFT 转移后由新持有人继续完成本 Round。
 
-无有效候选、候选总票为零、锁定的公共验证者未完成全部快照验证或任一链群验证不完整时，本 Round 的链群行动者、公共验证者、链群 owner 和链群服务行动层激励全部为零。没有任何成员参与的行动无法提交验证，该行动的公共验证者和链群 owner 也没有激励；该行动的 Proposal 激励仍可由 Executor 铸造后立即销毁，不能进行行动层分配。治理监督通过下一 Round 是否继续投票完成，不回溯历史激励。
+公共验证者对每个成员提交原始得分 `0..100`，成员最终得分为 `rawScore × joinedAmount`；链群总分为成员最终得分之和，行动总分为所有完成验证链群总分之和。必须完成目标 Round 历史集合内的全部链群才算完整。
+
+无有效候选、候选总票为零、锁定的公共验证者未完成目标 Round 的全部链群或任一链群验证不完整时，本 Round 的链群行动者、公共验证者、链群 owner 和链群服务行动层激励全部为零。没有任何成员参与的行动无法提交验证，该行动的公共验证者和链群 owner 也没有激励；该行动的 Proposal 激励仍可由 Executor 铸造后立即销毁，不能进行行动层分配。治理监督通过下一 Round 是否继续投票完成，不回溯历史激励。
 
 ### 6.5 链群行动激励
 
@@ -212,7 +214,7 @@ groupIncentive = proposalIncentive × groupScore / totalGroupScore
 memberIncentive = groupIncentive × memberScore / groupScore
 ```
 
-Executor 可在内部把行动激励分配给参与者；ActionTarget 不留余额。Verify 结果、快照和激励状态按 `tokenAddress + actionId + round` 冻结。完整验证但 `totalGroupScore == 0` 时，行动层激励为 `0`；单个 `groupScore == 0` 时，该链群激励为 `0`，均不执行比例除法。底层 Proposal 激励仍可按核心规则铸造，Executor 可以按规则销毁。
+Executor 可在内部把行动激励分配给参与者；ActionTarget 不留余额。参与历史、Verify 结果和激励状态按 `tokenAddress + actionId + round` 隔离。完整验证但 `totalGroupScore == 0` 时，行动层激励为 `0`；单个 `groupScore == 0` 时，该链群激励为 `0`，均不执行比例除法。底层 Proposal 激励仍可按核心规则铸造，Executor 可以按规则销毁。
 
 链群行动 Executor 至少提供 `generatedActionIncentive(round)`、`generatedActionIncentiveByGroupId(round, groupId)` 和 `generatedActionIncentiveByOwner(round, ownerId)`。链群 owner 就是链群 `MemberNFT` 本身，因此 `ownerId == groupId`，后两个查询在当前模型中返回同一主体产生的行动激励；保留 `ByOwner` 命名是为了明确它在链群服务分配中的角色语义。链群服务只读取最终冻结值。
 
@@ -235,7 +237,7 @@ Executor 可在内部把行动激励分配给参与者；ActionTarget 不留余�
 服务 Executor 在 Mint 槽位通过 ActionTarget 一次性取得 `servicePool`，来源是 `serviceTokenAddress` 社区对应服务 Proposal 的冻结 Proposal 激励；之后按 MemberNFT 分人结算，不把底层 Proposal 激励拆成多个独立铸造请求。随后逐个检查 `actionTokenAddress` 社区的链群行动：
 
 1. 通过 ActionTarget 使用 `actionExecutor` 查询 `actionTokenAddress` 社区关联的全部 Proposal；
-2. 对每个 Proposal 确认本轮至少有一个成员参与、全部快照链群均已完成验证、行动激励已经最终确定，并确认实际锁定的公共验证者及其申请分成比例。任一条件不满足时，该行动的行动激励权重为 `0`，不进入服务激励分母；该行动的 Proposal 激励只能由 Executor 销毁；
+2. 对每个 Proposal 确认本轮至少有一个成员参与、目标 Round 历史集合内的全部链群均已完成验证、行动激励已经最终确定，并确认实际锁定的公共验证者及其申请分成比例。任一条件不满足时，该行动的行动激励权重为 `0`，不进入服务激励分母；该行动的 Proposal 激励只能由 Executor 销毁；
 3. 设符合条件的行动 `a` 的行动激励权重为 `A[a]`，全部符合条件行动的权重为 `T = Σ A[a]`。`A[a]` 使用行动 Executor 记录的最终行动激励，不使用尚未确定的 Proposal 预估值；
 4. 当 `T > 0` 时，对每个行动只读取一次实际锁定的公共验证者 `verifierId[a]`、其申请分成比例 `r[a]`，以及每个 MemberNFT 在该行动名下链群产生的行动激励 `ownerActionIncentive(a, m)`，并累计两类权重：
 
@@ -306,10 +308,10 @@ theoreticalIncentive(m) = verifierTheory(m) + ownerTheory(m)
 
 行动激励闭环固定为 `executor -> ActionTarget -> Mint -> ActionTarget -> executor`。Executor 一次铸造一个 Proposal 在该 Round 的全部行动激励，再在内部完成参与者、公共验证者和 owner 分配。只有关联 Executor 可以发起；任何失败都回滚，ActionTarget 不保留余额。
 
-实现至少发出 Proposal 关联、行动参与/撤回/退出、公共验证者申请和排名、验证快照/批次/锁定/完成、行动激励铸造/销毁、服务分配和 `forceExit` 事件。
+实现至少发出 Proposal 关联、行动参与/撤回/退出、公共验证者申请和排名、验证批次/锁定/完成、行动激励铸造/销毁、服务分配和 `forceExit` 事件。Round 快照由参与状态变更事件及对应历史状态共同证明。
 
 至少拒绝：零地址或 EOA Executor、非 ActionTarget 回调、重复初始化、KV 长度不等、无效 Round、非 MemberNFT 控制者、未投票 Proposal、非法参与量、体验额度不足、非法候选或分割线、候选申请已失效、验证批次跳跃/重复、锁定后更换验证者、重复铸造，以及服务非法超额分配导致的下溢。
 
 ## 9. 验收场景
 
-至少覆盖：三类 Proposal 回调和原子回滚；ActionTarget 映射、查询和 forceExit；四槽位 ActionRound；LP 时间加权、治理票上限和部分撤回；链群激活、配置更新、成员/体验参与、17 组链群全局索引的全量/Count/AtIndex 一致性、跨社区和跨行动关系、逐层清理、最后一次正常退出和 forceExit 状态边界、候选申请版本切换、排名平票、前 `n + 1` 开放、快照批次连续性、NFT 转移续验、无候选/失联导致行动层激励为零；完整验证后的成员和链群激励；服务跨整个社区聚合、同币/父币服务、公共验证者比例、100% 二次分配和全精度舍入边界。
+至少覆盖：三类 Proposal 回调和原子回滚；ActionTarget 映射、查询和 forceExit；四槽位 ActionRound；LP 时间加权、治理票上限和部分撤回；链群激活、配置更新、成员/体验参与、17 组链群全局索引的全量/Count/AtIndex 一致性、跨社区和跨行动关系、逐层清理、最后一次正常退出和 forceExit 状态边界、候选申请版本切换、排名平票、前 `n + 1` 开放、逐笔交易形成 Round 历史、同轮多次变更、空轮继承、验证批次连续性、NFT 转移续验、无候选/失联导致行动层激励为零；完整验证后的成员和链群激励；服务跨整个社区聚合、同币/父币服务、公共验证者比例、100% 二次分配和全精度舍入边界。
