@@ -134,32 +134,15 @@ ActionTarget 的职责：
 - 维护通用参与登记（非业务状态）
 - 不承载业务阶段逻辑
 
-### 3.6 执行合约通用接口
+### 3.6 执行合约接口参考
 
-各 Executor 应提供以下通用接口，具体实现可参考旧代码库 `LOVE20TKM` 中的 Extension 接口：
+各 Executor 接口设计可参考旧代码库 `LOVE20TKM` 的实际接口：
 
-```solidity
-interface IActionExecutor {
-    // 阶段查询
-    function currentVoteRound() external view returns (uint256);
-    function currentJoinRound() external view returns (uint256);
-    function currentMintRound() external view returns (uint256);
-    
-    // 阶段资格
-    function canJoin(uint256 actionId, uint256 round) external view returns (bool);
-    function canMint(uint256 actionId, uint256 round) external view returns (bool);
-    
-    // Proposal 回调（仅 ActionTarget 可调用）
-    function onProposalCreated(address tokenAddress, uint256 proposalId, bytes32[] calldata keys, bytes[] calldata values) external;
-    function onProposalSubmitted(address tokenAddress, uint256 proposalId, uint256 submitterId, bytes32[] calldata keys, bytes[] calldata values) external;
-    function onProposalVoted(address tokenAddress, uint256 proposalId, uint256 voterId, uint256 votes, bytes32[] calldata keys, bytes[] calldata values) external;
-    
-    // 铸币入口（仅 ActionTarget 可调用）
-    function mint(address tokenAddress, uint256 proposalId, uint256 round) external;
-}
-```
+- **ActionTarget** 可参考 `IExtensionCenter`：参与登记（addAccount/removeAccount）、Proposal → Executor 映射、查询接口
+- **行动执行合约基础接口** 可参考 `IExtension`：配置参数（TOKEN_ADDRESS, actionId）、业务数据查询（joinedAmount）
+- **链群行动执行合约** 可参考 `IGroupAction`、`IGroupJoin`、`IGroupVerify`：链群配置、加入/退出操作、17组全局索引、验证逻辑、激励查询
 
-链群行动 Executor 额外提供 `currentVerifyRound()` 查询接口。
+各 Executor 必须提供 Proposal 回调接口（`onProposalCreated`、`onProposalSubmitted`、`onProposalVoted`）和铸币入口（由 ActionTarget 调用）。阶段资格控制在实际操作时通过校验和回滚完成，不需要单独的 `canJoin` 或 `canMint` 查询接口。
 
 ## 4. 共同参与模型
 
