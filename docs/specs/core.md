@@ -347,29 +347,29 @@ onProposalVoted(address tokenAddress, uint256 proposalId,
 
 ### 8.1 轮次激励池
 
-Vote 时间片结束后，任何地址可以调用 `prepareIncentives(tokenAddress, round)`。该调用同时准备治理池和 Proposal 池；它遍历 Vote 保存的当轮有票 Proposal，计算达门槛 Proposal 的票数总和，但不逐个预写 Proposal 金额，只写入一次 Round 级冻结状态。状态至少包括独立的 `prepared` 标志、治理激励池、Proposal 激励池、达到门槛的 Proposal 总票数、各池预留量/已铸造量/已销毁量，以及社区级跨轮次汇总的预留量/已铸造量/已销毁量。即使本轮两个池均为 `0`，`prepared` 也必须准确记录已准备，不能用非零金额代替准备状态。社区级汇总用于控制 `maxSupply`，各池账用于防止治理池和 Proposal 池重复消费同一额度。
+Vote 时间片结束后，任何地址可以调用 `prepareRewards(tokenAddress, round)`。该调用同时准备治理池和 Proposal 池；它遍历 Vote 保存的当轮有票 Proposal，计算达门槛 Proposal 的票数总和，但不逐个预写 Proposal 金额，只写入一次 Round 级冻结状态。状态至少包括独立的 `prepared` 标志、治理激励池、Proposal 激励池、达到门槛的 Proposal 总票数、各池预留量/已铸造量/已销毁量，以及社区级跨轮次汇总的预留量/已铸造量/已销毁量。即使本轮两个池均为 `0`，`prepared` 也必须准确记录已准备，不能用非零金额代替准备状态。社区级汇总用于控制 `maxSupply`，各池账用于防止治理池和 Proposal 池重复消费同一额度。
 
 设：
 
 ```text
-reservedAvailable = incentiveReserved - incentiveMinted - incentiveBurned
+reservedAvailable = rewardReserved - rewardMinted - rewardBurned
 available = maxSupply - totalSupply - reservedAvailable
-govPool = available × ROUND_INCENTIVE_GOV_RATIO / 1e18
-proposalPool = available × ROUND_INCENTIVE_PROPOSAL_RATIO / 1e18
+govPool = available × ROUND_REWARD_GOV_RATIO / 1e18
+proposalPool = available × ROUND_REWARD_PROPOSAL_RATIO / 1e18
 ```
 
-准备时一次性增加 `incentiveReserved` 并冻结本轮池子；两个比例均使用 `1e18` 精度且不超过 `1e18`，初始化必须保证二者之和不超过 `1e18`。重复准备不重算、不重复预留。尚未结束 Vote 时间片的 Round 不可准备。
+准备时一次性增加 `rewardReserved` 并冻结本轮池子；两个比例均使用 `1e18` 精度且不超过 `1e18`，初始化必须保证二者之和不超过 `1e18`。重复准备不重算、不重复预留。尚未结束 Vote 时间片的 Round 不可准备。
 
-`incentiveBurned` 表示本轮已取消、不会实际铸造的预留额度，不是先铸币再调用 ERC20 `burn`；它从 `reservedAvailable` 中移除后可进入后续 Round 的可用额度。已经铸给 Target/Executor 后再销毁的代币属于真实 ERC20 销毁，通过 `totalSupply` 减少反映，不重复计入 Mint 的 `incentiveBurned`。任何时刻必须满足 `incentiveReserved >= incentiveMinted + incentiveBurned`，同一份预留只能从未结算状态转为已铸造或已销毁一次。按成员或 Proposal 向下取整产生的最小单位余数不重新分配，继续保留为未结算预留。
+`rewardBurned` 表示本轮已取消、不会实际铸造的预留额度，不是先铸币再调用 ERC20 `burn`；它从 `reservedAvailable` 中移除后可进入后续 Round 的可用额度。已经铸给 Target/Executor 后再销毁的代币属于真实 ERC20 销毁，通过 `totalSupply` 减少反映，不重复计入 Mint 的 `rewardBurned`。任何时刻必须满足 `rewardReserved >= rewardMinted + rewardBurned`，同一份预留只能从未结算状态转为已铸造或已销毁一次。按成员或 Proposal 向下取整产生的最小单位余数不重新分配，继续保留为未结算预留。
 
 达到 Proposal 激励门槛的条件为：
 
 ```text
 proposalVotes > 0
-proposalVotes × 1e18 >= totalVotes × PROPOSAL_INCENTIVE_MIN_VOTE_RATIO
+proposalVotes × 1e18 >= totalVotes × PROPOSAL_REWARD_MIN_VOTE_RATIO
 ```
 
-`PROPOSAL_INCENTIVE_MIN_VOTE_RATIO` 使用 `1e18` 精度且必须大于 `0`、不超过 `1e18`。实现必须使用不会中间溢出的等价比较。准备时冻结所有合格 Proposal 的总票数作为分母；未达门槛的 Proposal 不参与 Proposal 池分配。准备扫描的最大集合受正数 `SUBMIT_MIN_RATIO` 限制，部署参数和 gas 基线必须保证该上限可在一笔交易中完成。
+`PROPOSAL_REWARD_MIN_VOTE_RATIO` 使用 `1e18` 精度且必须大于 `0`、不超过 `1e18`。实现必须使用不会中间溢出的等价比较。准备时冻结所有合格 Proposal 的总票数作为分母；未达门槛的 Proposal 不参与 Proposal 池分配。准备扫描的最大集合受正数 `SUBMIT_MIN_RATIO` 限制，部署参数和 gas 基线必须保证该上限可在一笔交易中完成。
 
 如果本 Round 没有任何治理投票，治理池和 Proposal 池均为 `0`，本轮不产生激励。若有投票但没有合格 Proposal，则 `eligibleProposalVotes = 0`，本轮没有 Proposal 可以铸造，Proposal 池直接记为 `0`，不预留、不延后结算，也不转给其他 Round 或 Proposal。
 
@@ -383,27 +383,27 @@ proposalVotes × 1e18 >= totalVotes × PROPOSAL_INCENTIVE_MIN_VOTE_RATIO
 4. 协议把实际数量铸给 Target，并返回数量，调用者不能指定成员或金额；
 5. 使用独立的 `proposalSettled` 状态标记本 Proposal 已结算，实际数量即使因整数舍入为 `0` 也不能再次结算；重复调用回滚。
 
-行动类 Proposal 由关联 Executor 调用 `ActionTarget`，再由 `ActionTarget` 以自身身份调用 `mintProposalIncentive`；ActionTarget 在同一交易中把全部实际数量转给 Executor。
+行动类 Proposal 由关联 Executor 调用 `ActionTarget`，再由 `ActionTarget` 以自身身份调用 `mintProposalReward`；ActionTarget 在同一交易中把全部实际数量转给 Executor。
 
 ### 8.3 治理激励
 
-治理激励按 `tokenAddress + round + memberId` 隔离，返回 `(verifyIncentive, boostIncentive, overflowIncentive)`。治理池固定分为两个各占 50% 的部分：
+治理激励按 `tokenAddress + round + memberId` 隔离，返回 `(verifyReward, boostReward, overflowReward)`。治理池固定分为两个各占 50% 的部分：
 
 - **投票激励部分**（`GOV_VERIFY_SHARE = 0.5e18`，对应旧版"验证激励"）：按成员实际投票行为分配
 - **加速激励部分**（`GOV_BOOST_SHARE = 0.5e18`）：按加速质押份额占总加速质押的比例分配
 
 总治理票为 `0` 时三项均为 `0`：
 
-- `verifyIncentive = govPool × GOV_VERIFY_SHARE / 1e18 × memberVotes / totalVotes`；
+- `verifyReward = govPool × GOV_VERIFY_SHARE / 1e18 × memberVotes / totalVotes`；
 - `theoreticalBoost = govPool × GOV_BOOST_SHARE / 1e18 × memberBoost / totalBoost`；
-- `boostIncentive = min(theoreticalBoost, verifyIncentive × 2)`；
-- `overflowIncentive = theoreticalBoost - boostIncentive`，溢出部分计入 `incentiveBurned`，取消对应预留而不铸币。
+- `boostReward = min(theoreticalBoost, verifyReward × 2)`；
+- `overflowReward = theoreticalBoost - boostReward`，溢出部分计入 `rewardBurned`，取消对应预留而不铸币。
 
-`memberBoost` 和 `totalBoost` 使用投票时已记录的加速质押快照。若 `totalBoost == 0`，本轮整个加速池由轮次级 `boostBurned` 状态一次性计入 `incentiveBurned`，所有成员的 `theoreticalBoost`、`boostIncentive` 和 `overflowIncentive` 均为 `0`；该取消预留不能由每个成员重复执行。50%/50% 划分和 2 倍上限是固定协议常量，不是部署参数。当前 MemberNFT 持有人可以铸造该成员尚未铸造的治理激励；独立的 `govSettled` 状态必须在本轮结算时设置，不以实际铸造量是否大于 `0` 判断。治理激励只能成功结算一次，溢出只能成功销毁一次，从而修复零铸造量或仅销毁时可重复处理的旧问题。
+`memberBoost` 和 `totalBoost` 使用投票时已记录的加速质押快照。若 `totalBoost == 0`，本轮整个加速池由轮次级 `boostBurned` 状态一次性计入 `rewardBurned`，所有成员的 `theoreticalBoost`、`boostReward` 和 `overflowReward` 均为 `0`；该取消预留不能由每个成员重复执行。50%/50% 划分和 2 倍上限是固定协议常量，不是部署参数。当前 MemberNFT 持有人可以铸造该成员尚未铸造的治理激励；独立的 `govSettled` 状态必须在本轮结算时设置，不以实际铸造量是否大于 `0` 判断。治理激励只能成功结算一次，溢出只能成功销毁一次，从而修复零铸造量或仅销毁时可重复处理的旧问题。
 
 治理激励同时提供单轮和批量多轮铸造。批量入口接收同一 `tokenAddress + memberId` 的非空 `rounds[]`，按输入顺序逐轮执行与单轮入口相同的准备状态、归属、重复铸造和供应上限校验，并返回与 `rounds` 等长的三类激励结果数组；任一 Round 失败则整笔交易回滚。每个 Round 独立更新铸造/销毁状态和发射额度，批量调用不能合并账目或绕过单轮只能成功一次的限制，重复 Round 会在第二次处理时按重复铸造回滚。
 
-接口形式为 `mintGovIncentive(tokenAddress, memberId, round)` 和 `mintGovIncentives(tokenAddress, memberId, rounds[])`；两者都要求调用者是该 `memberId` 当前的 MemberNFT 持有人，不能传入钱包地址作为激励主体。批量接口返回按输入 Round 对齐的 `(verifyIncentive[], boostIncentive[], overflowIncentive[])`。
+接口形式为 `mintGovReward(tokenAddress, memberId, round)` 和 `mintGovRewards(tokenAddress, memberId, rounds[])`；两者都要求调用者是该 `memberId` 当前的 MemberNFT 持有人，不能传入钱包地址作为激励主体。批量接口返回按输入 Round 对齐的 `(verifyReward[], boostReward[], overflowReward[])`。
 
 治理和 Proposal 激励按社区、Round 和主体完全隔离。不同 Round 可以同时准备并按任意顺序铸造；已准备 Round 的冻结状态不受之后质押、退出或融合影响。
 

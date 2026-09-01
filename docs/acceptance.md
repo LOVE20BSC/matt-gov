@@ -210,17 +210,18 @@
 - Phase 历史不可回写
 
 ### ActionRound 统一性
-**覆盖要求**：覆盖 `Phase 1..3` 对 LP 行动和 `Phase 1..4` 对链群行动的冷启动期，各 Executor 查询尚未开始阶段时回滚 `RoundNotStarted` 且不返回 `0`。覆盖 LP 行动使用 3 阶段模型（投票-加入-铸币），链群行动使用 4 阶段模型（投票-加入-验证-铸币）。覆盖各 Executor 从 `Phase.currentPhase()` 正确计算自己的业务 Round，投票和加入的 Phase 映射在所有行动类型中一致（投票发生在 Phase p，同轮次加入发生在 Phase p+1）。各 Executor 提供标准查询接口，实现可参考旧代码库 `LOVE20TKM` 中的 Extension 接口。
+**覆盖要求**：覆盖 `Phase 1..3` 对 LP 行动和 `Phase 1..4` 对链群行动、链群服务行动的冷启动期，各 Executor 查询尚未开始阶段时回滚 `RoundNotStarted` 且不返回 `0`。覆盖 LP 行动使用 3 阶段模型（投票-加入-铸币），链群行动使用 4 阶段模型（投票-加入-验证-铸币），链群服务行动保留 4 阶段并复用被服务链群行动同轮次的验证结果，不在服务 Executor 内执行验证。覆盖各 Executor 从 `Phase.currentPhase()` 正确计算自己的业务 Round，投票和加入的 Phase 映射在所有行动类型中一致（投票发生在 Phase p，同轮次加入发生在 Phase p+1）。各 Executor 提供标准查询接口，实现可参考旧代码库 `LOVE20TKM` 中的 Extension 接口。
 
 **测试方式**：
-- 单元测试：`action/test/LPExecutor.t.sol` 和 `action/test/ChainGroupExecutor.t.sol` 的 Phase 1-3/4 查询场景
-- 集成测试：两类行动在同一 Phase 的投票和加入 Round 一致性
+- 单元测试：`action/test/LPExecutor.t.sol`、`action/test/ChainGroupExecutor.t.sol` 和 `action/test/ChainGroupServiceExecutor.t.sol` 的 Phase 1-3/4 查询场景
+- 集成测试：三类行动在同一 Phase 的投票和加入 Round 一致性，以及服务行动读取被服务链群行动同轮验证结果的结算场景
 - 验收证据：Round 计算日志
 
 **判定标准**：
 - Phase 1-2 查询 LP 铸币 Round 回滚 RoundNotStarted
 - Phase 1-3 查询链群铸币 Round 回滚 RoundNotStarted
-- 相同 Phase 下，两类行动的投票和加入 Round 相同
+- 相同 Phase 下，三类行动的投票和加入 Round 相同；链群行动和链群服务行动的验证、铸币 Round 对齐
+- 链群服务行动不执行独立验证，且只计入被服务链群行动同轮已完成全部验证的行动激励
 - 各 Executor 提供 `currentVoteRound()`、`currentJoinRound()`、`currentMintRound()` 等标准接口
 
 ### LP 兼容性
