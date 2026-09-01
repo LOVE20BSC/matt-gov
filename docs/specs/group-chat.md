@@ -319,26 +319,13 @@ supportWeight × 1e18 >= totalVoteWeight × 3e15
 - 不创建独立 Chat 合约，不复制 MemberNFT、不创建治理状态、不改变行动状态
 
 **Chat 类型区分机制**：
-Manager 通过注入不同的 `scopeSource` 和 `banSource` 实现类型区分：
+Manager 通过注入不同的 `scopeSource` 和 `banSource` 实现类型区分。
 
-| Chat 类型 | scopeSource | banSource |
-|-----------|-------------|-----------|
-| 代币社区 Chat | TokenHolderScope | TokenHolderScope |
-| 代币行动 Chat | LinkGroupExecutor | LinkGroupExecutor |
-| 代币治理 Chat | GovernorScope（假设） | GovernorScope |
+**参考旧代码命名**：`LOVE20TKM/group-chat/src/sources/`
+- Scope 实现：`GroupMemberScope`、`GroupJoinScopeSource`
+- Ban 实现：`AdminBanSource`、`GovVotedBanSource`
 
-**前端判断**：
-```solidity
-(address scopeSource, , , ) = GroupChat.chatInfo(groupId);
-if (scopeSource == linkGroupExecutor) {
-    // 这是代币行动 Chat
-} else if (scopeSource == tokenHolderScope) {
-    // 这是代币社区 Chat
-}
-```
-
-**事件建议**：
-Manager 在创建 Chat 时应发出事件，标注 Chat 类型，便于前端索引。
+Manager 在创建 Chat 时应发出事件，标注 Chat 类型。
 
 ### 7.5 链群 Chat
 

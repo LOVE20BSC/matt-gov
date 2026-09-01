@@ -397,7 +397,7 @@ mintGovRewards(tokenAddress, memberId, rounds[])
 
 任何当前持有目标 MemberNFT 的钱包或合约都可以触发该社区子币发射，但必须消耗该成员的一次 `launchCount`。
 
-分发合约由发射调用者决定，不同分发合约可实现各自的领取逻辑。建议分发合约至少提供 `claim(tokenAddress)` 接口和领取状态查询接口。
+分发合约由发射调用者决定，不同分发合约可实现各自的领取逻辑。分发合约接口没有通用定义，各自按需实现；建议至少提供 `claim(tokenAddress)` 接口和领取状态查询接口。
 
 ### 8.3 发射次数融合（新增）
 
@@ -423,11 +423,12 @@ mintGovRewards(tokenAddress, memberId, rounds[])
 首个代币在部署 Core 合约时内部原子完成创建，不需要部署后再调用。`Launch` 仍是 `TokenFactory` 的唯一调用者。
 
 **启动交易必须原子完成**：
-1. 首个代币部署
-2. 协议代币登记
-3. 核心 `minter` 设置
-4. 首批代币铸造并发送到非零 `distributor`
-5. 首个代币/WBNB Pair 的创建或确认
+1. Core 合约部署
+2. 内部创建首个代币
+3. 协议代币登记
+4. 核心 `minter` 设置
+5. 首批代币铸造并发送到 Airdrop 合约
+6. 首个代币/WBNB Pair 的创建或确认
 
 任一步失败则整个启动回滚。启动成功后该路径永久关闭，不能创建第二个首个代币或改写其父币和分发结果。
 
@@ -437,7 +438,8 @@ BSC 首个代币的初始分发来源：
 
 1. 在 BSC 上部署 `LOVE20TKM/burn` 仓库的 `Airdrop.sol` 合约
 2. Airdrop 合约记录旧协议（Thinkium）参与者通过销毁活动获得的份额
-3. 首个代币铸造后，按这些份额分发给对应地址
+3. Core 合约部署时，首个代币铸造后直接发送到 Airdrop 合约
+4. 参与者按份额从 Airdrop 合约领取
 
 **Airdrop 合约特性**：
 - 支持任意 ERC20 代币的分发，不绑定特定代币
@@ -494,7 +496,7 @@ BSC 首个代币的初始分发来源：
 
 **Mint**：
 - Round 级准备与 Proposal 单项铸造
-- 治理激励三段结果（verifyReward, boostReward, overflowReward）
+- 治理激励三段结果（voteReward, boostReward, overflowReward）
 - 投票增量补差
 - 批量多轮铸造原子性
 
