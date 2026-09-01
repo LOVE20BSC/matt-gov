@@ -176,7 +176,7 @@ interface IAfterPostPlugin {
 
 ## 6. 群聊 Round 和查询
 
-群聊 Round 是消息索引使用的本地时间编号，不等同治理 Round 或 ActionRound。它由部署时的 `originBlock` 和 `phaseBlocks > 0` 计算，编号从 `1` 开始；`block.number < originBlock` 时查询当前 Round 回滚。
+群聊 Round 是消息索引使用的本地时间编号，不等同治理 Round。它由部署时的 `originBlock` 和 `phaseBlocks > 0` 计算，编号从 `1` 开始；`block.number < originBlock` 时查询当前 Round 回滚。
 
 当前 Round 计算为 `1 + (block.number - originBlock) / phaseBlocks`。消息记录创建时的 Round 永久固定，即使后续调整 Chat 配置也不回写历史消息。
 

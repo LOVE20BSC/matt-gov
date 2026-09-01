@@ -27,7 +27,7 @@ LOVE20 是社群铸币协议。每个 LOVE20 代币都有一个 `parentTokenAddr
 - `author`、`submitterId`、`voterId` 以及需要主体身份的其他参数均为 `memberId`。
 - 减少或处分某个 MemberNFT 的资产、权益或业务状态时，必须验证 `MemberNFT.ownerOf(memberId) == msg.sender`；明确为单向融合目标的 MemberNFT 只增加状态，不要求由调用者持有。
 - MemberNFT 转移只改变当前控制者，不改变身份、历史投票、快照、已结算激励或历史事件；当前未铸造权益由新控制者继续操作。
-- Phase、治理 Round、ActionRound 和 MemberNFT 的有效编号从 `1` 开始；Proposal ID 由 `Submit` 单调分配并保持稳定，不把某个具体起始值当作通用哨兵。
+- Phase、治理 Round 和 MemberNFT 的有效编号从 `1` 开始；Proposal ID 由 `Submit` 单调分配并保持稳定，不把某个具体起始值当作通用哨兵。
 - 比例采用 `1e18` 精度；按比例分配的整数金额默认向下取整，发射阈值明确使用向上取整。
 - 每个核心合约完成一次初始化后，依赖地址和初始化参数不可替换；不存在升级管理员或协议级后门。
 - 外部调用使用重入保护和检查-更新-交互顺序，任何失败都不得留下半完成状态。
