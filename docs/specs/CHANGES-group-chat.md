@@ -167,7 +167,7 @@ currentRound = 1 + (block.number - originBlock) / phaseBlocks
 
 #### 持币资格判断
 - **旧**：可能直接判断调用者地址余额
-- **新**：严格按 `token.balanceOf(MemberNFT.ownerOf(senderId)) > 1` 判断
+- **新**：严格按 `token.balanceOf(MemberNFT.ownerOf(senderId)) > 0` 判断
 
 #### 治理票查询
 - **旧**：可能支持地址查询
@@ -279,7 +279,7 @@ currentRound = 1 + (block.number - originBlock) / phaseBlocks
 - [ ] 不存在地址黑名单
 - [ ] 不存在地址黑名单投票
 - [ ] Group Chat Delegate 只能管理群聊配置，不能获得群外权限
-- [ ] 持币资格严格按 `token.balanceOf(MemberNFT.ownerOf(senderId)) > 1` 判断
+- [ ] 持币资格严格按 `token.balanceOf(MemberNFT.ownerOf(senderId)) > 0` 判断
 - [ ] 治理票和行动投票只按 `memberId` 查询
 - [ ] ActionTarget 参与登记影响代币社区/行动 Chat 资格
 - [ ] 链群归属使用链群 Executor 的 17 组索引查询
@@ -294,7 +294,7 @@ currentRound = 1 + (block.number - originBlock) / phaseBlocks
 1. **1 个 MemberNFT = 1 个 Chat**：`groupId` 就是 `memberId`，群 NFT 转移后 owner 连续性
 2. **不存在默认 NFT 映射**：无地址主体发言入口、无地址黑名单、无地址黑名单投票
 3. **Group Chat Delegate 限定范围**：只能管理群聊配置，不能冒充 sender，不能获得群外权限
-4. **持币资格判断**：`token.balanceOf(MemberNFT.ownerOf(senderId)) > 1`
+4. **持币资格判断**：`token.balanceOf(MemberNFT.ownerOf(senderId)) > 0`
 5. **ActionTarget 参与登记影响资格**：forceExit 或正常退出清除登记后，代币社区/行动 Chat 资格立即失效
 6. **链群归属跨社区和跨行动查询**：使用链群 Executor 的 `gTokenAddressesByGroupIdByMemberIdCount`
 7. **治理投票黑名单**：投票者、目标都是 `memberId`，权重按 memberId 查询

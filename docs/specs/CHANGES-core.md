@@ -166,17 +166,17 @@
 - **旧**：验证激励（一个池）
 - **新**：投票激励（50%）+ 加速激励（50%）
 
-**投票激励**（对应旧版"验证激励"）：
+**投票激励**：
 ```solidity
-// 常量：GOV_VERIFY_SHARE = 0.5e18
-verifyReward = govPool * GOV_VERIFY_SHARE / 1e18 * memberVotes / totalVotes
+// 常量：GOV_VOTE_SHARE = 0.5e18
+voteReward = govPool * GOV_VOTE_SHARE / 1e18 * memberVotes / totalVotes
 ```
 
 **加速激励**（新增）：
 ```solidity
 // 常量：GOV_BOOST_SHARE = 0.5e18
 theoreticalBoost = govPool * GOV_BOOST_SHARE / 1e18 * memberBoost / totalBoost
-boostReward = min(theoreticalBoost, verifyReward * 2)
+boostReward = min(theoreticalBoost, voteReward * 2)  // 基于投票激励的2倍上限
 overflowReward = theoreticalBoost - boostReward  // 销毁
 ```
 
@@ -274,11 +274,16 @@ overflowReward = theoreticalBoost - boostReward  // 销毁
 ## 10. 首个代币部署（新增依赖）
 
 ### 新增流程
-BSC 首个代币的初始分发来源：
+BSC 首个代币在部署 Core 合约时内部原子完成创建：
 
 1. 在 BSC 上部署 `LOVE20TKM/burn` 仓库的 `Airdrop.sol` 合约
 2. Airdrop 合约记录旧协议（Thinkium）参与者通过销毁活动获得的份额
-3. 首个代币铸造后，按这些份额分发给对应地址
+3. 部署 Core 合约时，内部创建首个代币并将首批代币发送到 Airdrop 合约
+
+**Airdrop 合约特性**：
+- 支持任意 ERC20 代币的分发，不绑定特定代币
+- 份额按代币独立记录：某代币领取后该份额即消耗，即使该代币后续余额增加也不能重复领取
+- 未领取份额对应的代币余额归属于剩余未领取者
 
 ### 可追溯性
 正式部署必须在文档中公开指向：

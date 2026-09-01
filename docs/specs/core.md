@@ -134,7 +134,7 @@ MemberNFT 的转移不复制、不拆分、不重置任何历史。依赖身份�
 - ✅ 外部调用：任何地址可主动调用 `Phase.sync()`
 
 **设计理由**：
-- 推举时同步保证本轮开始时的 Phase 准确
+- 推举时同步让下一轮的 Phase 参数更准确
 - 避免每次投票都同步，节省 gas
 
 ### 4.4 动态校准
@@ -241,11 +241,6 @@ govVotes = lpShares × promisedWaitingPhases
 **用户影响**：
 - 用户在本轮投票前可自由融合
 - 投票后需等到下一轮才能融合
-- 这一约束在投票结束后立即解除（Phase 切换时）
-
-**前端建议**：
-- 在投票界面提示"投票后本轮无法融合"
-- 提供"融合资格检查"接口
 
 源的 LP Shares 和加速质押单向并入目标，不能修改或取走目标原有资产。
 
@@ -338,20 +333,20 @@ proposalVotes × 1e18 >= totalVotes × PROPOSAL_REWARD_MIN_VOTE_RATIO
 ### 7.3 治理激励（重要修改）
 
 **治理池拆分**（新设计）：
-- **投票激励部分**（50%，`GOV_VERIFY_SHARE = 0.5e18`）：按成员实际投票行为分配
+- **投票激励部分**（50%，`GOV_VOTE_SHARE = 0.5e18`）：按成员实际投票行为分配（对应旧版"验证激励"）
 - **加速激励部分**（50%，`GOV_BOOST_SHARE = 0.5e18`）：按加速质押份额占总加速质押的比例分配
 
 **计算公式**：
 ```solidity
 // 常量定义
-uint256 constant GOV_VERIFY_SHARE = 0.5e18;  // 50%
+uint256 constant GOV_VOTE_SHARE = 0.5e18;    // 50%
 uint256 constant GOV_BOOST_SHARE = 0.5e18;   // 50%
 
 // 激励计算
-verifyReward = govPool * GOV_VERIFY_SHARE / 1e18 * memberVotes / totalVotes
+voteReward = govPool * GOV_VOTE_SHARE / 1e18 * memberVotes / totalVotes
 
 theoreticalBoost = govPool * GOV_BOOST_SHARE / 1e18 * memberBoost / totalBoost
-boostReward = min(theoreticalBoost, verifyReward * 2)  // 2倍上限
+boostReward = min(theoreticalBoost, voteReward * 2)  // 基于投票激励的2倍上限
 overflowReward = theoreticalBoost - boostReward  // 溢出部分销毁
 ```
 
@@ -370,19 +365,13 @@ overflowReward = theoreticalBoost - boostReward  // 溢出部分销毁
 - 按输入顺序逐轮执行，返回与 `rounds` 等长的三类激励结果数组
 - 任一 Round 失败则整笔交易回滚
 
-**批量铸造最佳实践**：
-- `mintGovRewards` 采用原子性设计：任一 Round 失败则整笔回滚
-- 前端应先查询每个 Round 的铸造状态，过滤已铸造的 Round
-- 示例查询：`isMinted = Mint.govRewards(tokenAddress, memberId, round) != (0,0,0)`
-- 只将未铸造的 Round 传入批量接口
-
 **接口**：
 ```solidity
 mintGovReward(tokenAddress, memberId, round) 
-    returns (verifyReward, boostReward, overflowReward)
+    returns (voteReward, boostReward, overflowReward)
 
 mintGovRewards(tokenAddress, memberId, rounds[]) 
-    returns (verifyReward[], boostReward[], overflowReward[])
+    returns (voteReward[], boostReward[], overflowReward[])
 ```
 
 ---
@@ -408,9 +397,7 @@ mintGovRewards(tokenAddress, memberId, rounds[])
 
 任何当前持有目标 MemberNFT 的钱包或合约都可以触发该社区子币发射，但必须消耗该成员的一次 `launchCount`。
 
-**分发模式**：
-- `NoCallback`：创建子币，把首批代币发送给 `distributor`，不回调
-- `Callback`：`distributor` 必须是合约，调用 `onTokenDistributed(...)`
+分发合约由发射调用者决定，不同分发合约可实现各自的领取逻辑。建议分发合约至少提供 `claim(tokenAddress)` 接口和领取状态查询接口。
 
 ### 8.3 发射次数融合（新增）
 
@@ -433,7 +420,7 @@ mintGovRewards(tokenAddress, memberId, rounds[])
 
 ### 9.1 启动路径
 
-首个代币使用 `Launch` 的一次性协议启动路径创建，不消耗发射次数，也不使用普通子币发射入口。`Launch` 仍是 `TokenFactory` 的唯一调用者。
+首个代币在部署 Core 合约时内部原子完成创建，不需要部署后再调用。`Launch` 仍是 `TokenFactory` 的唯一调用者。
 
 **启动交易必须原子完成**：
 1. 首个代币部署
@@ -452,32 +439,10 @@ BSC 首个代币的初始分发来源：
 2. Airdrop 合约记录旧协议（Thinkium）参与者通过销毁活动获得的份额
 3. 首个代币铸造后，按这些份额分发给对应地址
 
-**部署顺序**：
-
-1. **部署 Airdrop 合约**：
-   ```solidity
-   Airdrop airdrop = new Airdrop();
-   ```
-
-2. **部署 Core 合约**：
-   ```solidity
-   Launch launch = new Launch(..., address(airdrop));
-   ```
-
-3. **创建首个代币**：
-   ```solidity
-   launch.createFirstToken(..., distributor=address(airdrop));
-   ```
-
-4. **配置 Airdrop**：
-   ```solidity
-   airdrop.setToken(firstTokenAddress);
-   airdrop.setMerkleRoot(root);
-   ```
-
-**接口约定**：
-- Launch 通过 `ILOVE20Distributor(distributor).distribute(token, amount)` 调用 Airdrop
-- Airdrop 实现该接口，将代币分发给 Merkle 树中的地址
+**Airdrop 合约特性**：
+- 支持任意 ERC20 代币的分发，不绑定特定代币
+- 份额按代币独立记录：某代币领取后该份额即消耗，即使该代币后续余额增加也不能重复领取
+- 未领取份额对应的代币余额归属于剩余未领取者
 
 **来源可追溯性**：正式部署必须在文档中公开指向：
 - `LOVE20TKM/burn` 仓库的 `Airdrop.sol`
