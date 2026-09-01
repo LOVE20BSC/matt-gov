@@ -59,30 +59,107 @@ ActionTarget 提供两类按治理 Round 的只读查询：
 
 两类查询先从 `Vote` 读取本轮有投票的 Proposal，再按 Proposal ID 读取 ActionTarget 映射并筛选，不维护独立反向索引。第一类返回值不重复返回 Executor；第二类用于前端行动列表。首版单轮一次性返回完整只读结果，写入操作必须使用有界批次。
 
-## 3. ActionRound
+## 3. 行动阶段模型
 
-行动层把 `Phase` 的无业务语义时间片映射为从 `1` 开始的四个业务阶段及其 ActionRound：投票阶段、加入阶段、验证阶段、铸币阶段。设当前 `Phase` 编号为 `p`，四个无参数查询固定返回：`currentRoundMint() = p - 3`、`currentRoundVerify() = p - 2`、`currentRoundJoin() = p - 1`、`currentRoundVote() = p`。这四个值是同一时间点上四个阶段当前对应的轮次标签，不表示交易执行顺序；各阶段使用的区块边界仍由 `Phase` 的历史记录决定。
+### 3.1 框架层通用阶段
 
-当某个计算结果小于 `1` 时，该阶段对应的轮次尚未开始，查询回滚 `RoundNotStarted`，不返回 `0`。因此 `Phase 1` 至 `Phase 3` 是行动轮次的启动窗口，`Phase 4` 才是四个阶段都具有有效轮次的首个时间点。
+ActionTarget 作为社区行动框架，定义了所有行动类型的必经流程：
 
-### 3.1 冷启动期行为
+1. **投票阶段**：社区对行动 Proposal 投票（治理层 Phase p）
+2. **加入阶段**：获得票的行动开放加入（Phase p+1）
+3. **铸币阶段**：行动完成后铸造激励（Phase p+x，x 由 Executor 决定）
 
-协议启动后的前 3 个 Phase 为冷启动期：
+投票和加入的 Phase 映射是固定的；铸币时机由各 Executor 根据业务需求自行决定。
 
-- **Phase 1**：只有投票阶段(Round 1)可用；铸币/验证/加入对应 Round < 1，查询回滚
-- **Phase 2**：投票(Round 2) + 加入(Round 1)；**用户在 Phase 2 可以开始加入第一轮行动**
-- **Phase 3**：投票(Round 3) + 加入(Round 2) + 验证(Round 1)
-- **Phase 4**：四个阶段全部就位，进入稳态运行
+### 3.2 加入资格
 
-第一批用户在 Phase 2 的加入阶段即可参与第一轮行动。
+只有在投票 Round p（Phase p）获得治理投票的 Proposal，其关联的 Executor 才能在 Phase p+1 接受用户加入。
 
-### 3.2 阶段统一与执行差异
+各 Executor 从 `core.Phase.currentPhase()` 读取当前 Phase，并根据自己的阶段模型计算当前投票 Round、加入 Round 和铸币 Round。
 
-同一时刻，四个阶段分别处理不同的滚动 Round，不表示串行交易顺序。加入阶段包括加入、追加、退出和其他行动参与状态变化。
+### 3.3 执行合约阶段模型
 
-LP、链群行动和链群服务行动共用四个阶段和同一铸币时间窗口：LP 和链群服务的验证阶段为空操作，链群行动在验证阶段执行公共验证。每个 Executor 自己实现 `canMint(actionId, round)`；统一阶段不等于统一铸币资格。
+各 Executor 自行定义从 Phase 到业务阶段的映射：
 
-ActionTarget 提供无参数只读接口 `currentRoundVote()`、`currentRoundJoin()`、`currentRoundVerify()` 和 `currentRoundMint()`，按上述公式直接从 `Phase` 推导，不保存 ActionRound 历史，也不提供带通用阶段参数的 `currentRound`、`ActionRoundInfo` 或 `ActionRoundOf`。
+**LP 行动执行合约**（3 阶段）：
+- 投票 Round = currentPhase()
+- 加入 Round = currentPhase() - 1
+- 铸币 Round = currentPhase() - 2
+
+Phase 1、2 期间部分阶段尚未就绪，查询对应 Round 时回滚 `RoundNotStarted`。Phase 3 起，LP 行动进入稳态运行。
+
+**链群行动执行合约**（4 阶段）：
+- 投票 Round = currentPhase()
+- 加入 Round = currentPhase() - 1
+- 验证 Round = currentPhase() - 2
+- 铸币 Round = currentPhase() - 3
+
+Phase 1、2、3 期间部分阶段尚未就绪，查询对应 Round 时回滚 `RoundNotStarted`。Phase 4 起，链群行动进入稳态运行。
+
+验证阶段是链群行动的特有阶段，在加入和铸币之间插入；LP 行动不需要验证，因此加入后下一个 Phase 即可铸币。
+
+**链群服务行动执行合约**（4 阶段）：
+- 投票 Round = currentPhase()
+- 加入 Round = currentPhase() - 1
+- 验证 Round = currentPhase() - 2（不使用，保持与链群行动对齐）
+- 铸币 Round = currentPhase() - 3
+
+链群服务的验证阶段为空操作，但保持 4 阶段模型与链群行动对齐，简化前端处理。
+
+### 3.4 冷启动期
+
+协议启动后的前几个 Phase 为冷启动期，不同 Executor 就绪时间不同：
+
+**LP 行动**：
+- Phase 1：只有投票(Round 1)
+- Phase 2：投票(Round 2) + 加入(Round 1)
+- Phase 3：投票(Round 3) + 加入(Round 2) + 铸币(Round 1) ← 第一批铸币
+
+**链群行动和链群服务行动**：
+- Phase 1：只有投票(Round 1)
+- Phase 2：投票(Round 2) + 加入(Round 1)
+- Phase 3：投票(Round 3) + 加入(Round 2) + 验证(Round 1)
+- Phase 4：投票(Round 4) + 加入(Round 3) + 验证(Round 2) + 铸币(Round 1) ← 第一批铸币
+
+第一批用户在 Phase 2 即可加入 LP 或链群行动。
+
+### 3.5 ActionTarget 职责边界
+
+ActionTarget 不提供 Round 查询接口，不定义铸币时机。各 Executor 直接从 `core.Phase` 读取当前 Phase 并计算自己的业务轮次。
+
+ActionTarget 的职责：
+- 接收 Proposal 创建、推举、投票回调
+- 转发铸币请求给对应 Executor
+- 维护 Proposal → Executor 映射
+- 维护通用参与登记（非业务状态）
+- 不承载业务阶段逻辑
+
+### 3.6 执行合约通用接口
+
+各 Executor 应提供以下通用接口，具体实现可参考旧代码库 `LOVE20TKM` 中的 Extension 接口：
+
+```solidity
+interface IActionExecutor {
+    // 阶段查询
+    function currentVoteRound() external view returns (uint256);
+    function currentJoinRound() external view returns (uint256);
+    function currentMintRound() external view returns (uint256);
+    
+    // 阶段资格
+    function canJoin(uint256 actionId, uint256 round) external view returns (bool);
+    function canMint(uint256 actionId, uint256 round) external view returns (bool);
+    
+    // Proposal 回调（仅 ActionTarget 可调用）
+    function onProposalCreated(address tokenAddress, uint256 proposalId, bytes32[] calldata keys, bytes[] calldata values) external;
+    function onProposalSubmitted(address tokenAddress, uint256 proposalId, uint256 submitterId, bytes32[] calldata keys, bytes[] calldata values) external;
+    function onProposalVoted(address tokenAddress, uint256 proposalId, uint256 voterId, uint256 votes, bytes32[] calldata keys, bytes[] calldata values) external;
+    
+    // 铸币入口（仅 ActionTarget 可调用）
+    function mint(address tokenAddress, uint256 proposalId, uint256 round) external;
+}
+```
+
+链群行动 Executor 额外提供 `currentVerifyRound()` 查询接口。
 
 ## 4. 共同参与模型
 
@@ -101,7 +178,7 @@ LP Executor 至少配置参与 LP Token 地址、`govRatioMultiplier`、`minGovR
 
 ### 5.2 加入和时间权重
 
-只有对应 ActionRound 在同编号投票阶段已获得治理投票的 Proposal 才能在其加入阶段加入。首次加入的 MemberNFT 必须满足当前有效治理票占社区总治理票的 `minGovRatio`；后续加入按行动规则允许追加。每次加入记录该笔的 `joinBlock_i` 和 `amount_i`，并在加入时使用该 Round 的加入阶段起始区块与阶段区块数冻结时间扣减；后续结算不使用结算区块重新计算。
+只有对应投票 Round（Phase p）已获得治理投票的 Proposal 才能在其加入阶段（Phase p+1）加入。首次加入的 MemberNFT 必须满足当前有效治理票占社区总治理票的 `minGovRatio`；后续加入按行动规则允许追加。每次加入记录该笔的 `joinBlock_i` 和 `amount_i`，并在加入时使用该 Round 的加入阶段起始区块与阶段区块数冻结时间扣减；后续结算不使用结算区块重新计算。
 
 行动 Round 的总有效数量为所有参与者 `effectiveAmount` 之和。加入、追加、验证信息更新和部分撤回由 LP Executor 自己执行；退出返还该 Executor 记录的资产。时间扣减采用以下线性规则，并显式封顶避免阶段结束后的整数下溢：
 
@@ -161,7 +238,7 @@ Executor 从已取得的 Proposal 激励余额向成员转账 `mintIncentive` �
 
 ### 6.2 加入、退出和体验模式
 
-仅当 Proposal 在对应 ActionRound 的同编号投票阶段获得投票时，才可在该 Round 的加入阶段加入。MemberNFT 首次加入必须达到链群设置的最小参与量，并同时满足成员上限、链群容量、成员数量和行动最大参与量；可以在加入阶段追加并更新验证信息。正常退出、部分撤回、全部资产返还和行动结束清理由链群 Executor 完成。
+仅当 Proposal 在对应投票 Round（Phase p）获得投票时，才可在该 Round 的加入阶段（Phase p+1）加入。MemberNFT 首次加入必须达到链群设置的最小参与量，并同时满足成员上限、链群容量、成员数量和行动最大参与量；可以在加入阶段追加并更新验证信息。正常退出、部分撤回、全部资产返还和行动结束清理由链群 Executor 完成。
 
 体验模式下，Provider MemberNFT 先把指定额度托管给链群 Executor，体验成员选择 Provider 使用该额度加入；体验成员不能追加体验额度。体验成员退出或 Provider 代为退出时，额度返还 Provider，体验成员获得的行动激励仍归体验成员。自有资产和体验资产互不影响。
 
@@ -241,9 +318,9 @@ Executor 可在内部把行动激励分配给参与者；ActionTarget 不留余�
 
 ### 7.2 服务加入
 
-服务加入主体是 MemberNFT，满足以下任一条件即可加入：是 `actionTokenAddress` 社区中有效链群的 owner，或在相关链群行动中存在有效公共验证者申请。加入发生在对应 ActionRound 的加入阶段，且服务 Proposal 必须在同编号投票阶段获得投票。加入不要求该 Round 已选出公共验证者，也不承诺一定产生服务激励；服务加入量按整个社区聚合。
+服务加入主体是 MemberNFT，满足以下任一条件即可加入：是 `actionTokenAddress` 社区中有效链群的 owner，或在相关链群行动中存在有效公共验证者申请。加入发生在对应投票 Round（Phase p）的加入阶段（Phase p+1），且服务 Proposal 必须在投票 Round（Phase p）获得投票。加入不要求该 Round 已选出公共验证者，也不承诺一定产生服务激励；服务加入量按整个社区聚合。
 
-服务激励按人结算，但 MemberNFT 只有在该服务 Proposal 的对应 ActionRound 已完成加入，才可以结算自己的公共验证者和/或链群 owner 激励。未加入者即使具有角色也不能结算，其理论份额不重新分配；该份额与舍入余数留在服务 Executor，不建立余数账本，也不参与之后的成员分配。
+服务激励按人结算，但 MemberNFT 只有在该服务 Proposal 的对应 Round 已完成加入，才可以结算自己的公共验证者和/或链群 owner 激励。未加入者即使具有角色也不能结算，其理论份额不重新分配；该份额与舍入余数留在服务 Executor，不建立余额账本，也不参与之后的成员分配。
 
 ### 7.3 服务激励聚合
 

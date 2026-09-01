@@ -210,17 +210,18 @@
 - Phase 历史不可回写
 
 ### ActionRound 统一性
-**覆盖要求**：覆盖 `Phase 1..3` 对尚未开始阶段回滚且不返回 `0`、`Phase 4` 首次形成四个有效阶段，以及 LP、链群行动和链群服务行动共用投票、加入、验证、铸币四个业务阶段；链群服务和 LP 的验证阶段为空操作但仍使用统一轮次，且各执行合约独立判断 `canMint`。
+**覆盖要求**：覆盖 `Phase 1..3` 对 LP 行动和 `Phase 1..4` 对链群行动的冷启动期，各 Executor 查询尚未开始阶段时回滚 `RoundNotStarted` 且不返回 `0`。覆盖 LP 行动使用 3 阶段模型（投票-加入-铸币），链群行动使用 4 阶段模型（投票-加入-验证-铸币）。覆盖各 Executor 从 `Phase.currentPhase()` 正确计算自己的业务 Round，投票和加入的 Phase 映射在所有行动类型中一致（投票 Round = p，加入 Round = p-1）。各 Executor 提供标准查询接口，实现可参考旧代码库 `LOVE20TKM` 中的 Extension 接口。
 
 **测试方式**：
-- 单元测试：`action/test/ActionTarget.t.sol` 的 Phase 1-4 查询场景
-- 集成测试：三类行动在同一 Phase 的阶段一致性
-- 验收证据：ActionRound 查询日志
+- 单元测试：`action/test/LPExecutor.t.sol` 和 `action/test/ChainGroupExecutor.t.sol` 的 Phase 1-3/4 查询场景
+- 集成测试：两类行动在同一 Phase 的投票和加入 Round 一致性
+- 验收证据：Round 计算日志
 
 **判定标准**：
-- Phase 1-3 查询回滚 RoundNotStarted
-- Phase 4 四个阶段都有效
-- 三类行动使用统一轮次
+- Phase 1-2 查询 LP 铸币 Round 回滚 RoundNotStarted
+- Phase 1-3 查询链群铸币 Round 回滚 RoundNotStarted
+- 相同 Phase 下，两类行动的投票和加入 Round 相同
+- 各 Executor 提供 `currentVoteRound()`、`currentJoinRound()`、`currentMintRound()` 等标准接口
 
 ### LP 兼容性
 **覆盖要求**：覆盖目标 PancakeSwap Factory/Pair/Router 在 `Stake` 场景下的 LP Shares 铸造、`sqrt(k)` 手续费重分类、结算阈值、结算不重复扣减 `withdrawableLp`、兑换报价、储备/基线更新、按份额提取和失败回滚；不得仅以 ABI 可编译作为兼容性结论。
