@@ -21,6 +21,6 @@ Blocked by: 13
 - `author`、`details` 和治理轮次不作为通用回调参数。Proposal 本体使用 `ProposalHead` / `ProposalBody` 保存元数据，目标合约按 `tokenAddress + proposalId` 查询需要的信息；候选人的 Member ID 等行动专属字段通过业务 KV 传递。
 - `author`、`submitterId` 和 `voterId` 的值均为 MemberNFT 的 `memberId`，不使用钱包地址作为业务主体。
 - Proposal 创建时 `title` 必须非空，`details` 可为空；目标合约可在创建回调中增加业务校验并通过回滚拒绝。
-- `RewardOnly` 的 KV 必须为空且不回调；`Callback` 只要目标是合约就始终回调，KV 为空时也传递空数组。目标无合约代码或 KV 长度不一致时回滚；EOA 不得使用 `Callback`。
+- `NoCallback` 的 KV 必须为空且不回调；`Callback` 只要目标是合约就始终回调，KV 为空时也传递空数组。目标无合约代码或 KV 长度不一致时回滚；EOA 不得使用 `Callback`。
 - 创建回调、推举回调或任意批量投票回调失败，对应外层创建、推举或投票整笔交易回滚；回调无业务返回值，只以成功或 revert 表示结果。
 - 创建与推举在同一笔交易中执行时，固定先调用 `onProposalCreated`，再调用 `onProposalSubmitted`；任一回调失败都回滚整笔交易。

@@ -17,7 +17,7 @@ LOVE20 是社群铸币协议。每个 LOVE20 代币都有一个 `parentTokenAddr
 - `Mint`：轮次激励准备、治理激励和 Proposal 激励铸造；
 - `Phase`：无语义的动态时间片时间线；
 - `LOVE20Token`、`TokenFactory`：代币树和代币实例创建；
-- 基础子币发射次数账本、次数融合、次数消耗和首批代币分发。
+- `Launch`：基础子币发射次数账本、次数融合、次数消耗和首批代币分发。
 
 核心不解释任何具体 Proposal 扩展的业务字段。扩展只通过 Proposal Target 的通用接口接入。
 
@@ -45,19 +45,21 @@ LOVE20 是社群铸币协议。每个 LOVE20 代币都有一个 `parentTokenAddr
 
 只有 `minter` 可以铸造，且 `totalSupply + amount <= maxSupply`。持有人可以销毁自己持有的代币。首个代币的父币、名称、符号、首批供应量和分发者在协议首次部署时设定。
 
+首个代币使用 `Launch` 的一次性协议启动路径创建，不消耗发射次数，也不使用普通子币发射入口。`Launch` 仍是 `TokenFactory` 的唯一调用者；启动交易必须原子完成首个代币部署、协议代币登记、核心 `minter` 设置、首批代币铸造并发送到非零 `distributor`，以及首个代币/WBNB Pair 的创建或确认，任一步失败则整个启动回滚。启动成功后该路径永久关闭，不能创建第二个首个代币或改写其父币和分发结果。
+
 核心不维护父币托底池或通过销毁子币兑换父币的业务。流动性质押手续费中的父币由 `Stake` 通过 Router 买入社区代币后销毁。
 
 ### 3.2 TokenFactory
 
-`TokenFactory` 负责创建子币并初始化核心依赖：
+`TokenFactory` 只接受协议 `Launch` 调用，负责创建子币并初始化核心依赖，任何其他地址都不能绕过发射次数和参数校验直接创建代币：
 
-1. 校验父币是已登记的 LOVE20 代币；
+1. 普通子币校验父币是已登记的 LOVE20 代币；一次性首个代币启动只接受部署时固定的 WBNB，且仅在尚无首个代币时成立；
 2. 校验符号长度、格式和全局唯一性；
 3. 创建子币并设置 `maxSupply`、首批铸造量和 `minter`；
 4. 通过配置的 PancakeSwap Factory 创建或确认子币/父币 Pair；
 5. 把子币地址返回给发射流程。
 
-每个子币只有一个父币，地址和符号在代币树中唯一。`TokenFactory` 可因部署字节码限制保留为独立部署组件。
+每个子币只有一个父币，地址和符号在代币树中唯一。`TokenFactory` 可因部署字节码限制保留为独立部署组件，但不形成第二个发射入口。
 
 ## 4. MemberNFT
 
@@ -76,7 +78,7 @@ mintCost = byteLength >= bytesThreshold
     : baseCost × multiplier ^ (bytesThreshold - byteLength)
 ```
 
-`baseDivisor`、`bytesThreshold` 和 `multiplier` 均在部署时确定且必须大于零。铸造时从调用者转入 `mintCost` 并立即销毁，累计到 `totalBurnedForMint`；费用转入、销毁或安全铸造任一步失败时整笔回滚。
+`baseDivisor`、`bytesThreshold` 和 `multiplier` 均在部署时确定且必须大于零。铸造费用使用协议首个 LOVE20 代币支付；铸造时从调用者转入 `mintCost` 并立即销毁，累计到 `totalBurnedForMint`。费用转入、销毁或安全铸造任一步失败时整笔回滚。
 
 MemberNFT 的转移不复制、不拆分、不重置任何历史。依赖身份的合约必须实时读取 `ownerOf(memberId)`，不能缓存钱包地址作为长期权限。
 
@@ -104,16 +106,16 @@ MemberNFT 的转移不复制、不拆分、不重置任何历史。依赖身份�
 - `syncObservationsCount()`、`syncObservation(observationId)`：同步观测数量和按 1-based ID 查询观测；
 - `sync()`：任何地址可调用的校准入口。
 
-未发生交互的空阶段不逐个写入。查询使用最近历史锚点，在已记录锚点之间二分定位，再按锚点当时的 `phaseBlocks` 推导目标阶段。下一 Phase 的 `startBlock` 是上一 Phase 结束后的首个区块；已经生成的 Phase 记录不可回写。
+`currentPhase()`、`phaseAtBlock(blockNumber)` 在目标区块早于 `startBlock` 时回滚 `PhaseNotStarted`；所有按编号查询都拒绝 `phaseNumber == 0`。未发生交互的空阶段不逐个写入。查询使用最近历史锚点，在已记录锚点之间二分定位，再按锚点当时的 `phaseBlocks` 推导目标阶段。下一 Phase 的 `startBlock` 是上一 Phase 结束后的首个区块；已经生成的 Phase 记录不可回写。
 
 ### 5.2 动态校准
 
 每次 `sync()` 都先追加当前观测点，即使不调整参数。校准只使用此前观测中满足 `currentBlock - observation.blockNumber >= currentPhaseBlocks` 的最近一条；实现按单调递增的观测区块二分定位，不从末尾线性扫描。没有有效历史观测时只记录本次观测。
 
-设 `targetSeconds = targetDays × 86400`，观测区块差为 `elapsedBlocks`，时间戳差为 `elapsedSeconds`：
+设 `targetSeconds = targetDays × 86400`，观测区块差为 `elapsedBlocks`，时间戳差为 `elapsedSeconds`，当前默认阶段区块数为 `currentPhaseBlocks`：
 
 - `elapsedSeconds == 0` 时不调整；
-- 实际时长在目标的 `±10%` 内时不调整；
+- 先计算 `observedPhaseSeconds = elapsedSeconds × currentPhaseBlocks / elapsedBlocks`；该值在 `targetSeconds` 的 `±10%` 内时不调整；这样即使两个观测点之间跨过多个空 Phase，也只比较当前默认阶段区块数对应的估算自然时长；
 - 超出范围时，尚未生成 Phase 使用 `newPhaseBlocks = max(1, elapsedBlocks × targetSeconds / elapsedSeconds)`；
 - 已经生成的下一 Phase 不回写，新参数从之后第一个尚未生成的 Phase 生效，并把该编号写入本次观测的 `effectivePhase`。
 
@@ -127,14 +129,14 @@ MemberNFT 的转移不复制、不拆分、不重置任何历史。依赖身份�
 
 - `totalLpShares`：社区全部流动性质押股份；
 - `lpShares`：某个 `memberId` 持有的内部股份单位，不等同于 Pair 的 LP Token 数量；
-- `withdrawableLp`：扣除已结算 `feeLp` 后，社区所有治理者共同拥有的可赎回 Pair LP 净资产；
+- `withdrawableLp`：扣除已识别 `feeLp` 后，社区所有治理者共同拥有的可赎回 Pair LP 净资产；
 - `boostStake`：加速质押数量；
 - `promisedWaitingPhases`；
 - `govVotes`；
 - 统一解锁申请的 Phase、等待期和状态；
 - 按 Round 的加速质押快照和累计历史。
 
-流动性质押产生治理票；加速质押只参与治理激励的加速部分，不能单独取得治理资格。只有有有效流动性质押治理权的 MemberNFT 才能增加加速质押。某个 `memberId` 当前可赎回的 LP 为 `lpShares × withdrawableLp / totalLpShares`；提取时按该比例减少其股份和社区净资产。手续费结算减少 `withdrawableLp`，不减少 `totalLpShares`，因此不会改变股份比例，但会降低每份股份对应的净资产。
+流动性质押产生治理票；加速质押只参与治理激励的加速部分，不能单独取得治理资格。只有有有效流动性质押治理权的 MemberNFT 才能增加加速质押。某个 `memberId` 当前可赎回的 LP 为 `lpShares × withdrawableLp / totalLpShares`；提取时按该比例减少其股份和社区净资产。手续费刷新把新增 `feeLp` 从 `withdrawableLp` 中重分类，不减少 `totalLpShares`，因此不会改变股份比例，但会降低每份股份对应的净资产。
 
 治理票公式：
 
@@ -144,7 +146,17 @@ govVotes = lpShares × promisedWaitingPhases
 
 ### 6.2 流动性质押
 
-调用者为目标 MemberNFT 提供社区代币和父币，`Stake` 将两种资产加入社区 Pair，取得 LP 份额并更新治理票。两种金额都必须大于零；等待期必须在部署的最小/最大范围内，且不得低于该成员此前承诺的等待期。
+调用者为目标 MemberNFT 提供社区代币和父币，`Stake` 将两种资产加入社区 Pair，取得 Pair LP 并铸造内部 LP Shares。两种金额都必须大于零；等待期必须在部署的最小/最大范围内，且不得低于该成员此前承诺的等待期。
+
+加入 Pair 前先按第 6.6 节更新当时的 `feeLp` 和 `withdrawableLp`，设本次 Pair 实际铸造量为 `lpMinted`、加入前净资产为 `withdrawableLpBefore`：
+
+```text
+sharesMinted = totalLpShares == 0
+    ? lpMinted
+    : totalLpShares × lpMinted / withdrawableLpBefore
+```
+
+`totalLpShares > 0` 时必须同时满足 `withdrawableLpBefore > 0`，否则无法得到公平份额价格并回滚；`lpMinted` 和 `sharesMinted` 都必须大于 `0`。成功后 `withdrawableLp += lpMinted`、`totalLpShares += sharesMinted`、成员 `lpShares += sharesMinted`。计算使用全精度乘除并向下取整，不能按本次投入的代币名义金额直接增加 Shares。
 
 质押资产转入、LP 份额增加、治理票增加、社区总治理票更新和事件在同一交易完成。待处理解锁期间不能追加质押。
 
@@ -152,7 +164,16 @@ govVotes = lpShares × promisedWaitingPhases
 
 调用者为拥有有效治理权的 MemberNFT 存入社区代币，增加 `boostStake`。等待期可以提高但不能降低。加速质押不产生独立治理票。
 
-投票记账使用投票时快照：首次投票记录当时加速质押；同一 Round 后续再次投票时，只补记当前数量超过已记录数量的差额；没有后续投票时，单独增加的加速质押不进入本轮；数量未增加时不重复记账。
+无论从流动性质押还是加速质押入口提高 `promisedWaitingPhases`，都必须在同一交易中按新等待期重算该成员已有 LP Shares 的治理票，并同步更新社区总治理票：
+
+```text
+newGovVotes = lpShares × newPromisedWaitingPhases
+totalGovVotes = totalGovVotes - oldGovVotes + newGovVotes
+```
+
+提高等待期本身不改变 `lpShares` 或 `boostStake`；没有 LP Shares 时治理票仍为 `0`。
+
+投票记账使用投票时快照：首次投票记录当时加速质押；同一 Round 后续再次投票时，只补记当前数量超过已记录数量的差额；没有后续投票时，单独增加的加速质押不进入本轮；数量未增加时不重复记账。一次批量投票无论包含多少 Proposal，都只对该 `tokenAddress + round + voterId` 执行一次快照补差，不能按 Proposal 重复增加成员或全局加速质押量。
 
 ### 6.4 统一解锁和提取
 
@@ -173,18 +194,49 @@ govVotes = lpShares × promisedWaitingPhases
 - 当前投票 Round 中任一方已经发生非零投票；
 - 目标等待期小于源等待期。
 
-融合只处理尚未使用的当前质押状态。源的 LP 份额、加速质押和当前治理状态单向并入目标，不能修改或取走目标原有资产；合并后采用目标等待期。源身份保留但当前质押清零，已发生的投票、快照、已结算激励和事件仍归源 `memberId`。
+融合只处理尚未使用的当前质押状态。源的 LP Shares 和加速质押单向并入目标，不能修改或取走目标原有资产；合并后采用目标等待期，并按下式原子重算当前治理票和社区总治理票：
+
+```text
+targetLpSharesAfter = targetLpSharesBefore + sourceLpSharesBefore
+targetGovVotesAfter = targetLpSharesAfter × targetPromisedWaitingPhases
+sourceLpSharesAfter = 0
+sourceGovVotesAfter = 0
+```
+
+社区总治理票先减去源、目标融合前治理票，再增加目标融合后治理票。源身份保留但当前质押和加速质押清零，已发生的投票、快照、已结算激励和事件仍归源 `memberId`。
 
 ### 6.6 LP 手续费和销毁统计
 
-每个社区登记一个由 PancakeSwap Factory 返回的 Pair。`Stake` 根据 Pair 储备和历史 `sqrt(k)` 份额计算待结算 `feeLp`。低于最小手续费阈值时保留；达到阈值时，由 `settleFees(tokenAddress)` 或提取流程执行：
+每个社区登记一个由 PancakeSwap Factory 返回的 Pair。`Stake` 为每个社区维护 `feeLp`、`withdrawableLp` 和上次基线 `previousSqrtKOfLp`。刷新手续费账本时，设：
+
+```text
+previousLp = feeLp + withdrawableLp
+currentSqrtKOfLp = sqrt(reserve0 × reserve1) × previousLp / pairTotalSupply
+
+if currentSqrtKOfLp > previousSqrtKOfLp:
+    newWithdrawableLp = withdrawableLp × previousSqrtKOfLp / currentSqrtKOfLp
+    newFeeLp = previousLp - newWithdrawableLp
+else:
+    newWithdrawableLp = withdrawableLp
+    newFeeLp = feeLp
+```
+
+全部除法向下取整；实现必须避免 `reserve0 × reserve1` 和后续乘法中间溢出。`previousLp == 0` 或 `pairTotalSupply == 0` 时不产生手续费。该计算只把新增手续费对应的 LP 从 `withdrawableLp` 重分类到 `feeLp`，始终保持 `newFeeLp + newWithdrawableLp == previousLp`，因此不会凭空增加或减少合约持有的 LP。
+
+首次增加 LP，以及每次刷新后又发生增加 LP、提取 LP 或结算 `feeLp` 时，都以操作完成后的 Pair 储备、Pair 总供应量和本合约最终持有 LP 重新写入 `previousSqrtKOfLp`；只读查询不得改写基线。手续费低于以下阈值时保留在 `feeLp`：
+
+```text
+feeLp × MAX_WITHDRAWABLE_TO_FEE_RATIO < withdrawableLp
+```
+
+达到或超过阈值时，由 `settleFees(tokenAddress)` 或提取流程执行：
 
 1. 从 Pair 取回 `feeLp`；
 2. 社区代币直接销毁；
 3. 父币按固定路径 `[parentTokenAddress, tokenAddress]` 经 Router 换成社区代币后销毁；
 4. 更新全局累计销毁量和按 `tokenAddress` 的社区累计销毁量。
 
-手续费结算从 Pair 移除并销毁属于 `feeLp` 的净资产；`feeLp` 不归任何治理者。结算减少社区 `withdrawableLp`，不改变 `totalLpShares` 或任何成员的 `lpShares`。退出或部分提取按 `memberLpShares × withdrawableLp / totalLpShares` 计算当前可赎回 LP，再按该份额从 Pair 取回资产。兑换最小输出量按同一交易的当前储备计算，调用者不能传入任意路径。Pair、Router、销毁或统计更新失败时整笔交易回滚。
+手续费结算从 Pair 移除并销毁属于 `feeLp` 的资产；`feeLp` 不归任何治理者。手续费刷新时已经从 `withdrawableLp` 重分类，实际结算只把 `feeLp` 清零，不得再次扣减 `withdrawableLp`；结算和刷新都不改变 `totalLpShares` 或任何成员的 `lpShares`。统一解锁完成后的全量提取按 `memberLpShares × withdrawableLp / totalLpShares` 计算当前可赎回 LP，再按该份额从 Pair 取回资产；Core 治理质押不提供绕过统一解锁的部分提取。兑换最小输出量按同一交易的当前储备计算，调用者不能传入任意路径。Pair、Router、销毁或统计更新失败时整笔交易回滚。
 
 ## 7. Proposal
 
@@ -197,7 +249,7 @@ Proposal 结构为：
 - `ProposalHead`：`id`、`author`、`createAtBlock`；
 - `ProposalBody`：`title`、`details`；`title` 非空，`details` 可为空；
 - `target`：激励铸造接收主体，必须是非零 EOA 或合约；
-- `targetMode`：`RewardOnly` 或 `Callback`。
+- `targetMode`：`NoCallback` 或 `Callback`。
 
 `actionId` 是部分行动类 Proposal 对同一 `proposalId` 的业务别名，不创建第二个 ID。行动框架把 `details` 解释为 `verificationRule`；`verificationKeys` 和 `verificationKeyGuides` 等行动专属字段放在创建 KV 中。
 
@@ -205,16 +257,16 @@ Proposal 结构为：
 
 | target | targetMode | 行为 |
 | --- | --- | --- |
-| 非零 EOA | `RewardOnly` | 合法，只接收铸造激励 |
-| 非零合约 | `RewardOnly` | 合法，不触发回调 |
+| 非零 EOA | `NoCallback` | 合法，只接收铸造激励 |
+| 非零合约 | `NoCallback` | 合法，不触发回调 |
 | 非零合约 | `Callback` | 合法，创建/推举/投票均回调，空 KV 也回调 |
 | EOA | `Callback` | 拒绝 |
 
-KV 使用等长的 `bytes32[] keys` 和 `bytes[] values`。`RewardOnly` 要求两数组为空；`Callback` 允许空数组并仍然触发回调。核心只校验长度并透传，不解释字段。
+KV 使用等长的 `bytes32[] keys` 和 `bytes[] values`。`NoCallback` 要求两数组为空；`Callback` 允许空数组并仍然触发回调。核心只校验长度并透传，不解释字段。
 
 ### 7.3 创建和推举
 
-目标代币社区中，有效治理票占总治理票达到 `SUBMIT_MIN_PER_THOUSAND / 1000` 的 MemberNFT 当前持有人可以创建或推举 Proposal。创建新 Proposal 时可以在同一交易中完成本轮推举；已有 Proposal 可在后续 Round 推举。
+目标代币社区的总治理票必须大于 `0`。MemberNFT 的有效治理票满足 `memberGovVotes * 1e18 >= totalGovVotes * SUBMIT_MIN_RATIO` 时，其当前持有人可以创建或推举 Proposal；`SUBMIT_MIN_RATIO` 使用 `1e18` 精度且必须大于 `0`、不超过 `1e18`。创建新 Proposal 时可以在同一交易中完成本轮推举；已有 Proposal 可在后续 Round 推举。每个推举者每轮只能推举一个 Proposal，因此正数门槛把单轮推举 Proposal 数量限制在有限范围内。
 
 每个治理 Round 的首个成功推举在写入 Proposal 推举状态前自动调用一次 `Phase.sync()`；其他地址仍可在任意区块直接调用 `sync()`。如果后续校验或 Target 回调回滚，自动同步产生的观测也随外层交易回滚，不算成功观测。
 
@@ -249,26 +301,29 @@ onProposalVoted(address tokenAddress, uint256 proposalId,
 
 ### 8.1 轮次激励池
 
-Vote 时间片结束后，任何地址可以调用 `prepareProposalRewards(tokenAddress, round)`。该调用只写入一次 Round 级冻结状态，不枚举、不预写每个 Proposal 的金额。状态至少包括治理激励池、Proposal 激励池、达到门槛的 Proposal 总票数、各池预留量/已铸造量/已销毁量，以及社区级跨轮次汇总的预留量/已铸造量/已销毁量。社区级汇总用于控制 `maxSupply`，各池账用于防止治理池和 Proposal 池重复消费同一额度。
+Vote 时间片结束后，任何地址可以调用 `prepareIncentives(tokenAddress, round)`。该调用同时准备治理池和 Proposal 池；它遍历 Vote 保存的当轮有票 Proposal，计算达门槛 Proposal 的票数总和，但不逐个预写 Proposal 金额，只写入一次 Round 级冻结状态。状态至少包括独立的 `prepared` 标志、治理激励池、Proposal 激励池、达到门槛的 Proposal 总票数、各池预留量/已铸造量/已销毁量，以及社区级跨轮次汇总的预留量/已铸造量/已销毁量。即使本轮两个池均为 `0`，`prepared` 也必须准确记录已准备，不能用非零金额代替准备状态。社区级汇总用于控制 `maxSupply`，各池账用于防止治理池和 Proposal 池重复消费同一额度。
 
 设：
 
 ```text
-reservedAvailable = rewardReserved - rewardMinted - rewardBurned
+reservedAvailable = incentiveReserved - incentiveMinted - incentiveBurned
 available = maxSupply - totalSupply - reservedAvailable
-govPool = available × ROUND_REWARD_GOV_PER_THOUSAND / 1000
-proposalPool = available × ROUND_REWARD_PROPOSAL_PER_THOUSAND / 1000
+govPool = available × ROUND_INCENTIVE_GOV_RATIO / 1e18
+proposalPool = available × ROUND_INCENTIVE_PROPOSAL_RATIO / 1e18
 ```
 
-准备时一次性增加 `rewardReserved` 并冻结本轮池子；初始化必须保证两个激励比例之和不超过 `1000 / 1000`。重复准备不重算、不重复预留。尚未结束 Vote 时间片的 Round 不可准备。
+准备时一次性增加 `incentiveReserved` 并冻结本轮池子；两个比例均使用 `1e18` 精度且不超过 `1e18`，初始化必须保证二者之和不超过 `1e18`。重复准备不重算、不重复预留。尚未结束 Vote 时间片的 Round 不可准备。
+
+`incentiveBurned` 表示本轮已取消、不会实际铸造的预留额度，不是先铸币再调用 ERC20 `burn`；它从 `reservedAvailable` 中移除后可进入后续 Round 的可用额度。已经铸给 Target/Executor 后再销毁的代币属于真实 ERC20 销毁，通过 `totalSupply` 减少反映，不重复计入 Mint 的 `incentiveBurned`。任何时刻必须满足 `incentiveReserved >= incentiveMinted + incentiveBurned`，同一份预留只能从未结算状态转为已铸造或已销毁一次。按成员或 Proposal 向下取整产生的最小单位余数不重新分配，继续保留为未结算预留。
 
 达到 Proposal 激励门槛的条件为：
 
 ```text
-proposalVotes >= totalVotes × PROPOSAL_REWARD_MIN_VOTE_PER_THOUSAND / 1000
+proposalVotes > 0
+proposalVotes × 1e18 >= totalVotes × PROPOSAL_INCENTIVE_MIN_VOTE_RATIO
 ```
 
-准备时冻结所有合格 Proposal 的总票数作为分母。未达门槛的 Proposal 不参与 Proposal 池分配。
+`PROPOSAL_INCENTIVE_MIN_VOTE_RATIO` 使用 `1e18` 精度且必须大于 `0`、不超过 `1e18`。实现必须使用不会中间溢出的等价比较。准备时冻结所有合格 Proposal 的总票数作为分母；未达门槛的 Proposal 不参与 Proposal 池分配。准备扫描的最大集合受正数 `SUBMIT_MIN_RATIO` 限制，部署参数和 gas 基线必须保证该上限可在一笔交易中完成。
 
 如果本 Round 没有任何治理投票，治理池和 Proposal 池均为 `0`，本轮不产生激励。若有投票但没有合格 Proposal，则 `eligibleProposalVotes = 0`，本轮没有 Proposal 可以铸造，Proposal 池直接记为 `0`，不预留、不延后结算，也不转给其他 Round 或 Proposal。
 
@@ -280,24 +335,24 @@ proposalVotes >= totalVotes × PROPOSAL_REWARD_MIN_VOTE_PER_THOUSAND / 1000
 2. Mint 检查 Round 已准备、Vote 已结束、Proposal 达到门槛且尚未铸造；
 3. 实际数量为 `proposalPool × proposalVotes / eligibleProposalVotes`；
 4. 协议把实际数量铸给 Target，并返回数量，调用者不能指定成员或金额；
-5. 标记 Proposal 已铸造，重复调用回滚。
+5. 使用独立的 `proposalSettled` 状态标记本 Proposal 已结算，实际数量即使因整数舍入为 `0` 也不能再次结算；重复调用回滚。
 
-行动类 Proposal 由关联 Executor 调用 `ActionTarget`，再由 `ActionTarget` 以自身身份调用 Mint；ActionTarget 在同一交易中把全部实际数量转给 Executor。
+行动类 Proposal 由关联 Executor 调用 `ActionTarget`，再由 `ActionTarget` 以自身身份调用 `mintProposalIncentive`；ActionTarget 在同一交易中把全部实际数量转给 Executor。
 
 ### 8.3 治理激励
 
 治理激励按 `tokenAddress + round + memberId` 隔离，返回 `(verifyIncentive, boostIncentive, overflowIncentive)`。治理池固定分为两个各占 50% 的部分（`GOV_VERIFY_SHARE = 0.5e18`、`GOV_BOOST_SHARE = 0.5e18`）；总治理票为 `0` 时三项均为 `0`：
 
 - `verifyIncentive = govPool × GOV_VERIFY_SHARE / 1e18 × memberVotes / totalVotes`；
-- `theoreticalBoost = govPool × GOV_BOOST_SHARE / 1e18 × memberBoost / totalBoost`，`totalBoost == 0` 时为零；
+- `theoreticalBoost = govPool × GOV_BOOST_SHARE / 1e18 × memberBoost / totalBoost`；
 - `boostIncentive = min(theoreticalBoost, verifyIncentive × 2)`；
-- `overflowIncentive = theoreticalBoost - boostIncentive`，溢出部分销毁。
+- `overflowIncentive = theoreticalBoost - boostIncentive`，溢出部分计入 `incentiveBurned`，取消对应预留而不铸币。
 
-`memberBoost` 和 `totalBoost` 使用投票时已记录的加速质押快照。50%/50% 划分和 2 倍上限是固定协议常量，不是部署参数。当前 MemberNFT 持有人可以铸造该成员尚未铸造的治理激励；治理激励只能成功铸造一次，溢出只能成功销毁一次。
+`memberBoost` 和 `totalBoost` 使用投票时已记录的加速质押快照。若 `totalBoost == 0`，本轮整个加速池由轮次级 `boostBurned` 状态一次性计入 `incentiveBurned`，所有成员的 `theoreticalBoost`、`boostIncentive` 和 `overflowIncentive` 均为 `0`；该取消预留不能由每个成员重复执行。50%/50% 划分和 2 倍上限是固定协议常量，不是部署参数。当前 MemberNFT 持有人可以铸造该成员尚未铸造的治理激励；独立的 `govSettled` 状态必须在本轮结算时设置，不以实际铸造量是否大于 `0` 判断。治理激励只能成功结算一次，溢出只能成功销毁一次，从而修复零铸造量或仅销毁时可重复处理的旧问题。
 
 治理激励同时提供单轮和批量多轮铸造。批量入口接收同一 `tokenAddress + memberId` 的非空 `rounds[]`，按输入顺序逐轮执行与单轮入口相同的准备状态、归属、重复铸造和供应上限校验，并返回与 `rounds` 等长的三类激励结果数组；任一 Round 失败则整笔交易回滚。每个 Round 独立更新铸造/销毁状态和发射额度，批量调用不能合并账目或绕过单轮只能成功一次的限制，重复 Round 会在第二次处理时按重复铸造回滚。
 
-接口形式为 `mintGovReward(tokenAddress, memberId, round)` 和 `mintGovRewards(tokenAddress, memberId, rounds[])`；两者都要求调用者是该 `memberId` 当前的 MemberNFT 持有人，不能传入钱包地址作为奖励主体。批量接口返回按输入 Round 对齐的 `(verifyIncentive[], boostIncentive[], overflowIncentive[])`。
+接口形式为 `mintGovIncentive(tokenAddress, memberId, round)` 和 `mintGovIncentives(tokenAddress, memberId, rounds[])`；两者都要求调用者是该 `memberId` 当前的 MemberNFT 持有人，不能传入钱包地址作为激励主体。批量接口返回按输入 Round 对齐的 `(verifyIncentive[], boostIncentive[], overflowIncentive[])`。
 
 治理和 Proposal 激励按社区、Round 和主体完全隔离。不同 Round 可以同时准备并按任意顺序铸造；已准备 Round 的冻结状态不受之后质押、退出或融合影响。
 
@@ -313,7 +368,7 @@ proposalVotes >= totalVotes × PROPOSAL_REWARD_MIN_VOTE_PER_THOUSAND / 1000
 threshold = ceil((maxSupply - totalSupplyBeforeMint) × launchRatio / 1e18)
 ```
 
-本次实际铸造的治理激励先加入该 `tokenAddress + memberId` 的 `launchCredit`。使用本次阈值计算完整次数：
+只有本次实际铸造的治理激励大于 `0` 时才更新发射额度。剩余供应量为 `0` 时不计算阈值，也不更新 `launchCredit`；否则，本次实际铸造的治理激励先加入该 `tokenAddress + memberId` 的 `launchCredit`，再使用本次阈值计算完整次数：
 
 ```text
 newCount = min(launchCredit / threshold, X - issuedLaunchCount)
@@ -324,18 +379,18 @@ issuedLaunchCount[tokenAddress] += newCount
 
 一次铸造可以跨过多个阈值；整数除法的余数保留在 `launchCredit`，继续与下一次实际铸造的治理激励累计。每个社区最多产生 `maxLaunchCount = X` 次；达到 `X` 后治理激励仍可铸造，但不再增加次数或累计新的发射额度。次数消耗或融合不降低 `issuedLaunchCount`。
 
-社区初始化的 `launchRatio` 和 `maxLaunchCount` 必须为正数。新增次数受 `X - issuedLaunchCount` 限制；当剩余可产生次数为零时，不再增加任何成员的发射次数。发射次数融合只转移已有的整数 `launchCount`，不转移 `launchCredit`，也不回写治理激励历史。
+社区初始化的 `launchRatio` 和 `maxLaunchCount` 必须为正数。新增次数受 `X - issuedLaunchCount` 限制；当剩余可产生次数为零时，不再增加任何成员的发射次数或 `launchCredit`。发射次数融合只转移已有的整数 `launchCount`，不转移 `launchCredit`，也不回写治理激励历史。
 
 ### 9.2 发射
 
-任何当前持有目标 MemberNFT 的钱包或合约都可以触发该社区子币发射，但必须消耗该成员的一次 `launchCount`。发射次数不能跨社区使用。
+任何当前持有目标 MemberNFT 的钱包或合约都可以触发该社区子币发射，但必须消耗该成员的一次 `launchCount`。发射次数不能跨社区使用；调用中的 `parentTokenAddress` 必须等于提供次数的 `tokenAddress`。
 
 发射参数至少包含子币符号、父币地址、非零 `distributor`、`distributorMode` 和可选等长 `distributorKeys`/`distributorValues`：
 
-- `RewardOnly`：创建子币，把配置的首批代币发送给 `distributor`，不回调；
+- `NoCallback`：创建子币，把配置的首批代币发送给 `distributor`，不回调；
 - `Callback`：`distributor` 必须是合约，调用 `onTokenDistributed(childTokenAddress, amount, keys, values)`；回调失败整笔发射回滚。
 
-中心化或去中心化只描述 `distributor` 后续的分配方式，不限制发射调用者。保留代币没有本地发射次数，不能触发新的子币发射。协议首次部署产生的首个代币也必须填写非零 `distributor`，由外部 Airdrop 合约接收首批代币。
+中心化或去中心化只描述 `distributor` 后续的分配方式，不限制发射调用者。协议部署时初始化全局保留符号集合，用于登记其他链已经发射且不得在本地复用的代币符号；保留符号不能由 `Launch` 或 `TokenFactory` 创建，登记保留符号本身不产生、消耗或转移任何社区的发射次数。协议首次部署产生的首个代币也必须填写非零 `distributor`，由外部 Airdrop 合约接收首批代币。
 
 ### 9.3 发射次数融合
 

@@ -18,12 +18,12 @@ Blocked by:
 
 BSC 版协议采用两层主架构：
 
-1. **核心治理层**：由 `Stake`、`Submit`、`Vote` 和 `Mint` 组成，并包含 `MemberNFT`、`LOVE20Phase` 以及基础子币发射能力（发射次数账本、次数融合/消耗和子币创建）。它负责治理资产、提案基础数据、治理投票、激励铸造和基础发射流程等通用能力；治理激励只按核心治理规则结算，不读取提案扩展的业务结果。
+1. **核心治理层**：由 `Stake`、`Submit`、`Vote` 和 `Mint` 组成，并包含 `MemberNFT`、`Phase` 以及基础子币发射能力（发射次数账本、次数融合/消耗和子币创建）。它负责治理资产、提案基础数据、治理投票、激励铸造和基础发射流程等通用能力；治理激励只按核心治理规则结算，不读取提案扩展的业务结果。
 2. **提案扩展层**：按提案类型实现 `Target` 合约。当前社群行动类型使用 `ActionTarget`，负责该类型提案的创建回调、映射和通用参与登记，并承载 LP、链群行动及链群服务行动执行合约。`ActionTarget` 内部可以按业务需要拆分执行器、验证器或分配器，但这些不是协议级架构层。
 
-`LOVE20Phase` 是跨层共享的无语义时间线基础设施，不属于上述两层中的业务层；各层按自身语义使用它。
+`Phase` 是跨层共享的无语义时间线基础设施，不属于上述两层中的业务层；各层按自身语义使用它。
 
-`action` 层在此时间线上统一定义 `ActionRound` 的 `Vote`、`Join`、`Verify`、`Mint` 四个时间槽位。`Join` 表示加入、退出和行动参与状态变化；链群行动执行实际验证，链群服务和 LP 行动执行合约的 `Verify` 槽位为空操作，但仍与其他行动使用相同轮次和 `Mint` 槽位。是否满足铸币条件仍由具体执行合约自行判断。`ActionTarget` 通过 `currentVoteRound()`、`currentJoinRound()`、`currentVerifyRound()` 和 `currentMintRound()` 提供四个无参数只读查询，结果直接由 `LOVE20Phase` 推导，不存储 `ActionRound` 历史。
+`action` 层在此时间线上统一定义 `ActionRound` 的 `Vote`、`Join`、`Verify`、`Mint` 四个时间槽位。`Join` 表示加入、退出和行动参与状态变化；链群行动执行实际验证，链群服务和 LP 行动执行合约的 `Verify` 槽位为空操作，但仍与其他行动使用相同轮次和 `Mint` 槽位。是否满足铸币条件仍由具体执行合约自行判断。`ActionTarget` 通过 `currentRoundVote()`、`currentRoundJoin()`、`currentRoundVerify()` 和 `currentRoundMint()` 提供四个无参数只读查询，结果直接由 `Phase` 推导，不存储 `ActionRound` 历史。
 
 参与资产、扩展资产及其返还和行动内分配均由提案类型内部业务自行托管和处理，`ActionTarget` 不接收或持有行动资产。
 

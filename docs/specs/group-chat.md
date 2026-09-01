@@ -165,7 +165,7 @@ interface IAfterPostPlugin {
 
 ### 5.3 `canPost`
 
-`canPost(groupId, senderId)` 只执行无内容预检查并返回 `(allowed, reasonCode)`；它从 `MemberNFT.ownerOf(senderId)` 读取当前控制者供需要地址资产的资格源使用，不要求查询调用者本人持有该 NFT，也不检查正文、提及、引用或 `beforePostPlugin`。实际 `post` 仍必须校验 `msg.sender`。原因码至少包括：
+`canPost(groupId, senderId)` 只执行无内容预检查并返回 `(allowed, reasonCode)`；不要求查询调用者本人持有该 NFT，也不检查正文、提及、引用或 `beforePostPlugin`。规则源 ABI 只接收 `groupId` 和 `senderId`；需要钱包实时资产的规则源自行通过共享 `MemberNFT.ownerOf(senderId)` 解析当前控制者，GroupChat 不把钱包地址作为业务参数传给规则源。实际 `post` 仍必须校验 `msg.sender`。原因码至少包括：
 
 - `0x00000000`：允许；
 - Chat 未激活；
@@ -239,7 +239,7 @@ interface IAfterPostPlugin {
 链群 Chat 提供两个标准 `scopeSource`：
 
 - `GroupMemberScope`：只读取管理员维护的 `groupId -> memberId` 成员名单；
-- `GroupJoinScopeSource`：部署时固定 `GroupMember` 和可复用的链群行动 Executor。成员名单命中时直接允许，否则检查 `gTokenAddressesByGroupIdByMemberIdCount(groupId, senderId) > 0`；该查询覆盖该 Executor 服务的所有代币社区和所有链群行动。
+- `GroupActionScope`：部署时固定 GroupChat 的成员集合查询接口和可复用的链群行动 Executor。成员名单命中时直接允许，否则检查 `gTokenAddressesByGroupIdByMemberIdCount(groupId, senderId) > 0`；该查询覆盖该 Executor 服务的所有代币社区和所有链群行动。
 
 链群行动 Executor 是链群当前参与归属的唯一依据；Group Chat 不复制归属状态，也不遍历 ActionTarget。成员通过 Executor 正常退出其在该链群的最后一个行动后资格立即失效。`forceExit` 只清除 ActionTarget 的通用参与登记，不修改 Executor 的资产或链群归属，因此不会单独改变链群 Chat 资格。
 

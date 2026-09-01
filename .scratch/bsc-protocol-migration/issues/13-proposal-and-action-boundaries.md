@@ -36,11 +36,11 @@ Blocked by: 12
 
 - **Proposal（提案）**：底层治理框架对象，由 `Submit` 创建、由 `Vote` 表决、由 `Mint` 铸造提案激励。标准头部和主体命名为 `ProposalHead` / `ProposalBody`，替代旧 `ActionHead` / `ActionBody`；`ProposalHead` 至少包含 `id`、`author`、`createAtBlock`，`ProposalBody` 至少包含 `title`、`details`；创建者字段使用旧代码命名 `author`，但 BSC 值记录创建 Proposal 的 MemberNFT/memberId，不再以地址作为业务主体；统一 ID 为 `proposalId`。
 - **`details`（提案详情）**：底层 Proposal 的通用详情字段；行动框架把它解释为 `verificationRule`，不在行动创建 KV 中重复保存。
-- **Proposal 激励准备**：投票阶段结束后，任何地址均可调用 `prepareProposalRewards(tokenAddress, round)` 一次。该调用只按旧版 `Mint` 逻辑准备并冻结 `tokenAddress + round` 的轮次级总激励池，不枚举、不预写每个 `proposalId` 的额度。重复调用不得重算、改写或重复增加预留；未准备或投票阶段尚未结束时不得铸造。每个 Proposal 的额度在其 Target 铸造时按冻结状态单独计算并记录一次性铸造状态。
-- **投票阶段边界**：`Mint` 不直接解释 `LOVE20Phase` 的时间片；指定治理轮次是否可准备和铸造，由核心 `Vote` 按治理轮次规则提供唯一判断。
+- **激励准备**：投票阶段结束后，任何地址均可调用 `prepareIncentives(tokenAddress, round)` 一次，同时准备治理池和 Proposal 池。该调用按旧版 `Mint` 的投票门槛逻辑遍历当轮有票 Proposal，只计算合格 Proposal 票数总和并冻结 `tokenAddress + round` 的轮次级总激励池，不逐个预写 `proposalId` 额度。重复调用不得重算、改写或重复增加预留；未准备或投票阶段尚未结束时不得铸造。每个 Proposal 的额度在其 Target 铸造时按冻结状态单独计算并记录一次性铸造状态。
+- **投票阶段边界**：`Mint` 不直接解释 `Phase` 的时间片；指定治理轮次是否可准备和铸造，由核心 `Vote` 按治理轮次规则提供唯一判断。
 - **提案推举规则**：推举者必须是目标代币社区中拥有有效治理权的 MemberNFT 当前持有人；同一 Proposal 每轮最多一次，同一推举者每轮最多一个 Proposal。校验失败或重复推举均在回调前回滚。
 - **ActionTarget 创建边界**：通用 `Callback` 允许空 KV，但行动类 Proposal 的创建 KV 第 `0` 项必须存在且是 `executor` 保留项；`executor` 必须是非零合约地址。只允许 executor 项而无其他行动参数仍可创建，具体校验由执行合约决定。`ActionTarget` 以 `tokenAddress + proposalId` 为唯一主键，同一创建回调重复到达必须回滚；创建回调成功后，该 Proposal 才可在行动业务中使用 `actionId` 别名。
-- **`target`（Proposal Target）**：提案激励铸造接收主体，配合 `targetMode` 使用。`RewardOnly` 只接收铸造激励、不触发回调且 KV 必须为空；`Callback` 要求目标是合约并始终触发创建、推举或投票回调，KV 为空时传递空数组。
+- **`target`（Proposal Target）**：提案激励铸造接收主体，配合 `targetMode` 使用。`NoCallback` 只接收铸造激励、不触发回调且 KV 必须为空；`Callback` 要求目标是合约并始终触发创建、推举或投票回调，KV 为空时传递空数组。
 - **行动类 Proposal**：固定使用 `target = ActionTarget`、`targetMode = Callback`。核心在创建、推举和投票三个时点回调 `ActionTarget`；创建时由其读取 KV 第 `0` 项的 `keccak256("executor")` 并保存 `tokenAddress + proposalId -> executor` 映射，推举和投票时使用该映射转发对应 KV，不重复携带 executor 项。Proposal 不直接指定行动执行合约。
 - **回调边界**：核心创建、推举和投票入口只传递标准 Proposal 上下文及不透明 KV，不解析提案扩展业务。三类回调采用[提案回调 ABI 与操作原子性](14-proposal-callback-abi.md)的最小接口；推举回调标准传递 `submitterId`，投票回调标准传递 `voterId` 和治理票增量，任一回调失败都回滚对应外层整笔交易。若创建与推举在同一笔交易完成，固定先执行 `onProposalCreated`，再执行 `onProposalSubmitted`。
 - **Action（行动）**：Proposal 扩展层的一种提案类型，`ActionTarget` 是其目标合约。行动执行合约负责具体行动的参与、验证、资产处理和行动层激励分配；这些业务不进入核心治理框架。

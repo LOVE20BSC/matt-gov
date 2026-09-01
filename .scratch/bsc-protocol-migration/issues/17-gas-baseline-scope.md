@@ -24,7 +24,7 @@ Blocked by: 16
 
 ### 最小基线交易集
 
-`core`：首次质押、追加质押、申请解锁、提取、融合、创建 Proposal、单笔投票、批量投票、准备激励、治理激励铸造、Proposal 激励铸造、MemberNFT 发射次数增加/融合/消耗与子币发射、LP 手续费单社区结算、`LOVE20Phase.sync`；同时验证外部 PancakeSwap 的 Factory/Pair/Router 在 `Stake` 使用场景下的功能和数值结果与 Uniswap V2 模型一致。
+`core`：首次质押、追加质押、申请解锁、提取、融合、创建 Proposal、单笔投票、批量投票、准备激励、治理激励铸造、Proposal 激励铸造、MemberNFT 发射次数增加/融合/消耗与子币发射、LP 手续费单社区结算、`Phase.sync`；同时验证外部 PancakeSwap 的 Factory/Pair/Router 在 `Stake` 使用场景下的功能和数值结果与 Uniswap V2 模型一致。
 
 `action`：行动创建回调、正常加入、部分撤回、正常退出、兜底 `forceExit`、LP 行动执行合约、链群验证首批/中间/末批、同币及“父币激励子币行动社区”的服务 Proposal 聚合（按 `Vote` 投票门槛筛选全社区行动并汇总服务加入量）、完整服务激励铸造与 100% 二次分配。
 

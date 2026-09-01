@@ -22,7 +22,7 @@ Blocked by:
 
 用户确认：上述配套代码库整体迁移，再按 BSC 新协议清理无关或废弃内容。
 
-用户确认代码库分层：`core` 独立维护底层治理框架、基础子币发射能力、`MemberNFT` 和 `LOVE20Phase`；提案扩展按业务框架拆分代码库。当前社群行动业务由 `action` 统一维护 `ActionTarget`、LP 行动执行合约、链群行动执行合约和链群服务行动执行合约。公平发射后的复杂分配机制本阶段暂不创建 `launch` 代码库，未来需求明确后再独立建立。
+用户确认代码库分层：`core` 独立维护底层治理框架、基础子币发射能力、`MemberNFT` 和 `Phase`；提案扩展按业务框架拆分代码库。当前社群行动业务由 `action` 统一维护 `ActionTarget`、LP 行动执行合约、链群行动执行合约和链群服务行动执行合约。公平发射后的复杂分配机制本阶段暂不创建 `launch` 代码库，未来需求明确后再独立建立。
 
 用户确认：`ActionTarget` 内部是否再拆分执行器、验证器或分配器属于社群行动业务内部结构；代码库层面统一由 `action` 维护。未来出现并列提案扩展类型时，再按业务框架拆分新的代码库。
 
@@ -44,7 +44,7 @@ Blocked by:
 
 用户确认：旧网络虽已部署，但被 BSC 新协议明确删除或替代的 `SL/ST`、核心 `LOVE20Verify`、`Random`、旧 `Join` 等合约不迁移；`core` 只保留并重写新的 `Stake`、`Submit`、`Vote`、`Mint`、发射、`MemberNFT` 和 `Phase`。`GroupVerify` 属于 `action` 内部的链群验证组件，是否独立仅由字节码限制决定。
 
-用户补充确认：`LOVE20TokenFactory` 保留在 `core`，作为子币部署的技术拆分，可能用于规避组合后的合约体积或部署限制；这不改变删除旧扩展业务工厂的决定。
+用户补充确认：`TokenFactory` 保留在 `core`，作为子币部署的技术拆分，可能用于规避组合后的合约体积或部署限制；这不改变删除旧扩展业务工厂的决定。
 
 ## Answer
 
@@ -54,12 +54,12 @@ Blocked by:
 - `group-chat` 的委托逻辑保留，但统一命名为 **Group Chat Delegate**，只在 `group-chat` 代码库内生效。它可以被 `GroupChat`、`GroupAdmin`、`GroupMember`、`GroupBanList` 等 Chat 组件使用，用于 Chat 内部管理和运营权限。
 - **Group Chat Delegate** 不进入 `core` 的通用身份或权限模型，不被 `action`、未来的 `launch` 或其他业务代码库使用，也不影响 `MemberNFT` 所有权、行动参与或公共验证者资格。
 - 旧 `group/src/GroupDelegate.sol` 不作为全局权限合约迁入 `core`；BSC 版在 `group-chat` 内只重写或迁入 Chat 所需的委托逻辑，实现和文档统一使用 **Group Chat Delegate**。
-- `LOVE20TokenFactory` 是 `core` 的技术工厂例外：保留用于子币部署拆分，不创建 `ActionExecutor` 或其他业务扩展实例；旧 `Extension*Factory`、群行动工厂和 LP 扩展工厂仍不迁移，外部 DEX Factory 只保留接口调用。
+- `TokenFactory` 是 `core` 的技术工厂例外：保留用于子币部署拆分，不创建 `ActionExecutor` 或其他业务扩展实例；旧 `Extension*Factory`、群行动工厂和 LP 扩展工厂仍不迁移，外部 DEX Factory 只保留接口调用。
 - 旧 `extension-lp` 的 V2 LP 业务迁移到 `action`，作为 LP 行动执行合约按 BSC 版 `ActionTarget`、`MemberNFT`、Proposal 激励和 PancakeSwap 兼容接口重写；V1 LP 实现及 V1/V2 旧工厂部署方式均不迁移。
 - `core` 对 PancakeSwap 只依赖外部 `Factory`、`Pair`、`Router` 接口。接入门槛不是仅检查 ABI 编译通过：必须在目标链和 Anvil 夹具中逐项核对 `getPair/createPair`、Pair 的 `token0/token1/getReserves/totalSupply/mint/burn/swap` 返回值与状态更新、Router 的 `getAmountsOut/swapExactTokensForTokens` 路径和 `amountOutMin` 语义、手续费口径以及失败回滚行为，并证明 `Stake` 的功能和数值结果正确；若差异影响这些结果，才不得直接接入 `Stake`，改为适配层或停止集成。
 - 外部依赖兼容性单独维护在 `compatibility` 代码库：对 `anvil`、`bsc97_dev`、`bsc56_public_test` 和 `bsc56_public` 分别保存 WBNB/WETH9、PancakeSwap Factory/Pair/Router 与本地 Uniswap V2 参考实现的接口、行为、数值和 `Stake` 场景证据。该仓库不提供生产合约，也不得成为 `core` 或 `action` 的运行时依赖；未通过兼容性验收的外部地址不得进入部署配置。
 - 已知差异必须显式处理：PancakeSwap fork 的 `swap` 手续费常量可能与 Uniswap V2 不同（例如 `1000/2` 对比 `1000/3`）。因此“接口一致”不是充分条件，也不要求无关内部代码完全相同；必须证明 `Stake` 的实际结算、兑换和 LP 数值结果正确。若差异不影响结果，可直接接入并记录目标版本；若影响结果，必须按实际语义改写适配层或停止集成，不能硬编码 Uniswap V2 费率。
-- 旧 `group` 仓库只按合约级迁移已部署且仍需要的 `LOVE20Group`：并入 `core` 后重命名为 `LOVE20Member`（`MemberNFT`），名称唯一性语义保留，最大长度改为 32 个 UTF-8 字节。`GroupDefaults` 只是地址到默认 NFT 的便利映射，BSC 版不迁移、不部署；不新增独立的 `group` 代码库。`GroupDelegate` 不进入 `core`，Chat 所需的最小委托逻辑只在 `group-chat` 内实现。
+- 旧 `group` 仓库只按合约级迁移已部署且仍需要的 `LOVE20Group`：并入 `core` 后实现为 `MemberNFT`，名称唯一性语义保留，最大长度改为 32 个 UTF-8 字节。`GroupDefaults` 只是地址到默认 NFT 的便利映射，BSC 版不迁移、不部署；不新增独立的 `group` 代码库。`GroupDelegate` 不进入 `core`，Chat 所需的最小委托逻辑只在 `group-chat` 内实现。
 - 链群业务中的 `groupId` 是 `MemberNFT` 的业务标识，不是第二套 `GroupNFT` 身份。`action` 和 `group-chat` 均依赖 `core` 的 Member 接口。
 - 当前 `group-chat` 使用一个 `GroupChat` 合约按 `groupId` 管理多个群，没有按群部署独立合约的 `GroupChatFactory`；除非未来改变为“一群一合约”，否则不新增该工厂。
 - BSC `group-chat` 完整沿用旧版生命周期、四类 typed Manager、规则槽位、插件、成员/管理员、Group Chat Delegate、消息索引和分页查询逻辑；迁移差异只统一参与主体。成员、管理员、委托者、发言者、被提及者、黑名单目标和治理黑名单投票者全部使用 `MemberNFT/memberId`。删除 `GroupDefaults`、`postAsDefaultSender`、地址黑名单及其投票/分页/查询，以及规则源和插件中作为业务身份传递的 `senderAddress`；合约地址、`msg.sender`、owner 快照及消息/事件调用地址仍可用于依赖、控制权校验和审计，但不得作为业务主体。

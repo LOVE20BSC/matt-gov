@@ -102,4 +102,4 @@ profile 必须记录链 ID、RPC 标识、目标区块高度、WBNB 地址、Fac
 
 ## 8. 验收场景
 
-至少覆盖两个 BSC profile 与本地参考实现的完整对照、Pair 创建和 LP 铸造/销毁、Swap 手续费与储备变化、Router 报价和实际输出、Token 顺序、失败回滚、`sqrt(k)` 计算，以及 `Stake` 加入、手续费结算、销毁和提取的成功与失败路径。
+每个准备部署的 BSC profile 都必须在部署前完成与本地参考实现的完整对照，覆盖 Pair 创建和 LP 铸造/销毁、Swap 手续费与储备变化、Router 报价和实际输出、Token 顺序、失败回滚、`sqrt(k)` 计算，以及 `Stake` 加入、手续费结算、销毁和提取的成功与失败路径。某个 profile 的通过结果不能替代另一个 profile。
