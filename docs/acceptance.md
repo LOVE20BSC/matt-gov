@@ -210,7 +210,7 @@
 - Phase 历史不可回写
 
 ### ActionRound 统一性
-**覆盖要求**：覆盖 `Phase 1..3` 对 LP 行动和 `Phase 1..4` 对链群行动的冷启动期，各 Executor 查询尚未开始阶段时回滚 `RoundNotStarted` 且不返回 `0`。覆盖 LP 行动使用 3 阶段模型（投票-加入-铸币），链群行动使用 4 阶段模型（投票-加入-验证-铸币）。覆盖各 Executor 从 `Phase.currentPhase()` 正确计算自己的业务 Round，投票和加入的 Phase 映射在所有行动类型中一致（投票 Round = p，加入 Round = p-1）。各 Executor 提供标准查询接口，实现可参考旧代码库 `LOVE20TKM` 中的 Extension 接口。
+**覆盖要求**：覆盖 `Phase 1..3` 对 LP 行动和 `Phase 1..4` 对链群行动的冷启动期，各 Executor 查询尚未开始阶段时回滚 `RoundNotStarted` 且不返回 `0`。覆盖 LP 行动使用 3 阶段模型（投票-加入-铸币），链群行动使用 4 阶段模型（投票-加入-验证-铸币）。覆盖各 Executor 从 `Phase.currentPhase()` 正确计算自己的业务 Round，投票和加入的 Phase 映射在所有行动类型中一致（投票发生在 Phase p，同轮次加入发生在 Phase p+1）。各 Executor 提供标准查询接口，实现可参考旧代码库 `LOVE20TKM` 中的 Extension 接口。
 
 **测试方式**：
 - 单元测试：`action/test/LPExecutor.t.sol` 和 `action/test/ChainGroupExecutor.t.sol` 的 Phase 1-3/4 查询场景
