@@ -39,6 +39,35 @@
 
 `compatibility/SPEC.md` 至少应记录：本地 Uniswap V2/WETH9 参考实现、目标网络外部地址、接口调用结果、储备和供应量变化、手续费/兑换报价差异、测试区块和提交。兼容性测试仓库不得被业务仓库反向导入。
 
+## 规格迁移与修改流程
+
+### 迁移前（代码库未创建）
+- 规格维护在 `matt-gov/docs/specs/<repo>.md`
+- 所有修改在此文件完成并提交到 matt-gov
+
+### 迁移时（代码库首次创建）
+- 将 `matt-gov/docs/specs/<repo>.md` 原样复制到 `<repo>/SPEC.md`
+- 在 matt-gov 中将该文件重命名为 `specs/<repo>.md.migrated`，并添加迁移记录：
+  ```markdown
+  # 已迁移到 <repo>/SPEC.md
+  迁移日期：YYYY-MM-DD
+  目标提交：<repo>@<commit-hash>
+  ```
+
+### 迁移后（代码库已存在）
+- 规格修改在 `<repo>/SPEC.md` 完成
+- 跨仓库接口变更时：
+  1. 在发起变更的仓库提交修改并更新其 SPEC.md
+  2. 在受影响的仓库提交对应修改并更新其 SPEC.md
+  3. 在 matt-gov 的 `docs/repositories.md` 追加变更记录
+  4. PR 描述必须列出所有受影响的仓库和对应提交
+
+### 验收门槛
+跨仓库接口变更的 PR 必须满足：
+- 所有受影响仓库的 SPEC.md 已同步更新
+- matt-gov 的 repositories.md 已记录变更
+- 相关集成测试通过（如 love20-anvil）
+
 ## 更新规则
 
 - 规格只描述当前 BSC 设计，不以旧代码作为理解前置条件。

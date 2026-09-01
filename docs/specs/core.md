@@ -47,6 +47,20 @@ LOVE20 是社群铸币协议。每个 LOVE20 代币都有一个 `parentTokenAddr
 
 首个代币使用 `Launch` 的一次性协议启动路径创建，不消耗发射次数，也不使用普通子币发射入口。`Launch` 仍是 `TokenFactory` 的唯一调用者；启动交易必须原子完成首个代币部署、协议代币登记、核心 `minter` 设置、首批代币铸造并发送到非零 `distributor`，以及首个代币/WBNB Pair 的创建或确认，任一步失败则整个启动回滚。启动成功后该路径永久关闭，不能创建第二个首个代币或改写其父币和分发结果。
 
+**首个代币的 Airdrop 依赖**：BSC 首个代币的初始分发来源：
+1. 在 BSC 上部署 `LOVE20TKM/burn` 仓库的 `Airdrop.sol` 合约
+2. Airdrop 合约记录旧协议（Thinkium）参与者通过销毁活动获得的份额
+3. 首个代币铸造后，按这些份额分发给对应地址
+
+**来源可追溯性**：正式部署必须在文档中公开指向：
+- `LOVE20TKM/burn` 仓库的 `Airdrop.sol`
+- `DeployAirdrop.s.sol` 部署脚本
+- `airdrop-design.md` 设计文档
+
+这使任何人都可以验证首个代币分发的合法性和公平性。
+
+注：`LOVE20TKM` 只读约束是指在实现 BSC 迁移期间不修改旧仓库代码；部署 Airdrop 到 BSC 可以手动操作，不属于迁移工作流的一部分。
+
 核心不维护父币托底池或通过销毁子币兑换父币的业务。流动性质押手续费中的父币由 `Stake` 通过 Router 买入社区代币后销毁。
 
 ### 3.2 TokenFactory
@@ -67,7 +81,17 @@ LOVE20 是社群铸币协议。每个 LOVE20 代币都有一个 `parentTokenAddr
 
 合约名为 `MemberNFT`，ERC721 名称为 `LOVE20 Member NFT`，符号为 `Member`。`memberId` 从 `1` 开始单调递增且永不复用；`0` 始终表示未设置。`mint(memberName)` 把 NFT 铸造给调用者并返回 `(memberId, mintCost)`。
 
+### 4.1 名称校验
+
 `memberName` 按 UTF-8 字节校验，必须非空且最多 `32 bytes`。名称保留用户提交的原始形式，但唯一性键只把 ASCII `A-Z` 转为小写，因此 ASCII 大小写不敏感且名称永久不能复用。名称不得包含 ASCII 空格、控制字符、DEL、Unicode 空白、零宽字符、行/段分隔符、方向控制字符、不可见数学运算符、废弃格式字符、无效或非最短 UTF-8、UTF-16 代理区编码和超出 `U+10FFFF` 的码点。公开查询至少支持按 `memberId` 取原始名称、判断名称是否已使用、按名称取 `memberId` 和返回规范化名称。
+
+**名称校验实现基线**：名称校验逻辑可直接参考 `LOVE20TKM/group` 中 `LOVE20Group.sol` 的实现。BSC 版的主要变更：
+- 最大长度降至 32 bytes（避免与钱包地址混淆）
+- 其他 UTF-8 校验规则、ASCII 大小写不敏感、禁止字符类型保持一致
+
+Gas 成本在旧版实际部署中已验证可行，无需重新评估。
+
+### 4.2 铸造费用
 
 铸造费用采用短名称稀缺性公式。设首个 LOVE20 代币的剩余未铸造量为 `unmintedSupply`：
 
@@ -173,6 +197,8 @@ totalGovVotes = totalGovVotes - oldGovVotes + newGovVotes
 
 提高等待期本身不改变 `lpShares` 或 `boostStake`；没有 LP Shares 时治理票仍为 `0`。
 
+**加速质押的激励分配机制**：加速质押不产生治理投票权，但参与治理激励中的加速部分分配。具体分配公式见第 8.3 节治理激励。流动性质押产生治理投票权，并参与投票激励（对应旧版"验证激励"）分配。两类质押可以同时存在，共享解锁生命周期。
+
 投票记账使用投票时快照：首次投票记录当时加速质押；同一 Round 后续再次投票时，只补记当前数量超过已记录数量的差额；没有后续投票时，单独增加的加速质押不进入本轮；数量未增加时不重复记账。一次批量投票无论包含多少 Proposal，都只对该 `tokenAddress + round + voterId` 执行一次快照补差，不能按 Proposal 重复增加成员或全局加速质押量。
 
 ### 6.4 统一解锁和提取
@@ -194,7 +220,18 @@ totalGovVotes = totalGovVotes - oldGovVotes + newGovVotes
 - 当前投票 Round 中任一方已经发生非零投票；
 - 目标等待期小于源等待期。
 
-融合只处理尚未使用的当前质押状态。源的 LP Shares 和加速质押单向并入目标，不能修改或取走目标原有资产；合并后采用目标等待期，并按下式原子重算当前治理票和社区总治理票：
+融合只处理尚未使用的当前质押状态。**"已使用"是指该质押已在当前 Round 投票，或已进入解锁倒计时期。**未投票且未解锁的质押可以融合进目标 MemberNFT；已投票或已解锁的质押不能融合，避免破坏投票快照和解锁生命周期。
+
+**融合转移的设计意图**：质押融合支持单向转移（调用者只需控制来源 MemberNFT），目的是让这些资产可以通过 MemberNFT 作为载体进行场外交易。
+
+**约束**：
+- 目标 MemberNFT 必须存在（`ownerOf(targetMemberId)` 不回滚）
+- 来源质押必须未投票且未解锁
+- 转移不破坏目标 MemberNFT 的既有状态（只增加，不减少）
+
+**场景**：持有人可以在紧急情况下将部分资产转移到另一个 MemberNFT，而无需等待解锁期或获得目标 NFT 持有人的签名授权。这不是攻击向量，因为转移只能增强目标 NFT 的资产，不能削弱或锁定它。
+
+源的 LP Shares 和加速质押单向并入目标，不能修改或取走目标原有资产；合并后采用目标等待期，并按下式原子重算当前治理票和社区总治理票：
 
 ```text
 targetLpSharesAfter = targetLpSharesBefore + sourceLpSharesBefore
@@ -253,7 +290,9 @@ Proposal 结构为：
 
 `actionId` 是部分行动类 Proposal 对同一 `proposalId` 的业务别名，不创建第二个 ID。行动框架把 `details` 解释为 `verificationRule`；`verificationKeys` 和 `verificationKeyGuides` 等行动专属字段放在创建 KV 中。
 
-### 7.2 Target 模式
+### 7.2 Target 模式与扩展性
+
+Proposal Target 设计为地址类型而非强制 MemberNFT，是为了支持未来的业务扩展框架。当前 ActionTarget 是第一个扩展框架；未来可能出现其他类型的提案扩展，它们可以是合约地址或 EOA，由 Target 自身决定如何处理激励。这种灵活性使协议可以在不修改核心层的前提下接入新的业务模式。
 
 | target | targetMode | 行为 |
 | --- | --- | --- |
@@ -261,6 +300,13 @@ Proposal 结构为：
 | 非零合约 | `NoCallback` | 合法，不触发回调 |
 | 非零合约 | `Callback` | 合法，创建/推举/投票均回调，空 KV 也回调 |
 | EOA | `Callback` | 拒绝 |
+
+**零地址 Target 禁止的理由**：
+1. 避免因遗忘填写地址导致激励永久丢失
+2. 正常提案应该有明确的激励接收主体
+3. 如需销毁激励，应创建专用销毁合约（铸造后立即销毁），使意图显式化
+
+早期阶段，零地址销毁预期是伪需求；未来若有真实需求，可通过扩展实现。
 
 KV 使用等长的 `bytes32[] keys` 和 `bytes[] values`。`NoCallback` 要求两数组为空；`Callback` 允许空数组并仍然触发回调。核心只校验长度并透传，不解释字段。
 
@@ -341,7 +387,12 @@ proposalVotes × 1e18 >= totalVotes × PROPOSAL_INCENTIVE_MIN_VOTE_RATIO
 
 ### 8.3 治理激励
 
-治理激励按 `tokenAddress + round + memberId` 隔离，返回 `(verifyIncentive, boostIncentive, overflowIncentive)`。治理池固定分为两个各占 50% 的部分（`GOV_VERIFY_SHARE = 0.5e18`、`GOV_BOOST_SHARE = 0.5e18`）；总治理票为 `0` 时三项均为 `0`：
+治理激励按 `tokenAddress + round + memberId` 隔离，返回 `(verifyIncentive, boostIncentive, overflowIncentive)`。治理池固定分为两个各占 50% 的部分：
+
+- **投票激励部分**（`GOV_VERIFY_SHARE = 0.5e18`，对应旧版"验证激励"）：按成员实际投票行为分配
+- **加速激励部分**（`GOV_BOOST_SHARE = 0.5e18`）：按加速质押份额占总加速质押的比例分配
+
+总治理票为 `0` 时三项均为 `0`：
 
 - `verifyIncentive = govPool × GOV_VERIFY_SHARE / 1e18 × memberVotes / totalVotes`；
 - `theoreticalBoost = govPool × GOV_BOOST_SHARE / 1e18 × memberBoost / totalBoost`；
@@ -360,7 +411,7 @@ proposalVotes × 1e18 >= totalVotes × PROPOSAL_INCENTIVE_MIN_VOTE_RATIO
 
 ### 9.1 发射次数
 
-发射次数按 `tokenAddress + memberId` 记录整数 `launchCount` 和未消耗的累计发射额度 `launchCredit`，每个社区另记录累计已产生次数 `issuedLaunchCount`。
+发射次数按 `tokenAddress + memberId` 记录整数 `launchCount` 和未消耗的累计发射额度 `launchCredit`，每个社区另记录累计已产生次数 `issuedLaunchCount`。每个社区最多产生 `maxLaunchCount` 次发射，该值在协议部署时通过构造函数传入，所有社区共享相同上限。达到上限后，该社区不再产生新的发射次数，但已有的整数次数仍可融合转移和消耗发射。
 
 治理激励铸造时，以本次铸造前的剩余供应量计算本次阈值，并向上取整：
 
@@ -371,15 +422,15 @@ threshold = ceil((maxSupply - totalSupplyBeforeMint) × launchRatio / 1e18)
 只有本次实际铸造的治理激励大于 `0` 时才更新发射额度。剩余供应量为 `0` 时不计算阈值，也不更新 `launchCredit`；否则，本次实际铸造的治理激励先加入该 `tokenAddress + memberId` 的 `launchCredit`，再使用本次阈值计算完整次数：
 
 ```text
-newCount = min(launchCredit / threshold, X - issuedLaunchCount)
+newCount = min(launchCredit / threshold, maxLaunchCount - issuedLaunchCount)
 launchCredit -= newCount × threshold
 launchCount[tokenAddress][memberId] += newCount
 issuedLaunchCount[tokenAddress] += newCount
 ```
 
-一次铸造可以跨过多个阈值；整数除法的余数保留在 `launchCredit`，继续与下一次实际铸造的治理激励累计。每个社区最多产生 `maxLaunchCount = X` 次；达到 `X` 后治理激励仍可铸造，但不再增加次数或累计新的发射额度。次数消耗或融合不降低 `issuedLaunchCount`。
+一次铸造可以跨过多个阈值；整数除法的余数保留在 `launchCredit`，继续与下一次实际铸造的治理激励累计。每个社区达到 `maxLaunchCount` 后治理激励仍可铸造，但不再增加次数或累计新的发射额度。次数消耗或融合不降低 `issuedLaunchCount`。
 
-社区初始化的 `launchRatio` 和 `maxLaunchCount` 必须为正数。新增次数受 `X - issuedLaunchCount` 限制；当剩余可产生次数为零时，不再增加任何成员的发射次数或 `launchCredit`。发射次数融合只转移已有的整数 `launchCount`，不转移 `launchCredit`，也不回写治理激励历史。
+社区初始化的 `launchRatio` 和 `maxLaunchCount` 必须为正数。新增次数受 `maxLaunchCount - issuedLaunchCount` 限制；当剩余可产生次数为零时，不再增加任何成员的发射次数或 `launchCredit`。发射次数融合只转移已有的整数 `launchCount`，不转移 `launchCredit`，也不回写治理激励历史。
 
 ### 9.2 发射
 
@@ -395,6 +446,15 @@ issuedLaunchCount[tokenAddress] += newCount
 ### 9.3 发射次数融合
 
 `mergeLaunchCount(tokenAddress, sourceMemberId, targetMemberId, count)` 支持同一社区的部分次数融合。源、目标必须是不同且已存在的 MemberNFT，`count > 0`，调用者只需控制源 MemberNFT，不要求控制目标 MemberNFT，且源次数必须足够。成功后源次数减少、目标次数增加；目标原有次数及其他状态不减少，其他质押、投票、历史发射和事件不改变。
+
+**发射次数融合的设计意图**：发射次数融合支持单向转移（调用者只需控制来源 MemberNFT），目的是让发射次数可以通过 MemberNFT 作为载体进行场外交易。
+
+**约束**：
+- 目标 MemberNFT 必须存在（`ownerOf(targetMemberId)` 不回滚）
+- 发射次数转移不携带 `launchCredit`，只转移整数次数
+- 转移不破坏目标 MemberNFT 的既有状态（只增加，不减少）
+
+**场景**：持有人可以在紧急情况下将部分发射次数转移到另一个 MemberNFT，而无需获得目标 NFT 持有人的签名授权。这不是攻击向量，因为转移只能增强目标 NFT 的资产，不能削弱或锁定它。
 
 ## 10. 事件、错误和验收
 

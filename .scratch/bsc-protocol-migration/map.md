@@ -28,12 +28,11 @@
 - [提案回调 ABI 与操作原子性](issues/14-proposal-callback-abi.md) — Proposal 创建、推举和投票分别触发对应回调；回调传递 `tokenAddress`、`proposalId`、`submitterId`/`voterId`、增量票和 `bytes32[]/bytes[]` KV，任一对应外层操作回调失败则整笔交易回滚。
 - [提案目标与零地址激励](issues/15-zero-proposal-target-reward.md) — Proposal Target 必须是非零 EOA 或合约；不为 Proposal 增加零地址自动销毁分支，行动类 `executor` 必须是非零合约地址。
 - [迁移执行顺序与旧组织归档](issues/16-migration-order-and-archive.md) — 先冻结链上来源证据，再按 `core`、业务仓库、配套仓库、Anvil/前端、公测、正式发布推进；正式发布验收前旧组织不归档，之后按旧 Thinkium 责任逐仓库只读或归档。
-- [Gas 优化范围与性能基线](issues/17-gas-baseline-scope.md) — 首发只阻断无界循环、不可分批和超过目标网络区块 gas 上限 80% 的写交易；按代表性交易记录中位数，不设固定绝对 gas 数值。
 - [仓库迁移矩阵与依赖边界](issues/09-repository-migration-matrix.md) — 旧 `LOVE20Group` 并入 `core` 并实现为 `MemberNFT`，`GroupDefaults` 不迁移；旧 `extension-lp` 仅迁移 V2 LP 业务为 `action` 内的 LP 行动执行合约，V1 不迁移；`group-chat` 沿用旧业务逻辑但全部参与主体统一为 `MemberNFT`，删除地址主体平行路径，**Group Chat Delegate** 仅限其内部；独立 `compatibility` 仓库验证 BSC 外部依赖。
 - [Matt 文档与组织验收标准](issues/11-matt-docs-and-acceptance.md) — 各仓库采用条件式最低文档标准，组织级仓库状态和跨仓库验收分别维护在 `docs/repositories.md` 与 `docs/acceptance.md`，首个 `core` 真实小任务用 agent 自审验证协作闭环。
 - [体验资产与行动撤回](issues/07-experience-and-withdrawal.md) — 体验资产按提供者独立归属，部分撤回以行动快照为边界，行动结束由类型内部业务结算，首版部署 `forceExit` 但由前端隐藏，仅作登记清理兜底。
 - [治理质押、融合与资产生命周期](issues/05-stake-fusion-and-lifecycle.md) — 质押按 `memberId` 归属，不再产生 SL/ST 凭证，份额直接由 `Stake` 账本维护；两类质押统一解锁，融合按社区和投票状态隔离，多轮激励独立铸造。
-- [MemberNFT 发射次数与子币发射](issues/04-launch-count-and-permit.md) — 治理激励累计进入 MemberNFT 的社区发射额度，按本次铸造前剩余供应量计算向上取整阈值；每产生完整次数就扣除对应额度，余数继续累计；社区累计达到 `maxLaunchCount = X` 后停止新增；已有整数次数可部分融合转移，发射消耗次数并把首批代币交给指定 `distributor`。
+- [MemberNFT 发射次数与子币发射](issues/04-launch-count-and-permit.md) — 治理激励累计进入 MemberNFT 的社区发射额度，按本次铸造前剩余供应量计算向上取整阈值；每产生完整次数就扣除对应额度，余数继续累计；社区累计达到 `maxLaunchCount` 后停止新增；已有整数次数可部分融合转移，发射消耗次数并把首批代币交给指定 `distributor`。
 
 ## Not yet specified
 
@@ -46,3 +45,4 @@
 - 尚未部署的 `chat` 代码库及其 Member NFT 身份模型；本次迁移不纳入，未来部署或纳入 BSC 时另行建票据。
 - 测试期间直接修改 `interface`；正式发布只能从验收后的 `interface-test` 手动同步。
 - 迁移阶段暂不创建 `launch` 代码库；公平发射后的复杂分配机制待未来需求明确后另行建立。
+- Gas 优化与性能基线：迁移阶段只阻断明显的无界循环和超过区块 gas limit 的写操作；详细的 Gas 优化和中位数基线在所有代码库迁移完成后，通过独立票据推进。
