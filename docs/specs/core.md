@@ -119,7 +119,7 @@ MemberNFT 的转移不复制、不拆分、不重置任何历史。依赖身份�
 - 超出范围时，尚未生成 Phase 使用 `newPhaseBlocks = max(1, elapsedBlocks × targetSeconds / elapsedSeconds)`；
 - 已经生成的下一 Phase 不回写，新参数从之后第一个尚未生成的 Phase 生效，并把该编号写入本次观测的 `effectivePhase`。
 
-核心 `Submit` 和 `Vote` 把 `Phase N` 一对一解释为治理 `Round N`，并提供无参数的 `currentRound()`。创建、推举和投票只写入当前治理 Round；当 `Phase.currentPhase() > N` 时，治理 Round N 的 Vote 时间片结束，`Vote` 对外返回该 Round 已结束，核心激励可以准备和铸造。`Mint` 只读取 `Vote` 的结束判断，不重复解释 Phase。行动层可以在同一时间线上采用自己的槽位映射；不同层的同号 Round 不代表同一业务对象。
+核心 `Submit` 和 `Vote` 把 `Phase N` 一对一解释为治理 `Round N`，并提供无参数的 `currentRound()`。创建、推举和投票只写入当前治理 Round；当 `Phase.currentPhase() > N` 时，治理 Round N 的 Vote 时间片结束，`Vote` 对外返回该 Round 已结束，核心激励可以准备和铸造。`Mint` 只读取 `Vote` 的结束判断，不重复解释 Phase。行动层可以在同一时间线上采用自己的业务阶段映射；不同层的同号 Round 不代表同一业务对象。
 
 ## 6. Stake
 

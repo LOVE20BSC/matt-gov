@@ -61,13 +61,13 @@ ActionTarget 提供两类按治理 Round 的只读查询：
 
 ## 3. ActionRound
 
-行动层把 `Phase` 的无语义时间片投影为从 `1` 开始的四个 ActionRound 槽位。设当前 `Phase` 编号为 `p`，四个无参数查询固定返回：`currentRoundMint() = p - 3`、`currentRoundVerify() = p - 2`、`currentRoundJoin() = p - 1`、`currentRoundVote() = p`。这四个值是同一时间点上四个槽位的轮次标签，不表示交易执行顺序；各槽位使用的区块边界仍由 `Phase` 的历史记录决定。
+行动层把 `Phase` 的无业务语义时间片映射为从 `1` 开始的四个业务阶段及其 ActionRound：投票阶段、加入阶段、验证阶段、铸币阶段。设当前 `Phase` 编号为 `p`，四个无参数查询固定返回：`currentRoundMint() = p - 3`、`currentRoundVerify() = p - 2`、`currentRoundJoin() = p - 1`、`currentRoundVote() = p`。这四个值是同一时间点上四个阶段当前对应的轮次标签，不表示交易执行顺序；各阶段使用的区块边界仍由 `Phase` 的历史记录决定。
 
-当某个计算结果小于 `1` 时，该槽位轮次尚未开始，查询回滚 `RoundNotStarted`，不返回 `0`。因此 `Phase 1` 至 `Phase 3` 是行动轮次的启动窗口，`Phase 4` 才是四个槽位都具有有效轮次的首个时间点。
+当某个计算结果小于 `1` 时，该阶段对应的轮次尚未开始，查询回滚 `RoundNotStarted`，不返回 `0`。因此 `Phase 1` 至 `Phase 3` 是行动轮次的启动窗口，`Phase 4` 才是四个阶段都具有有效轮次的首个时间点。
 
-四个槽位同时属于不同的滚动 Round，不表示串行交易顺序。`Join` 表示加入、追加、退出和其他行动参与状态变化。
+同一时刻，四个阶段分别处理不同的滚动 Round，不表示串行交易顺序。加入阶段包括加入、追加、退出和其他行动参与状态变化。
 
-LP、链群行动和链群服务行动共用四个槽位和同一 Mint 时间窗口：LP 和链群服务的 Verify 槽位为空操作，链群行动在 Verify 槽位执行公共验证。每个 Executor 自己实现 `canMint(actionId, round)`；统一时间槽位不等于统一铸造资格。
+LP、链群行动和链群服务行动共用四个阶段和同一铸币时间窗口：LP 和链群服务的验证阶段为空操作，链群行动在验证阶段执行公共验证。每个 Executor 自己实现 `canMint(actionId, round)`；统一阶段不等于统一铸币资格。
 
 ActionTarget 提供无参数只读接口 `currentRoundVote()`、`currentRoundJoin()`、`currentRoundVerify()` 和 `currentRoundMint()`，按上述公式直接从 `Phase` 推导，不保存 ActionRound 历史，也不提供带通用阶段参数的 `currentRound`、`ActionRoundInfo` 或 `ActionRoundOf`。
 
@@ -77,7 +77,7 @@ ActionTarget 提供无参数只读接口 `currentRoundVote()`、`currentRoundJoi
 - 可复用行动状态至少按 `tokenAddress + actionId + round` 隔离；除本规格明确要求的链群跨社区、跨行动聚合查询外，跨社区或跨行动读取必须拒绝。
 - 体验资产按 `tokenAddress + memberId + actionId + providerMemberId` 独立记账，归 Provider MemberNFT 所有，退出时返还对应 Provider。
 - 自有资产和体验资产可以同时存在；部分撤回只减少指定账本，不互相抵扣。
-- 对使用按 Round 参与历史的 Executor，Join 槽位内的撤回直接更新该 Round 的参与权、验证权重和可得激励；Join 槽位结束后，该 Round 的参与历史不再改变，后续撤回只写入后续 Round。未使用参与历史的 Executor 按自身冻结点结算；余额归零后才清除通用登记。
+- 对使用按 Round 参与历史的 Executor，加入阶段内的撤回直接更新该 Round 的参与权、验证权重和可得激励；加入阶段结束后，该 Round 的参与历史不再改变，后续撤回只写入后续 Round。未使用参与历史的 Executor 按自身冻结点结算；余额归零后才清除通用登记。
 - MemberNFT 转移不改变已发生的快照、投票、验证或已结算状态，新持有人继续操作当前未铸造权益。
 
 ## 5. LP 行动执行合约
@@ -88,7 +88,7 @@ LP Executor 至少配置参与 LP Token 地址、`govRatioMultiplier`、`minGovR
 
 ### 5.2 加入和时间权重
 
-只有对应 ActionRound 在同编号 Vote 槽位已获得治理投票的 Proposal 才能在其 Join 槽位加入。首次加入的 MemberNFT 必须满足当前有效治理票占社区总治理票的 `minGovRatio`；后续加入按行动规则允许追加。每次加入记录该笔的 `joinBlock_i` 和 `amount_i`，并在加入时使用该 Round 的 Join 槽位起始区块与阶段区块数冻结时间扣减；后续结算不使用结算区块重新计算。
+只有对应 ActionRound 在同编号投票阶段已获得治理投票的 Proposal 才能在其加入阶段加入。首次加入的 MemberNFT 必须满足当前有效治理票占社区总治理票的 `minGovRatio`；后续加入按行动规则允许追加。每次加入记录该笔的 `joinBlock_i` 和 `amount_i`，并在加入时使用该 Round 的加入阶段起始区块与阶段区块数冻结时间扣减；后续结算不使用结算区块重新计算。
 
 行动 Round 的总有效数量为所有参与者 `effectiveAmount` 之和。加入、追加、验证信息更新和部分撤回由 LP Executor 自己执行；退出返还该 Executor 记录的资产。时间扣减采用以下线性规则，并显式封顶避免阶段结束后的整数下溢：
 
@@ -101,9 +101,9 @@ deduction = Σ deduction_i
 effectiveAmount = joinedAmount - deduction
 ```
 
-加入发生在 Join 槽位内，因此正常情况下 `joinBlock_i - joinPhaseStartBlock < joinPhaseBlocks`；`min` 只用于防止异常边界造成下溢。当 `totalEffectiveAmount == 0` 时，LP 行动层激励为 `0`，不执行比例除法。`totalGovVotes == 0` 只在启用治理上限时使实际激励为 `0`；`govRatioMultiplier == 0` 时不读取治理票分母。
+加入发生在加入阶段内，因此正常情况下 `joinBlock_i - joinPhaseStartBlock < joinPhaseBlocks`；`min` 只用于防止异常边界造成下溢。当 `totalEffectiveAmount == 0` 时，LP 行动层激励为 `0`，不执行比例除法。`totalGovVotes == 0` 只在启用治理上限时使实际激励为 `0`；`govRatioMultiplier == 0` 时不读取治理票分母。
 
-Join 槽位内部分撤回按撤回前的累计状态同比减少数量与扣减值：
+加入阶段内部分撤回按撤回前的累计状态同比减少数量与扣减值：
 
 ```text
 removedDeduction = deduction × withdrawAmount / joinedAmount
@@ -115,7 +115,7 @@ deduction -= removedDeduction
 
 ### 5.3 LP 激励
 
-当 Round 进入 Mint 槽位且满足 `canMint` 时，Executor 先经 ActionTarget 一次性铸造整个 Proposal 的 `proposalIncentive`，再按有效 LP 占比计算参与者理论激励：
+当 Round 进入铸币阶段且满足 `canMint` 时，Executor 先经 ActionTarget 一次性铸造整个 Proposal 的 `proposalIncentive`，再按有效 LP 占比计算参与者理论激励：
 
 ```text
 effectiveLpRatio = effectiveAmount × 1e18 / totalEffectiveAmount
@@ -134,7 +134,7 @@ overflowIncentive = theoreticalIncentive - mintIncentive
 
 `govRatioMultiplier` 使用 `1e18` 表示 1 倍；启用上限且 `totalGovVotes == 0` 时 `mintIncentive = 0`、`overflowIncentive = theoreticalIncentive`。
 
-Executor 从已取得的 Proposal 激励余额向成员转账 `mintIncentive` 并销毁 `overflowIncentive`，成员结算不再逐人调用核心 Mint。治理占比在参与者结算时记录，随后查询返回冻结值；每个成员每轮只能结算一次。无人参与时整个 Proposal 激励由 Executor 销毁。LP Executor 的 Verify 槽位为空操作。
+Executor 从已取得的 Proposal 激励余额向成员转账 `mintIncentive` 并销毁 `overflowIncentive`，成员结算不再逐人调用核心 Mint。治理占比在参与者结算时记录，随后查询返回冻结值；每个成员每轮只能结算一次。无人参与时整个 Proposal 激励由 Executor 销毁。LP Executor 的验证阶段为空操作。
 
 ## 6. 链群行动执行合约
 
@@ -148,7 +148,7 @@ Executor 从已取得的 Proposal 激励余额向成员转账 `mintIncentive` �
 
 ### 6.2 加入、退出和体验模式
 
-仅当 Proposal 在对应 ActionRound 的同编号 Vote 槽位获得投票时，才可在该 Round 的 Join 槽位加入。MemberNFT 首次加入必须达到链群设置的最小参与量，并同时满足成员上限、链群容量、成员数量和行动最大参与量；可以在 Join 槽位追加并更新验证信息。正常退出、部分撤回、全部资产返还和行动结束清理由链群 Executor 完成。
+仅当 Proposal 在对应 ActionRound 的同编号投票阶段获得投票时，才可在该 Round 的加入阶段加入。MemberNFT 首次加入必须达到链群设置的最小参与量，并同时满足成员上限、链群容量、成员数量和行动最大参与量；可以在加入阶段追加并更新验证信息。正常退出、部分撤回、全部资产返还和行动结束清理由链群 Executor 完成。
 
 体验模式下，Provider MemberNFT 先把指定额度托管给链群 Executor，体验成员选择 Provider 使用该额度加入；体验成员不能追加体验额度。体验成员退出或 Provider 代为退出时，额度返还 Provider，体验成员获得的行动激励仍归体验成员。自有资产和体验资产互不影响。
 
@@ -174,11 +174,11 @@ Executor 必须维护下列 17 组跨其所有代币社区和链群行动的可�
 
 公共验证者是链群行动 Executor 内部的候选角色，不是群 owner。候选人必须是 `actionTokenAddress` 社区中拥有有效治理权的 MemberNFT，不需要额外凭证或押金。
 
-候选申请只在 Vote 槽位新增、撤销或修改：每次申请生成新的 `applicationId`，保存说明和分成比例 `r`（`0 <= r <= 1e18`）；撤销/修改把 MemberNFT 当前申请置为 `0`，从内部排名移除但保留旧申请和票数；新申请从零计票；Vote 槽位结束后本 Round 候选、排名和比例冻结，后续操作只影响下一 Round。
+候选申请只在投票阶段新增、撤销或修改：每次申请生成新的 `applicationId`，保存说明和分成比例 `r`（`0 <= r <= 1e18`）；撤销/修改把 MemberNFT 当前申请置为 `0`，从内部排名移除但保留旧申请和票数；新申请从零计票；投票阶段结束后本 Round 候选、排名和比例冻结，后续操作只影响下一 Round。
 
-验证阶段分割线在 Executor 初始化时传入，数组必须严格递增且每项满足 `0 < split < 1e18`。有 `n` 个分割线时，排名前 `n + 1` 名可验证；第 1 名在 Verify 槽位开始即可提交。排名按累计候选票降序、`applicationId` 升序。
+验证阶段分割线在 Executor 初始化时传入，数组必须严格递增且每项满足 `0 < split < 1e18`。有 `n` 个分割线时，排名前 `n + 1` 名可验证；第 1 名在验证阶段开始即可提交。排名按累计候选票降序、`applicationId` 升序。
 
-对排名为 `rank >= 2` 的候选人，`splits[rank - 2]` 是其开放比例。开放区块按本轮验证槽位对应的 Phase 记录计算：
+对排名为 `rank >= 2` 的候选人，`splits[rank - 2]` 是其开放比例。开放区块按本轮验证阶段对应的 Phase 记录计算：
 
 ```text
 openOffset = ceil(verifyPhaseBlocks × splits[rank - 2] / 1e18)
@@ -193,11 +193,11 @@ openBlock = verifyPhaseStartBlock + openOffset
 
 ### 6.4 按 Round 参与历史和批量验证
 
-链群 Executor 通过 Join 槽位内逐笔发生的加入、追加、体验加入、部分撤回和全部退出交易，自然形成每轮参与快照。每笔交易都以 `currentRoundJoin()` 为键更新该行动的 Round 历史。历史至少包含：本 Round 有参与成员的 `groupId` 集合、各链群的 `memberId` 集合及顺序、各成员的链群归属和参与量、各链群参与总量及行动参与总量。
+链群 Executor 通过加入阶段内逐笔发生的加入、追加、体验加入、部分撤回和全部退出交易，自然形成每轮参与快照。每笔交易都以 `currentRoundJoin()` 为键更新该行动的 Round 历史。历史至少包含：本 Round 有参与成员的 `groupId` 集合、各链群的 `memberId` 集合及顺序、各成员的链群归属和参与量、各链群参与总量及行动参与总量。
 
 同一 Round 内的多笔交易持续更新该 Round 的最终值，不为同一 Round 重复创建版本。首次成员加入时把链群加入本 Round 的链群集合；最后一名成员全部退出时移除该链群；追加和仍有余额的部分撤回不重复增删成员或链群。查询某一 Round 时，已有该 Round 记录就直接读取；没有记录则读取不晚于该 Round 的最近一次历史值，没有任何更早记录时返回空集合或 `0`。因此整轮无人交互时自然继承上一轮状态，不需要复制或同步交易。
 
-Join 槽位结束后，任何参与变更只能写入后续 Round，目标 Round 的最终历史状态就是验证依据。Verify 槽位按同一 Round 直接读取链群集合、成员顺序和参与量，无需其他状态准备交易；空链群不在集合内，后续链群停用、恢复、新增或成员变更均不得回写该 Round。实现按 Round 记录集合数量、索引项和成员反向索引，使加入和退出交易直接形成可查询的历史。
+加入阶段结束后，任何参与变更只能写入后续 Round，目标 Round 的最终历史状态就是验证依据。验证阶段按同一 Round 直接读取链群集合、成员顺序和参与量，无需其他状态准备交易；空链群不在集合内，后续链群停用、恢复、新增或成员变更均不得回写该 Round。实现按 Round 记录集合数量、索引项和成员反向索引，使加入和退出交易直接形成可查询的历史。
 
 公共验证者可以分批提交验证。每个链群按目标 Round 历史中的成员顺序保存验证游标；调用必须满足 `startIndex == verifiedCount`，批次连续，不得重复、跳过或乱序，且只能验证目标 Round 链群集合中的成员。本 Round 本行动的首个有效验证批次永久锁定一个公共验证者 `memberId`，该验证者负责完成目标 Round 历史集合内全部链群的验证；后续批次只能由该 MemberNFT 当前持有人提交，不设置失效、接管或代理。NFT 转移后由新持有人继续完成本 Round。
 
@@ -228,13 +228,13 @@ Executor 可在内部把行动激励分配给参与者；ActionTarget 不留余�
 
 ### 7.2 服务加入
 
-服务加入主体是 MemberNFT，满足以下任一条件即可加入：是 `actionTokenAddress` 社区中有效链群的 owner，或在相关链群行动中存在有效公共验证者申请。加入发生在对应 ActionRound 的 Join 槽位，且服务 Proposal 必须在同编号 Vote 槽位获得投票。加入不要求该 Round 已选出公共验证者，也不承诺一定产生服务激励；服务加入量按整个社区聚合。
+服务加入主体是 MemberNFT，满足以下任一条件即可加入：是 `actionTokenAddress` 社区中有效链群的 owner，或在相关链群行动中存在有效公共验证者申请。加入发生在对应 ActionRound 的加入阶段，且服务 Proposal 必须在同编号投票阶段获得投票。加入不要求该 Round 已选出公共验证者，也不承诺一定产生服务激励；服务加入量按整个社区聚合。
 
 服务激励按人结算，但 MemberNFT 只有在该服务 Proposal 的对应 ActionRound 已完成加入，才可以结算自己的公共验证者和/或链群 owner 激励。未加入者即使具有角色也不能结算，其理论份额不重新分配；该份额与舍入余数留在服务 Executor，不建立余数账本，也不参与之后的成员分配。
 
 ### 7.3 服务激励聚合
 
-服务 Executor 在 Mint 槽位通过 ActionTarget 一次性取得 `servicePool`，来源是 `serviceTokenAddress` 社区对应服务 Proposal 的冻结 Proposal 激励；之后按 MemberNFT 分人结算，不把底层 Proposal 激励拆成多个独立铸造请求。随后逐个检查 `actionTokenAddress` 社区的链群行动：
+服务 Executor 在铸币阶段通过 ActionTarget 一次性取得 `servicePool`，来源是 `serviceTokenAddress` 社区对应服务 Proposal 的冻结 Proposal 激励；之后按 MemberNFT 分人结算，不把底层 Proposal 激励拆成多个独立铸造请求。随后逐个检查 `actionTokenAddress` 社区的链群行动：
 
 1. 通过 ActionTarget 使用 `actionExecutor` 查询 `actionTokenAddress` 社区关联的全部 Proposal；
 2. 对每个 Proposal 确认本轮至少有一个成员参与、目标 Round 历史集合内的全部链群均已完成验证、行动激励已经最终确定，并确认实际锁定的公共验证者及其申请分成比例。任一条件不满足时，该行动的行动激励权重为 `0`，不进入服务激励分母；该行动的 Proposal 激励只能由 Executor 销毁；
@@ -314,4 +314,4 @@ theoreticalIncentive(m) = verifierTheory(m) + ownerTheory(m)
 
 ## 9. 验收场景
 
-至少覆盖：三类 Proposal 回调和原子回滚；ActionTarget 映射、查询和 forceExit；四槽位 ActionRound；LP 时间加权、治理票上限和部分撤回；链群激活、配置更新、成员/体验参与、17 组链群全局索引的全量/Count/AtIndex 一致性、跨社区和跨行动关系、逐层清理、最后一次正常退出和 forceExit 状态边界、候选申请版本切换、排名平票、前 `n + 1` 开放、逐笔交易形成 Round 历史、同轮多次变更、空轮继承、验证批次连续性、NFT 转移续验、无候选/失联导致行动层激励为零；完整验证后的成员和链群激励；服务跨整个社区聚合、同币/父币服务、公共验证者比例、100% 二次分配和全精度舍入边界。
+至少覆盖：三类 Proposal 回调和原子回滚；ActionTarget 映射、查询和 forceExit；四阶段 ActionRound；LP 时间加权、治理票上限和部分撤回；链群激活、配置更新、成员/体验参与、17 组链群全局索引的全量/Count/AtIndex 一致性、跨社区和跨行动关系、逐层清理、最后一次正常退出和 forceExit 状态边界、候选申请版本切换、排名平票、前 `n + 1` 开放、逐笔交易形成 Round 历史、同轮多次变更、空轮继承、验证批次连续性、NFT 转移续验、无候选/失联导致行动层激励为零；完整验证后的成员和链群激励；服务跨整个社区聚合、同币/父币服务、公共验证者比例、100% 二次分配和全精度舍入边界。

@@ -18,7 +18,7 @@
 
 <!-- 只列已关闭的子票据；当前已在启动讨论中确认的基线见 Notes。 -->
 
-- [四阶段与轮次模型](issues/01-phase-round-model.md) — `Phase` 只维护无语义时间片；`action` 层统一使用 `Vote`/`Join`/`Verify`/`Mint` 四槽位 `ActionRound`，链群服务和 LP 的 `Verify` 为空操作但轮次和 `Mint` 槽位与链群行动一致。
+- [四阶段与轮次模型](issues/01-phase-round-model.md) — `Phase` 只维护无业务语义的时间阶段；`action` 层统一映射投票、加入、验证、铸币四个业务阶段，链群服务和 LP 的验证阶段为空操作，但轮次和铸币阶段与链群行动一致。
 - [行动 Target 与参与登记边界](issues/02-action-executor-and-join.md) — `ActionTarget` 统一行动提案创建、行动登记和应急清理；关联 `executor` 发起激励铸造，`ActionTarget` 经 `Mint` 接收后转给执行合约，由行动类型内部业务负责后续分配；按执行合约查询返回 `proposalId[]`，无执行合约参数时返回本轮已投票的 `(proposalId, executor)`。
 - [公共验证者竞选与验证](issues/03-public-verifier-election.md) — 链群参与由逐笔交易自然形成 Round 历史；候选按排名和阶段分割线开放验证，首个有效批次永久锁定 `MemberNFT` 验证者，必须完成目标 Round 的全部链群，失联时本轮行动层激励预期为 `0`。
 - [链群行动与服务者激励](issues/06-chain-group-economics.md) — 服务行动执行合约沿用旧版范围，按 `actionTokenAddress` 聚合整个代币社区达到投票门槛的链群行动，可用同币或父币 Proposal 激励子币社区；服务加入仅接受链群 owner 或公共验证者候选 `MemberNFT`，创建 KV 保留 `actionTokenAddress` 与 `govRatioMultiplier`，取消工厂但不改变业务公式；完整验证行动按行动权重分摊服务激励，再按各自冻结比例分给公共验证者与链群 owner，统一全精度计算避免旧版舍入下溢，比例使用 `1e18`，100% 二次分配安全收敛且不包含 gas 补偿。

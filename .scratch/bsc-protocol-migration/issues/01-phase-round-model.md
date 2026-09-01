@@ -25,9 +25,9 @@ Blocked by:
 - 部署构造参数固定为 `startBlock`、`initialPhaseBlocks` 和 `targetDays`，三者均必须大于 `0`；第一阶段编号为 `1`，不存在有效的第 `0` 阶段。
 - 阶段记录只保存 `startBlock` 与 `phaseBlocks`。同步观测单独按调用顺序记录 `syncBlock`、`syncTimestamp`、调用前后的默认 `phaseBlocks` 和新参数的生效阶段；同步观测时间戳不是阶段起始区块的时间戳，两个概念不能混用。
 - 下一阶段的 `startBlock` 等于上一阶段结束后的首个区块，`phaseBlocks` 使用生成该阶段记录时已生效的默认值；已经生成的阶段记录不可回写。
-- `Mint N`、`Verify N+1`、`Join N+2`、`Vote N+3` 的四槽位错开关系仅是上层行动模型的约定，不是 `Phase` 的通用不变量；四个槽位同时处于运行中，不表示串行执行顺序。
-- `action` 层统一定义 `ActionRound` 的四个时间槽位：`Vote`、`Join`、`Verify`、`Mint`。`Join` 表示行动参与、加入、退出和资产状态变化；链群行动执行实际验证，链群服务行动和 LP 行动执行合约都保留 `Verify` 槽位但为空操作，三者仍使用同一 `ActionRound` 和 `Mint` 时间槽位。统一轮次不代表所有行动都满足铸币条件，`canMint` 仍由具体执行合约判断。
-- 设当前 `Phase` 编号为 `p`，`ActionTarget` 的四个槽位查询固定为 `currentRoundMint() = p - 3`、`currentRoundVerify() = p - 2`、`currentRoundJoin() = p - 1`、`currentRoundVote() = p`。这是同一时间点的轮次标签映射，不表示交易执行顺序；任一结果小于 `1` 时，该槽位轮次尚未开始，查询回滚而不返回 `0`。`Phase 4` 是四个槽位均有有效轮次的首个时间点。
+- `Mint N`、`Verify N+1`、`Join N+2`、`Vote N+3` 的四阶段错开关系仅是上层行动模型的约定，不是 `Phase` 的通用不变量；四个阶段同时处于运行中，不表示串行执行顺序。
+- `action` 层统一定义 `ActionRound` 的四个业务阶段：投票、加入、验证、铸币。加入阶段包括行动参与、加入、退出和资产状态变化；链群行动执行实际验证，链群服务行动和 LP 行动执行合约的验证阶段为空操作，三者仍使用同一 `ActionRound` 和铸币阶段。统一轮次不代表所有行动都满足铸币条件，`canMint` 仍由具体执行合约判断。
+- 设当前 `Phase` 编号为 `p`，`ActionTarget` 的四个阶段查询固定为 `currentRoundMint() = p - 3`、`currentRoundVerify() = p - 2`、`currentRoundJoin() = p - 1`、`currentRoundVote() = p`。这是同一时间点上四个阶段当前对应的轮次标签，不表示交易执行顺序；任一结果小于 `1` 时，该阶段对应的轮次尚未开始，查询回滚而不返回 `0`。`Phase 4` 是四个阶段均有有效轮次的首个时间点。
 - 空轮次不逐个写入存储；已记录的阶段直接查询，未记录部分按最近历史锚点及其当时生效的 `phaseBlocks` 推导，不为无交互轮次补写整表。
 - 动态校准由任何人可调用的 `sync()` 执行，不限定具体区块；投票阶段首个推举治理者在推举时负责自动调用。每次调用都记录当前 `syncBlock` 与 `syncTimestamp`，即使本次不调整阶段参数也保留观测点。
 - 每次同步只检查最近一个满足 `currentBlock - syncBlock >= currentPhaseBlocks` 的观测点；没有满足条件的观测点时只记录本次观测，不改变下一阶段的 `phaseBlocks`。不要求连续三个阶段，也不为中间空阶段补写记录。
