@@ -92,6 +92,23 @@ mintCost = byteLength >= bytesThreshold
 
 **参考实现**：`LOVE20TKM/group/contracts/LOVE20Group.sol` 78-95 行
 
+**铸造接口**：
+```solidity
+function mint(string memory name) external payable returns (uint256 memberId)
+```
+
+- **参数**：
+  - `name`：成员名称，必须通过名称校验（第3.2节）
+- **返回值**：
+  - `memberId`：新铸造的 MemberNFT ID
+- **支付**：
+  - 使用协议首个 LOVE20 代币支付 `mintCost`
+  - 从 `msg.sender` 转入并立即销毁
+- **失败条件**：
+  - 名称校验失败（长度、字符、重复等）
+  - 代币余额不足或授权不足
+  - 费用计算溢出
+
 ### 3.4 转移语义
 
 MemberNFT 的转移不复制、不拆分、不重置任何历史。依赖身份的合约必须实时读取 `ownerOf(memberId)`，不能缓存钱包地址作为长期权限。MemberNFT 转移后，新持有人可以铸造尚未领取的治理激励、使用尚未消耗的发射次数、提取解锁期结束的解锁资产，以及继续控制当前质押状态。
@@ -126,6 +143,19 @@ MemberNFT 的转移不复制、不拆分、不重置任何历史。依赖身份�
 - `phaseAtBlock(blockNumber)`：指定区块的 Phase
 - `syncObservationsCount()`、`syncObservation(observationId)`：同步观测数量和按 1-based ID 查询观测
 - `sync()`：任何地址可调用的校准入口
+
+**sync() 接口**：
+```solidity
+function sync() external returns (bool adjusted, uint256 newPhaseBlocks)
+```
+
+- **返回值**：
+  - `adjusted`：本次调用是否调整了 Phase 长度（true = 调整了，false = 仅记录观测点未调整）
+  - `newPhaseBlocks`：调整后的 Phase 区块数（如果 `adjusted == false`，返回当前的 `phaseBlocks`）
+- **副作用**：
+  - 总是追加当前观测点（`block.number` 和 `block.timestamp`）
+  - 根据调整规则（第4.4节）决定是否调整未来 Phase 的长度
+  - 如果调整，触发 `PhaseAdjusted` 事件
 
 **Phase 同步时机**：
 - ✅ 每轮首个推举：Submit 自动调用 `Phase.sync()`
@@ -174,7 +204,37 @@ MemberNFT 的转移不复制、不拆分、不重置任何历史。依赖身份�
 - **按 memberId 归属**：质押状态按 `tokenAddress + memberId` 隔离
 - **统一解锁**：流动性质押和加速质押必须同时申请、同时等待、同时提取
 
-### 5.2 保留逻辑（引用旧代码）
+### 5.2 状态变量
+
+**按代币和成员隔离的质押状态**：
+```solidity
+mapping(address tokenAddress => mapping(uint256 memberId => StakeData)) stakes;
+
+struct StakeData {
+    uint256 lpShares;                    // LP 质押份额
+    uint256 boostShares;                 // 加速质押份额（原 ST）
+    uint256 promisedWaitingPhases;       // 承诺解锁期（Phase 数量）
+    UnlockRequest unlockRequest;         // 解锁申请
+}
+
+struct UnlockRequest {
+    uint256 requestPhase;                // 申请时的 Phase
+    bool exists;                         // 是否存在待处理申请
+}
+```
+
+**按代币汇总的全局状态**：
+```solidity
+mapping(address tokenAddress => TokenStakeGlobals) globals;
+
+struct TokenStakeGlobals {
+    uint256 totalLpShares;               // 全局 LP 份额总量
+    uint256 withdrawableLp;              // 可提取的 LP 代币数量
+    uint256 totalBoostShares;            // 全局加速质押份额总量
+}
+```
+
+### 5.3 保留逻辑（引用旧代码）
 
 **LP 份额计算**：参考 `LOVE20TKM/core/contracts/Stake.sol` 154-184 行
 ```text
@@ -194,7 +254,7 @@ newFeeLp = previousLp - newWithdrawableLp（当 currentSqrtKOfLp > previousSqrtK
 govVotes = lpShares × promisedWaitingPhases
 ```
 
-### 5.3 加速质押（修改）
+### 5.4 加速质押（修改）
 
 **旧版**：加速质押不参与激励分配  
 **新版**：加速质押参与治理激励的加速部分分配（见第 7.3 节）
@@ -209,7 +269,7 @@ govVotes = lpShares × promisedWaitingPhases
   - 若申请时当前 Round 尚未投票：该 Round 不产生加速质押记录
   - 若申请时当前 Round 已投票：已记录的加速质押份额保留但不再接受后续补差
 
-### 5.4 统一解锁和提取
+### 5.5 统一解锁和提取
 
 **流程**（新设计）：
 1. 当前 MemberNFT 持有人发起统一解锁申请
@@ -218,7 +278,7 @@ govVotes = lpShares × promisedWaitingPhases
 4. 连续经过 `promisedWaitingPhases` 个底层 Phase 后，当前持有人一次性提取 LP 对应的两种资产和加速质押代币
 5. 解锁期结束后，当前 MemberNFT 持有人（可能已不是申请时的持有人）有权提取全部资产
 
-### 5.5 融合（新增）
+### 5.6 融合（新增）
 
 **设计意图**：质押融合支持单向转移（调用者只需控制来源 MemberNFT），目的是让这些资产可以通过 MemberNFT 作为载体进行场外交易。
 
@@ -246,6 +306,32 @@ govVotes = lpShares × promisedWaitingPhases
 **用户影响**：
 - 用户在本轮投票前可自由融合
 - 投票后需等到下一轮才能融合
+
+**融合接口**：
+```solidity
+function mergeStake(
+    address tokenAddress,
+    uint256 sourceMemberId,
+    uint256 targetMemberId
+) external
+```
+
+- **参数**：
+  - `tokenAddress`：要融合的代币地址
+  - `sourceMemberId`：来源 MemberNFT ID（调用者必须是其持有人）
+  - `targetMemberId`：目标 MemberNFT ID（必须存在，但调用者不需要持有）
+- **效果**：
+  - 将 `sourceMemberId` 在该代币的全部质押状态转移到 `targetMemberId`
+  - LP 质押份额、加速质押份额、承诺解锁期合并到目标
+  - 源质押清零
+- **失败条件**：
+  - 调用者不是 `sourceMemberId` 的持有人
+  - `targetMemberId` 不存在
+  - 任一方存在待处理解锁申请
+  - 当前治理 Round 中源或目标任一方已投票
+  - 目标的 `promisedWaitingPhases` 小于源的 `promisedWaitingPhases`
+  - 源质押未投票或已解锁
+
 
 源的 LP Shares 和加速质押单向并入目标，不能修改或取走目标原有资产。
 
@@ -337,7 +423,7 @@ proposalVotes × 1e18 >= totalVotes × PROPOSAL_REWARD_MIN_VOTE_RATIO
 ### 7.3 治理激励（重要修改）
 
 **治理池拆分**（新设计）：
-- **投票激励部分**（50%，`GOV_VOTE_SHARE = 0.5e18`）：按成员实际投票行为分配（对应旧版"验证激励"）
+- **投票激励部分**（50%，`GOV_VOTE_SHARE = 0.5e18`）：按成员实际投票行为分配
 - **加速激励部分**（50%，`GOV_BOOST_SHARE = 0.5e18`）：按加速质押份额占总加速质押的比例分配
 
 **计算公式**：
@@ -381,7 +467,7 @@ burnReward = theoreticalBoost - boostReward  // 溢出部分销毁
 - 任一 Round 失败则整笔交易回滚
 
 **单轮铸造失败条件**：
-- Round 尚未结束（`Phase.currentPhase() <= round`，当前 Phase 尚未推进到该 Round 之后）
+- Round 尚未结束（`Phase.currentPhase() <= round`）
 - Round 激励池未准备（未调用 `prepareRoundReward`）
 - 该 memberId 在该 Round 没有投票记录
 - 该 Round 该 memberId 的激励已铸造
@@ -429,7 +515,15 @@ mintGovRewards(tokenAddress, memberId, rounds[])
 
 ### 8.3 发射次数融合（新增）
 
-**接口**：`mergeLaunchCount(tokenAddress, sourceMemberId, targetMemberId, count)`
+**接口**：
+```solidity
+function mergeLaunchCount(
+    address tokenAddress,
+    uint256 sourceMemberId,
+    uint256 targetMemberId,
+    uint256 count
+) external
+```
 
 **设计意图**：发射次数融合支持单向转移（调用者只需控制来源 MemberNFT），目的是让发射次数可以通过 MemberNFT 作为载体进行场外交易。
 
