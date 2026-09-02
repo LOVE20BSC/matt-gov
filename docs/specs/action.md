@@ -429,26 +429,26 @@ theoreticalOwnerReward(m) = serviceReward × ownerWeightNumerator(m) / (T × 1e1
 
 **变量定义**：
 - `govRatioMultiplier(m)` = 该链群 m 的治理票占比倍数（链群行动 Proposal 创建时设置）
-- `theoreticalVerifierReward(m)` = 该链群的理论验证者激励（不受治理票约束）
-- `theoreticalOwnerReward(m)` = 该链群的理论 owner 激励（受治理票约束）
-- `actualVerifierReward(m)` = 该链群的实际验证者激励（不受治理票约束）
+- `theoreticalOwnerRatio(m)` = 该链群 owner 的理论激励占比（基于权重计算，见第 7.1 节）
 - `actualOwnerReward(m)` = 该链群的实际 owner 激励（受治理票约束）
 
 **公式**：
 ```text
-// 验证者部分不受治理票约束
-actualVerifierReward(m) = theoreticalVerifierReward(m)
-
-// owner 部分受治理票占比倍数约束
+// 计算链群 owner 的治理票占比上限
 govRatio(m) = validGovVotes(m) × 1e18 / totalGovVotes
 govRatioCap(m) = govRatio(m) × govRatioMultiplier(m) / 1e18
+
+// owner 激励占比取理论值和上限的较小值
 ownerRatioCap(m) = min(theoreticalOwnerRatio(m), govRatioCap(m))
+
+// owner 激励 = 整个服务激励 × owner 占比上限
 actualOwnerReward(m) = serviceReward × ownerRatioCap(m) / 1e18
 ```
 
 **设计理由**：
-- 公共验证者激励基于服务工作量，不应受链群治理票限制
+- 公共验证者激励基于服务工作量，不需要单独约束，由权重自然分配
 - 链群 owner 激励代表链群的组织能力，应受治理参与度约束，避免治理票极低的链群获得过高激励
+- 以整个服务激励（包含验证者部分）作为分母，简化计算逻辑，避免逐个计算验证者激励的复杂性和高 gas 成本
 
 公共验证者部分直接给实际锁定的验证者；链群 owner 部分按该 `groupId` 在各行动中的激励权重拆分，并按链群配置的接收主体和比例执行二次分配。
 
