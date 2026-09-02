@@ -269,6 +269,7 @@ token.balanceOf(MemberNFT.ownerOf(senderId)) > 0
 **治理票、投票和参与**：
 - 治理票、Proposal 投票和行动参与直接按 `memberId` 查询
 - `RECENT_ROUNDS` 在各 ScopeSource 部署时通过构造参数设置，所有 ScopeSource 应使用统一值
+- 推荐值：3（检查最近 3 个治理 Round）
 
 **RECENT_ROUNDS 的时间基准**：
 当前 Core 治理 Round（即 `Phase.currentPhase()` 返回值，Phase 与治理 Round 一对一映射）向前数 `RECENT_ROUNDS` 轮。

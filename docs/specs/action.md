@@ -250,6 +250,7 @@ effectiveLpRatio = effectiveAmount × 1e18 / totalEffectiveAmount
 - `validGovVotes(memberId)` = 该 memberId 在该代币社区的当前有效治理票（铸币时从 Stake 合约实时查询）
 - `totalGovVotes` = 该代币社区当前总有效治理票（铸币时从 Stake 合约实时查询）
 - `effectiveLpRatio` = 经过时间权重扣减后的 LP 占比（见上述时间权重计算）
+- `govRatioMultiplier` = 该 LP 行动 Proposal 创建时设置的治理票权重倍数（初始化参数）
 
 **公式**：
 ```text
@@ -388,7 +389,7 @@ theoreticalOwnerReward(m) = serviceReward × ownerWeightNumerator(m) / (T × 1e1
 **改进计算**：
 
 **变量定义**：
-- `capRatio(m)` = 链群 m 的服务激励上限比例（见 `LOVE20TKM/action/GroupService` 的上限计算）
+- `capRatio(m)` = 该链群服务 Proposal 创建时为链群 m 设置的激励上限比例（初始化参数，详见 `LOVE20TKM/action/GroupService` 的上限计算逻辑）
 - `theoreticalReward(m)` = 该链群的理论总激励（验证者激励 + owner 激励）
 - `actualReward(m)` = 该链群的实际总激励（受上限约束）
 
