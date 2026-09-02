@@ -145,11 +145,6 @@ MemberNFT 的转移不复制、不拆分、不重置任何历史。依赖身份�
 - 由于没有 Proposal，该 Round 不产生投票和激励
 - Phase 校准可以延迟到下一个有推举的 Round，或由任何地址主动调用 `sync()`
 
-**没有推举的 Round**：
-- 仍然是有效的时间片（Phase N 对应治理 Round N）
-- 由于没有 Proposal，该 Round 不产生投票和激励
-- Phase 校准可以延迟到下一个有推举的 Round，或由任何地址主动调用 `sync()`
-
 ### 4.4 动态校准
 
 每次 `sync()` 都先追加当前观测点，即使不调整参数。校准使用满足 `currentBlock - observation.blockNumber >= currentPhaseBlocks` 的最近一条历史观测。
@@ -467,15 +462,16 @@ mintGovRewards(tokenAddress, memberId, rounds[])
 
 ### 9.2 Airdrop 依赖
 
-**迁移范围**：
-- Airdrop 合约代码从 `LOVE20TKM/burn` 仓库迁移到 `LOVE20BSC` 新仓库的 Launch 代码库维护
-- 初始化数据（份额配置）在 `LOVE20TKM/burn` 仓库生成，然后将数据文件复制到新代码库用于部署空投合约
-- LOVE20TKM 仓库保持只读，只作为数据生成源
+**部署主体和时序**：
+- Airdrop 合约由 **`LOVE20TKM/burn` 代码库** 负责，在 **Burn 活动结束后** 单独部署到 BSC
+- Burn 业务合约**不迁移**到 LOVE20BSC 组织
+- Airdrop 合约地址作为 BSC 新协议首个代币的 `distributor` 外部依赖
+- `LOVE20TKM/burn` 仓库保持只读，只作为 Airdrop 合约的来源和部署依据
 
 BSC 首个代币的初始分发来源：
 
 1. Airdrop 合约记录旧协议（Thinkium）参与者通过销毁活动获得的份额
-2. Core 合约部署时，首个代币铸造后直接发送到 Airdrop 合约
+2. Core 合约部署时，首个代币铸造后直接发送到已部署的 Airdrop 合约地址
 3. 参与者按份额从 Airdrop 合约领取
 
 **Airdrop 合约特性**：
@@ -483,10 +479,11 @@ BSC 首个代币的初始分发来源：
 - 份额按代币独立记录：某代币领取后该份额即消耗，即使该代币后续余额增加也不能重复领取
 - 未领取份额对应的代币余额归属于剩余未领取者
 
-**来源可追溯性**：Airdrop 合约代码和初始化数据来源：
-- Airdrop 合约代码从 `LOVE20TKM/burn` 仓库的 `Airdrop.sol` 迁移到 LOVE20BSC
-- 初始化数据在 `LOVE20TKM/burn` 仓库生成后复制到 LOVE20BSC
-- 正式部署必须在文档中公开指向旧仓库的 `DeployAirdrop.s.sol` 部署脚本和 `airdrop-design.md` 设计文档
+**来源可追溯性**：部署记录必须公开指向 `LOVE20TKM/burn` 的：
+- [`Airdrop.sol`](https://github.com/LOVE20TKM/burn/blob/main/src/Airdrop.sol) — 合约源码
+- [`DeployAirdrop.s.sol`](https://github.com/LOVE20TKM/burn/blob/main/script/DeployAirdrop.s.sol) — 部署脚本
+- [`airdrop-design.md`](https://github.com/LOVE20TKM/burn/blob/main/docs/airdrop-design.md) — 设计文档
+- 实际使用的 Burn 提交哈希、来源区块、Merkle Root 和已部署的 Airdrop 地址
 
 这使任何人都可以验证首个代币分发的合法性和公平性。
 

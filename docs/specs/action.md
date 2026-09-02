@@ -143,19 +143,32 @@ ActionTarget 定义所有行动类型的必经流程：
 
 ### 3.2 执行合约阶段模型
 
-各 Executor 从 `core.Phase.currentPhase()` 读取当前 Phase，并根据自己的阶段模型计算业务轮次。
+各 Executor 从 `core.Phase.currentPhase()` 读取当前 Phase，并根据自己的阶段模型计算各阶段的轮次编号。
 
 **LP 行动执行合约**（3 阶段）：
 - 投票 Round = currentPhase()
 - 加入 Round = currentPhase() - 1
 - 铸币 Round = currentPhase() - 2
 
-**冷启动期操作边界**：
-- Phase 1：可以创建 Proposal 和投票（投票 Round 1），加入和铸币操作回滚 `RoundNotStarted`
-- Phase 2：可以创建、投票（Round 2）和加入（Round 1），铸币操作回滚 `RoundNotStarted`
-- Phase 3 起：LP 行动进入稳态运行，所有阶段就绪
+**阶段映射说明**：
+- 上述公式定义了**如何从当前 Phase 计算各阶段的轮次编号**
+- 例如：Phase 5 时，加入 Round = 4，铸币 Round = 3
+- 各阶段的 Round 编号不是 Phase 编号本身
 
-**易混淆点**：加入 Round 和铸币 Round 是根据当前 Phase 计算的**业务轮次编号**，不是 Phase 编号本身。例如在 Phase 5 时，加入 Round = 4（参与者正在为 Round 4 加入），铸币 Round = 3（正在为 Round 3 的参与者铸币）。Phase 2 时 `currentPhase() - 1 = 1`，加入操作检查 `加入 Round >= 1` 通过，不会回滚。
+**操作允许条件**：
+- 只有当对应阶段的 Round ≥ 1 时，该操作才允许执行
+- 如果该阶段的 Round < 1，操作回滚 `RoundNotStarted`
+
+**冷启动期示例**：
+- **Phase 1**：
+  - 投票 Round = 1 ✅ 允许投票
+  - 加入 Round = 0 ❌ 回滚 `RoundNotStarted`
+  - 铸币 Round = -1 ❌ 回滚 `RoundNotStarted`
+- **Phase 2**：
+  - 投票 Round = 2 ✅ 允许投票
+  - 加入 Round = 1 ✅ 允许加入（Round 1 ≥ 1）
+  - 铸币 Round = 0 ❌ 回滚 `RoundNotStarted`
+- **Phase 3 起**：LP 行动进入稳态运行，所有阶段就绪
 
 **链群行动执行合约**（4 阶段）：
 - 投票 Round = currentPhase()
@@ -163,15 +176,32 @@ ActionTarget 定义所有行动类型的必经流程：
 - 验证 Round = currentPhase() - 2
 - 铸币 Round = currentPhase() - 3
 
-Phase 4 起，链群行动进入稳态运行。验证阶段在加入和铸币之间插入。
+**阶段映射说明**：
+- 上述公式定义了**如何从当前 Phase 计算各阶段的轮次编号**
+- 例如：Phase 5 时，加入 Round = 4，验证 Round = 3，铸币 Round = 2
+- 验证阶段在加入和铸币之间插入
 
-**冷启动期操作边界**：
-- Phase 1：可以创建 Proposal 和投票（投票 Round 1），加入、验证和铸币操作回滚 `RoundNotStarted`
-- Phase 2：可以创建、投票（Round 2）和加入（Round 1），验证和铸币操作回滚 `RoundNotStarted`
-- Phase 3：可以创建、投票（Round 3）、加入（Round 2）和验证（Round 1），铸币操作回滚 `RoundNotStarted`
-- Phase 4 起：所有阶段就绪
+**操作允许条件**：
+- 只有当对应阶段的 Round ≥ 1 时，该操作才允许执行
+- 如果该阶段的 Round < 1，操作回滚 `RoundNotStarted`
 
-**易混淆点**：验证 Round 和铸币 Round 同样是**业务轮次编号**，不是 Phase 编号。Phase 3 时验证 Round = 1（正在为 Round 1 验证），Phase 4 时铸币 Round = 1（正在为 Round 1 铸币）。Phase 2 时 `currentPhase() - 1 = 1`，Phase 3 时 `currentPhase() - 1 = 2`，加入操作检查均通过，不会回滚。
+**冷启动期示例**：
+- **Phase 1**：
+  - 投票 Round = 1 ✅ 允许投票
+  - 加入 Round = 0 ❌ 回滚 `RoundNotStarted`
+  - 验证 Round = -1 ❌ 回滚 `RoundNotStarted`
+  - 铸币 Round = -2 ❌ 回滚 `RoundNotStarted`
+- **Phase 2**：
+  - 投票 Round = 2 ✅ 允许投票
+  - 加入 Round = 1 ✅ 允许加入（Round 1 ≥ 1）
+  - 验证 Round = 0 ❌ 回滚 `RoundNotStarted`
+  - 铸币 Round = -1 ❌ 回滚 `RoundNotStarted`
+- **Phase 3**：
+  - 投票 Round = 3 ✅ 允许投票
+  - 加入 Round = 2 ✅ 允许加入（Round 2 ≥ 1）
+  - 验证 Round = 1 ✅ 允许验证（Round 1 ≥ 1）
+  - 铸币 Round = 0 ❌ 回滚 `RoundNotStarted`
+- **Phase 4 起**：所有阶段就绪
 
 **链群服务行动执行合约**（4 阶段，与被服务的链群行动对齐）：
 - 投票 Round = currentPhase()
@@ -179,7 +209,7 @@ Phase 4 起，链群行动进入稳态运行。验证阶段在加入和铸币之
 - 验证 Round = currentPhase() - 2
 - 铸币 Round = currentPhase() - 3
 
-**易混淆点**：链群服务的验证 Round 和铸币 Round 同样是**业务轮次编号**。链群服务在业务 Round p 的铸币阶段（对应 Phase p+3）查询链群行动业务 Round p 的验证结果（该验证在 Phase p+2 完成）。业务 Round 编号相同（都是 p），但对应的 Phase 不同（p+3 vs p+2）。
+**易混淆点**：链群服务的验证 Round 和铸币 Round 同样是**各阶段的轮次编号**。链群服务在铸币阶段的 Round p（对应 Phase p+3）查询链群行动验证阶段的 Round p（该验证在 Phase p+2 完成）。两个阶段的 Round 编号相同（都是 p），但对应的 Phase 不同（p+3 vs p+2）。
 
 **链群服务验证复用机制**（关键设计）：
 
@@ -190,9 +220,9 @@ Phase 4 起，链群行动进入稳态运行。验证阶段在加入和铸币之
 ```solidity
 proposalIds = ActionTarget.proposalIdsByExecutor(actionTokenAddress, mintRound, groupExecutor)
 ```
-该查询返回指定 Round 在指定 Executor 下的所有 proposalId（即 actionId）。链群服务的业务 Round p 对应投票 Phase p，查询时传入 `mintRound`（业务 Round p）作为投票 Round 参数，获得在该 Round 投票的链群行动列表。
+该查询返回指定 Round 在指定 Executor 下的所有 proposalId（即 actionId）。链群服务铸币阶段的 Round p 对应投票 Phase p，查询时传入 `mintRound`（铸币阶段的 Round p）作为投票 Round 参数，获得在该 Round 投票的链群行动列表。
 
-链群服务在业务 Round p 的铸币阶段（对应 Phase p+3）查询链群行动业务 Round p 的验证结果（该验证在 Phase p+2 完成）。业务 Round 编号相同（都是 p），但对应的 Phase 不同（p+3 vs p+2）：
+链群服务在铸币阶段的 Round p（对应 Phase p+3）查询链群行动验证阶段的 Round p（该验证在 Phase p+2 完成）。两个阶段的 Round 编号相同（都是 p），但对应的 Phase 不同（p+3 vs p+2）：
 
 ```solidity
 bool verified = groupActionExecutor.isRoundVerified(actionTokenAddress, actionId, mintRound);
@@ -408,7 +438,7 @@ theoreticalOwnerRatio(m) = ownerWeightNumerator(m) / (T × 1e18)
 - `actionTokenAddress`：链群行动所属的代币社区地址（即被服务的社区）
 - `groupActionId`：链群行动的 actionId（在 actionTokenAddress 社区中）
 - `groupId`：链群的 memberId（链群 owner 的 MemberNFT ID）
-- `round`：业务 Round 编号（该链群在该链群行动的哪个 Round 获得的激励）
+- `round`：轮次编号（该链群在该链群行动的哪个 Round 获得的激励）
 
 **设计理由**：二次分配配置基于链群行动而非链群服务 Proposal，因此所有对该链群行动进行激励的链群服务行动都会按同一配置进行二次分配。这避免了为每个服务 Proposal 单独配置的复杂性。
 
