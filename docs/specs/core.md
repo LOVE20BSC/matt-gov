@@ -140,6 +140,11 @@ MemberNFT 的转移不复制、不拆分、不重置任何历史。依赖身份�
 **极端情况**：
 如果某个 Round 没有推举，Phase 不会自动同步。任何地址可以主动调用 `sync()`，或等待下一个 Round 的首个推举触发同步。未同步不影响协议运行，只影响下一个 Phase 的长度校准。
 
+**没有推举的 Round**：
+- 仍然是有效的时间片（Phase N 对应治理 Round N）
+- 由于没有 Proposal，该 Round 不产生投票和激励
+- Phase 校准可以延迟到下一个有推举的 Round，或由任何地址主动调用 `sync()`
+
 ### 4.4 动态校准
 
 每次 `sync()` 都先追加当前观测点，即使不调整参数。校准使用满足 `currentBlock - observation.blockNumber >= currentPhaseBlocks` 的最近一条历史观测。
@@ -204,8 +209,6 @@ govVotes = lpShares × promisedWaitingPhases
   - 若申请时当前 Round 尚未投票：该 Round 不产生加速质押记录
   - 若申请时当前 Round 已投票：已记录的加速质押份额保留但不再接受后续补差
 
-解锁申请对加速质押记录的影响：见第 7.3 节"解锁申请对加速质押记录的影响"部分。
-
 ### 5.4 统一解锁和提取
 
 **流程**（新设计）：
@@ -214,8 +217,6 @@ govVotes = lpShares × promisedWaitingPhases
 3. 申请绑定 `memberId`、申请时 Phase 和等待期；MemberNFT 转移不重置倒计时
 4. 连续经过 `promisedWaitingPhases` 个底层 Phase 后，当前持有人一次性提取 LP 对应的两种资产和加速质押代币
 5. 等待期结束后，当前 MemberNFT 持有人（可能已不是申请时的持有人）有权提取全部资产
-
-解锁申请对加速质押记录的影响：见第 7.3 节"解锁申请对加速质押记录的影响"部分。
 
 ### 5.5 融合（新增）
 
@@ -231,7 +232,7 @@ govVotes = lpShares × promisedWaitingPhases
 **禁止融合的情况**：
 - 任一方存在待处理解锁申请
 - 当前治理 Round（`Phase.currentPhase()`）中源或目标任一方已经发生非零投票
-- 目标等待期小于源等待期
+- 目标质押的承诺等待期（`promisedWaitingPhases`）小于源质押的承诺等待期
 
 **禁止融合的设计理由**：
 
@@ -286,7 +287,6 @@ Proposal 由 `tokenAddress + proposalId` 定位。
 **保留**：
 - 推举门槛计算（SUBMIT_MIN_RATIO）
 - 同一 Round 推举去重
-- 每轮首个推举触发 `Phase.sync()`
 
 **变更**：主体身份 `address` → `memberId`
 
@@ -347,9 +347,11 @@ uint256 constant GOV_VOTE_SHARE = 0.5e18;    // 50%
 uint256 constant GOV_BOOST_SHARE = 0.5e18;   // 50%
 
 // 激励计算
-voteReward = govReward * GOV_VOTE_SHARE / 1e18 * memberVotes / totalVotes
+votePoolAmount = (govReward * GOV_VOTE_SHARE) / 1e18
+voteReward = (votePoolAmount * memberVotes) / totalVotes  // 向下取整
 
-theoreticalBoost = govReward * GOV_BOOST_SHARE / 1e18 * memberBoost / totalBoost
+boostPoolAmount = (govReward * GOV_BOOST_SHARE) / 1e18
+theoreticalBoost = (boostPoolAmount * memberBoost) / totalBoost  // 向下取整
 boostReward = min(theoreticalBoost, voteReward * 2)  // 基于投票激励的2倍上限
 burnReward = theoreticalBoost - boostReward  // 溢出部分销毁
 ```
@@ -361,17 +363,17 @@ burnReward = theoreticalBoost - boostReward  // 溢出部分销毁
 - 若 `totalBoost == 0`，在该 Round 的首次治理激励铸造时，判断并将整个加速池一次性计入 `rewardBurned`
 - 由于加速质押只在投票时记录（见第 5.3 节），如果某个 memberId 没有投票，则不会产生加速质押记录，因此不存在 `voteReward = 0` 但有 `boostReward` 的情况
 
+**totalBoost == 0 的处理**：
+- 当 `totalBoost == 0` 时，不执行上述除法计算
+- 在该 Round 的首次治理激励铸造时，检测 `totalBoost == 0`
+- 直接计算 `burnAmount = (govReward * GOV_BOOST_SHARE) / 1e18` 并累计到 `rewardBurned`
+- 后续该 Round 的铸造请求，`boostReward` 均返回 `0`，`burnReward` 也返回 `0`（已在首次处理）
+
 **Round 激励池准备**：
 - `prepareRoundReward(tokenAddress, round)` 可由任何地址调用
 - 通常在 Round 结束后首次铸造前调用
 - 首次铸造时如果未准备则回滚，提示调用者先准备激励池
 - 准备时一次性增加 `rewardReserved` 并冻结本轮池子
-
-**解锁申请对加速质押记录的影响**：
-- 解锁申请时，如果该 memberId 在当前 Round 尚未投票，则该 Round 不产生加速质押记录
-- 解锁申请时，如果该 memberId 在当前 Round 已投票，已记录的加速质押份额保留但不再接受补差
-- 解锁等待期间，该 memberId 的治理票已清零（见第 5.4 节），不能参与新 Round 的投票，因此不会产生新的加速质押记录
-- 提取完成后，该 memberId 可以重新质押并参与后续 Round
 
 **批量铸造**（新增）：
 - `mintGovRewards(tokenAddress, memberId, rounds[])`
@@ -383,11 +385,6 @@ burnReward = theoreticalBoost - boostReward  // 溢出部分销毁
 - Round 激励池未准备（未调用 `prepareRoundReward`）
 - 该 memberId 在该 Round 没有投票记录
 - 该 Round 该 memberId 的激励已铸造
-
-**Round 激励池准备**：
-- `prepareRoundReward(tokenAddress, round)` 可由任何地址调用
-- 通常在 Round 结束后、首次铸造前调用
-- 首次铸造时如果未准备则回滚，提示调用者先准备激励池
 
 **接口**：
 ```solidity
@@ -410,6 +407,13 @@ mintGovRewards(tokenAddress, memberId, rounds[])
 **保留逻辑**（参考 `LOVE20TKM/core/contracts/Launch.sol`）：
 - 阈值向上取整：`threshold = ceil((maxSupply - totalSupplyBeforeMint) × launchRatio / 1e18)`
 - 累计和余额结转：`launchCredit` 保留整数除法余额
+
+**launchCredit 说明**：
+- 发射阈值计算使用向上取整：`threshold = ceil((maxSupply - totalSupply) × launchRatio / 1e18)`
+- 每次超过阈值时，计算整数发射次数：`count = floor(delta / threshold)`
+- 余额 `delta % threshold` 累计到 `launchCredit[tokenAddress][memberId]`
+- 后续继续累计，`launchCredit` 达到新的阈值时继续产生发射次数
+- 融合时只转移整数次数，不转移 `launchCredit`，避免复杂的余额合并逻辑
 
 **新增约束**：
 - 每个社区最多产生 `maxLaunchCount` 次发射（部署时传入）
