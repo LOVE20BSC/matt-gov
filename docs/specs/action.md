@@ -395,6 +395,7 @@ ownerWeightNumerator(m) = Σ(groupReward(a, m) × (1e18 - r[a]))
 
 theoreticalVerifierReward(m) = serviceReward × verifierWeightNumerator(m) / (T × 1e18)
 theoreticalOwnerReward(m) = serviceReward × ownerWeightNumerator(m) / (T × 1e18)
+theoreticalOwnerRatio(m) = ownerWeightNumerator(m) / (T × 1e18)
 ```
 
 **变量说明**：`verifierId[a]` = 链群行动 a 锁定的公共验证者 memberId。
