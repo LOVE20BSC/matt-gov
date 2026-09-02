@@ -67,12 +67,29 @@ ActionTarget 以 `tokenAddress + proposalId` 为唯一键保存 Executor，把�
 
 **回调接口**：
 ```solidity
-onProposalCreated(address tokenAddress, uint256 proposalId,
-    bytes32[] keys, bytes[] values)
-onProposalSubmitted(address tokenAddress, uint256 proposalId,
-    uint256 submitterId, bytes32[] keys, bytes[] values)
-onProposalVoted(address tokenAddress, uint256 proposalId,
-    uint256 voterId, uint256 votes, bytes32[] keys, bytes[] values)
+function onProposalCreated(
+    address tokenAddress,
+    uint256 proposalId,
+    bytes32[] memory keys,
+    bytes[] memory values
+) external;
+
+function onProposalSubmitted(
+    address tokenAddress,
+    uint256 proposalId,
+    uint256 submitterId,
+    bytes32[] memory keys,
+    bytes[] memory values
+) external;
+
+function onProposalVoted(
+    address tokenAddress,
+    uint256 proposalId,
+    uint256 voterId,
+    uint256 votes,
+    bytes32[] memory keys,
+    bytes[] memory values
+) external;
 ```
 
 **回调接口参数说明**：key 使用 bytes32 便于链上索引和比较；value 使用 bytes 支持任意长度的 abi.encode 数据。
@@ -95,7 +112,14 @@ ActionTarget 维护通用的"MemberNFT 是否参与某个行动"登记，供前�
 
 ### 2.3 forceExit（应急兜底）
 
-**入口**：`forceExit(tokenAddress, actionId, memberId)`
+**入口**：
+```solidity
+function forceExit(
+    address tokenAddress,
+    uint256 actionId,
+    uint256 memberId
+) external;
+```
 
 **设计意图**：Executor 失效时，当前 MemberNFT 持有人可以直接清除 ActionTarget 的通用登记。
 
