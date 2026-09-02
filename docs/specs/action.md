@@ -400,7 +400,15 @@ theoreticalOwnerReward(m) = serviceReward × ownerWeightNumerator(m) / (T × 1e1
 
 **二次分配**：参考 `LOVE20TKM/action/GroupService`
 
-链群 owner 当前持有人可以按 `serviceProposalId + chainGroupActionId + groupId + round` 配置二次分配的 `recipientIds[]` 和 `ratios[]`（chainGroupActionId 明确为链群行动的 actionId）。
+链群 owner 当前持有人可以按 `serviceProposalId + chainGroupActionId + groupId + round` 配置二次分配的 `recipientIds[]` 和 `ratios[]`。
+
+**参数说明**：
+- `serviceProposalId`：链群服务 Proposal 的 proposalId（在 serviceTokenAddress 社区中）
+- `chainGroupActionId`：链群行动的 actionId（在 actionTokenAddress 社区中，即被服务的链群行动）
+- `groupId`：链群的 memberId（链群 owner 的 MemberNFT ID）
+- `round`：业务 Round 编号（该链群在该链群行动的哪个 Round 获得的激励）
+- `recipientIds[]`：接收二次分配激励的 memberId 数组
+- `ratios[]`：对应的分配比例数组（总和可以 ≤ 1e18，表示部分分配；> 1e18 时会缩放）
 
 ### 7.2 关键变更
 
@@ -421,6 +429,15 @@ theoreticalOwnerReward(m) = serviceReward × ownerWeightNumerator(m) / (T × 1e1
 
 **capRatio 计算**：详见 `LOVE20TKM/action/GroupService` 的 `calculateCapRatio` 函数，基本逻辑为按链群在所有链群行动中的总投票权重占比计算上限，避免单链群垄断服务激励。
 
+**capRatio 计算细节**：
+```text
+chainGroupVotes(m) = 该链群在所有被服务的链群行动中获得的总投票数
+totalChainGroupVotes = 所有链群在所有被服务的链群行动中获得的总投票数
+capRatio(m) = chainGroupVotes(m) × 1e18 / totalChainGroupVotes
+```
+
+设计理由：使用投票权重作为上限基准，确保服务激励分配与社区治理参与度一致，防止少数活跃链群占据全部激励。
+
 **公式**：
 ```text
 theoreticalReward(m) = theoreticalVerifierReward(m) + theoreticalOwnerReward(m)
@@ -439,7 +456,11 @@ actualOwnerReward = actualReward - actualVerifierReward
 
 **二次分配公式**：
 ```solidity
-theoreticalTotal = Σ(recipientRatio[i] × actualOwnerReward / 1e18)
+// 计算每个接收者的理论份额
+theoreticalRecipientReward[i] = recipientRatio[i] × actualOwnerReward / 1e18
+theoreticalTotal = Σ(theoreticalRecipientReward[i])
+
+// 统一缩放确保总和不超过可用激励
 if (theoreticalTotal > actualOwnerReward) {
     scaleFactor = actualOwnerReward × 1e18 / theoreticalTotal
     actualRecipientReward[i] = theoreticalRecipientReward[i] × scaleFactor / 1e18
@@ -448,7 +469,7 @@ if (theoreticalTotal > actualOwnerReward) {
 }
 ```
 
-先计算每个接收者的理论份额，再统一缩放确保总和不超过 `actualOwnerReward`。
+先计算每个接收者的理论份额，再统一缩放确保总和不超过 `actualOwnerReward`。验证者部分激励不参与二次分配，直接给实际锁定的公共验证者。
 
 ---
 
