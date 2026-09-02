@@ -39,10 +39,10 @@
 
 ## Out of scope
 
-- Burn/空投业务合约本轮不纳入 BSC 迁移。
+- Burn 业务合约本轮不迁移到 LOVE20BSC 组织；空投合约（`Airdrop.sol`）在销毁活动结束后由旧 `LOVE20TKM/burn` 代码库单独部署到 BSC，作为首个代币 `distributor` 的外部依赖使用，不纳入 BSC 新协议的业务逻辑。
 - `LOVE20MemberMarket` 未部署且不属于核心依赖，本轮不迁移、不并入 `core`。
 - 旧 LOVE20TKM 合约的存储、地址、历史状态兼容和通用跨链迁移。
 - 尚未部署的 `chat` 代码库及其 Member NFT 身份模型；本次迁移不纳入，未来部署或纳入 BSC 时另行建票据。
-- 测试期间直接修改 `interface`；正式发布只能从验收后的 `interface-test` 手动同步。
+- `interface` 代码库在测试和开发阶段完全不涉及；所有 BSC 前端开发和验收只在 `interface-test` 完成，验收通过后才人工同步到 `interface` 正式发布。
 - 迁移阶段暂不创建 `launch` 代码库；公平发射后的复杂分配机制待未来需求明确后另行建立。
 - Gas 优化与性能基线：迁移阶段只阻断明显的无界循环和超过区块 gas limit 的写操作；详细的 Gas 优化和中位数基线在所有代码库迁移完成后，通过独立票据推进。
