@@ -116,6 +116,8 @@ ActionTarget 维护通用的"MemberNFT 是否参与某个行动"登记，供前�
 
 两类查询先从 `Vote` 读取本轮有投票的 Proposal，再按 Proposal ID 读取 ActionTarget 映射并筛选，不维护独立反向索引。
 
+**设计理由**：不维护独立反向索引，避免状态同步开销，查询时动态筛选即可满足需求。
+
 ---
 
 ## 3. 行动阶段模型（全新设计）
@@ -157,10 +159,9 @@ Phase 4 起，链群行动进入稳态运行。验证阶段在加入和铸币之
 
 链群服务不单独执行验证，而是检查该服务 Proposal 面向的所有链群行动各自的验证结果。一个链群服务 Proposal 面向整个 `actionTokenAddress` 社区的所有链群行动，权重聚合来自所有相关链群行动，但验证状态检查针对每个链群行动独立进行。
 
+链群服务在业务 Round p 的铸币阶段（对应 Phase p+3）查询链群行动业务 Round p 的验证结果（该验证在 Phase p+2 完成）。业务 Round 编号相同（都是 p），但对应的 Phase 不同（p+3 vs p+2）：
+
 ```solidity
-// 链群服务在铸币阶段查询关联链群行动的验证完成状态
-// 链群服务铸币 Round p 查询链群行动验证 Round p 的验证结果
-// （两者的 Round 编号相同，但阶段不同）
 bool verified = groupActionExecutor.isRoundVerified(actionTokenAddress, actionId, mintRound);
 ```
 

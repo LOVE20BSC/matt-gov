@@ -129,7 +129,7 @@ Group Chat Delegate 使用 NFT 委托语义：每个 `groupId` 最多设置一�
 **资格绕过**：
 当 `senderId == groupId`，或 `senderId` 是该群当前有效的 `delegateId` 时，可以跳过 `scopeSource` 和 `banSource`，但仍必须通过群存在、激活、发言开关、身份存在和 `msg.sender` 持有 `senderId` 等核心校验。
 
-**mentionAll 权限**：
+**mentionAll 权限**（详见第 5.1 节）：
 - **允许 mentionAll**：owner（`senderId == groupId`）、有效 delegate、有效 admin
 - **资格绕过**：仅 owner 和 delegate（admin 可以 mentionAll，但仍需通过 scopeSource 和 banSource 检查）
 
@@ -211,12 +211,14 @@ interface IAfterPostPlugin {
 
 **参考实现**：`LOVE20TKM/group-chat/GroupChat.sol`
 
-群聊 Round 是消息索引使用的本地时间编号，不等同治理 Round。它由部署时的 `originBlock` 和 `phaseBlocks > 0` 计算，编号从 `1` 开始。
+群聊 Round 是消息索引使用的本地时间编号，不等同治理 Round。GroupChat 合约部署时接收 Phase 合约地址作为构造参数，通过 `Phase.currentPhase()` 获取当前 Round，编号从 `1` 开始。
 
-**计算公式**：
-```text
-currentRound = 1 + (block.number - originBlock) / phaseBlocks
+**查询方式**：
+```solidity
+currentRound = phase.currentPhase()
 ```
+
+**注意**：群聊使用 Phase 合约来推算 Round，而非独立维护 `originBlock` 和 `phaseBlocks` 参数。
 
 消息记录创建时的 Round 永久固定，即使后续调整 Chat 配置也不回写历史消息。
 
@@ -307,10 +309,10 @@ forceExit 对 Chat 资格的影响：
 - `totalVoteWeight(groupId)` = 该代币社区当前总有效治理票
 
 **代币行动 Chat、代币行动治理 Chat**：
-- `voteWeightOf(groupId, voterId)` = 当前 Vote Round 中该行动 Proposal 的 `voterId` 累计投票数
-- `totalVoteWeight(groupId)` = 当前 Vote Round 中该行动 Proposal 的总投票数
+- `voteWeightOf(groupId, voterId)` = 当前治理 Round（`Phase.currentPhase()`）中该行动 Proposal 的 `voterId` 累计投票数
+- `totalVoteWeight(groupId)` = 当前治理 Round（`Phase.currentPhase()`）中该行动 Proposal 的总投票数
 
-注意：行动 Chat 的权重基准是行动 Proposal 的投票数，而非代币社区的治理票总数。
+注意：行动 Chat 的权重基准是行动 Proposal 的投票数，而非代币社区的治理票总数。"当前治理 Round"指 `Phase.currentPhase()` 返回的治理 Round。
 
 **进入黑名单条件**（固定常量）：
 ```text
