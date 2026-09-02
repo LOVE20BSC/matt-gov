@@ -228,12 +228,13 @@ bool verified = groupActionExecutor.isRoundVerified(actionTokenAddress, actionId
 **术语定义**：
 - **自有资产**：MemberNFT 以自己的代币参与行动，资产归自己所有
 - **体验资产**：MemberNFT 使用 Provider MemberNFT 提供的代币体验行动，资产归 Provider 所有，按 `tokenAddress + memberId + actionId + providerMemberId` 独立记账
+- **Provider MemberNFT**：提供体验额度的 MemberNFT，资产所有者；体验成员退出或 Provider 代为退出时，体验资产返还 Provider
 
 **核心规则**：
 - 行动参与主体统一为 MemberNFT 的 `memberId`；钱包地址只作为当前控制者
 - 可复用行动状态至少按 `tokenAddress + actionId + round` 隔离
 - 自有资产和体验资产可以同时存在；部分撤回只减少指定账本，不互相抵扣
-- 加入阶段内的撤回直接更新该 Round 的参与权；加入阶段结束后，该 Round 的参与历史不再改变
+- 加入阶段内的撤回直接更新该 Round 的参与权；加入阶段结束后，该 Round 的参与历史不再更新
 - MemberNFT 转移不改变已发生的快照、投票、验证或已结算状态
 
 ---
@@ -289,7 +290,7 @@ mintReward = proposalReward × effectiveRatio / 1e18
 
 ### 5.3 删除能力
 
-- **V1 实现**：旧版本已废弃，仅迁移 V2（当前生产版本）
+- **V1 实现**：旧版本已废弃，仅迁移 V2（当前生产版本）。V1 与 V2 的核心差异：V1 不支持时间权重扣减和治理票上限约束，V2 引入这两项机制以提升公平性和防止末期涌入
 
 ---
 
@@ -314,7 +315,7 @@ mintReward = proposalReward × effectiveRatio / 1e18
 
 链群 Executor 通过加入阶段内逐笔发生的加入、追加、体验加入、部分撤回和全部退出交易，自然形成每轮参与快照。同一 Round 内的多笔交易持续更新该 Round 的最终值，不为同一 Round 重复创建版本。整轮无人交互时自然继承上一轮状态，不需要复制或同步交易。
 
-**实现机制**：加入阶段内的每笔交易直接写入该 Round 的参与记录；查询时，若某 Round 无记录则回退查找上一轮记录，实现懒继承。
+**实现机制**：加入阶段内的每笔交易直接写入该 Round 的参与记录（mapping(round => mapping(groupId => mapping(memberId => ParticipationData)))）；查询时，若某 Round 无记录则回退查找上一轮记录，实现懒继承。退出时清除当前 Round 的记录，自然形成该 Round "未参与"的状态。
 
 **公共验证者机制**：参考 `LOVE20TKM/action/GroupAction` 的候选申请、排名、分割线开放
 
@@ -456,9 +457,34 @@ Executor 一次铸造一个 Proposal 在该 Round 的全部行动激励，再在
 
 至少发出：Proposal 关联、行动参与/撤回/退出、公共验证者申请和排名、验证批次/锁定/完成、行动激励铸造/销毁、服务分配和 `forceExit` 事件。
 
+**核心事件定义**：
+- `ProposalLinked(tokenAddress, proposalId, executor)`：Proposal 关联 Executor
+- `ActionJoined(tokenAddress, actionId, memberId, round, amount, isExperience, providerMemberId)`：成员加入行动（自有或体验）
+- `ActionWithdrawn(tokenAddress, actionId, memberId, round, amount, isExperience, providerMemberId)`：部分撤回
+- `ActionExited(tokenAddress, actionId, memberId, round, isExperience, providerMemberId)`：全部退出
+- `ForceExited(tokenAddress, actionId, memberId)`：应急退出（只清除 ActionTarget 登记）
+- `VerifierApplied(tokenAddress, actionId, memberId, round, applicationId)`：公共验证者申请
+- `VerificationBatchSubmitted(tokenAddress, actionId, groupId, round, batchIndex, scores[])`：验证批次提交
+- `VerifierLocked(tokenAddress, actionId, round, memberId)`：验证者锁定
+- `ActionRewardMinted(tokenAddress, actionId, round, totalAmount, recipientType)`：行动激励铸造（recipientType 区分成员/验证者/owner）
+- `ServiceRewardDistributed(serviceTokenAddress, serviceProposalId, actionTokenAddress, memberId, verifierReward, ownerReward, round)`：服务激励分配
+- `SecondaryDistributionConfigured(serviceTokenAddress, serviceProposalId, actionId, groupId, round, recipientIds[], ratios[])`：二次分配配置
+
 ### 8.3 错误
 
 至少拒绝：零地址或 EOA Executor、非 ActionTarget 回调、重复初始化、KV 长度不等、无效 Round、非 MemberNFT 控制者、未投票 Proposal、非法参与量、体验额度不足、非法候选或分割线、候选申请已失效、验证批次跳跃/重复、锁定后更换验证者、重复铸造，以及服务非法超额分配导致的下溢。
+
+**核心错误代码**：
+- `InvalidExecutor()`：零地址、EOA 或无代码地址
+- `UnauthorizedCallback()`：非 ActionTarget 调用 Executor 回调
+- `NotMemberOwner(memberId)`：调用者不是该 MemberNFT 的当前持有人
+- `ProposalNotVoted(tokenAddress, proposalId)`：Proposal 未获得投票或未达到激励门槛
+- `InvalidRound(round)`：Round 不在当前允许的操作范围内（如在非加入阶段尝试加入）
+- `InsufficientExperienceQuota(providerMemberId, required, available)`：体验额度不足
+- `VerifierAlreadyLocked(tokenAddress, actionId, round)`：验证者已锁定，不能更换
+- `BatchIndexMismatch(expected, actual)`：验证批次索引不连续
+- `RewardAlreadyMinted(tokenAddress, actionId, memberId, round)`：该成员在该 Round 的激励已铸造
+- `DistributionOverflow(configured, available)`：二次分配配置的总比例超过可用激励
 
 ---
 
