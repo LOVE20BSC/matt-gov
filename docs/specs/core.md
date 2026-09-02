@@ -94,7 +94,7 @@ mintCost = byteLength >= bytesThreshold
 
 ### 3.4 转移语义
 
-MemberNFT 的转移不复制、不拆分、不重置任何历史。依赖身份的合约必须实时读取 `ownerOf(memberId)`，不能缓存钱包地址作为长期权限。MemberNFT 转移后，新持有人可以铸造尚未领取的治理激励、使用尚未消耗的发射次数、提取等待期结束的解锁资产，以及继续控制当前质押状态。
+MemberNFT 的转移不复制、不拆分、不重置任何历史。依赖身份的合约必须实时读取 `ownerOf(memberId)`，不能缓存钱包地址作为长期权限。MemberNFT 转移后，新持有人可以铸造尚未领取的治理激励、使用尚未消耗的发射次数、提取解锁期结束的解锁资产，以及继续控制当前质押状态。
 
 供应量和按持有人查询使用标准 `ERC721Enumerable` 接口。
 
@@ -237,7 +237,7 @@ govVotes = lpShares × promisedWaitingPhases
 **禁止融合的情况**：
 - 任一方存在待处理解锁申请
 - 当前治理 Round（`Phase.currentPhase()`）中源或目标任一方已经发生非零投票
-- 目标质押的承诺等待期（`promisedWaitingPhases`）小于源质押的承诺等待期
+- 目标质押的承诺解锁期（`promisedWaitingPhases`）小于源质押的承诺解锁期
 
 **禁止融合的设计理由**：
 
@@ -502,7 +502,7 @@ BSC 首个代币的初始分发来源：
 
 ### 10.2 错误
 
-以下情况必须回滚：无效成员或来源控制者、零地址 Target/Distributor、非法模式、KV 长度不等、Proposal 或推举重复、投票超额、Round 未结束或未准备、重复铸造/销毁、批量治理激励中存在任一无效 Round、待解锁时追加或融合、等待期不足、跨社区次数操作、发射次数不足或超社区上限、外部 Pair/Router 调用失败和任何 Target 回调失败。
+以下情况必须回滚：无效成员或来源控制者、零地址 Target/Distributor、非法模式、KV 长度不等、Proposal 或推举重复、投票超额、Round 未结束或未准备、重复铸造/销毁、批量治理激励中存在任一无效 Round、待解锁时追加或融合、解锁期不足、跨社区次数操作、发射次数不足或超社区上限、外部 Pair/Router 调用失败和任何 Target 回调失败。
 
 ### 10.3 验收场景
 
