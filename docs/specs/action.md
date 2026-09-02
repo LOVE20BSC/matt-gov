@@ -224,7 +224,7 @@ effectiveRatio = min(effectiveLpRatio, govRatioCap)
 mintReward = proposalReward × effectiveRatio / 1e18
 ```
 
-其中 `validGovVotes(memberId)` 查询该 memberId 在投票 Round 结束时的治理票快照，而非铸币时的实时值。该快照在加入阶段开始时（投票 Round 结束时）由 LP 行动 Executor 记录。
+其中 `validGovVotes(memberId)` 和 `totalGovVotes` 在铸币时从 Stake 合约实时查询。治理票用于计算激励上限，而非权重依据，因此使用实时值更公平：成员解锁质押后治理影响力降低，LP 激励上限也相应降低。
 
 其中 `effectiveLpRatio` 是经过时间权重扣减后的 LP 占比（见上述时间权重计算）。
 
