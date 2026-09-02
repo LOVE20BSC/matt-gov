@@ -15,7 +15,7 @@
 - 链群行动执行合约
 - 链群服务行动执行合约
 
-组件依赖 `core` 的 `MemberNFT`、`Stake`、`Submit`、`Vote`、`Mint` 和 `Phase` 接口。核心只传递 Proposal 上下文、治理票增量和不透明 KV；候选人、链群、LP、资产托管和服务分配由本代码库解释。
+组件依赖 `core` 的 `MemberNFT`、`Stake`、`Submit`、`Vote`、`Mint` 和 `Phase` 接口。核心只传递 Proposal 上下文和不透明 KV（Core 不解析业务字段，原样转发给 Target）；候选人、链群、LP、资产托管和服务分配由本代码库解释。
 
 ---
 
@@ -54,6 +54,8 @@
 - `executorAddress` 必须是非零且包含合约代码的地址
 - 第 `0` 项之外的 KV 可以为空，业务字段由 Executor 负责
 
+**设计理由**：ActionTarget 是通用框架，不预设业务字段，仅通过 kvList[0] 约定获得 Executor 地址；其余 KV 由各 Executor 自行定义和解析。
+
 **验证时机**：
 ActionTarget 在 `onProposalCreated` 回调中验证：
 - `kvList.length > 0`
@@ -61,7 +63,7 @@ ActionTarget 在 `onProposalCreated` 回调中验证：
 - decode 后的 `executorAddress` 非零且包含合约代码
 验证失败则回滚整个 Proposal 创建交易。
 
-ActionTarget 以 `tokenAddress + proposalId` 为唯一键保存 Executor，把完整创建 KV 原样转发给 Executor。只有 ActionTarget 可以调用 Executor 的三个回调。
+ActionTarget 以 `tokenAddress + proposalId` 为唯一键保存 Executor，把完整创建 KV 原样转发给 Executor。Executor 的三个回调只能通过 ActionTarget 转发，不接受外部直接调用。
 
 **回调接口**：
 ```solidity
@@ -72,6 +74,8 @@ onProposalSubmitted(address tokenAddress, uint256 proposalId,
 onProposalVoted(address tokenAddress, uint256 proposalId,
     uint256 voterId, uint256 votes, bytes32[] keys, bytes[] values)
 ```
+
+**回调接口参数说明**：key 使用 bytes32 便于链上索引和比较；value 使用 bytes 支持任意长度的 abi.encode 数据。
 
 ### 2.2 参与登记
 
@@ -107,12 +111,12 @@ ActionTarget 维护通用的"MemberNFT 是否参与某个行动"登记，供前�
 - 前端应明确提示这一差异，避免用户困惑
 
 **对 Chat 资格的影响**：
-- **代币社区/行动 Chat**：立即失去资格（依赖 ActionTarget 登记）
-- **链群 Chat**：不失去资格（依赖链群 Executor 归属，详见 group-chat.md 第 7.1 节）
+- **代币社区/行动 Chat**：立即失去资格（资格检查通过 `ActionTarget.isParticipating()` 实现，forceExit 后立即失效）
+- **链群 Chat**：不失去资格（资格检查通过链群 Executor 的归属记录实现，因此不受影响；详见 group-chat.md 第 7.1 节）
 
 **限制**：
 - ActionTarget 查询立即不再返回该参与记录
-- Executor 的历史参与、资产和链群归属等业务状态均不回写
+- Executor 的历史参与、资产和链群归属等业务状态均不更新
 - 链群归属只在链群 Executor 的正常退出流程中更新
 
 ### 2.4 查询
@@ -121,7 +125,7 @@ ActionTarget 维护通用的"MemberNFT 是否参与某个行动"登记，供前�
 1. `proposalIdsByExecutor(tokenAddress, round, executor)` 返回该 Executor 关联的 `proposalId[]`
 2. `proposals(tokenAddress, round)` 返回本轮所有有投票且已关联 Executor 的 `proposalIds[]` 和一一对应的 `executors[]`
 
-两类查询先从 `Vote` 读取本轮有投票的 Proposal，再按 Proposal ID 读取 ActionTarget 映射并筛选，不维护独立反向索引。
+两类查询先从 `Vote` 读取本轮有投票的 Proposal，再按 Proposal ID 读取 ActionTarget 映射并筛选，不维护独立反向索引。"有投票"指 `Vote.votedCount(tokenAddress, proposalId) > 0`。
 
 **设计理由**：不维护独立反向索引，避免状态同步开销，查询时动态筛选即可满足需求。
 
@@ -151,7 +155,7 @@ ActionTarget 定义所有行动类型的必经流程：
 - Phase 2：可以创建、投票（Round 2）和加入（Round 1），铸币操作回滚 `RoundNotStarted`
 - Phase 3 起：LP 行动进入稳态运行，所有阶段就绪
 
-注意：Phase 2 时加入 Round = 1，该 Round 可以正常加入，不会回滚。
+**易混淆点**：Phase 2 时 `currentPhase() - 1 = 1`，加入操作检查 `加入 Round >= 1` 通过，不会回滚。
 
 **链群行动执行合约**（4 阶段）：
 - 投票 Round = currentPhase()
@@ -167,7 +171,7 @@ Phase 4 起，链群行动进入稳态运行。验证阶段在加入和铸币之
 - Phase 3：可以创建、投票（Round 3）、加入（Round 2）和验证（Round 1），铸币操作回滚 `RoundNotStarted`
 - Phase 4 起：所有阶段就绪
 
-注意：Phase 2 时加入 Round = 1，Phase 3 时加入 Round = 2，均可正常加入，不会回滚。
+**易混淆点**：Phase 2 时 `currentPhase() - 1 = 1`，Phase 3 时 `currentPhase() - 1 = 2`，加入操作检查均通过，不会回滚。
 
 **链群服务行动执行合约**（4 阶段，与被服务的链群行动对齐）：
 - 投票 Round = currentPhase()
@@ -184,7 +188,7 @@ Phase 4 起，链群行动进入稳态运行。验证阶段在加入和铸币之
 ```solidity
 proposalIds = ActionTarget.proposalIdsByExecutor(actionTokenAddress, mintRound, chainGroupExecutor)
 ```
-该查询返回指定 Round 在指定 Executor 下的所有 proposalId（即 actionId）。
+该查询返回指定 Round 在指定 Executor 下的所有 proposalId（即 actionId）。链群服务的业务 Round p 对应投票 Phase p，查询时传入 `mintRound`（业务 Round p）作为投票 Round 参数，获得在该 Round 投票的链群行动列表。
 
 链群服务在业务 Round p 的铸币阶段（对应 Phase p+3）查询链群行动业务 Round p 的验证结果（该验证在 Phase p+2 完成）。业务 Round 编号相同（都是 p），但对应的 Phase 不同（p+3 vs p+2）：
 
@@ -221,9 +225,13 @@ bool verified = groupActionExecutor.isRoundVerified(actionTokenAddress, actionId
 
 ## 4. 共同参与模型
 
+**术语定义**：
+- **自有资产**：MemberNFT 以自己的代币参与行动，资产归自己所有
+- **体验资产**：MemberNFT 使用 Provider MemberNFT 提供的代币体验行动，资产归 Provider 所有，按 `tokenAddress + memberId + actionId + providerMemberId` 独立记账
+
+**核心规则**：
 - 行动参与主体统一为 MemberNFT 的 `memberId`；钱包地址只作为当前控制者
 - 可复用行动状态至少按 `tokenAddress + actionId + round` 隔离
-- **体验资产**按 `tokenAddress + memberId + actionId + providerMemberId` 独立记账，归 Provider MemberNFT 所有
 - 自有资产和体验资产可以同时存在；部分撤回只减少指定账本，不互相抵扣
 - 加入阶段内的撤回直接更新该 Round 的参与权；加入阶段结束后，该 Round 的参与历史不再改变
 - MemberNFT 转移不改变已发生的快照、投票、验证或已结算状态
@@ -234,7 +242,7 @@ bool verified = groupActionExecutor.isRoundVerified(actionTokenAddress, actionId
 
 ### 5.1 保留逻辑（引用旧代码）
 
-**时间权重计算**：参考 `LOVE20TKM/extension-lp/V2` 的时间扣减逻辑
+**时间权重计算**：参考 `LOVE20TKM/contracts/extension-lp/LpActionV2.sol` 的 `calculateTimeWeight` 函数
 ```text
 deduction_i = min(
     amount_i,
@@ -281,7 +289,7 @@ mintReward = proposalReward × effectiveRatio / 1e18
 
 ### 5.3 删除能力
 
-- **V1 实现**：不迁移，只迁移 V2
+- **V1 实现**：旧版本已废弃，仅迁移 V2（当前生产版本）
 
 ---
 
@@ -300,9 +308,13 @@ mintReward = proposalReward × effectiveRatio / 1e18
 
 每组索引都提供同名全量数组查询、追加 `Count` 的数量查询和追加 `AtIndex` 的单项查询。
 
+**设计理由**：链群 Executor 需支持跨社区和跨行动的全局查询（如"某成员参与的所有链群"、"某链群在所有社区的行动"、"某代币社区的所有链群"），因此维护多维度的可枚举索引。索引在加入/退出时同步更新，查询时无需扫描历史事件。
+
 **按 Round 参与历史**：参考 `LOVE20TKM/action/GroupAction` 的历史快照机制
 
 链群 Executor 通过加入阶段内逐笔发生的加入、追加、体验加入、部分撤回和全部退出交易，自然形成每轮参与快照。同一 Round 内的多笔交易持续更新该 Round 的最终值，不为同一 Round 重复创建版本。整轮无人交互时自然继承上一轮状态，不需要复制或同步交易。
+
+**实现机制**：加入阶段内的每笔交易直接写入该 Round 的参与记录；查询时，若某 Round 无记录则回退查找上一轮记录，实现懒继承。
 
 **公共验证者机制**：参考 `LOVE20TKM/action/GroupAction` 的候选申请、排名、分割线开放
 
@@ -312,12 +324,16 @@ openOffset = ceil(verifyPhaseBlocks × splits[rank - 2] / 1e18)
 openBlock = verifyPhaseStartBlock + openOffset
 ```
 
+**splits 数组说明**：splits 数组长度为 `n-1`（n 为候选人数），`splits[0]` 对应第 3 名的开放时间占比；第 1 名和第 2 名在验证阶段开始时立即开放（openBlock = verifyPhaseStartBlock）。
+
 **激励计算**：参考 `LOVE20TKM/action/GroupAction`
 
 **变量定义**：
 - `groupScore` = 该链群在该行动 Round 中的激励分配权重（所有成员的激励分配权重之和）
 - `totalGroupScore` = 该行动 Round 中所有链群的激励分配权重总和
 - `memberScore` = 该成员在该链群、该行动 Round 中的激励分配权重（该成员参与代币数量 × 原始验证得分）
+
+**验证得分说明**：由公共验证者在验证阶段为每个成员评定（0-100），记录为 `originScore`；`memberScore = 参与代币数量 × originScore`。链群激励计算使用 originScore 结合参与代币数量，保持公平性。
 
 **公式**：
 ```text
@@ -372,9 +388,11 @@ theoreticalVerifierReward(m) = serviceReward × verifierWeightNumerator(m) / (T 
 theoreticalOwnerReward(m) = serviceReward × ownerWeightNumerator(m) / (T × 1e18)
 ```
 
+**变量说明**：`verifierId[a]` = 链群行动 a 锁定的公共验证者 memberId。
+
 **二次分配**：参考 `LOVE20TKM/action/GroupService`
 
-链群 owner 当前持有人可以按 `serviceProposalId + actionId + groupId + round` 配置二次分配的 `recipientIds[]` 和 `ratios[]`。
+链群 owner 当前持有人可以按 `serviceProposalId + chainGroupActionId + groupId + round` 配置二次分配的 `recipientIds[]` 和 `ratios[]`（chainGroupActionId 明确为链群行动的 actionId）。
 
 ### 7.2 关键变更
 
@@ -389,9 +407,11 @@ theoreticalOwnerReward(m) = serviceReward × ownerWeightNumerator(m) / (T × 1e1
 **改进计算**：
 
 **变量定义**：
-- `capRatio(m)` = 该链群服务 Proposal 创建时为链群 m 设置的激励上限比例（初始化参数，详见 `LOVE20TKM/action/GroupService` 的上限计算逻辑）
+- `capRatio(m)` = 该链群服务 Proposal 创建时为链群 m 设置的激励上限比例（初始化参数）
 - `theoreticalReward(m)` = 该链群的理论总激励（验证者激励 + owner 激励）
 - `actualReward(m)` = 该链群的实际总激励（受上限约束）
+
+**capRatio 计算**：详见 `LOVE20TKM/action/GroupService` 的 `calculateCapRatio` 函数，基本逻辑为按链群在所有链群行动中的总投票权重占比计算上限，避免单链群垄断服务激励。
 
 **公式**：
 ```text
@@ -407,7 +427,20 @@ actualVerifierReward = actualReward × theoreticalVerifierReward / theoreticalRe
 actualOwnerReward = actualReward - actualVerifierReward
 ```
 
-公共验证者部分直接给实际锁定的验证者；链群 owner 部分按该 `groupId` 在各行动中的激励权重拆分，并按链群配置的接收主体和比例执行二次分配。二次分配时，先计算每个接收者的理论份额，再统一缩放确保总和不超过 `actualOwnerReward`。
+公共验证者部分直接给实际锁定的验证者；链群 owner 部分按该 `groupId` 在各行动中的激励权重拆分，并按链群配置的接收主体和比例执行二次分配。
+
+**二次分配公式**：
+```solidity
+theoreticalTotal = Σ(recipientRatio[i] × actualOwnerReward / 1e18)
+if (theoreticalTotal > actualOwnerReward) {
+    scaleFactor = actualOwnerReward × 1e18 / theoreticalTotal
+    actualRecipientReward[i] = theoreticalRecipientReward[i] × scaleFactor / 1e18
+} else {
+    actualRecipientReward[i] = theoreticalRecipientReward[i]
+}
+```
+
+先计算每个接收者的理论份额，再统一缩放确保总和不超过 `actualOwnerReward`。
 
 ---
 
