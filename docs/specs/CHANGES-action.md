@@ -43,6 +43,7 @@
 
 #### Executor 保留项
 - **保留项位置**：创建 KV 的第 `0` 项固定为 `executor`
+- **最小长度**：`kvList.length` 必须 >= 1，第 0 项必须是 executor，其余项可选
 - **格式**：`key = keccak256("executor")`，`value = abi.encode(executorAddress)`
 - **校验**：`executorAddress` 必须是非零且包含合约代码的地址
 
@@ -102,7 +103,7 @@ Phase 4 起，链群行动进入稳态运行。
 **链群服务行动执行合约**（4 阶段，与被服务的链群行动对齐）：
 - 投票 Round = currentPhase()
 - 加入 Round = currentPhase() - 1
-- 验证 Round = currentPhase() - 2（复用同轮次链群行动的验证结果）
+- 验证 Round = currentPhase() - 2（复用同轮次链群行动的验证结果，详见 action.md 第 3.2 节）
 - 铸币 Round = currentPhase() - 3
 
 ### 为什么改变

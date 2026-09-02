@@ -268,12 +268,12 @@ token.balanceOf(MemberNFT.ownerOf(senderId)) > 0
 
 **治理票、投票和参与**：
 - 治理票、Proposal 投票和行动参与直接按 `memberId` 查询
-- `RECENT_ROUNDS = 3`（BSC 部署值，该常量定义在各 ScopeSource 合约的构造参数或部署时常量中）
+- `RECENT_ROUNDS` 在各 ScopeSource 部署时通过构造参数设置，所有 ScopeSource 应使用统一值
 
 **RECENT_ROUNDS 的时间基准**：
-当前 Core 治理 Round（即 `Phase.currentPhase()` 返回值，Phase 与治理 Round 一对一映射）向前数 3 轮。
+当前 Core 治理 Round（即 `Phase.currentPhase()` 返回值，Phase 与治理 Round 一对一映射）向前数 `RECENT_ROUNDS` 轮。
 
-示例：
+示例（假设 RECENT_ROUNDS = 3）：
 - 当前 Phase = 10（即治理 Round 10）
 - 检查 memberId 在治理 Round 10, 9, 8 是否投过票
 - 任一 Round 有投票记录即符合资格

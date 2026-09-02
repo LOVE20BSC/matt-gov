@@ -78,9 +78,10 @@ onProposalVoted(address tokenAddress, uint256 proposalId,
 ActionTarget 维护通用的"MemberNFT 是否参与某个行动"登记，供前端"当前已参与行动"列表和外部参与资格判断使用。
 
 **设计边界**：
+- ActionTarget 登记所有行动的参与关系（包括链群行动）
 - 只登记参与关系，不持有资产
 - 资产和业务状态由 Executor 维护
-- 链群行动是例外：链群归属由链群 Executor 维护
+- 链群行动的额外业务逻辑（如链群归属）由链群 Executor 维护
 
 **接口**：
 - `isParticipating(tokenAddress, actionId, memberId)`
@@ -104,6 +105,10 @@ ActionTarget 维护通用的"MemberNFT 是否参与某个行动"登记，供前�
 - 用户调用后仍可能保留链群 Chat 资格（归属在 Executor）
 - 要完全退出链群（包括 Chat），需通过 Executor 的正常退出流程
 - 前端应明确提示这一差异，避免用户困惑
+
+**对 Chat 资格的影响**：
+- **代币社区/行动 Chat**：立即失去资格（依赖 ActionTarget 登记）
+- **链群 Chat**：不失去资格（依赖链群 Executor 归属，详见 group-chat.md 第 7.1 节）
 
 **限制**：
 - ActionTarget 查询立即不再返回该参与记录
