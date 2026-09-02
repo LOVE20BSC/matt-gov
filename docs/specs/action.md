@@ -327,7 +327,12 @@ openOffset = ceil(verifyPhaseBlocks × splits[rank - 2] / 1e18)
 openBlock = verifyPhaseStartBlock + openOffset
 ```
 
-**splits 数组说明**：splits 数组长度为 `n-1`（n 为候选人数），`splits[0]` 对应第 3 名的开放时间占比；第 1 名和第 2 名在验证阶段开始时立即开放（openBlock = verifyPhaseStartBlock）。
+**排名规则细节**：
+- 排名依据：累计候选票（candidateVotes）降序为主序，applicationId 升序为次序
+- 平票处理：candidateVotes 相同时，applicationId 较小的排名靠前（较早申请的优先）
+- splits 数组长度为 `n-1`（n 为候选人数），`splits[0]` 对应第 3 名的开放时间占比
+- 第 1 名和第 2 名在验证阶段开始时立即开放（openBlock = verifyPhaseStartBlock）
+- 第 3 名及之后按 splits 数组计算开放时间，分段释放验证权限以激励候选竞争
 
 **激励计算**：参考 `LOVE20TKM/action/GroupAction`
 
