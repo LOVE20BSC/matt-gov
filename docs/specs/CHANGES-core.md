@@ -177,7 +177,7 @@ voteReward = govPool * GOV_VOTE_SHARE / 1e18 * memberVotes / totalVotes
 // 常量：GOV_BOOST_SHARE = 0.5e18
 theoreticalBoost = govPool * GOV_BOOST_SHARE / 1e18 * memberBoost / totalBoost
 boostReward = min(theoreticalBoost, voteReward * 2)  // 基于投票激励的2倍上限
-overflowReward = theoreticalBoost - boostReward  // 销毁
+burnReward = theoreticalBoost - boostReward  // 销毁
 ```
 
 #### 加速质押机制
@@ -335,6 +335,6 @@ BSC 首个代币在部署 Core 合约时内部原子完成创建：
 2. **统一解锁**：流动性质押和加速质押必须同时申请、同时等待、同时提取
 3. **质押融合**：向非调用者持有的目标 NFT 融合，只增加不减少目标状态
 4. **发射次数融合**：部分融合、向非调用者持有的目标 NFT 转移
-5. **治理激励拆分**：三段返回值（voteReward, boostReward, overflowReward）
+5. **治理激励拆分**：三段返回值（voteReward, boostReward, burnReward）
 6. **批量多轮铸造**：原子性，任一 Round 失败则整笔回滚
 7. **Phase 动态校准**：±10% 内不调整，超出范围时计算新 phaseBlocks

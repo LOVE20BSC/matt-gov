@@ -347,7 +347,7 @@ voteReward = govPool * GOV_VOTE_SHARE / 1e18 * memberVotes / totalVotes
 
 theoreticalBoost = govPool * GOV_BOOST_SHARE / 1e18 * memberBoost / totalBoost
 boostReward = min(theoreticalBoost, voteReward * 2)  // 基于投票激励的2倍上限
-overflowReward = theoreticalBoost - boostReward  // 溢出部分销毁
+burnReward = theoreticalBoost - boostReward  // 溢出部分销毁
 ```
 
 **关键特性**：
@@ -368,10 +368,10 @@ overflowReward = theoreticalBoost - boostReward  // 溢出部分销毁
 **接口**：
 ```solidity
 mintGovReward(tokenAddress, memberId, round) 
-    returns (voteReward, boostReward, overflowReward)
+    returns (voteReward, boostReward, burnReward)
 
 mintGovRewards(tokenAddress, memberId, rounds[]) 
-    returns (voteReward[], boostReward[], overflowReward[])
+    returns (voteReward[], boostReward[], burnReward[])
 ```
 
 ---
@@ -496,7 +496,7 @@ BSC 首个代币的初始分发来源：
 
 **Mint**：
 - Round 级准备与 Proposal 单项铸造
-- 治理激励三段结果（voteReward, boostReward, overflowReward）
+- 治理激励三段结果（voteReward, boostReward, burnReward）
 - 投票增量补差
 - 批量多轮铸造原子性
 
