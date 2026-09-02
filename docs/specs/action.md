@@ -111,7 +111,7 @@ ActionTarget 维护通用的"MemberNFT 是否参与某个行动"登记，供前�
 - 前端应明确提示这一差异，避免用户困惑
 
 **对 Chat 资格的影响**：
-- **代币社区/行动 Chat**：立即失去资格（资格检查通过 `ActionTarget.isParticipating()` 实现，forceExit 后立即失效）
+- **代币社区/行动 Chat**：立即失去资格（资格检查通过 `ActionTarget.isAccountJoined()` 实现，forceExit 后立即失效）
 - **链群 Chat**：不失去资格（资格检查通过链群 Executor 的 17 组归属索引实现，因此不受影响；详见 group-chat.md 第 7.1 节）
 
 **限制**：
@@ -237,6 +237,7 @@ bool verified = groupActionExecutor.isRoundVerified(actionTokenAddress, actionId
 - 可复用行动状态至少按 `tokenAddress + actionId + round` 隔离
 - 自有资产和体验资产可以同时存在；部分撤回只减少指定账本，不互相抵扣
 - 加入阶段内的撤回直接更新该 Round 的参与权；加入阶段结束后，该 Round 的参与历史不再更新
+- **体验资产撤回规则**（新协议变更）：Provider 可部分或全部撤回体验资产；若撤回后参与者的总代币参与量变为 0，则触发参与者退出行动；若不为 0，则仅撤回体验资产，参与者不退出行动
 - MemberNFT 转移不改变已发生的快照、投票、验证或已结算状态
 
 ---
@@ -330,9 +331,9 @@ openBlock = verifyPhaseStartBlock + openOffset
 **排名规则细节**：
 - 排名依据：累计候选票（candidateVotes）降序为主序，applicationId 升序为次序
 - 平票处理：candidateVotes 相同时，applicationId 较小的排名靠前（较早申请的优先）
-- splits 数组长度为 `n-1`（n 为候选人数），`splits[0]` 对应第 3 名的开放时间占比
-- 第 1 名和第 2 名在验证阶段开始时立即开放（openBlock = verifyPhaseStartBlock）
-- 第 3 名及之后按 splits 数组计算开放时间，分段释放验证权限以激励候选竞争
+- splits 数组长度为 `n-1`（n 为候选人数），`splits[0]` 对应第 2 名的开放时间占比
+- 第 1 名在验证阶段开始时立即开放（openBlock = verifyPhaseStartBlock）
+- 第 2 名及之后按 splits 数组计算开放时间，分段释放验证权限以激励候选竞争
 
 **激励计算**：参考 `LOVE20TKM/action/GroupAction`
 
@@ -400,13 +401,17 @@ theoreticalOwnerReward(m) = serviceReward × ownerWeightNumerator(m) / (T × 1e1
 
 **二次分配**：参考 `LOVE20TKM/action/GroupService`
 
-链群 owner 当前持有人可以按 `serviceProposalId + chainGroupActionId + groupId + round` 配置二次分配的 `recipientIds[]` 和 `ratios[]`。
+链群 owner 当前持有人可以按 `actionTokenAddress + groupActionId + groupId + round` 配置二次分配的 `recipientIds[]` 和 `ratios[]`。
 
-**参数说明**：
-- `serviceProposalId`：链群服务 Proposal 的 proposalId（在 serviceTokenAddress 社区中）
-- `chainGroupActionId`：链群行动的 actionId（在 actionTokenAddress 社区中，即被服务的链群行动）
+**配置键说明**：
+- `actionTokenAddress`：链群行动所属的代币社区地址（即被服务的社区）
+- `groupActionId`：链群行动的 actionId（在 actionTokenAddress 社区中）
 - `groupId`：链群的 memberId（链群 owner 的 MemberNFT ID）
 - `round`：业务 Round 编号（该链群在该链群行动的哪个 Round 获得的激励）
+
+**设计理由**：二次分配配置基于链群行动而非链群服务 Proposal，因此所有对该链群行动进行激励的链群服务行动都会按同一配置进行二次分配。这避免了为每个服务 Proposal 单独配置的复杂性。
+
+**分配参数**：
 - `recipientIds[]`：接收二次分配激励的 memberId 数组
 - `ratios[]`：对应的分配比例数组（总和可以 ≤ 1e18，表示部分分配；> 1e18 时会缩放）
 
@@ -423,34 +428,27 @@ theoreticalOwnerReward(m) = serviceReward × ownerWeightNumerator(m) / (T × 1e1
 **改进计算**：
 
 **变量定义**：
-- `capRatio(m)` = 该链群服务 Proposal 创建时为链群 m 设置的激励上限比例（初始化参数）
-- `theoreticalReward(m)` = 该链群的理论总激励（验证者激励 + owner 激励）
-- `actualReward(m)` = 该链群的实际总激励（受上限约束）
-
-**capRatio 计算**：详见 `LOVE20TKM/action/GroupService` 的 `calculateCapRatio` 函数，基本逻辑为按链群在所有链群行动中的总投票权重占比计算上限，避免单链群垄断服务激励。
-
-**capRatio 计算细节**：
-```text
-chainGroupVotes(m) = 该链群在所有被服务的链群行动中获得的总投票数
-totalChainGroupVotes = 所有链群在所有被服务的链群行动中获得的总投票数
-capRatio(m) = chainGroupVotes(m) × 1e18 / totalChainGroupVotes
-```
-
-设计理由：使用投票权重作为上限基准，确保服务激励分配与社区治理参与度一致，防止少数活跃链群占据全部激励。
+- `govRatioMultiplier(m)` = 该链群 m 的治理票占比倍数（链群行动 Proposal 创建时设置）
+- `theoreticalVerifierReward(m)` = 该链群的理论验证者激励（不受治理票约束）
+- `theoreticalOwnerReward(m)` = 该链群的理论 owner 激励（受治理票约束）
+- `actualVerifierReward(m)` = 该链群的实际验证者激励（不受治理票约束）
+- `actualOwnerReward(m)` = 该链群的实际 owner 激励（受治理票约束）
 
 **公式**：
 ```text
-theoreticalReward(m) = theoreticalVerifierReward(m) + theoreticalOwnerReward(m)
+// 验证者部分不受治理票约束
+actualVerifierReward(m) = theoreticalVerifierReward(m)
 
-actualReward(m) = min(
-    theoreticalReward(m),
-    serviceReward × capRatio(m) / 1e18
-)
-
-// 统一缩放比例拆分（避免超额）
-actualVerifierReward = actualReward × theoreticalVerifierReward / theoreticalReward
-actualOwnerReward = actualReward - actualVerifierReward
+// owner 部分受治理票占比倍数约束
+govRatio(m) = validGovVotes(m) × 1e18 / totalGovVotes
+govRatioCap(m) = govRatio(m) × govRatioMultiplier(m) / 1e18
+ownerRatioCap(m) = min(theoreticalOwnerRatio(m), govRatioCap(m))
+actualOwnerReward(m) = serviceReward × ownerRatioCap(m) / 1e18
 ```
+
+**设计理由**：
+- 公共验证者激励基于服务工作量，不应受链群治理票限制
+- 链群 owner 激励代表链群的组织能力，应受治理参与度约束，避免治理票极低的链群获得过高激励
 
 公共验证者部分直接给实际锁定的验证者；链群 owner 部分按该 `groupId` 在各行动中的激励权重拆分，并按链群配置的接收主体和比例执行二次分配。
 

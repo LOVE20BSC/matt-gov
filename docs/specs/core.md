@@ -219,9 +219,9 @@ govVotes = lpShares × promisedWaitingPhases
 **流程**（新设计）：
 1. 当前 MemberNFT 持有人发起统一解锁申请
 2. 申请立即清零治理票，禁止追加质押和融合
-3. 申请绑定 `memberId`、申请时 Phase 和等待期；MemberNFT 转移不重置倒计时
+3. 申请绑定 `memberId`、申请时 Phase 和解锁期；MemberNFT 转移不重置倒计时
 4. 连续经过 `promisedWaitingPhases` 个底层 Phase 后，当前持有人一次性提取 LP 对应的两种资产和加速质押代币
-5. 等待期结束后，当前 MemberNFT 持有人（可能已不是申请时的持有人）有权提取全部资产
+5. 解锁期结束后，当前 MemberNFT 持有人（可能已不是申请时的持有人）有权提取全部资产
 
 ### 5.5 融合（新增）
 
