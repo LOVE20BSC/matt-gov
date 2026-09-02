@@ -52,6 +52,13 @@
 - `executorAddress` 必须是非零且包含合约代码的地址
 - 第 `0` 项之外的 KV 可以为空，业务字段由 Executor 负责
 
+**验证时机**：
+ActionTarget 在 `onProposalCreated` 回调中验证：
+- `kvList.length > 0`
+- `kvList[0].key == keccak256("executor")`
+- decode 后的 `executorAddress` 非零且包含合约代码
+验证失败则回滚整个 Proposal 创建交易。
+
 ActionTarget 以 `tokenAddress + proposalId` 为唯一键保存 Executor，把完整创建 KV 原样转发给 Executor。只有 ActionTarget 可以调用 Executor 的三个回调。
 
 **回调接口**：
@@ -130,7 +137,7 @@ ActionTarget 定义所有行动类型的必经流程：
 - 加入 Round = currentPhase() - 1
 - 铸币 Round = currentPhase() - 2
 
-Phase 1、2 期间部分阶段尚未就绪，查询对应 Round 时回滚 `RoundNotStarted`。Phase 3 起，LP 行动进入稳态运行。
+Phase 1、2 期间部分阶段尚未就绪，查询或操作对应 Round 时回滚 `RoundNotStarted`。Phase 3 起，LP 行动进入稳态运行。
 
 **链群行动执行合约**（4 阶段）：
 - 投票 Round = currentPhase()
@@ -148,17 +155,17 @@ Phase 4 起，链群行动进入稳态运行。验证阶段在加入和铸币之
 
 **链群服务验证复用机制**（关键设计）：
 
-链群服务不单独执行验证，而是复用同轮次链群行动的验证结果：
+链群服务不单独执行验证，而是检查该服务 Proposal 关联的特定链群行动的验证结果。一个链群服务 Proposal 面向整个 `actionTokenAddress` 社区的所有链群行动，权重聚合来自所有相关链群行动，但验证状态检查针对每个链群行动独立进行。
 
 ```solidity
-// 链群服务在铸币阶段查询链群行动的验证完成状态
-// 铸币 Round p 对应验证 Round p，查询该 Round 的链群行动验证结果
-bool verified = linkGroupExecutor.isRoundVerified(actionTokenAddress, verifyRound);
+// 链群服务在铸币阶段查询关联链群行动的验证完成状态
+// 铸币 Round p 对应验证 Round p
+bool verified = linkGroupExecutor.isRoundVerified(actionTokenAddress, actionId, verifyRound);
 ```
 
 **处理规则**：
-- 链群行动已完成验证 → 链群服务可以铸币
-- 链群行动未验证或验证失败 → 链群服务跳过该轮次，不铸币
+- 关联的链群行动已完成验证 → 该链群行动的贡献计入服务激励权重计算
+- 关联的链群行动未验证或验证失败 → 该链群行动跳过该轮次，不计入权重
 - 链群服务不依赖链群行动的铸币完成，只检查验证完成
 
 **设计理由**：
@@ -205,6 +212,7 @@ deduction_i = min(
     amount_i × (joinBlock_i - joinPhaseStartBlock) / joinPhaseBlocks
 )
 effectiveAmount = joinedAmount - deduction
+effectiveLpRatio = effectiveAmount × 1e18 / totalEffectiveAmount
 ```
 
 **治理票上限**：参考 `LOVE20TKM/extension-lp/V2` 的 `govRatioMultiplier`
@@ -214,6 +222,8 @@ govRatioCap = govRatio × govRatioMultiplier / 1e18
 effectiveRatio = min(effectiveLpRatio, govRatioCap)
 mintReward = proposalReward × effectiveRatio / 1e18
 ```
+
+其中 `effectiveLpRatio` 是经过时间权重扣减后的 LP 占比（见上述时间权重计算）。
 
 ### 5.2 关键变更
 
@@ -271,6 +281,8 @@ groupReward = proposalReward × groupScore / totalGroupScore
 memberReward = groupReward × memberScore / groupScore
 ```
 
+其中 `groupScore` 和 `memberScore` 基于验证阶段确认的参与数据计算。
+
 ### 6.2 关键变更
 
 #### 主体身份
@@ -298,6 +310,14 @@ memberReward = groupReward × memberScore / groupScore
 - `serviceTokenAddress` 是 `actionTokenAddress` 的直接父币
 
 **权重计算**：参考 `LOVE20TKM/action/GroupService`
+
+变量定义：
+- `A[a]` = 链群行动 a 的总激励
+- `r[a]` = 链群行动 a 的公共验证者比例（ratioForPublicVerifier）
+- `T` = 所有相关链群行动的总激励之和
+- `m` = memberId
+- `ownerActionReward(a, m)` = 链群 owner m 在链群行动 a 中获得的激励（聚合该链群所有成员在该行动中的激励）
+
 ```text
 verifierWeightNumerator(m) = Σ(A[a] × r[a])
     // 仅对 verifierId[a] == m 的行动累加
@@ -331,12 +351,12 @@ actualReward(m) = min(
     serviceReward × capRatio(m) / 1e18
 )
 
-// 统一缩放比例拆分
+// 统一缩放比例拆分（避免超额）
 actualVerifierReward = actualReward × theoreticalVerifierReward / theoreticalReward
 actualOwnerReward = actualReward - actualVerifierReward
 ```
 
-公共验证者部分直接给实际锁定的验证者；链群 owner 部分按该 `groupId` 在各行动中的激励权重拆分，并按链群配置的接收主体和比例执行二次分配。
+公共验证者部分直接给实际锁定的验证者；链群 owner 部分按该 `groupId` 在各行动中的激励权重拆分，并按链群配置的接收主体和比例执行二次分配。二次分配时，先计算每个接收者的理论份额，再统一缩放确保总和不超过 `actualOwnerReward`。
 
 ---
 

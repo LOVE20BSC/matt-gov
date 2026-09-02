@@ -80,9 +80,13 @@
 
 **参考实现**：`LOVE20TKM/group-chat/GroupChat.sol`
 
-对于由普通 owner 激活的 Chat，激活后群 owner 或当前有效的 Group Chat Delegate 可以：
+激活后，群 owner 或当前有效的 Group Chat Delegate 可以：
 - 设置 `postingAllowed`
 - 更新 `scopeSource`、`banSource`、`beforePostPlugin` 和 `afterPostPlugin`
+
+**普通 owner Chat vs Manager Chat 的管理差异**：
+- **普通 owner Chat**（如链群 Chat）：owner 持有 MemberNFT，可随时更新四个规则槽位
+- **Manager Chat**（代币社区/治理/行动 Chat）：Manager 合约持有 MemberNFT，规则槽位在激活时一次性注入，Manager 通常不提供重新配置接口
 
 ### 3.3 Group Chat Delegate（限定范围）
 
@@ -124,6 +128,10 @@ Group Chat Delegate 使用 NFT 委托语义：每个 `groupId` 最多设置一�
 
 **资格绕过**：
 当 `senderId == groupId`，或 `senderId` 是该群当前有效的 `delegateId` 时，可以跳过 `scopeSource` 和 `banSource`，但仍必须通过群存在、激活、发言开关、身份存在和 `msg.sender` 持有 `senderId` 等核心校验。
+
+**mentionAll 权限**：
+- **允许 mentionAll**：owner（`senderId == groupId`）、有效 delegate、有效 admin
+- **资格绕过**：仅 owner 和 delegate（admin 可以 mentionAll，但仍需通过 scopeSource 和 banSource 检查）
 
 **标准接口**：
 ```solidity
@@ -261,23 +269,22 @@ token.balanceOf(MemberNFT.ownerOf(senderId)) > 0
 - `RECENT_ROUNDS = 3`（BSC 部署值）
 
 **RECENT_ROUNDS 的时间基准**：
-从当前 Core 治理 Round（`Phase.currentPhase()`）向前数 3 轮。
+当前 Core 治理 Round（即 `Phase.currentPhase()` 返回值，Phase 与治理 Round 一对一映射）向前数 3 轮。
 
 示例：
-- 当前 Phase = 10
-- 检查 memberId 在 Round 10, 9, 8 是否投过票
+- 当前 Phase = 10（即治理 Round 10）
+- 检查 memberId 在治理 Round 10, 9, 8 是否投过票
 - 任一 Round 有投票记录即符合资格
 
 注意：
 - 使用 Core 治理 Round 作为基准，而非行动的执行 Round
 - 这确保了跨行动的资格判断一致性
 
-**ActionTarget 参与登记影响资格**：
-- ActionTarget 的 `forceExit` 或正常退出清除参与登记后，对应代币社区或代币行动 Chat 的参与资格立即失效
+**ActionTarget 参与登记与链群 Chat 资格差异**：
 
-**链群 Chat 资格**：
-- 链群归属只在链群 Executor 的正常退出流程中更新
-- `forceExit` 不改变链群归属，因此不会单独改变链群 Chat 资格
+forceExit 对 Chat 资格的影响：
+- **代币社区/行动 Chat**：立即失去资格（依赖 ActionTarget 登记，forceExit 清除登记）
+- **链群 Chat**：不失去资格（依赖链群 Executor 归属，forceExit 不修改归属；归属只在链群 Executor 的正常退出流程中更新）
 
 ### 7.2 群成员和管理员
 
@@ -293,10 +300,17 @@ token.balanceOf(MemberNFT.ownerOf(senderId)) > 0
 
 治理投票黑名单按 `groupId + targetSenderId + voterId` 记录支持/反对票，并从 `voterId` 对应的治理状态读取权重。
 
-**权重查询**：
-- 代币社区 Chat、代币治理 Chat：`voteWeightOf(groupId, voterId)` = 该代币社区中 `voterId` 当前有效治理票
-- 代币行动 Chat、代币行动治理 Chat：`voteWeightOf(groupId, voterId)` = 当前 Vote Round 中该行动 Proposal 的 `voterId` 累计投票数
-- 四类 Chat 的 `totalVoteWeight(groupId)` 都是所属代币社区当前总有效治理票
+**权重查询**（按 Chat 类型区分）：
+
+**代币社区 Chat、代币治理 Chat**：
+- `voteWeightOf(groupId, voterId)` = 该代币社区中 `voterId` 当前有效治理票
+- `totalVoteWeight(groupId)` = 该代币社区当前总有效治理票
+
+**代币行动 Chat、代币行动治理 Chat**：
+- `voteWeightOf(groupId, voterId)` = 当前 Vote Round 中该行动 Proposal 的 `voterId` 累计投票数
+- `totalVoteWeight(groupId)` = 当前 Vote Round 中该行动 Proposal 的总投票数
+
+注意：行动 Chat 的权重基准是行动 Proposal 的投票数，而非代币社区的治理票总数。
 
 **进入黑名单条件**（固定常量）：
 ```text
@@ -339,7 +353,8 @@ Manager 在创建 Chat 时应发出事件，标注 Chat 类型。
 - 只读取管理员维护的 `groupId -> memberId` 成员名单
 
 **GroupActionScope**（新增）：
-- 部署时固定 GroupChat 的成员集合查询接口和可复用的链群行动 Executor
+- 部署时接收 GroupChat 的成员集合查询接口和链群行动 Executor 地址作为构造参数
+- Executor 必须是协议部署的标准链群行动 Executor
 - 成员名单命中时直接允许
 - 否则检查 `gTokenAddressesByGroupIdByMemberIdCount(groupId, senderId) > 0`
 - 该查询覆盖该 Executor 服务的所有代币社区和所有链群行动
@@ -349,7 +364,7 @@ Manager 在创建 Chat 时应发出事件，标注 Chat 类型。
 - 成员通过 Executor 正常退出其在该链群的最后一个行动后资格立即失效
 - `forceExit` 只清除 ActionTarget 的通用参与登记，不修改 Executor 的资产或链群归属
 
-链群 owner 在激活时传入所需的 `scopeSource`、`banSource` 和插件；激活后，链群 owner 或有效 Group Chat Delegate 可以更新这些规则槽位。
+**链群 owner 在激活时传入所需的 `scopeSource`、`banSource` 和插件；激活后，链群 owner 或有效 Group Chat Delegate 可以更新这些规则槽位。这与 Manager Chat 不同：Manager Chat 的规则槽位在激活时一次性注入且通常不提供重新配置接口。**
 
 ---
 

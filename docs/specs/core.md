@@ -88,13 +88,13 @@ mintCost = byteLength >= bytesThreshold
     : baseCost × multiplier ^ (bytesThreshold - byteLength)
 ```
 
-`baseDivisor`、`bytesThreshold` 和 `multiplier` 均在部署时确定且必须大于零。铸造费用使用协议首个 LOVE20 代币支付；铸造时从调用者转入 `mintCost` 并立即销毁，累计到 `totalBurnedForMint`。
+`baseDivisor`、`bytesThreshold` 和 `multiplier` 均在部署时确定且必须大于零。`unmintedSupply` = 尚未铸造的 MemberNFT 总量。铸造费用使用协议首个 LOVE20 代币支付；铸造时从调用者转入 `mintCost` 并立即销毁，累计到 `totalBurnedForMint`。
 
 **参考实现**：`LOVE20TKM/group/contracts/LOVE20Group.sol` 78-95 行
 
 ### 3.4 转移语义
 
-MemberNFT 的转移不复制、不拆分、不重置任何历史。依赖身份的合约必须实时读取 `ownerOf(memberId)`，不能缓存钱包地址作为长期权限。
+MemberNFT 的转移不复制、不拆分、不重置任何历史。依赖身份的合约必须实时读取 `ownerOf(memberId)`，不能缓存钱包地址作为长期权限。MemberNFT 转移后，新持有人可以铸造尚未领取的治理激励、使用尚未消耗的发射次数、提取等待期结束的解锁资产，以及继续控制当前质押状态。
 
 供应量和按持有人查询使用标准 `ERC721Enumerable` 接口。
 
@@ -134,8 +134,11 @@ MemberNFT 的转移不复制、不拆分、不重置任何历史。依赖身份�
 - ✅ 外部调用：任何地址可主动调用 `Phase.sync()`
 
 **设计理由**：
-- 推举时同步让下一轮的 Phase 参数更准确
+- 推举时同步确保下一轮的 Phase 参数更准确
 - 避免每次投票都同步，节省 gas
+
+**极端情况**：
+如果某个 Round 没有推举，Phase 不会自动同步。任何地址可以主动调用 `sync()`，或等待下一个 Round 的首个推举触发同步。未同步不影响协议运行，只影响下一个 Phase 的长度校准。
 
 ### 4.4 动态校准
 
@@ -185,7 +188,7 @@ govVotes = lpShares × promisedWaitingPhases
 ### 5.3 加速质押（修改）
 
 **旧版**：加速质押不参与激励分配  
-**新版**：加速质押参与治理激励的加速部分分配（见第 8.3 节）
+**新版**：加速质押参与治理激励的加速部分分配（见第 7.3 节）
 
 加速质押不产生治理投票权，但参与投票激励。流动性质押产生治理投票权，并参与投票激励（对应旧版"验证激励"）分配。两类质押可以同时存在，共享解锁生命周期。
 
@@ -194,16 +197,7 @@ govVotes = lpShares × promisedWaitingPhases
 - 同一 Round 后续再次投票时，只补记当前数量超过已记录数量的差额
 - 没有后续投票时，单独增加的加速质押不进入本轮
 
-**解锁申请对加速质押记录的影响**：
-- 解锁申请时，本轮已记录的加速质押快照不受影响
-- 下一轮开始时，该 memberId 如果再次投票，加速质押从当前值重新记录
-- 已提取的加速质押不再参与后续轮次的治理激励
-
-示例：
-- Round 5：memberId 投票，记录 boostShares = 100
-- Round 5：memberId 申请解锁（清零治理票，但已记录的 100 不变）
-- Round 5 结束：该 memberId 按 boostShares = 100 参与加速激励分配
-- Round 6：如该 memberId 重新质押并投票，从新的 boostShares 开始记录
+解锁申请对加速质押记录的影响见第 7.3 节。
 
 ### 5.4 统一解锁和提取
 
@@ -212,6 +206,7 @@ govVotes = lpShares × promisedWaitingPhases
 2. 申请立即清零治理票，禁止追加质押和融合
 3. 申请绑定 `memberId`、申请时 Phase 和等待期；MemberNFT 转移不重置倒计时
 4. 连续经过 `promisedWaitingPhases` 个底层 Phase 后，当前持有人一次性提取 LP 对应的两种资产和加速质押代币
+5. 等待期结束后，当前 MemberNFT 持有人（可能已不是申请时的持有人）有权提取全部资产
 
 ### 5.5 融合（新增）
 
@@ -226,12 +221,12 @@ govVotes = lpShares × promisedWaitingPhases
 
 **禁止融合的情况**：
 - 任一方存在待处理解锁申请
-- 当前投票 Round 中任一方已经发生非零投票
+- 当前投票 Round 中源或目标任一方已经发生非零投票
 - 目标等待期小于源等待期
 
 **禁止融合的设计理由**：
 
-"当前投票 Round 中任一方已经发生非零投票"时禁止融合：
+"当前投票 Round 中源或目标任一方已经发生非零投票"时禁止融合：
 
 **理由**：
 - 防止投票权重转移：用户通过融合改变已投票的权重分布
@@ -352,18 +347,20 @@ burnReward = theoreticalBoost - boostReward  // 溢出部分销毁
 
 **关键特性**：
 - 50%/50% 划分和 2 倍上限是固定协议常量，不是部署参数
-- `memberBoost` 和 `totalBoost` 使用投票时已记录的加速质押快照
-- 若 `totalBoost == 0`，本轮整个加速池由轮次级 `boostBurned` 状态一次性计入 `rewardBurned`
-
-**解锁申请对加速质押记录的影响**：
-- 解锁申请时，本轮已记录的加速质押快照不受影响
-- 下一轮开始时，该 memberId 如果再次投票，加速质押从当前值重新记录
-- 已提取的加速质押不再参与后续轮次的治理激励
+- `memberBoost` = 该 memberId 在投票时记录的加速质押份额（boostShares），见第 5.3 节加速质押投票记账机制
+- `totalBoost` = 本轮所有投票者的加速质押份额总和
+- 若 `totalBoost == 0`，在准备该 Round 激励时（`prepareRoundReward`），整个加速池立即计入 `rewardBurned`
 
 **批量铸造**（新增）：
 - `mintGovRewards(tokenAddress, memberId, rounds[])`
 - 按输入顺序逐轮执行，返回与 `rounds` 等长的三类激励结果数组
 - 任一 Round 失败则整笔交易回滚
+
+**单轮铸造失败条件**：
+- Round 尚未结束（当前 Phase 尚未推进到该 Round 之后）
+- Round 激励池未准备（未调用 `prepareRoundReward`）
+- 该 memberId 在该 Round 没有投票记录
+- 该 Round 该 memberId 的激励已铸造
 
 **接口**：
 ```solidity
