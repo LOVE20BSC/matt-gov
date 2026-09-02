@@ -347,7 +347,7 @@ burnReward = theoreticalBoost - boostReward  // 溢出部分销毁
 
 **关键特性**：
 - 50%/50% 划分和 2 倍上限是固定协议常量，不是部署参数
-- `memberBoost` = 该 memberId 在投票时记录的加速质押份额（boostShares），见第 5.3 节加速质押投票记账机制
+- `memberBoost` = 该 memberId 在投票时记录的加速质押份额（boostShares），计算和记账机制见第 5.3 节
 - `totalBoost` = 本轮所有投票者的加速质押份额总和
 - 若 `totalBoost == 0`，在准备该 Round 激励时（`prepareRoundReward`），整个加速池立即计入 `rewardBurned`
 

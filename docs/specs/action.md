@@ -160,7 +160,7 @@ Phase 4 起，链群行动进入稳态运行。验证阶段在加入和铸币之
 ```solidity
 // 链群服务在铸币阶段查询关联链群行动的验证完成状态
 // 铸币 Round p 对应验证 Round p
-bool verified = linkGroupExecutor.isRoundVerified(actionTokenAddress, actionId, verifyRound);
+bool verified = groupActionExecutor.isRoundVerified(actionTokenAddress, actionId, verifyRound);
 ```
 
 **处理规则**：
@@ -316,13 +316,13 @@ memberReward = groupReward × memberScore / groupScore
 - `r[a]` = 链群行动 a 的公共验证者比例（ratioForPublicVerifier）
 - `T` = 所有相关链群行动的总激励之和
 - `m` = memberId
-- `ownerActionReward(a, m)` = 链群 owner m 在链群行动 a 中获得的激励（聚合该链群所有成员在该行动中的激励）
+- `ownerGroupReward(a, m)` = 链群 owner m 在链群行动 a 中获得的激励（聚合该链群所有成员在该行动中的激励）
 
 ```text
 verifierWeightNumerator(m) = Σ(A[a] × r[a])
     // 仅对 verifierId[a] == m 的行动累加
 
-ownerWeightNumerator(m) = Σ(ownerActionReward(a, m) × (1e18 - r[a]))
+ownerWeightNumerator(m) = Σ(ownerGroupReward(a, m) × (1e18 - r[a]))
 
 theoreticalVerifierReward(m) = serviceReward × verifierWeightNumerator(m) / (T × 1e18)
 theoreticalOwnerReward(m) = serviceReward × ownerWeightNumerator(m) / (T × 1e18)
