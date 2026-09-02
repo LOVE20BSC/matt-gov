@@ -245,7 +245,7 @@ bool verified = groupActionExecutor.isRoundVerified(actionTokenAddress, actionId
 
 ### 5.1 保留逻辑（引用旧代码）
 
-**时间权重计算**：参考 `LOVE20TKM/contracts/extension-lp/LpActionV2.sol` 的 `calculateTimeWeight` 函数
+**时间权重计算**：参考 `LOVE20TKM/contracts/extension-lp/contracts/LpActionV2.sol` 的 `calculateTimeWeight` 函数
 ```text
 deduction_i = min(
     amount_i,
@@ -255,7 +255,7 @@ effectiveAmount = joinedAmount - deduction
 effectiveLpRatio = effectiveAmount × 1e18 / totalEffectiveAmount
 ```
 
-**治理票上限**：参考 `LOVE20TKM/extension-lp/V2` 的 `govRatioMultiplier`
+**治理票上限**：参考 `LOVE20TKM/contracts/extension-lp/contracts/LpActionV2.sol` 的 `govRatioMultiplier`
 
 **变量定义**：
 - `validGovVotes(memberId)` = 该 memberId 在该代币社区的当前有效治理票（铸币时从 Stake 合约实时查询）
