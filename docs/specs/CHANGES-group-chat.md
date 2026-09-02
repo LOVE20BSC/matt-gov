@@ -228,6 +228,9 @@ currentRound = 1 + (block.number - originBlock) / phaseBlocks
 
 - 链群 Chat 不使用 Manager
 - 由链群 owner 持有的 MemberNFT 直接作为 `groupId` 激活和管理
+
+关于 forceExit 对链群 Chat 资格的影响，详见 action.md 第 2.3 节"forceExit"的完整说明。
+- 由链群 owner 持有的 MemberNFT 直接作为 `groupId` 激活和管理
 - 成员集合和管理员集合维护
 
 ### 🔄 关键变化

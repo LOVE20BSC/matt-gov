@@ -266,7 +266,7 @@ token.balanceOf(MemberNFT.ownerOf(senderId)) > 0
 
 **治理票、投票和参与**：
 - 治理票、Proposal 投票和行动参与直接按 `memberId` 查询
-- `RECENT_ROUNDS = 3`（BSC 部署值）
+- `RECENT_ROUNDS = 3`（BSC 部署值，该常量定义在各 ScopeSource 合约的构造参数或部署时常量中）
 
 **RECENT_ROUNDS 的时间基准**：
 当前 Core 治理 Round（即 `Phase.currentPhase()` 返回值，Phase 与治理 Round 一对一映射）向前数 3 轮。
@@ -331,6 +331,12 @@ supportWeight × 1e18 >= totalVoteWeight × 3e15
 - 把该 `memberId` 作为 `groupId` 激活到同一个 `GroupChat` 合约
 - 一次性注入规则模块
 - 不创建独立 Chat 合约，不复制 MemberNFT、不创建治理状态、不改变行动状态
+
+**行动 Chat 与 Proposal 的关联**（黑名单权重查询）：
+- 每个行动 Manager 在创建时关联一个 `actionId`（对应 Core 的 Proposal ID）
+- 行动 Chat 的黑名单投票通过查询 Manager 获得 `actionId`，再查询该 Proposal 的投票权重
+- Manager 必须提供 `getActionId(groupId) returns (uint256 actionId)` 接口供黑名单源查询
+- 一个代币社区可能有多个行动 Proposal，每个行动 Manager 关联不同的 `actionId`
 
 **Chat 类型区分机制**：
 Manager 通过注入不同的 `scopeSource` 和 `banSource` 实现类型区分。

@@ -155,12 +155,13 @@ Phase 4 起，链群行动进入稳态运行。验证阶段在加入和铸币之
 
 **链群服务验证复用机制**（关键设计）：
 
-链群服务不单独执行验证，而是检查该服务 Proposal 关联的特定链群行动的验证结果。一个链群服务 Proposal 面向整个 `actionTokenAddress` 社区的所有链群行动，权重聚合来自所有相关链群行动，但验证状态检查针对每个链群行动独立进行。
+链群服务不单独执行验证，而是检查该服务 Proposal 面向的所有链群行动各自的验证结果。一个链群服务 Proposal 面向整个 `actionTokenAddress` 社区的所有链群行动，权重聚合来自所有相关链群行动，但验证状态检查针对每个链群行动独立进行。
 
 ```solidity
 // 链群服务在铸币阶段查询关联链群行动的验证完成状态
-// 铸币 Round p 对应验证 Round p
-bool verified = groupActionExecutor.isRoundVerified(actionTokenAddress, actionId, verifyRound);
+// 链群服务铸币 Round p 查询链群行动验证 Round p 的验证结果
+// （两者的 Round 编号相同，但阶段不同）
+bool verified = groupActionExecutor.isRoundVerified(actionTokenAddress, actionId, mintRound);
 ```
 
 **处理规则**：
@@ -222,6 +223,8 @@ govRatioCap = govRatio × govRatioMultiplier / 1e18
 effectiveRatio = min(effectiveLpRatio, govRatioCap)
 mintReward = proposalReward × effectiveRatio / 1e18
 ```
+
+其中 `validGovVotes(memberId)` 查询该 memberId 在投票 Round 结束时的治理票快照，而非铸币时的实时值。该快照在加入阶段开始时（投票 Round 结束时）由 LP 行动 Executor 记录。
 
 其中 `effectiveLpRatio` 是经过时间权重扣减后的 LP 占比（见上述时间权重计算）。
 

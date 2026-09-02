@@ -197,7 +197,7 @@ govVotes = lpShares × promisedWaitingPhases
 - 同一 Round 后续再次投票时，只补记当前数量超过已记录数量的差额
 - 没有后续投票时，单独增加的加速质押不进入本轮
 
-解锁申请对加速质押记录的影响见第 7.3 节。
+解锁申请对加速质押记录的影响：见第 7.3 节"解锁申请对加速质押记录的影响"部分。
 
 ### 5.4 统一解锁和提取
 
@@ -350,6 +350,12 @@ burnReward = theoreticalBoost - boostReward  // 溢出部分销毁
 - `memberBoost` = 该 memberId 在投票时记录的加速质押份额（boostShares），计算和记账机制见第 5.3 节
 - `totalBoost` = 本轮所有投票者的加速质押份额总和
 - 若 `totalBoost == 0`，在准备该 Round 激励时（`prepareRoundReward`），整个加速池立即计入 `rewardBurned`
+
+**解锁申请对加速质押记录的影响**：
+- 解锁申请时，如果该 memberId 在当前 Round 尚未投票，则该 Round 不产生加速质押记录
+- 解锁申请时，如果该 memberId 在当前 Round 已投票，已记录的加速质押份额保留但不再接受补差
+- 解锁等待期间，该 memberId 的治理票已清零（见第 5.4 节），不能参与新 Round 的投票，因此不会产生新的加速质押记录
+- 提取完成后，该 memberId 可以重新质押并参与后续 Round
 
 **批量铸造**（新增）：
 - `mintGovRewards(tokenAddress, memberId, rounds[])`
