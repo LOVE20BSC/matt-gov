@@ -141,7 +141,12 @@ ActionTarget 定义所有行动类型的必经流程：
 - 加入 Round = currentPhase() - 1
 - 铸币 Round = currentPhase() - 2
 
-Phase 1、2 期间部分阶段尚未就绪，查询或操作对应 Round 时回滚 `RoundNotStarted`。Phase 3 起，LP 行动进入稳态运行。
+**冷启动期操作边界**：
+- Phase 1：可以创建 Proposal 和投票（投票 Round 1），加入和铸币操作回滚 `RoundNotStarted`
+- Phase 2：可以创建、投票（Round 2）和加入（Round 1），铸币操作回滚 `RoundNotStarted`
+- Phase 3 起：LP 行动进入稳态运行，所有阶段就绪
+
+注意：Phase 2 时加入 Round = 1，该 Round 可以正常加入，不会回滚。
 
 **链群行动执行合约**（4 阶段）：
 - 投票 Round = currentPhase()
@@ -150,6 +155,14 @@ Phase 1、2 期间部分阶段尚未就绪，查询或操作对应 Round 时回�
 - 铸币 Round = currentPhase() - 3
 
 Phase 4 起，链群行动进入稳态运行。验证阶段在加入和铸币之间插入。
+
+**冷启动期操作边界**：
+- Phase 1：可以创建 Proposal 和投票（投票 Round 1），加入、验证和铸币操作回滚 `RoundNotStarted`
+- Phase 2：可以创建、投票（Round 2）和加入（Round 1），验证和铸币操作回滚 `RoundNotStarted`
+- Phase 3：可以创建、投票（Round 3）、加入（Round 2）和验证（Round 1），铸币操作回滚 `RoundNotStarted`
+- Phase 4 起：所有阶段就绪
+
+注意：Phase 2 时加入 Round = 1，Phase 3 时加入 Round = 2，均可正常加入，不会回滚。
 
 **链群服务行动执行合约**（4 阶段，与被服务的链群行动对齐）：
 - 投票 Round = currentPhase()
@@ -160,6 +173,13 @@ Phase 4 起，链群行动进入稳态运行。验证阶段在加入和铸币之
 **链群服务验证复用机制**（关键设计）：
 
 链群服务不单独执行验证，而是检查该服务 Proposal 面向的所有链群行动各自的验证结果。一个链群服务 Proposal 面向整个 `actionTokenAddress` 社区的所有链群行动，权重聚合来自所有相关链群行动，但验证状态检查针对每个链群行动独立进行。
+
+**链群行动列表获取**：
+链群服务通过 ActionTarget 查询获得该社区的所有链群行动：
+```solidity
+proposalIds = ActionTarget.proposalIdsByExecutor(actionTokenAddress, mintRound, chainGroupExecutor)
+```
+该查询返回指定 Round 在指定 Executor 下的所有 proposalId（即 actionId）。
 
 链群服务在业务 Round p 的铸币阶段（对应 Phase p+3）查询链群行动业务 Round p 的验证结果（该验证在 Phase p+2 完成）。业务 Round 编号相同（都是 p），但对应的 Phase 不同（p+3 vs p+2）：
 

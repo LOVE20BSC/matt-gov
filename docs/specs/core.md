@@ -200,6 +200,9 @@ govVotes = lpShares × promisedWaitingPhases
 - 首次投票记录当时加速质押
 - 同一 Round 后续再次投票时，只补记当前数量超过已记录数量的差额
 - 没有后续投票时，单独增加的加速质押不进入本轮
+- 解锁申请后，该 Round 的加速质押记录行为取决于申请时是否已投票：
+  - 若申请时当前 Round 尚未投票：该 Round 不产生加速质押记录
+  - 若申请时当前 Round 已投票：已记录的加速质押份额保留但不再接受后续补差
 
 解锁申请对加速质押记录的影响：见第 7.3 节"解锁申请对加速质押记录的影响"部分。
 
@@ -355,8 +358,14 @@ burnReward = theoreticalBoost - boostReward  // 溢出部分销毁
 - 50%/50% 划分和 2 倍上限是固定协议常量，不是部署参数
 - `memberBoost` = 该 memberId 在投票时记录的加速质押份额（boostShares），计算和记账机制见第 5.3 节
 - `totalBoost` = 本轮所有投票者的加速质押份额总和
-- 若 `totalBoost == 0`，在准备该 Round 激励时（`prepareRoundReward`），整个加速池立即计入 `rewardBurned`
+- 若 `totalBoost == 0`，在该 Round 的首次治理激励铸造时，判断并将整个加速池一次性计入 `rewardBurned`
 - 由于加速质押只在投票时记录（见第 5.3 节），如果某个 memberId 没有投票，则不会产生加速质押记录，因此不存在 `voteReward = 0` 但有 `boostReward` 的情况
+
+**Round 激励池准备**：
+- `prepareRoundReward(tokenAddress, round)` 可由任何地址调用
+- 通常在 Round 结束后首次铸造前调用
+- 首次铸造时如果未准备则回滚，提示调用者先准备激励池
+- 准备时一次性增加 `rewardReserved` 并冻结本轮池子
 
 **解锁申请对加速质押记录的影响**：
 - 解锁申请时，如果该 memberId 在当前 Round 尚未投票，则该 Round 不产生加速质押记录
@@ -374,6 +383,11 @@ burnReward = theoreticalBoost - boostReward  // 溢出部分销毁
 - Round 激励池未准备（未调用 `prepareRoundReward`）
 - 该 memberId 在该 Round 没有投票记录
 - 该 Round 该 memberId 的激励已铸造
+
+**Round 激励池准备**：
+- `prepareRoundReward(tokenAddress, round)` 可由任何地址调用
+- 通常在 Round 结束后、首次铸造前调用
+- 首次铸造时如果未准备则回滚，提示调用者先准备激励池
 
 **接口**：
 ```solidity
@@ -444,26 +458,28 @@ mintGovRewards(tokenAddress, memberId, rounds[])
 
 ### 9.2 Airdrop 依赖
 
+**迁移范围**：
+- Airdrop 合约代码从 `LOVE20TKM/burn` 仓库迁移到 `LOVE20BSC` 新仓库的 Launch 代码库维护
+- 初始化数据（份额配置）在 `LOVE20TKM/burn` 仓库生成，然后将数据文件复制到新代码库用于部署空投合约
+- LOVE20TKM 仓库保持只读，只作为数据生成源
+
 BSC 首个代币的初始分发来源：
 
-1. 在 BSC 上部署 `LOVE20TKM/burn` 仓库的 `Airdrop.sol` 合约
-2. Airdrop 合约记录旧协议（Thinkium）参与者通过销毁活动获得的份额
-3. Core 合约部署时，首个代币铸造后直接发送到 Airdrop 合约
-4. 参与者按份额从 Airdrop 合约领取
+1. Airdrop 合约记录旧协议（Thinkium）参与者通过销毁活动获得的份额
+2. Core 合约部署时，首个代币铸造后直接发送到 Airdrop 合约
+3. 参与者按份额从 Airdrop 合约领取
 
 **Airdrop 合约特性**：
 - 支持任意 ERC20 代币的分发，不绑定特定代币
 - 份额按代币独立记录：某代币领取后该份额即消耗，即使该代币后续余额增加也不能重复领取
 - 未领取份额对应的代币余额归属于剩余未领取者
 
-**来源可追溯性**：正式部署必须在文档中公开指向：
-- `LOVE20TKM/burn` 仓库的 `Airdrop.sol`
-- `DeployAirdrop.s.sol` 部署脚本
-- `airdrop-design.md` 设计文档
+**来源可追溯性**：Airdrop 合约代码和初始化数据来源：
+- Airdrop 合约代码从 `LOVE20TKM/burn` 仓库的 `Airdrop.sol` 迁移到 LOVE20BSC
+- 初始化数据在 `LOVE20TKM/burn` 仓库生成后复制到 LOVE20BSC
+- 正式部署必须在文档中公开指向旧仓库的 `DeployAirdrop.s.sol` 部署脚本和 `airdrop-design.md` 设计文档
 
 这使任何人都可以验证首个代币分发的合法性和公平性。
-
-注：`LOVE20TKM` 只读约束是指在实现 BSC 迁移期间不修改旧仓库代码；部署 Airdrop 到 BSC 可以手动操作，不属于迁移工作流的一部分。
 
 ---
 

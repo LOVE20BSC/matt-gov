@@ -241,7 +241,7 @@ memberReward = groupReward × memberScore / groupScore
 verifierWeightNumerator(m) = Σ(A[a] × r[a])
     // 仅对 verifierId[a] == m 的行动累加
 
-ownerWeightNumerator(m) = Σ(ownerActionReward(a, m) × (1e18 - r[a]))
+ownerWeightNumerator(m) = Σ(groupReward(a, m) × (1e18 - r[a]))
 
 theoreticalVerifierReward(m) = serviceReward × verifierWeightNumerator(m) / (T × 1e18)
 theoreticalOwnerReward(m) = serviceReward × ownerWeightNumerator(m) / (T × 1e18)
