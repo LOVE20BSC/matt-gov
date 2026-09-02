@@ -132,6 +132,7 @@ Group Chat Delegate 使用 NFT 委托语义：每个 `groupId` 最多设置一�
 **mentionAll 权限**（详见第 5.1 节）：
 - **允许 mentionAll**：owner（`senderId == groupId`）、有效 delegate、有效 admin
 - **资格绕过**：仅 owner 和 delegate（admin 可以 mentionAll，但仍需通过 scopeSource 和 banSource 检查）
+- **设计理由**：owner 和 delegate 代表群本身的管理身份，admin 是被授权的成员身份，仍需满足基本资格和黑名单规则
 
 **标准接口**：
 ```solidity
@@ -211,14 +212,14 @@ interface IAfterPostPlugin {
 
 **参考实现**：`LOVE20TKM/group-chat/GroupChat.sol`
 
-群聊 Round 是消息索引使用的本地时间编号，不等同治理 Round。GroupChat 合约部署时接收 Phase 合约地址作为构造参数，通过 `Phase.currentPhase()` 获取当前 Round，编号从 `1` 开始。
+群聊 Round 是消息索引使用的时间编号，通过 Phase 合约获取当前治理 Round。GroupChat 合约部署时接收 Phase 合约地址作为构造参数，通过 `Phase.currentPhase()` 获取当前 Round，编号从 `1` 开始。Phase 与治理 Round 一对一映射，因此群聊 Round 与治理 Round 同步。
 
 **查询方式**：
 ```solidity
 currentRound = phase.currentPhase()
 ```
 
-**注意**：群聊使用 Phase 合约来推算 Round，而非独立维护 `originBlock` 和 `phaseBlocks` 参数。
+**注意**：群聊使用 Phase 合约来获取治理 Round，而非独立维护 `originBlock` 和 `phaseBlocks` 参数。
 
 消息记录创建时的 Round 永久固定，即使后续调整 Chat 配置也不回写历史消息。
 
@@ -257,6 +258,16 @@ currentRound = phase.currentPhase()
 | 代币行动 Chat | 最近 `RECENT_ROUNDS` 轮给行动投过票，或当前已在 ActionTarget 登记参与该行动 | 行动投票权重黑名单 |
 | 代币行动治理 Chat | 最近 `RECENT_ROUNDS` 轮给行动投过票 | 行动投票权重黑名单 |
 | 链群 Chat | 被群管理员列入成员，或当前参与至少一个归属该链群的链群行动 | 管理员黑名单 |
+
+**代币行动 Chat vs 代币行动治理 Chat 资格差异**：
+- **代币行动 Chat**：包含"当前已在 ActionTarget 登记参与该行动"，允许新加入的行动参与者（尚未投票但已登记）立即发言
+- **代币行动治理 Chat**：仅限"最近 RECENT_ROUNDS 轮给行动投过票"，强调投票参与历史，排除未投票的新参与者
+- **设计理由**：行动 Chat 面向行动执行和协作，需要包容新参与者；行动治理 Chat 面向投票治理讨论，仅限有投票历史的成员
+
+**黑名单类型说明**：
+- **治理票加权黑名单**（代币社区/治理 Chat）：使用该代币社区当前有效治理票作为投票权重
+- **行动投票权重黑名单**（代币行动/行动治理 Chat）：使用该行动 Proposal 创建的治理 Round 中的历史投票数作为权重（详见第 7.3 节）
+- **管理员黑名单**（链群 Chat）：由链群管理员直接维护
 
 **关键实现细节**：
 
@@ -370,6 +381,7 @@ Manager 在创建 Chat 时应发出事件，标注 Chat 类型。
 - Executor 必须是协议部署的标准链群行动 Executor
 - 成员名单命中时直接允许
 - 否则检查 `gTokenAddressesByGroupIdByMemberIdCount(groupId, senderId) > 0`
+  （查询该成员在该链群 Executor 服务的所有链群行动中参与的代币社区数量）
 - 该查询覆盖该 Executor 服务的所有代币社区和所有链群行动
 
 **链群行动 Executor 是归属唯一依据**：
