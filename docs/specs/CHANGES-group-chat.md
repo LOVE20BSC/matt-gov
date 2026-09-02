@@ -46,10 +46,9 @@
 - 提及、引用、mention-all 机制
 
 #### 群聊 Round
-**保留计算**：
-```text
-currentRound = 1 + (block.number - originBlock) / phaseBlocks
-```
+**变更**：
+- **旧**：`currentRound = 1 + (block.number - originBlock) / phaseBlocks`
+- **新**：`currentRound = phase.currentPhase()`，使用统一的 Phase 合约推算
 
 #### 分页查询
 **参考实现**：`LOVE20TKM/group-chat/GroupChat.sol`
