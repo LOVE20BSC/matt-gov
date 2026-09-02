@@ -88,7 +88,7 @@ ActionTarget 维护通用的"MemberNFT 是否参与某个行动"登记，供前�
 - 链群行动的额外业务逻辑（如链群归属）由链群 Executor 维护
 
 **接口**：
-- `isParticipating(tokenAddress, actionId, memberId)`
+- `isAccountJoined(tokenAddress, actionId, memberId)` — 沿用旧代码命名
 - `actionIdsByMemberId(tokenAddress, memberId)`、对应的 `Count` 和 `AtIndex`
 - `registerParticipation(tokenAddress, actionId, memberId)` — 仅关联 Executor 可调用
 - `unregisterParticipation(tokenAddress, actionId, memberId)` — 仅关联 Executor 可调用
