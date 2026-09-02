@@ -193,12 +193,12 @@ bool verified = groupActionExecutor.isRoundVerified(actionTokenAddress, actionId
 ```
 
 **处理规则**：
-- 关联的链群行动已完成验证 → 该链群行动的贡献计入服务激励权重计算
+- 关联的链群行动已完成验证 → 该链群行动的激励计入服务激励权重计算
 - 关联的链群行动未验证或验证失败 → 该链群行动跳过该轮次，不计入权重
 - 链群服务不依赖链群行动的铸币完成，只检查验证完成
 
 **设计理由**：
-- 避免重复验证工作：链群行动已验证成员身份和贡献
+- 避免重复验证工作：链群行动已验证成员的参与身份和行动得分
 - 权重数据来源一致：链群服务的权重计算基于链群行动的验证数据
 - 阶段对齐：两者共享验证 Round，保持时间线一致性
 
@@ -315,9 +315,9 @@ openBlock = verifyPhaseStartBlock + openOffset
 **激励计算**：参考 `LOVE20TKM/action/GroupAction`
 
 **变量定义**：
-- `groupScore` = 该链群在该行动 Round 中的贡献得分（由验证者确认的成员贡献总和）
-- `totalGroupScore` = 该行动 Round 中所有链群的贡献得分总和
-- `memberScore` = 该成员在该链群、该行动 Round 中的贡献得分（由验证者确认）
+- `groupScore` = 该链群在该行动 Round 中的激励分配权重（所有成员的激励分配权重之和）
+- `totalGroupScore` = 该行动 Round 中所有链群的激励分配权重总和
+- `memberScore` = 该成员在该链群、该行动 Round 中的激励分配权重（该成员参与代币数量 × 原始验证得分）
 
 **公式**：
 ```text
