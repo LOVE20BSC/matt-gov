@@ -145,6 +145,11 @@ MemberNFT 的转移不复制、不拆分、不重置任何历史。依赖身份�
 - 由于没有 Proposal，该 Round 不产生投票和激励
 - Phase 校准可以延迟到下一个有推举的 Round，或由任何地址主动调用 `sync()`
 
+**没有推举的 Round**：
+- 仍然是有效的时间片（Phase N 对应治理 Round N）
+- 由于没有 Proposal，该 Round 不产生投票和激励
+- Phase 校准可以延迟到下一个有推举的 Round，或由任何地址主动调用 `sync()`
+
 ### 4.4 动态校准
 
 每次 `sync()` 都先追加当前观测点，即使不调整参数。校准使用满足 `currentBlock - observation.blockNumber >= currentPhaseBlocks` 的最近一条历史观测。
@@ -346,7 +351,7 @@ proposalVotes × 1e18 >= totalVotes × PROPOSAL_REWARD_MIN_VOTE_RATIO
 uint256 constant GOV_VOTE_SHARE = 0.5e18;    // 50%
 uint256 constant GOV_BOOST_SHARE = 0.5e18;   // 50%
 
-// 激励计算
+// 先计算池子份额，再按比例分配
 votePoolAmount = (govReward * GOV_VOTE_SHARE) / 1e18
 voteReward = (votePoolAmount * memberVotes) / totalVotes  // 向下取整
 
