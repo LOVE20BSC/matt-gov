@@ -169,13 +169,13 @@
 **投票激励**：
 ```solidity
 // 常量：GOV_VOTE_SHARE = 0.5e18
-voteReward = govPool * GOV_VOTE_SHARE / 1e18 * memberVotes / totalVotes
+voteReward = govReward * GOV_VOTE_SHARE / 1e18 * memberVotes / totalVotes
 ```
 
 **加速激励**（新增）：
 ```solidity
 // 常量：GOV_BOOST_SHARE = 0.5e18
-theoreticalBoost = govPool * GOV_BOOST_SHARE / 1e18 * memberBoost / totalBoost
+theoreticalBoost = govReward * GOV_BOOST_SHARE / 1e18 * memberBoost / totalBoost
 boostReward = min(theoreticalBoost, voteReward * 2)  // 基于投票激励的2倍上限
 burnReward = theoreticalBoost - boostReward  // 销毁
 ```

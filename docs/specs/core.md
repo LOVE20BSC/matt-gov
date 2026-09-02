@@ -309,8 +309,8 @@ Proposal 由 `tokenAddress + proposalId` 定位。
 ```text
 reservedAvailable = rewardReserved - rewardMinted - rewardBurned
 available = maxSupply - totalSupply - reservedAvailable
-govPool = available × ROUND_REWARD_GOV_RATIO / 1e18
-proposalPool = available × ROUND_REWARD_PROPOSAL_RATIO / 1e18
+govReward = available × ROUND_REWARD_GOV_RATIO / 1e18
+proposalReward = available × ROUND_REWARD_PROPOSAL_RATIO / 1e18
 ```
 
 准备时一次性增加 `rewardReserved` 并冻结本轮池子。Proposal 激励门槛：
@@ -325,7 +325,7 @@ proposalVotes × 1e18 >= totalVotes × PROPOSAL_REWARD_MIN_VOTE_RATIO
 
 每个 Proposal 由其 `target` 单独铸造一次：
 ```text
-实际数量 = proposalPool × proposalVotes / eligibleProposalVotes
+实际数量 = proposalReward × proposalVotes / eligibleProposalVotes
 ```
 
 行动类 Proposal 由关联 Executor 调用 `ActionTarget`，再由 `ActionTarget` 以自身身份调用 `mintProposalReward`；ActionTarget 在同一交易中把全部实际数量转给 Executor。
@@ -343,9 +343,9 @@ uint256 constant GOV_VOTE_SHARE = 0.5e18;    // 50%
 uint256 constant GOV_BOOST_SHARE = 0.5e18;   // 50%
 
 // 激励计算
-voteReward = govPool * GOV_VOTE_SHARE / 1e18 * memberVotes / totalVotes
+voteReward = govReward * GOV_VOTE_SHARE / 1e18 * memberVotes / totalVotes
 
-theoreticalBoost = govPool * GOV_BOOST_SHARE / 1e18 * memberBoost / totalBoost
+theoreticalBoost = govReward * GOV_BOOST_SHARE / 1e18 * memberBoost / totalBoost
 boostReward = min(theoreticalBoost, voteReward * 2)  // 基于投票激励的2倍上限
 burnReward = theoreticalBoost - boostReward  // 溢出部分销毁
 ```

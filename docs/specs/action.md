@@ -304,8 +304,8 @@ verifierWeightNumerator(m) = Σ(A[a] × r[a])
 
 ownerWeightNumerator(m) = Σ(ownerActionReward(a, m) × (1e18 - r[a]))
 
-theoreticalVerifierReward(m) = servicePool × verifierWeightNumerator(m) / (T × 1e18)
-theoreticalOwnerReward(m) = servicePool × ownerWeightNumerator(m) / (T × 1e18)
+theoreticalVerifierReward(m) = serviceReward × verifierWeightNumerator(m) / (T × 1e18)
+theoreticalOwnerReward(m) = serviceReward × ownerWeightNumerator(m) / (T × 1e18)
 ```
 
 **二次分配**：参考 `LOVE20TKM/action/GroupService`
@@ -328,7 +328,7 @@ theoreticalReward(m) = theoreticalVerifierReward(m) + theoreticalOwnerReward(m)
 
 actualReward(m) = min(
     theoreticalReward(m),
-    servicePool × capRatio(m) / 1e18
+    serviceReward × capRatio(m) / 1e18
 )
 
 // 统一缩放比例拆分
