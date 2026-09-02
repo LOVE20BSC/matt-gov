@@ -106,18 +106,18 @@ ActionTarget 维护通用的"MemberNFT 是否参与某个行动"登记，供前�
 
 **用户体验提示**：
 - `forceExit` 只清除 ActionTarget 的通用登记，不修改链群归属
-- 用户调用后仍可能保留链群 Chat 资格（归属在 Executor）
-- 要完全退出链群（包括 Chat），需通过 Executor 的正常退出流程
+- 用户调用后仍可能保留链群 Chat 资格（归属在链群 Executor）
+- 要完全退出链群（包括 Chat），需通过链群 Executor 的正常退出流程
 - 前端应明确提示这一差异，避免用户困惑
 
 **对 Chat 资格的影响**：
 - **代币社区/行动 Chat**：立即失去资格（资格检查通过 `ActionTarget.isParticipating()` 实现，forceExit 后立即失效）
-- **链群 Chat**：不失去资格（资格检查通过链群 Executor 的归属记录实现，因此不受影响；详见 group-chat.md 第 7.1 节）
+- **链群 Chat**：不失去资格（资格检查通过链群 Executor 的 17 组归属索引实现，因此不受影响；详见 group-chat.md 第 7.1 节）
 
 **限制**：
 - ActionTarget 查询立即不再返回该参与记录
 - Executor 的历史参与、资产和链群归属等业务状态均不更新
-- 链群归属只在链群 Executor 的正常退出流程中更新
+- 链群归属只在链群 Executor 的正常退出流程（成员完整退出链群在该社区的最后一个链群行动）中更新
 
 ### 2.4 查询
 
@@ -155,7 +155,7 @@ ActionTarget 定义所有行动类型的必经流程：
 - Phase 2：可以创建、投票（Round 2）和加入（Round 1），铸币操作回滚 `RoundNotStarted`
 - Phase 3 起：LP 行动进入稳态运行，所有阶段就绪
 
-**易混淆点**：Phase 2 时 `currentPhase() - 1 = 1`，加入操作检查 `加入 Round >= 1` 通过，不会回滚。
+**易混淆点**：加入 Round 和铸币 Round 是根据当前 Phase 计算的**业务轮次编号**，不是 Phase 编号本身。例如在 Phase 5 时，加入 Round = 4（参与者正在为 Round 4 加入），铸币 Round = 3（正在为 Round 3 的参与者铸币）。Phase 2 时 `currentPhase() - 1 = 1`，加入操作检查 `加入 Round >= 1` 通过，不会回滚。
 
 **链群行动执行合约**（4 阶段）：
 - 投票 Round = currentPhase()
@@ -171,13 +171,15 @@ Phase 4 起，链群行动进入稳态运行。验证阶段在加入和铸币之
 - Phase 3：可以创建、投票（Round 3）、加入（Round 2）和验证（Round 1），铸币操作回滚 `RoundNotStarted`
 - Phase 4 起：所有阶段就绪
 
-**易混淆点**：Phase 2 时 `currentPhase() - 1 = 1`，Phase 3 时 `currentPhase() - 1 = 2`，加入操作检查均通过，不会回滚。
+**易混淆点**：验证 Round 和铸币 Round 同样是**业务轮次编号**，不是 Phase 编号。Phase 3 时验证 Round = 1（正在为 Round 1 验证），Phase 4 时铸币 Round = 1（正在为 Round 1 铸币）。Phase 2 时 `currentPhase() - 1 = 1`，Phase 3 时 `currentPhase() - 1 = 2`，加入操作检查均通过，不会回滚。
 
 **链群服务行动执行合约**（4 阶段，与被服务的链群行动对齐）：
 - 投票 Round = currentPhase()
 - 加入 Round = currentPhase() - 1
 - 验证 Round = currentPhase() - 2
 - 铸币 Round = currentPhase() - 3
+
+**易混淆点**：链群服务的验证 Round 和铸币 Round 同样是**业务轮次编号**。链群服务在业务 Round p 的铸币阶段（对应 Phase p+3）查询链群行动业务 Round p 的验证结果（该验证在 Phase p+2 完成）。业务 Round 编号相同（都是 p），但对应的 Phase 不同（p+3 vs p+2）。
 
 **链群服务验证复用机制**（关键设计）：
 
