@@ -21,6 +21,8 @@
 
 ## 2. ActionTarget（统一框架）
 
+**术语说明**：每个行动对应一个 Core Proposal。在 ActionTarget 和 Core 回调接口中使用 `proposalId`，在 Executor 业务逻辑和查询接口中使用 `actionId`。两者数值相同：`actionId = proposalId`。
+
 ### 2.1 Proposal 关联
 
 #### 与 Core 治理的对接
@@ -218,6 +220,13 @@ effectiveLpRatio = effectiveAmount × 1e18 / totalEffectiveAmount
 ```
 
 **治理票上限**：参考 `LOVE20TKM/extension-lp/V2` 的 `govRatioMultiplier`
+
+**变量定义**：
+- `validGovVotes(memberId)` = 该 memberId 在该代币社区的当前有效治理票（铸币时从 Stake 合约实时查询）
+- `totalGovVotes` = 该代币社区当前总有效治理票（铸币时从 Stake 合约实时查询）
+- `effectiveLpRatio` = 经过时间权重扣减后的 LP 占比（见上述时间权重计算）
+
+**公式**：
 ```text
 govRatio = validGovVotes(memberId) × 1e18 / totalGovVotes
 govRatioCap = govRatio × govRatioMultiplier / 1e18
@@ -225,9 +234,7 @@ effectiveRatio = min(effectiveLpRatio, govRatioCap)
 mintReward = proposalReward × effectiveRatio / 1e18
 ```
 
-其中 `validGovVotes(memberId)` 和 `totalGovVotes` 在铸币时从 Stake 合约实时查询。治理票用于计算激励上限，而非权重依据，因此使用实时值更公平：成员解锁质押后治理影响力降低，LP 激励上限也相应降低。
-
-其中 `effectiveLpRatio` 是经过时间权重扣减后的 LP 占比（见上述时间权重计算）。
+治理票用于计算激励上限，而非权重依据，因此使用实时值更公平：成员解锁质押后治理影响力降低，LP 激励上限也相应降低。
 
 ### 5.2 关键变更
 
@@ -280,6 +287,13 @@ openBlock = verifyPhaseStartBlock + openOffset
 ```
 
 **激励计算**：参考 `LOVE20TKM/action/GroupAction`
+
+**变量定义**：
+- `groupScore` = 该链群在该行动 Round 中的贡献得分（由验证者确认的成员贡献总和）
+- `totalGroupScore` = 该行动 Round 中所有链群的贡献得分总和
+- `memberScore` = 该成员在该链群、该行动 Round 中的贡献得分（由验证者确认）
+
+**公式**：
 ```text
 groupReward = proposalReward × groupScore / totalGroupScore
 memberReward = groupReward × memberScore / groupScore
@@ -347,6 +361,13 @@ theoreticalOwnerReward(m) = serviceReward × ownerWeightNumerator(m) / (T × 1e1
 - **新**：使用统一缩放比例，避免两次独立取整后超过实际预算
 
 **改进计算**：
+
+**变量定义**：
+- `capRatio(m)` = 链群 m 的服务激励上限比例（见 `LOVE20TKM/action/GroupService` 的上限计算）
+- `theoreticalReward(m)` = 该链群的理论总激励（验证者激励 + owner 激励）
+- `actualReward(m)` = 该链群的实际总激励（受上限约束）
+
+**公式**：
 ```text
 theoreticalReward(m) = theoreticalVerifierReward(m) + theoreticalOwnerReward(m)
 

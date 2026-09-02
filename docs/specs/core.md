@@ -153,7 +153,11 @@ MemberNFT 的转移不复制、不拆分、不重置任何历史。依赖身份�
 
 ### 4.5 与治理 Round 的关系
 
-核心 `Submit` 和 `Vote` 把 `Phase N` 一对一解释为治理 `Round N`，并提供无参数的 `currentRound()`。创建、推举和投票只写入当前治理 Round；当 `Phase.currentPhase() > N` 时，治理 Round N 的 Vote 时间片结束，`Vote` 对外返回该 Round 已结束，核心激励可以准备和铸造。
+**术语定义**：
+- **治理 Round**：Core Submit 和 Vote 把 Phase N 一对一解释为治理 Round N
+- **当前治理 Round**：`Phase.currentPhase()` 返回的 Phase 编号，即当前治理 Round 编号
+
+核心 `Submit` 和 `Vote` 提供无参数的 `currentRound()`。创建、推举和投票只写入当前治理 Round；当 `Phase.currentPhase() > N` 时，治理 Round N 的 Vote 时间片结束，`Vote` 对外返回该 Round 已结束，核心激励可以准备和铸造。
 
 ---
 
@@ -352,6 +356,7 @@ burnReward = theoreticalBoost - boostReward  // 溢出部分销毁
 - `memberBoost` = 该 memberId 在投票时记录的加速质押份额（boostShares），计算和记账机制见第 5.3 节
 - `totalBoost` = 本轮所有投票者的加速质押份额总和
 - 若 `totalBoost == 0`，在准备该 Round 激励时（`prepareRoundReward`），整个加速池立即计入 `rewardBurned`
+- 由于加速质押只在投票时记录（见第 5.3 节），如果某个 memberId 没有投票，则不会产生加速质押记录，因此不存在 `voteReward = 0` 但有 `boostReward` 的情况
 
 **解锁申请对加速质押记录的影响**：
 - 解锁申请时，如果该 memberId 在当前 Round 尚未投票，则该 Round 不产生加速质押记录
@@ -365,7 +370,7 @@ burnReward = theoreticalBoost - boostReward  // 溢出部分销毁
 - 任一 Round 失败则整笔交易回滚
 
 **单轮铸造失败条件**：
-- Round 尚未结束（当前 Phase 尚未推进到该 Round 之后）
+- Round 尚未结束（`Phase.currentPhase() <= round`，当前 Phase 尚未推进到该 Round 之后）
 - Round 激励池未准备（未调用 `prepareRoundReward`）
 - 该 memberId 在该 Round 没有投票记录
 - 该 Round 该 memberId 的激励已铸造

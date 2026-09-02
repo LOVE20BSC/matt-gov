@@ -309,16 +309,20 @@ forceExit 对 Chat 资格的影响：
 - `totalVoteWeight(groupId)` = 该代币社区当前总有效治理票
 
 **代币行动 Chat、代币行动治理 Chat**：
-- `voteWeightOf(groupId, voterId)` = 当前治理 Round（`Phase.currentPhase()`）中该行动 Proposal 的 `voterId` 累计投票数
-- `totalVoteWeight(groupId)` = 当前治理 Round（`Phase.currentPhase()`）中该行动 Proposal 的总投票数
+- `voteWeightOf(groupId, voterId)` = 该行动 Proposal 创建的治理 Round 中 `voterId` 的累计投票数
+- `totalVoteWeight(groupId)` = 该行动 Proposal 创建的治理 Round 中的总投票数
 
-注意：行动 Chat 的权重基准是行动 Proposal 的投票数，而非代币社区的治理票总数。"当前治理 Round"指 `Phase.currentPhase()` 返回的治理 Round。
+注意：行动 Chat 的权重基准是行动 Proposal 的投票数，而非代币社区的治理票总数。行动 Proposal 只在创建的治理 Round 接受投票，后续 Round 的黑名单投票使用该历史投票数据作为权重基准。
 
 **进入黑名单条件**（固定常量）：
 ```text
 supportWeight > opposeWeight × 10
 supportWeight × 1e18 >= totalVoteWeight × 3e15
 ```
+
+**黑名单投票时间窗口**：
+- 代币社区/治理 Chat：任何时候都可以投票（使用当前治理票作为权重）
+- 代币行动/行动治理 Chat：任何时候都可以投票，但权重固定使用行动 Proposal 创建 Round 的历史投票数据
 
 每次投票、反对、撤票或刷新后同步该目标的黑名单状态。
 
