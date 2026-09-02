@@ -188,7 +188,7 @@ Phase 4 起，链群行动进入稳态运行。验证阶段在加入和铸币之
 **链群行动列表获取**：
 链群服务通过 ActionTarget 查询获得该社区的所有链群行动：
 ```solidity
-proposalIds = ActionTarget.proposalIdsByExecutor(actionTokenAddress, mintRound, chainGroupExecutor)
+proposalIds = ActionTarget.proposalIdsByExecutor(actionTokenAddress, mintRound, groupExecutor)
 ```
 该查询返回指定 Round 在指定 Executor 下的所有 proposalId（即 actionId）。链群服务的业务 Round p 对应投票 Phase p，查询时传入 `mintRound`（业务 Round p）作为投票 Round 参数，获得在该 Round 投票的链群行动列表。
 
