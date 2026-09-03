@@ -274,6 +274,10 @@ struct TokenStakeGlobals {
 
 ### 5.3 保留逻辑（引用旧代码）
 
+**流动性质押流程**：参考 `LOVE20TKM/core/src/LOVE20Stake.sol` 120-134 行
+
+用户质押时提供双币（代币 + 父币），Stake 合约将双币转入并调用 Router 添加 LP，获得的 LP token 用于计算 LP 份额。提取时，Stake 合约移除 LP 并将双币返还用户。
+
 **LP 份额计算**：参考 `LOVE20TKM/core/src/LOVE20SLToken.sol` 79-83 行
 ```text
 sharesMinted = totalLpShares == 0
@@ -350,12 +354,14 @@ govVotes = lpShares × promisedWaitingPhases
 - 解锁申请后的质押变动不再更新当前 round 的累计值
 
 **累计值继承示例**：
-- **Round 4**：成员 A 质押 100 LP + 50 boost，累计值 = 100 LP + 50 boost
-- **Round 5 开始**：A 追加 50 LP + 30 boost
-  - 首次操作时，复制 Round 4 累计值：100 LP + 50 boost
-  - 追加后更新 Round 5 累计值：150 LP + 80 boost
-- **Round 5 投票**：读取 Round 5 累计值作为投票权重（150 LP + 80 boost）
-- **Round 6 开始**：A 无操作，Round 6 累计值自然继承 Round 5 的 150 LP + 80 boost
+- **Round 4**：成员 A 提供 100 代币 + 100 父币添加 LP 获得 10 LP token（对应 100 LP 份额），同时加速质押 50 代币（对应 50 加速份额），承诺解锁期 5 Phase
+  - Round 4 累计值 = 100 LP 份额 + 50 加速份额
+- **Round 5 开始**：A 追加提供 50 代币 + 50 父币添加 LP 获得 5 LP token（对应 50 LP 份额），同时加速质押 30 代币（对应 30 加速份额），承诺解锁期保持或增加到 ≥5 Phase
+  - 首次操作时，复制 Round 4 累计值：100 LP 份额 + 50 加速份额
+  - 追加后更新 Round 5 累计值：150 LP 份额 + 80 加速份额
+- **Round 5 投票**：读取 Round 5 累计值作为投票权重（150 LP 份额 + 80 加速份额）
+- **Round 6 开始**：A 无操作，Round 6 累计值自然继承 Round 5 的 150 LP 份额 + 80 加速份额
+- **Round 7**：A 申请解锁，解锁申请后不能再追加质押，累计值不再更新
 
 
 ### 5.5 统一解锁和提取
