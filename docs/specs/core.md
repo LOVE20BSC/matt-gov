@@ -73,7 +73,7 @@ LOVE20 是社群铸币协议。每个 LOVE20 代币都有一个 `parentTokenAddr
 **实现基线**：参考 `LOVE20TKM/group/contracts/LOVE20Group.sol` 的名称校验逻辑。
 
 **BSC 版变更**：
-- 最大长度：`64 bytes` → `32 bytes`（限制名称长度以节省 gas）
+- 最大长度：`64 bytes` → `32 bytes`（避免与钱包地址混淆）
 - 其他 UTF-8 校验规则、ASCII 大小写不敏感、禁止字符类型保持一致
 
 Gas 成本在旧版实际部署中已验证可行，无需重新评估。
@@ -340,7 +340,9 @@ govVotes = lpShares × promisedWaitingPhases
 
 加速质押不产生治理投票权，但参与投票激励。流动性质押产生治理投票权，并参与投票激励（对应旧版"验证激励"）分配。两类质押可以同时存在，共享解锁生命周期。
 
-**投票记账**（新增）：使用投票时快照
+**投票记账**（保留旧版逻辑）：参考 `LOVE20TKM/core/src/LOVE20Stake.sol` 的 `_cumulatedTokenAmountByAccount` 机制
+
+旧版按 round 维护每个 account 的累计加速质押量（`_cumulatedTokenAmountByAccount[tokenAddress][round][account]`），新版改为按 memberId 维护（`cumulatedBoostShares[tokenAddress][round][memberId]`）。记录时机和逻辑保持一致：
 - **LP 份额快照**：首次投票记录当时 `lpShares`，后续投票时计算增量 = 当前 lpShares - 首次快照
 - **加速质押快照**：首次投票记录当时 `boostShares`，后续投票时计算增量 = 当前 boostShares - 首次快照
 - 两个快照独立维护，互不影响
@@ -644,7 +646,7 @@ mintGovRewards(tokenAddress, memberId, rounds[])
 - 每次超过阈值时，计算整数发射次数：`count = floor(delta / threshold)`
 - 余额 `delta % threshold` 累计到 `launchCredit[tokenAddress][memberId]`
 - 后续继续累计，`launchCredit` 达到新的阈值时继续产生发射次数
-- **融合时只转移整数次数，不转移 `launchCredit`**（源的 launchCredit 清零，用户应在融合前等待 launchCredit 转化为整数次数）
+- **融合时只转移整数次数，不转移 `launchCredit`**（源的 launchCredit 保留，用户应在融合前等待 launchCredit 转化为整数次数）
 
 **launchCredit 累计示例**（假设 `maxSupply = 10000 token`，`launchRatio = 0.01 = 1e16`，`totalSupply` 初始为 0）：
 
