@@ -88,7 +88,7 @@ mintCost = byteLength >= bytesThreshold
     : baseCost × multiplier ^ (bytesThreshold - byteLength)
 ```
 
-`baseDivisor`、`bytesThreshold` 和 `multiplier` 均在部署时确定且必须大于零。`unmintedSupply` = 尚未铸造的 MemberNFT 总量。铸造费用使用协议首个 LOVE20 代币支付；铸造时从调用者转入 `mintCost` 并立即销毁，累计到 `totalBurnedForMint`。
+`baseDivisor`、`bytesThreshold` 和 `multiplier` 均在部署时确定且必须大于零。`unmintedSupply` = 协议首个 LOVE20 代币的 `maxSupply - totalSupply`（即首个代币的未铸造量）。铸造费用使用协议首个 LOVE20 代币支付；铸造时从调用者转入 `mintCost` 并立即销毁，累计到 `totalBurnedForMint`。
 
 **计算示例**（假设参数：`baseDivisor = 1000`, `bytesThreshold = 8`, `multiplier = 2`, `unmintedSupply = 10000`）：
 - `baseCost = 10000 / 1000 = 10 token`
@@ -450,6 +450,10 @@ function mergeStake(
   - 当前治理 Round 中源 MemberNFT 已投票
   - 目标的 `promisedWaitingPhases` 小于源的 `promisedWaitingPhases`
 
+**融合后的状态等价性**：
+- 融合后的质押状态与原始质押流程等价
+- 提取时，Stake 合约按目标 MemberNFT 的份额比例移除 LP，正常返还双币
+- 加速质押代币也正常返还
 
 源的 LP Shares 和加速质押单向并入目标，不能修改或取走目标原有资产。
 
@@ -514,7 +518,7 @@ Proposal 由 `tokenAddress + proposalId` 定位。
 
 ## 7. Mint（修改）
 
-### 7.1 轮次激励池（保留逻辑）
+### 7.1 轮次激励池（修改）
 
 **参考实现**：`LOVE20TKM/core/contracts/Mint.sol`
 
@@ -526,11 +530,25 @@ govReward = available × ROUND_REWARD_GOV_RATIO / 1e18
 proposalReward = available × ROUND_REWARD_PROPOSAL_RATIO / 1e18
 ```
 
-准备时一次性增加 `rewardReserved` 并冻结本轮池子。Proposal 激励门槛：
+Proposal 激励门槛：
 ```text
 proposalVotes > 0
 proposalVotes × 1e18 >= totalVotes × PROPOSAL_REWARD_MIN_VOTE_RATIO
 ```
+
+**轮次激励池准备逻辑**（新增优化）：
+- `prepareRewardIfNeeded(tokenAddress, round)` 可由任何地址调用（保持旧版函数命名）
+- 通常在 Round 结束后首次铸造前调用
+- 首次铸造时如果未准备则回滚，提示调用者先准备激励池
+- 准备时检查 `totalVotes`（Vote 合约的 `votesNum[tokenAddress][round]`）：
+  - **如果 `totalVotes = 0`**：不预留激励，`govReward[tokenAddress][round] = 0`，`proposalReward[tokenAddress][round] = 0`，`rewardReserved` 不增加
+  - **如果 `totalVotes > 0`**：
+    - 按公式计算 `govReward` 和 `proposalReward`
+    - 检查 `stakedAmountOfVoters[tokenAddress][round]`（该 Round 所有投票者的加速质押代币累计总量，由 Vote 合约维护）：
+      - 如果为 0，将加速激励部分（`govReward / 2`）立即计入 `rewardBurned`，治理激励池实际只预留 `govReward / 2`
+      - 如果大于 0，正常预留完整 `govReward`
+    - 累加到 `rewardReserved`
+- 准备操作是幂等的：重复调用已准备的 Round 直接返回，不重复预留
 
 ### 7.2 Proposal 激励铸造（保留逻辑）
 
@@ -600,19 +618,6 @@ burnReward = theoreticalBoost - boostReward  // 溢出部分销毁
 - **C 总激励：50 token**（仅投票激励）
 
 **上限设计理由**：防止极端加速质押占用过多激励，确保投票行为仍是核心贡献。
-
-**totalBoost == 0 的处理**：
-- 当 `totalBoost == 0` 时，不执行加速激励计算（避免除零）
-- 需要状态变量 `mapping(address => mapping(uint256 => bool)) roundBoostPoolBurned` 记录是否已处理
-- 在该 Round 的首次治理激励铸造时，检测 `totalBoost == 0` 且 `!roundBoostPoolBurned[tokenAddress][round]`
-- 计算 `burnAmount = govReward / 2` 并累计到 `rewardBurned`，设置 `roundBoostPoolBurned[tokenAddress][round] = true`
-- 后续该 Round 的铸造请求，`boostReward` 均返回 `0`，`burnReward` 也返回 `0`（已在首次处理）
-
-**Round 激励池准备**：
-- `prepareRoundReward(tokenAddress, round)` 可由任何地址调用
-- 通常在 Round 结束后首次铸造前调用
-- 首次铸造时如果未准备则回滚，提示调用者先准备激励池
-- 准备时一次性增加 `rewardReserved` 并冻结本轮池子
 
 **批量铸造**（新增）：
 - `mintGovRewards(tokenAddress, memberId, rounds[])`
@@ -697,6 +702,15 @@ mintGovRewards(tokenAddress, memberId, rounds[])
 
 分发合约由发射调用者决定，不同分发合约可实现各自的领取逻辑。分发合约接口没有通用定义，各自按需实现；建议至少提供 `claim(tokenAddress)` 接口和领取状态查询接口。
 
+**发射安全性**：
+- 使用重入保护（`nonReentrant`）
+- 遵循检查-更新-交互顺序：
+  1. 检查：验证 `launchCount[tokenAddress][memberId] > 0`、代币参数有效性等
+  2. 更新：扣除 `launchCount[tokenAddress][memberId] -= 1`
+  3. 交互：创建子币、铸造首批代币、调用 distributor
+- 整个发射流程原子性：如果分发合约调用失败（`revert`），整个交易回滚，子币创建不成功，发射次数不消耗
+- 发射者需自行验证 distributor 合约的可靠性，承担 gas 耗尽等风险
+
 ### 8.3 发射次数融合（新增）
 
 **接口**：
@@ -737,6 +751,11 @@ function mergeLaunchCount(
 6. 首个代币/WBNB Pair 的创建或确认
 
 任一步失败则整个启动回滚。启动成功后该路径永久关闭，不能创建第二个首个代币或改写其父币和分发结果。
+
+**MemberNFT 铸造时序**：
+- MemberNFT 合约在启动时部署，但不自动铸造任何 NFT
+- 用户需要从 Airdrop 合约领取首个 LOVE20 代币后，才能调用 `MemberNFT.mint()` 支付铸造费用来铸造 MemberNFT
+- 铸造费用基于首个代币的未铸造量计算（见第3.3节）
 
 ### 9.2 Airdrop 依赖
 
