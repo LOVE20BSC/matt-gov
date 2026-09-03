@@ -334,7 +334,7 @@ govVotes = lpShares × promisedWaitingPhases
 - 源 MemberNFT 在本轮投票前可自由融合
 - 源 MemberNFT 投票后需等到下一轮才能融合
 - 目标 MemberNFT 是否投票不影响融合
-- 任一方有解锁申请时，必须先完成提取或取消解锁
+- 任一方有解锁申请时，必须等待解锁期结束并完成提取后才能融合
 
 **融合接口**：
 ```solidity
