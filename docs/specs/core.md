@@ -90,6 +90,15 @@ mintCost = byteLength >= bytesThreshold
 
 `baseDivisor`、`bytesThreshold` 和 `multiplier` 均在部署时确定且必须大于零。`unmintedSupply` = 尚未铸造的 MemberNFT 总量。铸造费用使用协议首个 LOVE20 代币支付；铸造时从调用者转入 `mintCost` 并立即销毁，累计到 `totalBurnedForMint`。
 
+**计算示例**（假设参数：`baseDivisor = 1000`, `bytesThreshold = 8`, `multiplier = 2`, `unmintedSupply = 10000`）：
+- `baseCost = 10000 / 1000 = 10 token`
+- 铸造 "Alice"（5 bytes）：`mintCost = 10 × 2^(8-5) = 10 × 8 = 80 token`
+- 铸造 "Bob"（3 bytes）：`mintCost = 10 × 2^(8-3) = 10 × 32 = 320 token`
+- 铸造 "LongName"（8 bytes）：`mintCost = 10 token`（达到阈值，无倍数）
+- 铸造 "VeryLongName"（12 bytes）：`mintCost = 10 token`（超过阈值，无倍数）
+
+**短名称稀缺性**：名称越短，费用呈指数增长，激励用户使用较长名称。
+
 **参考实现**：`LOVE20TKM/group/contracts/LOVE20Group.sol` 78-95 行
 
 **铸造接口**：
@@ -186,6 +195,31 @@ function sync() external returns (bool adjusted, uint256 newPhaseBlocks)
 
 已经生成的 Phase 不回写。
 
+**调整示例**（假设 `targetDays = 1`，`targetSeconds = 86400`，`currentPhaseBlocks = 28800`）：
+
+**场景 1：不调整（在 ±10% 内）**
+- 上次观测：区块 1000，时间戳 1000000
+- 当前观测：区块 30000（经过 29000 区块），时间戳 1087200（经过 87200 秒）
+- `observedPhaseSeconds = 87200 × 28800 / 29000 ≈ 86697 秒`
+- 误差：`(86697 - 86400) / 86400 ≈ 0.34%` < 10%
+- **不调整**，保持 `phaseBlocks = 28800`
+
+**场景 2：向下调整（Phase 过慢）**
+- 上次观测：区块 1000，时间戳 1000000
+- 当前观测：区块 30000（经过 29000 区块），时间戳 1096000（经过 96000 秒）
+- `observedPhaseSeconds = 96000 × 28800 / 29000 ≈ 95448 秒`
+- 误差：`(95448 - 86400) / 86400 ≈ 10.5%` > 10%
+- `newPhaseBlocks = 29000 × 86400 / 96000 = 26075`
+- **调整为 26075 区块/Phase**（加快节奏）
+
+**场景 3：向上调整（Phase 过快）**
+- 上次观测：区块 1000，时间戳 1000000
+- 当前观测：区块 30000（经过 29000 区块），时间戳 1078000（经过 78000 秒）
+- `observedPhaseSeconds = 78000 × 28800 / 29000 ≈ 77490 秒`
+- 误差：`(77490 - 86400) / 86400 ≈ -10.3%` > 10%
+- `newPhaseBlocks = 29000 × 86400 / 78000 = 32123`
+- **调整为 32123 区块/Phase**（放慢节奏）
+
 ### 4.5 与治理 Round 的关系
 
 **术语定义**：
@@ -256,8 +290,39 @@ sharesMinted = totalLpShares == 0
 
 **手续费结算效果**：
 - 手续费累积 → `withdrawableLp` 下降 → 每份额对应的可提取 LP 减少
-- 新质押者用相同 LP 获得更多份额（通货膨胀机制，补偿手续费损耗）
-- 已质押者的份额占比被稀释，但总 LP 持有量增加（手续费收益）
+- 新质押者用相同 LP 获得更多份额（通货膨胀机制）
+- 已质押者的份额占比被稀释
+- LP 交易产生的手续费增量不归旧质押者，归协议所有
+- 旧质押者取回的双币数量与质押时提供的双币数量相同（无池价格变化时）
+
+**手续费结算示例**：
+
+**初始状态**：
+- A 质押 100 LP → 获得 100 份额
+- `withdrawableLp = 100`, `sqrtKOfLp = sqrt(k1)`, `totalLpShares = 100`
+
+**Pair 累积手续费**：
+- Reserve 增长，`sqrt(k2) = 1.05 × sqrt(k1)`（增长 5%）
+- 合约仍持有 100 LP，但 LP 价值增加了（包含手续费增量）
+
+**B 质押 100 LP**：
+1. 手续费结算：
+   - `newWithdrawableLp = 100 × sqrt(k1) / sqrt(k2) = 100 / 1.05 ≈ 95.24`
+   - `newFeeLp = 100 - 95.24 = 4.76`
+   - 更新：`withdrawableLp = 95.24`, `feeLp = 4.76`, `sqrtKOfLp = sqrt(k2)`
+
+2. B 铸造份额：
+   - `sharesMinted = 100 × 100 / 95.24 ≈ 105`
+   - B 获得 **105 份额**（比 A 多 5%）
+   - 更新：`withdrawableLp = 95.24 + 100 = 195.24`, `totalLpShares = 205`
+
+3. 最终状态：
+   - 总 LP：200（包含手续费增量），可提取 LP：195.24，协议 feeLp：4.76
+   - A 占 100/205 ≈ 48.78%，可提 195.24 × 100 / 205 ≈ 95.24 LP（对应质押时的双币数量）
+   - B 占 105/205 ≈ 51.22%，可提 195.24 × 105 / 205 ≈ 100 LP（对应质押时的双币数量）
+   - 协议累积 `feeLp = 4.76`（对应手续费增量）
+
+**关键**：通货膨胀机制确保新旧质押者都能取回质押时提供的双币数量（无池价格变化时），手续费增量归协议所有。
 
 **治理票公式**：
 ```text
@@ -473,10 +538,38 @@ burnReward = theoreticalBoost - boostReward  // 溢出部分销毁
 - 50/50 拆分是协议固定设计，使用整数除法简化计算
 - `boostPoolAmount = govReward - votePoolAmount` 确保两池总和精确等于 `govReward`
 - 2 倍上限是固定协议常量，不是部署参数
-- `memberBoost` = 该 memberId 在投票时记录的加速质押份额（boostShares），计算和记账机制见第 5.3 节
+- `memberBoost` = 该 memberId 在投票时记录的加速质押份额（boostShares），计算和记账机制见第 5.4 节
 - `totalBoost` = 本轮所有投票者的加速质押份额总和
 - 若 `totalBoost == 0`，在该 Round 的首次治理激励铸造时，判断并将整个加速池一次性计入 `rewardBurned`
-- 由于加速质押只在投票时记录（见第 5.3 节），如果某个 memberId 没有投票，则不会产生加速质押记录，因此不存在 `voteReward = 0` 但有 `boostReward` 的情况
+- 由于加速质押只在投票时记录（见第 5.4 节），如果某个 memberId 没有投票，则不会产生加速质押记录，因此不存在 `voteReward = 0` 但有 `boostReward` 的情况
+
+**2 倍上限示例**（假设 `govReward = 1000 token`，`totalVotes = 100`，`totalBoost = 200`）：
+
+**场景 1：未达上限**
+- 成员 A：投票 10 票，加速质押 10 份额
+- `voteReward = 500 × 10 / 100 = 50 token`
+- `theoreticalBoost = 500 × 10 / 200 = 25 token`
+- `boostReward = min(25, 50 × 2) = 25 token`（未达上限）
+- `burnReward = 0`
+- **A 总激励：75 token**
+
+**场景 2：达到上限**
+- 成员 B：投票 10 票，加速质押 100 份额
+- `voteReward = 500 × 10 / 100 = 50 token`
+- `theoreticalBoost = 500 × 100 / 200 = 250 token`
+- `boostReward = min(250, 50 × 2) = 100 token`（达到上限）
+- `burnReward = 250 - 100 = 150 token`（销毁）
+- **B 总激励：150 token**（投票 50 + 加速 100）
+
+**场景 3：无加速质押**
+- 成员 C：投票 10 票，加速质押 0 份额
+- `voteReward = 500 × 10 / 100 = 50 token`
+- `theoreticalBoost = 0`
+- `boostReward = 0`
+- `burnReward = 0`
+- **C 总激励：50 token**（仅投票激励）
+
+**上限设计理由**：防止极端加速质押占用过多激励，确保投票行为仍是核心贡献。
 
 **totalBoost == 0 的处理**：
 - 当 `totalBoost == 0` 时，不执行上述除法计算
@@ -529,6 +622,37 @@ mintGovRewards(tokenAddress, memberId, rounds[])
 - 余额 `delta % threshold` 累计到 `launchCredit[tokenAddress][memberId]`
 - 后续继续累计，`launchCredit` 达到新的阈值时继续产生发射次数
 - 融合时只转移整数次数，不转移 `launchCredit`，避免复杂的余额合并逻辑
+
+**launchCredit 累计示例**（假设 `maxSupply = 10000 token`，`launchRatio = 0.01 = 1e16`，`totalSupply` 初始为 0）：
+
+**Round 1**：
+- 成员 A 铸造 80 token 治理激励
+- `threshold = ceil(10000 × 0.01) = 100 token`
+- `delta = 80`，未达阈值
+- `launchCredit[A] = 80`，`launchCount[A] = 0`
+
+**Round 2**：
+- 成员 A 铸造 50 token 治理激励
+- `threshold = ceil((10000 - 80) × 0.01) = ceil(99.2) = 100 token`
+- `delta = 50 + launchCredit[A] = 50 + 80 = 130`
+- `count = floor(130 / 100) = 1`
+- `launchCredit[A] = 130 % 100 = 30`，`launchCount[A] = 1`
+
+**Round 3**：
+- 成员 A 铸造 90 token 治理激励
+- `threshold = ceil((10000 - 130) × 0.01) = ceil(98.7) ≈ 99 token`
+- `delta = 90 + launchCredit[A] = 90 + 30 = 120`
+- `count = floor(120 / 99) = 1`
+- `launchCredit[A] = 120 % 99 = 21`，`launchCount[A] = 2`
+
+**Round 4**：
+- 成员 A 铸造 200 token 治理激励
+- `threshold = ceil((10000 - 220) × 0.01) = ceil(97.8) = 98 token`
+- `delta = 200 + launchCredit[A] = 200 + 21 = 221`
+- `count = floor(221 / 98) = 2`（一次性跨越两个阈值）
+- `launchCredit[A] = 221 % 98 = 25`，`launchCount[A] = 4`
+
+**关键**：launchCredit 避免余额丢失，确保所有激励最终转化为发射次数。
 
 **新增约束**：
 - 每个社区最多产生 `maxLaunchCount` 次发射（部署时传入）
