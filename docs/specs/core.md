@@ -346,21 +346,21 @@ govVotes = lpShares × promisedWaitingPhases
 
 **投票记账**（保留旧版逻辑）：参考 `LOVE20TKM/core/src/LOVE20Stake.sol` 的 `_cumulatedTokenAmountByAccount` 机制
 
-旧版按 round 维护每个 account 的累计加速质押量（`_cumulatedTokenAmountByAccount[tokenAddress][round][account]`），新版改为按 memberId 维护（`cumulatedBoostShares[tokenAddress][round][memberId]`）。记录时机和逻辑保持一致：
+旧版按 round 维护每个 account 的累计加速质押代币数量（`_cumulatedTokenAmountByAccount[tokenAddress][round][account]`），新版改为按 memberId 维护累计加速质押份额（`cumulatedBoostShares[tokenAddress][round][memberId]`）。记录时机和逻辑保持一致：
 - 进入新 round 时，复制上一轮的累计值作为本轮起点
-- 质押增减时，直接更新当前 round 的累计值
-- 投票时读取当前 round 的累计值作为投票权重
-- 没有质押变动时，累计值自然继承上一轮
-- 解锁申请后的质押变动不再更新当前 round 的累计值
+- 加速质押增减时，直接更新当前 round 的累计值
+- 投票时读取当前 round 的累计值参与激励计算
+- 没有加速质押变动时，累计值自然继承上一轮
+- 解锁申请后的加速质押变动不再更新当前 round 的累计值
 
-**累计值继承示例**：
-- **Round 4**：成员 A 提供 100 代币 + 100 父币添加 LP 获得 10 LP token（对应 100 LP 份额），同时加速质押 50 代币（对应 50 加速份额），承诺解锁期 5 Phase
-  - Round 4 累计值 = 100 LP 份额 + 50 加速份额
-- **Round 5 开始**：A 追加提供 50 代币 + 50 父币添加 LP 获得 5 LP token（对应 50 LP 份额），同时加速质押 30 代币（对应 30 加速份额），承诺解锁期保持或增加到 ≥5 Phase
-  - 首次操作时，复制 Round 4 累计值：100 LP 份额 + 50 加速份额
-  - 追加后更新 Round 5 累计值：150 LP 份额 + 80 加速份额
-- **Round 5 投票**：读取 Round 5 累计值作为投票权重（150 LP 份额 + 80 加速份额）
-- **Round 6 开始**：A 无操作，Round 6 累计值自然继承 Round 5 的 150 LP 份额 + 80 加速份额
+**累计值继承示例**（无手续费场景）：
+- **Round 4**：成员 A 提供 100 代币 + 100 WBNB 添加 LP（无手续费时获得 100 LP 份额），同时加速质押 50 代币
+  - Round 4 累计加速质押 = 50 代币
+- **Round 5 开始**：A 追加提供 50 代币 + 50 WBNB 添加 LP（无手续费时获得 50 LP 份额），同时加速质押 30 代币，承诺解锁期保持或增加
+  - 首次操作时，复制 Round 4 累计值：50 代币
+  - 追加后更新 Round 5 累计值：80 代币
+- **Round 5 投票**：读取 Round 5 累计加速质押（80 代币）参与激励计算
+- **Round 6 开始**：A 无操作，Round 6 累计值自然继承 Round 5 的 80 代币
 - **Round 7**：A 申请解锁，解锁申请后不能再追加质押，累计值不再更新
 
 
