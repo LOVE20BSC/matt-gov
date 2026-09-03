@@ -189,7 +189,8 @@ function sync() external returns (bool adjusted, uint256 newPhaseBlocks)
 每次 `sync()` 都先追加当前观测点，即使不调整参数。校准使用满足 `currentBlock - observation.blockNumber >= currentPhaseBlocks` 的最近一条历史观测。
 
 **调整规则**：
-- 计算 `observedPhaseSeconds = elapsedSeconds × currentPhaseBlocks / elapsedBlocks`
+- 计算观测点之间的平均每个 Phase 实际秒数：`avgSecondsPerPhase = elapsedSeconds / (elapsedBlocks / currentPhaseBlocks)`
+- 简化为：`avgSecondsPerPhase = elapsedSeconds × currentPhaseBlocks / elapsedBlocks`
 - 该值在 `targetSeconds` 的 `±10%` 内时不调整
 - 超出范围时，尚未生成 Phase 使用 `newPhaseBlocks = max(1, elapsedBlocks × targetSeconds / elapsedSeconds)`
 
@@ -200,14 +201,16 @@ function sync() external returns (bool adjusted, uint256 newPhaseBlocks)
 **场景 1：不调整（在 ±10% 内）**
 - 上次观测：区块 1000，时间戳 1000000
 - 当前观测：区块 30000（经过 29000 区块），时间戳 1087200（经过 87200 秒）
-- `observedPhaseSeconds = 87200 × 28800 / 29000 ≈ 86697 秒`
+- 观测点之间跨越：`29000 / 28800 ≈ 1.007` 个 Phase
+- `avgSecondsPerPhase = 87200 × 28800 / 29000 ≈ 86697 秒`
 - 误差：`(86697 - 86400) / 86400 ≈ 0.34%` < 10%
 - **不调整**，保持 `phaseBlocks = 28800`
 
 **场景 2：向下调整（Phase 过慢）**
 - 上次观测：区块 1000，时间戳 1000000
 - 当前观测：区块 30000（经过 29000 区块），时间戳 1096000（经过 96000 秒）
-- `observedPhaseSeconds = 96000 × 28800 / 29000 ≈ 95448 秒`
+- 观测点之间跨越：`29000 / 28800 ≈ 1.007` 个 Phase
+- `avgSecondsPerPhase = 96000 × 28800 / 29000 ≈ 95448 秒`
 - 误差：`(95448 - 86400) / 86400 ≈ 10.5%` > 10%
 - `newPhaseBlocks = 29000 × 86400 / 96000 = 26075`
 - **调整为 26075 区块/Phase**（加快节奏）
@@ -215,10 +218,13 @@ function sync() external returns (bool adjusted, uint256 newPhaseBlocks)
 **场景 3：向上调整（Phase 过快）**
 - 上次观测：区块 1000，时间戳 1000000
 - 当前观测：区块 30000（经过 29000 区块），时间戳 1078000（经过 78000 秒）
-- `observedPhaseSeconds = 78000 × 28800 / 29000 ≈ 77490 秒`
+- 观测点之间跨越：`29000 / 28800 ≈ 1.007` 个 Phase
+- `avgSecondsPerPhase = 78000 × 28800 / 29000 ≈ 77490 秒`
 - 误差：`(77490 - 86400) / 86400 ≈ -10.3%` > 10%
 - `newPhaseBlocks = 29000 × 86400 / 78000 = 32123`
 - **调整为 32123 区块/Phase**（放慢节奏）
+
+**关键**：公式计算的是观测点之间的平均每 Phase 秒数，不假设观测点之间只有一个 Phase。
 
 ### 4.5 与治理 Round 的关系
 
