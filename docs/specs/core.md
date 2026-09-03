@@ -214,12 +214,7 @@ struct StakeData {
     uint256 lpShares;                    // LP 质押份额
     uint256 boostShares;                 // 加速质押份额（原 ST）
     uint256 promisedWaitingPhases;       // 承诺解锁期（Phase 数量）
-    UnlockRequest unlockRequest;         // 解锁申请
-}
-
-struct UnlockRequest {
-    uint256 requestPhase;                // 申请时的 Phase
-    bool exists;                         // 是否存在待处理申请
+    uint256 unlockRequestPhase;          // 解锁申请时的 Phase（0 = 未申请，≥1 = 已申请）
 }
 ```
 
@@ -229,25 +224,40 @@ mapping(address tokenAddress => TokenStakeGlobals) globals;
 
 struct TokenStakeGlobals {
     uint256 totalLpShares;               // 全局 LP 份额总量
-    uint256 withdrawableLp;              // 可提取的 LP 代币数量
+    uint256 withdrawableLp;              // 上次结算后的可提取 LP 数量（基准值）
+    uint256 feeLp;                       // 累积的手续费 LP 数量
+    uint256 sqrtKOfLp;                   // 上次记录的 sqrt(k) 基准
     uint256 totalBoostShares;            // 全局加速质押份额总量
 }
 ```
 
+**状态变量说明**：
+- `withdrawableLp`：每次质押/提取时更新的可提取 LP 基准，用于下次份额计算
+- `feeLp`：累积的手续费 LP，不参与份额计算
+- `sqrtKOfLp`：基于合约持有 LP 在 Pair 中占比计算的 sqrt(k) 值，用于判断手续费是否累积
+
 ### 5.3 保留逻辑（引用旧代码）
 
-**LP 份额计算**：参考 `LOVE20TKM/core/contracts/Stake.sol` 154-184 行
+**LP 份额计算**：参考 `LOVE20TKM/core/src/LOVE20SLToken.sol` 79-83 行
 ```text
 sharesMinted = totalLpShares == 0
     ? lpMinted
-    : totalLpShares × lpMinted / withdrawableLpBefore
+    : totalLpShares × lpMinted / withdrawableLp
 ```
 
-**手续费结算**：参考 `LOVE20TKM/core/contracts/Stake.sol` 248-276 行（sqrt(k) 方法）
-```text
-currentSqrtKOfLp = sqrt(reserve0 × reserve1) × previousLp / pairTotalSupply
-newFeeLp = previousLp - newWithdrawableLp（当 currentSqrtKOfLp > previousSqrtKOfLp）
-```
+**手续费结算**：参考 `LOVE20TKM/core/src/LOVE20SLToken.sol` 256-289 行（sqrt(k) 方法）
+
+**计算流程**：
+1. 计算当前 sqrtK：`currentSqrtKOfLp = sqrt(reserve0 × reserve1) × totalLp / pairTotalSupply`
+2. 如果 `currentSqrtKOfLp > previousSqrtKOfLp`（手续费累积）：
+   - `newWithdrawableLp = previousWithdrawableLp × previousSqrtKOfLp / currentSqrtKOfLp`
+   - `newFeeLp = totalLp - newWithdrawableLp`
+3. 更新 `withdrawableLp`、`feeLp` 和 `sqrtKOfLp`
+
+**手续费结算效果**：
+- 手续费累积 → `withdrawableLp` 下降 → 每份额对应的可提取 LP 减少
+- 新质押者用相同 LP 获得更多份额（通货膨胀机制，补偿手续费损耗）
+- 已质押者的份额占比被稀释，但总 LP 持有量增加（手续费收益）
 
 **治理票公式**：
 ```text
@@ -290,22 +300,28 @@ govVotes = lpShares × promisedWaitingPhases
 - 转移不破坏目标 MemberNFT 的既有状态（只增加，不减少）
 
 **禁止融合的情况**：
-- 任一方存在待处理解锁申请
-- 当前治理 Round（`Phase.currentPhase()`）中源或目标任一方已经发生非零投票
+- 任一方存在待处理解锁申请（`unlockRequestPhase != 0`）
+- 当前治理 Round 中源 MemberNFT 已经发生非零投票
 - 目标质押的承诺解锁期（`promisedWaitingPhases`）小于源质押的承诺解锁期
 
 **禁止融合的设计理由**：
 
-"当前治理 Round 中源或目标任一方已经发生非零投票"时禁止融合：
+"当前治理 Round 中源 MemberNFT 已投票"时禁止融合：
 
 **理由**：
-- 防止投票权重转移：用户通过融合改变已投票的权重分布
+- 防止投票权重转移：源 MemberNFT 投票后融合会追溯修改该 Round 的投票权重分布
 - 保护治理公平性：避免投票后再调整票权归属
 - 简化实现：无需处理投票后的权重合并和激励重新计算
 
+**为什么只限制源，不限制目标**：
+- 融合是单向资产转移，只增加目标质押，不改变目标的历史投票
+- 目标已投票后接收融合，只是增加了质押基础，不影响已投票的权重
+- 如果目标后续再投票，会按新质押计算增量（符合投票增量机制）
+
 **用户影响**：
-- 用户在本轮投票前可自由融合
-- 投票后需等到下一轮才能融合
+- 源 MemberNFT 在本轮投票前可自由融合
+- 源 MemberNFT 投票后需等到下一轮才能融合
+- 目标 MemberNFT 是否投票不影响融合
 
 **融合接口**：
 ```solidity
@@ -327,10 +343,9 @@ function mergeStake(
 - **失败条件**：
   - 调用者不是 `sourceMemberId` 的持有人
   - `targetMemberId` 不存在
-  - 任一方存在待处理解锁申请
-  - 当前治理 Round 中源或目标任一方已投票
+  - 任一方存在待处理解锁申请（`unlockRequestPhase != 0`）
+  - 当前治理 Round 中源 MemberNFT 已投票
   - 目标的 `promisedWaitingPhases` 小于源的 `promisedWaitingPhases`
-  - 源质押未投票或已解锁
 
 
 源的 LP Shares 和加速质押单向并入目标，不能修改或取走目标原有资产。
@@ -428,22 +443,23 @@ proposalVotes × 1e18 >= totalVotes × PROPOSAL_REWARD_MIN_VOTE_RATIO
 
 **计算公式**：
 ```solidity
-// 常量定义
-uint256 constant GOV_VOTE_SHARE = 0.5e18;    // 50%
-uint256 constant GOV_BOOST_SHARE = 0.5e18;   // 50%
+// 固定 50/50 拆分
+votePoolAmount = govReward / 2
+boostPoolAmount = govReward - votePoolAmount  // 避免舍入损失
 
-// 先计算池子份额，再按比例分配
-votePoolAmount = (govReward * GOV_VOTE_SHARE) / 1e18
+// 投票激励
 voteReward = (votePoolAmount * memberVotes) / totalVotes  // 向下取整
 
-boostPoolAmount = (govReward * GOV_BOOST_SHARE) / 1e18
+// 加速激励（有 2 倍上限）
 theoreticalBoost = (boostPoolAmount * memberBoost) / totalBoost  // 向下取整
 boostReward = min(theoreticalBoost, voteReward * 2)  // 基于投票激励的2倍上限
 burnReward = theoreticalBoost - boostReward  // 溢出部分销毁
 ```
 
 **关键特性**：
-- 50%/50% 划分和 2 倍上限是固定协议常量，不是部署参数
+- 50/50 拆分是协议固定设计，使用整数除法简化计算
+- `boostPoolAmount = govReward - votePoolAmount` 确保两池总和精确等于 `govReward`
+- 2 倍上限是固定协议常量，不是部署参数
 - `memberBoost` = 该 memberId 在投票时记录的加速质押份额（boostShares），计算和记账机制见第 5.3 节
 - `totalBoost` = 本轮所有投票者的加速质押份额总和
 - 若 `totalBoost == 0`，在该 Round 的首次治理激励铸造时，判断并将整个加速池一次性计入 `rewardBurned`
