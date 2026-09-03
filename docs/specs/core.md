@@ -399,7 +399,7 @@ govVotes = lpShares × promisedWaitingPhases
 1. 当前 MemberNFT 持有人发起统一解锁申请
 2. 申请立即清零治理票，禁止追加质押和融合
 3. 申请绑定 `memberId`、申请时 Phase 和解锁期；MemberNFT 转移不重置倒计时
-4. 连续经过 `promisedWaitingPhases` 个底层 Phase 后，当前持有人一次性提取 LP 对应的两种资产和加速质押代币
+4. 经过 `promisedWaitingPhases` 个底层 Phase 后，当前持有人一次性提取 LP 对应的两种资产和加速质押代币
 5. 解锁期结束后，当前 MemberNFT 持有人（可能已不是申请时的持有人）有权提取全部资产
 
 ### 5.6 融合（新增）
@@ -777,7 +777,7 @@ function mergeLaunchCount(
 3. 协议代币登记
 4. 核心 `minter` 设置
 5. 首批代币铸造并发送到 Airdrop 合约
-6. 首个代币/WBNB Pair 的创建或确认
+6. 首个代币/WBNB Pair 的创建或确认（如果 Pair 已存在则使用已存在的 Pair，否则通过 Factory 创建新 Pair）
 
 任一步失败则整个启动回滚。启动成功后该路径永久关闭，不能创建第二个首个代币或改写其父币和分发结果。
 
