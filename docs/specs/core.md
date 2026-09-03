@@ -193,7 +193,12 @@ function sync() external returns (bool adjusted, uint256 newPhaseBlocks)
 - 根据观测数据计算目标天数对应的区块数：`observedPhaseBlocks = elapsedBlocks × targetSeconds / elapsedSeconds`
 - 计算与当前 `phaseBlocks` 的偏差：`deviation = |observedPhaseBlocks - currentPhaseBlocks| / currentPhaseBlocks`
 - 偏差在 `±10%` 内时不调整
-- 超出范围时，尚未生成 Phase 使用 `newPhaseBlocks = observedPhaseBlocks`
+- 超出范围时：
+  - 如果 `deviation > 20%`（偏差超过阈值两倍），按 `±20%` 上限调整：
+    - 向下调整：`newPhaseBlocks = currentPhaseBlocks × 0.8`
+    - 向上调整：`newPhaseBlocks = currentPhaseBlocks × 1.2`
+  - 如果 `10% < deviation ≤ 20%`，使用计算值：`newPhaseBlocks = observedPhaseBlocks`
+- 尚未生成的 Phase 使用 `newPhaseBlocks`
 
 已经生成的 Phase 不回写。
 
@@ -210,15 +215,22 @@ function sync() external returns (bool adjusted, uint256 newPhaseBlocks)
 - 上次观测：区块 1000，时间戳 1000000
 - 当前观测：区块 30000（经过 29000 区块），时间戳 1100000（经过 100000 秒）
 - `observedPhaseBlocks = 29000 × 86400 / 100000 = 25056`
-- 偏差：`|25056 - 28800| / 28800 ≈ 13%` > 10%
+- 偏差：`|25056 - 28800| / 28800 ≈ 13%` > 10% 且 ≤ 20%
 - **调整为 25056 区块/Phase**（加快节奏）
 
 **场景 3：向上调整（Phase 过快）**
 - 上次观测：区块 1000，时间戳 1000000
 - 当前观测：区块 30000（经过 29000 区块），时间戳 1075000（经过 75000 秒）
 - `observedPhaseBlocks = 29000 × 86400 / 75000 = 33408`
-- 偏差：`|33408 - 28800| / 28800 ≈ 16%` > 10%
+- 偏差：`|33408 - 28800| / 28800 ≈ 16%` > 10% 且 ≤ 20%
 - **调整为 33408 区块/Phase**（放慢节奏）
+
+**场景 4：极端调整（超过 20% 上限）**
+- 上次观测：区块 1000，时间戳 1000000
+- 当前观测：区块 30000（经过 29000 区块），时间戳 1150000（经过 150000 秒）
+- `observedPhaseBlocks = 29000 × 86400 / 150000 = 16704`
+- 偏差：`|16704 - 28800| / 28800 ≈ 42%` > 20%
+- **按 20% 上限调整为 28800 × 0.8 = 23040 区块/Phase**（渐进式调整）
 
 **关键**：根据观测数据计算目标天数对应的区块数，与当前 phaseBlocks 对比，超出阈值则调整。
 
@@ -292,7 +304,12 @@ sharesMinted = totalLpShares == 0
 2. 如果 `currentSqrtKOfLp > previousSqrtKOfLp`（手续费累积）：
    - `newWithdrawableLp = previousWithdrawableLp × previousSqrtKOfLp / currentSqrtKOfLp`
    - `newFeeLp = totalLp - newWithdrawableLp`
-3. 更新 `withdrawableLp`、`feeLp` 和 `sqrtKOfLp`
+3. 如果 `currentSqrtKOfLp ≤ previousSqrtKOfLp`（未累积手续费或异常情况），跳过手续费结算
+4. 更新 `withdrawableLp`、`feeLp` 和 `sqrtKOfLp`
+
+**边界保护**：
+- `currentSqrtKOfLp = 0` 或 `pairTotalSupply = 0` 时跳过手续费结算（异常情况）
+- `currentSqrtKOfLp ≤ previousSqrtKOfLp` 时跳过手续费结算（未累积或 LP 被移除导致的下降）
 
 **手续费结算效果**：
 - 手续费累积 → `withdrawableLp` 下降 → 每份额对应的可提取 LP 减少
@@ -337,6 +354,11 @@ sharesMinted = totalLpShares == 0
 govVotes = lpShares × promisedWaitingPhases
 ```
 
+**治理票计算时机**：
+- 治理票**实时计算**，不快照
+- 投票时，Vote 合约调用 Stake 合约读取当前的 `lpShares` 和 `promisedWaitingPhases` 计算治理票
+- 每次质押追加、解锁申请都会改变治理票（通过改变 `lpShares` 或 `promisedWaitingPhases`）
+
 ### 5.4 加速质押（修改）
 
 **旧版**：加速质押不参与激励分配  
@@ -351,7 +373,12 @@ govVotes = lpShares × promisedWaitingPhases
 - 加速质押增减时，直接更新当前 round 的累计值
 - 投票时读取当前 round 的累计值参与激励计算
 - 没有加速质押变动时，累计值自然继承上一轮
-- 解锁申请后的加速质押变动不再更新当前 round 的累计值
+- 解锁申请后不能再追加质押，累计值不再更新
+
+**累计值读取逻辑**（保留旧版）：
+- 读取指定 Round 的累计值时，如果该 Round 未记录（mapping 默认值为 0），则查找该 Round **之前最近的有记录的 Round**，返回那个 Round 的累计值
+- 这确保了解锁申请后，后续所有 Round 都能读取到**解锁申请时的累计值**
+- 参考实现：`LOVE20TKM/core/src/LOVE20Stake.sol` 335-359 行的 `cumulatedTokenAmountByAccount` 函数
 
 **累计值继承示例**（无手续费场景）：
 - **Round 4**：成员 A 提供 100 代币 + 100 WBNB 添加 LP（无手续费时获得 100 LP 份额），同时加速质押 50 代币
@@ -361,7 +388,10 @@ govVotes = lpShares × promisedWaitingPhases
   - 追加后更新 Round 5 累计值：80 代币
 - **Round 5 投票**：读取 Round 5 累计加速质押（80 代币）参与激励计算
 - **Round 6 开始**：A 无操作，Round 6 累计值自然继承 Round 5 的 80 代币
-- **Round 7**：A 申请解锁，解锁申请后不能再追加质押，累计值不再更新
+- **Round 7**：A 申请解锁，解锁申请后不能再追加质押，Round 7 的累计值保持为 80 代币
+- **Round 8**：A 仍在解锁期内，无法追加质押
+  - 读取 Round 8 累计值：未记录，查找最近的有记录 Round（Round 5），返回 80 代币
+- **Round 9**：读取 Round 9 累计值，同样返回 80 代币（继承机制）
 
 
 ### 5.5 统一解锁和提取
