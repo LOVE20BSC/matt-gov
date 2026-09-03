@@ -73,7 +73,7 @@ LOVE20 是社群铸币协议。每个 LOVE20 代币都有一个 `parentTokenAddr
 **实现基线**：参考 `LOVE20TKM/group/contracts/LOVE20Group.sol` 的名称校验逻辑。
 
 **BSC 版变更**：
-- 最大长度：`64 bytes` → `32 bytes`（避免与钱包地址混淆）
+- 最大长度：`64 bytes` → `32 bytes`（限制名称长度以节省 gas）
 - 其他 UTF-8 校验规则、ASCII 大小写不敏感、禁止字符类型保持一致
 
 Gas 成本在旧版实际部署中已验证可行，无需重新评估。
@@ -151,7 +151,7 @@ MemberNFT 的转移不复制、不拆分、不重置任何历史。依赖身份�
 - `phaseInfo(phaseNumber)`：阶段起始区块和阶段区块数
 - `phaseAtBlock(blockNumber)`：指定区块的 Phase
 - `syncObservationsCount()`、`syncObservation(observationId)`：同步观测数量和按 1-based ID 查询观测
-- `sync()`：任何地址可调用的校准入口
+- `sync()`：Submit 合约调用的校准入口
 
 **sync() 接口**：
 ```solidity
@@ -187,7 +187,7 @@ function sync() external returns (bool adjusted, uint256 newPhaseBlocks)
 
 ### 4.4 动态校准
 
-每次 `sync()` 都先追加当前观测点，即使不调整参数。校准使用满足 `currentBlock - observation.blockNumber >= currentPhaseBlocks` 的最近一条历史观测；若最近观测点不满足，继续往前追溯直到找到满足条件的观测点。
+每次 `sync()` 都先追加当前观测点，即使不调整参数。校准使用满足 `currentBlock - observation.blockNumber >= currentPhaseBlocks` 的最近一条历史观测（`currentPhaseBlocks` 指当前的 `phaseBlocks` 值）；若最近观测点不满足，继续往前追溯直到找到满足条件的观测点；若没有观测点满足条件，则使用最早的观测点。
 
 **调整规则**：
 - 根据观测数据计算目标天数对应的区块数：`observedPhaseBlocks = elapsedBlocks × targetSeconds / elapsedSeconds`
@@ -207,13 +207,6 @@ function sync() external returns (bool adjusted, uint256 newPhaseBlocks)
 - **不调整**，保持 `phaseBlocks = 28800`
 
 **场景 2：向下调整（Phase 过慢）**
-- 上次观测：区块 1000，时间戳 1000000
-- 当前观测：区块 30000（经过 29000 区块），时间戳 1096000（经过 96000 秒）
-- `observedPhaseBlocks = 29000 × 86400 / 96000 = 26075`
-- 偏差：`|26075 - 28800| / 28800 ≈ 9.46%` < 10%
-- **不调整**（注：需更极端数据才触发）
-
-**场景 2b：向下调整（Phase 明显过慢）**
 - 上次观测：区块 1000，时间戳 1000000
 - 当前观测：区块 30000（经过 29000 区块），时间戳 1100000（经过 100000 秒）
 - `observedPhaseBlocks = 29000 × 86400 / 100000 = 25056`
@@ -306,6 +299,8 @@ sharesMinted = totalLpShares == 0
 
 **手续费结算示例**：
 
+**说明**：以下示例使用简化数值和向下取整，实际实现遵循 Solidity 整数除法规则。
+
 **初始状态**：
 - A 质押 100 LP → 获得 100 份额
 - `withdrawableLp = 100`, `sqrtKOfLp = sqrt(k1)`, `totalLpShares = 100`
@@ -346,12 +341,20 @@ govVotes = lpShares × promisedWaitingPhases
 加速质押不产生治理投票权，但参与投票激励。流动性质押产生治理投票权，并参与投票激励（对应旧版"验证激励"）分配。两类质押可以同时存在，共享解锁生命周期。
 
 **投票记账**（新增）：使用投票时快照
-- 首次投票记录当时加速质押
-- 同一 Round 后续再次投票时，只补记当前数量超过已记录数量的差额
-- 没有后续投票时，单独增加的加速质押不进入本轮
-- 解锁申请后，该 Round 的加速质押记录行为取决于申请时是否已投票：
-  - 若申请时当前 Round 尚未投票：该 Round 不产生加速质押记录
-  - 若申请时当前 Round 已投票：已记录的加速质押份额保留但不再接受后续补差
+- **LP 份额快照**：首次投票记录当时 `lpShares`，后续投票时计算增量 = 当前 lpShares - 首次快照
+- **加速质押快照**：首次投票记录当时 `boostShares`，后续投票时计算增量 = 当前 boostShares - 首次快照
+- 两个快照独立维护，互不影响
+- 没有后续投票时，单独增加的质押不进入本轮
+- 解锁申请后，该 Round 的快照记录行为取决于申请时是否已投票：
+  - 若申请时当前 Round 尚未投票：该 Round 不产生快照记录
+  - 若申请时当前 Round 已投票：已记录的快照保留但不再接受后续补差
+
+**投票增量示例**：
+- 成员 A 在 Round 5 首次投票：lpShares = 100，boostShares = 50
+- 记录快照：`lpSnapshot = 100`，`boostSnapshot = 50`
+- A 追加质押后再次投票：lpShares = 150，boostShares = 80
+- 计算增量：`lpVotes += (150 - 100) = 50`，`boostVotes += (80 - 50) = 30`
+- 本轮总计：lpVotes = 150，boostVotes = 80
 
 ### 5.5 统一解锁和提取
 
@@ -377,6 +380,11 @@ govVotes = lpShares × promisedWaitingPhases
 - 任一方存在待处理解锁申请（`unlockRequestPhase != 0`）
 - 当前治理 Round 中源 MemberNFT 已经发生非零投票
 - 目标质押的承诺解锁期（`promisedWaitingPhases`）小于源质押的承诺解锁期
+
+**承诺解锁期约束说明**：
+- 如果目标没有质押（`promisedWaitingPhases = 0`），融合后目标使用源的承诺解锁期
+- 如果目标有质押但解锁期更短，拒绝融合（防止通过融合缩短承诺解锁期，绕过锁定约束）
+- 如果目标解锁期 ≥ 源解锁期，允许融合（不会降低承诺）
 
 **禁止融合的设计理由**：
 
@@ -487,6 +495,11 @@ Proposal 由 `tokenAddress + proposalId` 定位。
 - Proposal Target 回调机制
 - 批量投票原子性
 
+**投票增量机制说明**：
+- 本轮首次投票时，记录 LP 份额快照和加速质押份额快照
+- 后续再次投票时，增量 = 当前份额 - 首次快照份额
+- 两个快照独立维护，详见第 5.4 节
+
 **变更**：主体身份 `address` → `memberId`
 
 ---
@@ -581,9 +594,10 @@ burnReward = theoreticalBoost - boostReward  // 溢出部分销毁
 **上限设计理由**：防止极端加速质押占用过多激励，确保投票行为仍是核心贡献。
 
 **totalBoost == 0 的处理**：
-- 当 `totalBoost == 0` 时，不执行上述除法计算
-- 在该 Round 的首次治理激励铸造时，检测 `totalBoost == 0`
-- 直接计算 `burnAmount = govReward / 2` 并累计到 `rewardBurned`
+- 当 `totalBoost == 0` 时，不执行加速激励计算（避免除零）
+- 需要状态变量 `mapping(address => mapping(uint256 => bool)) roundBoostPoolBurned` 记录是否已处理
+- 在该 Round 的首次治理激励铸造时，检测 `totalBoost == 0` 且 `!roundBoostPoolBurned[tokenAddress][round]`
+- 计算 `burnAmount = govReward / 2` 并累计到 `rewardBurned`，设置 `roundBoostPoolBurned[tokenAddress][round] = true`
 - 后续该 Round 的铸造请求，`boostReward` 均返回 `0`，`burnReward` 也返回 `0`（已在首次处理）
 
 **Round 激励池准备**：
@@ -630,7 +644,7 @@ mintGovRewards(tokenAddress, memberId, rounds[])
 - 每次超过阈值时，计算整数发射次数：`count = floor(delta / threshold)`
 - 余额 `delta % threshold` 累计到 `launchCredit[tokenAddress][memberId]`
 - 后续继续累计，`launchCredit` 达到新的阈值时继续产生发射次数
-- 融合时只转移整数次数，不转移 `launchCredit`，避免复杂的余额合并逻辑
+- **融合时只转移整数次数，不转移 `launchCredit`**（源的 launchCredit 清零，用户应在融合前等待 launchCredit 转化为整数次数）
 
 **launchCredit 累计示例**（假设 `maxSupply = 10000 token`，`launchRatio = 0.01 = 1e16`，`totalSupply` 初始为 0）：
 
