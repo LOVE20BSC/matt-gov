@@ -189,10 +189,11 @@ function sync() external returns (bool adjusted, uint256 newPhaseBlocks)
 每次 `sync()` 都先追加当前观测点，即使不调整参数。校准使用满足 `currentBlock - observation.blockNumber >= currentPhaseBlocks` 的最近一条历史观测。
 
 **调整规则**：
+- 若无满足条件的历史观测，或 `elapsedSeconds == 0`，则不调整
 - 根据观测数据计算目标天数对应的区块数：`observedPhaseBlocks = elapsedBlocks × targetSeconds / elapsedSeconds`
 - 计算与当前 `phaseBlocks` 的偏差：`deviation = |observedPhaseBlocks - currentPhaseBlocks| / currentPhaseBlocks`
 - 偏差在 `±10%` 内时不调整
-- 超出范围时，尚未生成 Phase 使用 `newPhaseBlocks = observedPhaseBlocks`
+- 超出范围时，尚未生成 Phase 使用 `newPhaseBlocks = max(1, observedPhaseBlocks)`
 
 已经生成的 Phase 不回写。
 
