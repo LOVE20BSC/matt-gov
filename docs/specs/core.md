@@ -343,20 +343,20 @@ govVotes = lpShares × promisedWaitingPhases
 **投票记账**（保留旧版逻辑）：参考 `LOVE20TKM/core/src/LOVE20Stake.sol` 的 `_cumulatedTokenAmountByAccount` 机制
 
 旧版按 round 维护每个 account 的累计加速质押量（`_cumulatedTokenAmountByAccount[tokenAddress][round][account]`），新版改为按 memberId 维护（`cumulatedBoostShares[tokenAddress][round][memberId]`）。记录时机和逻辑保持一致：
-- **LP 份额快照**：首次投票记录当时 `lpShares`，后续投票时计算增量 = 当前 lpShares - 首次快照
-- **加速质押快照**：首次投票记录当时 `boostShares`，后续投票时计算增量 = 当前 boostShares - 首次快照
-- 两个快照独立维护，互不影响
-- 没有后续投票时，单独增加的质押不进入本轮
-- 解锁申请后，该 Round 的快照记录行为取决于申请时是否已投票：
-  - 若申请时当前 Round 尚未投票：该 Round 不产生快照记录
-  - 若申请时当前 Round 已投票：已记录的快照保留但不再接受后续补差
+- 进入新 round 时，复制上一轮的累计值作为本轮起点
+- 质押增减时，直接更新当前 round 的累计值
+- 投票时读取当前 round 的累计值作为投票权重
+- 没有质押变动时，累计值自然继承上一轮
+- 解锁申请后的质押变动不再更新当前 round 的累计值
 
-**投票增量示例**：
-- 成员 A 在 Round 5 首次投票：lpShares = 100，boostShares = 50
-- 记录快照：`lpSnapshot = 100`，`boostSnapshot = 50`
-- A 追加质押后再次投票：lpShares = 150，boostShares = 80
-- 计算增量：`lpVotes += (150 - 100) = 50`，`boostVotes += (80 - 50) = 30`
-- 本轮总计：lpVotes = 150，boostVotes = 80
+**累计值继承示例**：
+- **Round 4**：成员 A 质押 100 LP + 50 boost，累计值 = 100 LP + 50 boost
+- **Round 5 开始**：A 追加 50 LP + 30 boost
+  - 首次操作时，复制 Round 4 累计值：100 LP + 50 boost
+  - 追加后更新 Round 5 累计值：150 LP + 80 boost
+- **Round 5 投票**：读取 Round 5 累计值作为投票权重（150 LP + 80 boost）
+- **Round 6 开始**：A 无操作，Round 6 累计值自然继承 Round 5 的 150 LP + 80 boost
+
 
 ### 5.5 统一解锁和提取
 
