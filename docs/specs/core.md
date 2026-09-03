@@ -435,11 +435,11 @@ proposalVotes × 1e18 >= totalVotes × PROPOSAL_REWARD_MIN_VOTE_RATIO
 
 行动类 Proposal 由关联 Executor 调用 `ActionTarget`，再由 `ActionTarget` 以自身身份调用 `mintProposalReward`；ActionTarget 在同一交易中把全部实际数量转给 Executor。
 
-### 7.3 治理激励（重要修改）
+### 7.3 治理激励（术语调整）
 
-**治理池拆分**（新设计）：
-- **投票激励部分**（50%，`GOV_VOTE_SHARE = 0.5e18`）：按成员实际投票行为分配
-- **加速激励部分**（50%，`GOV_BOOST_SHARE = 0.5e18`）：按加速质押份额占总加速质押的比例分配
+**治理池拆分**（保持旧版机制）：
+- **投票激励部分**（50%）：按成员实际投票行为分配（对应旧版"验证激励"）
+- **加速激励部分**（50%）：按加速质押份额占总加速质押的比例分配
 
 **计算公式**：
 ```solidity
@@ -468,7 +468,7 @@ burnReward = theoreticalBoost - boostReward  // 溢出部分销毁
 **totalBoost == 0 的处理**：
 - 当 `totalBoost == 0` 时，不执行上述除法计算
 - 在该 Round 的首次治理激励铸造时，检测 `totalBoost == 0`
-- 直接计算 `burnAmount = (govReward * GOV_BOOST_SHARE) / 1e18` 并累计到 `rewardBurned`
+- 直接计算 `burnAmount = govReward / 2` 并累计到 `rewardBurned`
 - 后续该 Round 的铸造请求，`boostReward` 均返回 `0`，`burnReward` 也返回 `0`（已在首次处理）
 
 **Round 激励池准备**：

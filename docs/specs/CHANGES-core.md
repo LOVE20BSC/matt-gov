@@ -162,27 +162,23 @@
 
 ### 🔄 关键变化
 
-#### 治理激励拆分（重要变更）
-- **旧**：验证激励（一个池）
-- **新**：投票激励（50%）+ 加速激励（50%）
+#### 治理激励术语调整
+- **旧**：verifyReward（验证激励，50%）+ boostReward（加速激励，50%）
+- **新**：voteReward（投票激励，50%）+ boostReward（加速激励，50%）
 
-**投票激励**：
-```solidity
-// 常量：GOV_VOTE_SHARE = 0.5e18
-voteReward = govReward * GOV_VOTE_SHARE / 1e18 * memberVotes / totalVotes
-```
+**机制保持一致**：
+- 50/50 拆分保持不变：`govReward / 2`
+- 第一部分按投票行为分配（旧称"验证激励"，新称"投票激励"）
+- 第二部分按加速质押分配（仍称"加速激励"）
+- 2 倍上限机制保持不变
 
-**加速激励**（新增）：
-```solidity
-// 常量：GOV_BOOST_SHARE = 0.5e18
-theoreticalBoost = govReward * GOV_BOOST_SHARE / 1e18 * memberBoost / totalBoost
-boostReward = min(theoreticalBoost, voteReward * 2)  // 基于投票激励的2倍上限
-burnReward = theoreticalBoost - boostReward  // 销毁
-```
+**变更理由**：
+- BSC 版无独立验证阶段，投票即治理参与，"投票激励"更准确
+- 加速激励名称保持一致
 
-#### 加速质押机制
+#### 加速质押参与激励分配
 - **旧**：加速质押不参与激励分配
-- **新**：加速质押参与治理激励的加速部分，但有 2 倍上限
+- **新**：加速质押参与治理激励的加速部分分配（50%），但有 2 倍上限
 
 #### 批量铸造
 - **新增**：`mintGovRewards(tokenAddress, memberId, rounds[])`
