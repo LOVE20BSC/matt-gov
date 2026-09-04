@@ -192,12 +192,13 @@ function sync() external returns (bool adjusted, uint256 newPhaseBlocks)
 **调整规则**：
 - 根据观测数据计算目标天数对应的区块数：`observedPhaseBlocks = elapsedBlocks × targetSeconds / elapsedSeconds`
 - 计算与当前 `phaseBlocks` 的偏差：`deviation = |observedPhaseBlocks - currentPhaseBlocks| / currentPhaseBlocks`
-- 偏差在 `±10%` 内时不调整
-- 超出范围时：
-  - 如果 `deviation > 20%`（偏差超过阈值两倍），按 `±20%` 上限调整：
-    - 向下调整：`newPhaseBlocks = currentPhaseBlocks × 0.8`
-    - 向上调整：`newPhaseBlocks = currentPhaseBlocks × 1.2`
-  - 如果 `10% < deviation ≤ 20%`，使用计算值：`newPhaseBlocks = observedPhaseBlocks`
+- **触发调整的偏差阈值**：`±10%`
+  - 偏差在 `±10%` 内时不调整
+  - 偏差超过 `±10%` 时触发调整
+- **单次调整幅度上限**：`±20%`
+  - 如果 `observedPhaseBlocks` 在 `currentPhaseBlocks × [0.8, 1.2]` 范围内，使用计算值
+  - 如果 `observedPhaseBlocks < currentPhaseBlocks × 0.8`，限制为 `currentPhaseBlocks × 0.8`
+  - 如果 `observedPhaseBlocks > currentPhaseBlocks × 1.2`，限制为 `currentPhaseBlocks × 1.2`
 - 尚未生成的 Phase 使用 `newPhaseBlocks`
 
 已经生成的 Phase 不回写。
