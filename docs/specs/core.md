@@ -43,7 +43,8 @@ LOVE20 是社群铸币协议。每个 LOVE20 代币都有一个 `parentTokenAddr
 - `promisedWaitingPhasesMin`：最小承诺解锁期（Phase 数）
 - `promisedWaitingPhasesMax`：最大承诺解锁期（Phase 数）
 
-**Submit 初始化参数**（参考 `LOVE20Submit.sol` initialize）：
+**Submit 初始化参数**（BSC 版调整）：
+- `phaseAddress`：Phase 合约地址（BSC 版新增，用于动态校准）
 - `stakeAddress`：Stake 合约地址
 - `submitMinPerThousand`：推举门槛（千分比，例如 10 = 1%）
 
@@ -344,10 +345,17 @@ struct TokenStakeGlobals {
 }
 ```
 
+**按代币、轮次、成员记录的加速质押累计值**：
+```solidity
+// tokenAddress => round => memberId => cumulatedBoostShares
+mapping(address => mapping(uint256 => mapping(uint256 => uint256))) cumulatedBoostShares;
+```
+
 **状态变量说明**：
 - `withdrawableLp`：每次质押/提取时更新的可提取 LP 基准，用于下次份额计算
 - `feeLp`：累积的手续费 LP，不参与份额计算
 - `sqrtKOfLp`：基于合约持有 LP 在 Pair 中占比计算的 sqrt(k) 值，用于判断手续费是否累积
+- `cumulatedBoostShares`：按轮次累计的加速质押份额，用于投票激励计算（详见第 5.4 节）
 
 ### 5.3 保留逻辑（引用旧代码）
 
@@ -414,28 +422,29 @@ sharesMinted = totalLpShares == 0
 
 **关键**：通货膨胀机制确保新旧质押者都能取回质押时提供的双币数量（无池价格变化时），手续费增量归协议所有。
 
-**治理票公式**：
+**治理票公式**（保留旧版）：
 ```text
 govVotes = lpShares × promisedWaitingPhases
 ```
 
-**治理票计算时机**：
-- 治理票**实时计算**，不快照
-- 投票时，Vote 合约调用 Stake 合约读取当前的 `lpShares` 和 `promisedWaitingPhases` 计算治理票
+**治理票计算时机**（参考 `LOVE20TKM/core/src/LOVE20Stake.sol` 65-88 行）：
+- 治理票通过 `validGovVotes` 函数实时计算，不快照
+- 投票时，Vote 合约调用 `Stake.validGovVotes(tokenAddress, memberId)` 读取当前有效治理票
 - 每次质押追加、解锁申请都会改变治理票（通过改变 `lpShares` 或 `promisedWaitingPhases`）
+- BSC 版保留旧版的 `validGovVotes` 逻辑，只是参数从 `address` 改为 `memberId`
 
 ### 5.4 加速质押（保留旧版机制）
 
 加速质押在旧版和新版都参与治理激励的加速部分分配（见第 7.3 节）。
 
-加速质押不产生治理投票权，但参与投票激励。流动性质押产生治理投票权，并参与投票激励分配。两类质押可以同时存在，共享解锁生命周期。
+加速质押不产生治理投票权，只参与加速激励分配。流动性质押产生治理投票权，参与投票激励分配。两类质押可以同时存在，共享解锁生命周期。
 
-**投票记账**（保留旧版逻辑）：参考 `LOVE20TKM/core/src/LOVE20Stake.sol` 的 `_cumulatedTokenAmountByAccount` 机制
+**加速质押记账**（保留旧版逻辑）：参考 `LOVE20TKM/core/src/LOVE20Stake.sol` 的 `_cumulatedTokenAmountByAccount` 机制
 
 旧版按 round 维护每个 account 的累计加速质押代币数量（`_cumulatedTokenAmountByAccount[tokenAddress][round][account]`），新版改为按 memberId 维护累计加速质押份额（`cumulatedBoostShares[tokenAddress][round][memberId]`）。记录时机和逻辑保持一致：
 - 进入新 round 时，复制上一轮的累计值作为本轮起点
 - 加速质押增减时，直接更新当前 round 的累计值
-- 投票时读取当前 round 的累计值参与激励计算
+- 铸造加速激励时读取当前 round 的累计值
 - 没有加速质押变动时，累计值自然继承上一轮
 - 解锁申请后不能再追加质押，累计值不再更新
 
@@ -450,7 +459,7 @@ govVotes = lpShares × promisedWaitingPhases
 - **Round 5 开始**：A 追加提供 50 代币 + 50 WBNB 添加 LP（无手续费时获得 50 LP 份额），同时加速质押 30 代币，承诺解锁期保持或增加
   - 首次操作时，复制 Round 4 累计值：50 代币
   - 追加后更新 Round 5 累计值：80 代币
-- **Round 5 投票**：读取 Round 5 累计加速质押（80 代币）参与激励计算
+- **Round 5 投票**：A 投票后，Vote 合约累加 A 的加速质押份额（80 代币）到 `stakedAmountOfVoters[tokenAddress][5]`
 - **Round 6 开始**：A 无操作，Round 6 累计值自然继承 Round 5 的 80 代币
 - **Round 7**：A 申请解锁，解锁申请后不能再追加质押，Round 7 的累计值保持为 80 代币
 - **Round 8**：A 仍在解锁期内，无法追加质押
@@ -604,17 +613,19 @@ Proposal 由 `tokenAddress + proposalId` 定位。
 
 ### 6.4 投票（保留逻辑）
 
-**参考实现**：`LOVE20TKM/core/contracts/Vote.sol`
+**参考实现**：`LOVE20TKM/core/src/LOVE20Vote.sol`
 
 **保留**：
-- 投票增量机制（同一 Round 可多次投票）
+- 投票机制：调用者投出的票数累加到 `votesNumByAccount[tokenAddress][round][memberId]`
+- 投票上限检查：累计投票数不能超过 `maxVotesNum`（从 Stake 合约读取当前有效治理票）
 - Proposal Target 回调机制
 - 批量投票原子性
 
-**投票增量机制说明**：
-- 本轮首次投票时，记录 LP 份额快照和加速质押份额快照
-- 后续再次投票时，增量 = 当前份额 - 首次快照份额
-- 两个快照独立维护，详见第 5.4 节
+**投票机制说明**：
+- 投票使用当前有效治理票（由 Stake 合约的 `validGovVotes` 函数计算，参考旧版 `LOVE20Stake.sol` 65-88 行）
+- 同一 Round 可多次投票，每次投票累加票数，总票数不能超过当前有效治理票
+- 投票时不做快照，每次投票都检查当前的 `maxVotesNum`
+- 参考旧版 `LOVE20Vote.sol` 84 行：`maxVotesNum` 调用 `Stake.validGovVotes` 实时读取
 
 **加速质押累计总量维护**（新增说明）：
 - Vote 合约维护 `stakedAmountOfVoters[tokenAddress][round]`：该 Round 所有投票者的加速质押累计总量
@@ -703,10 +714,10 @@ burnReward = theoreticalBoost - boostReward  // 溢出部分销毁
 - 50/50 拆分是协议固定设计，使用整数除法简化计算
 - `boostPoolAmount = govReward - votePoolAmount` 确保两池总和精确等于 `govReward`
 - 加速激励上限倍数由初始化参数 `maxGovBoostRewardMultiplier` 确定（例如 `2`，表示 2 倍上限）
-- `memberBoost` = 该 memberId 在投票时记录的加速质押份额（boostShares），计算和记账机制见第 5.4 节
-- `totalBoost` = 本轮所有投票者的加速质押份额总和
+- `memberBoost` = 该 memberId 的加速质押份额（boostShares），记账机制见第 5.4 节
+- `totalBoost` = 本轮所有投票者的加速质押份额总和（由 Vote 合约维护的 `stakedAmountOfVoters`）
 - 若 `totalBoost == 0`，在该 Round 的首次治理激励铸造时，判断并将整个加速池一次性计入 `rewardBurned`
-- 由于加速质押只在投票时记录（见第 5.4 节），如果某个 memberId 没有投票，则不会产生加速质押记录，因此不存在 `voteReward = 0` 但有 `boostReward` 的情况
+- **加速激励只能由投票者铸造**：只有在该 Round 投票的 memberId 才能铸造治理激励（包含投票激励和加速激励）；未投票的 memberId 即使有加速质押也无法铸造
 
 **2 倍上限示例**（假设 `govReward = 1000 token`，`totalVotes = 100`，`totalBoost = 200`，`maxGovBoostRewardMultiplier = 2`）：
 
@@ -759,9 +770,9 @@ mintGovRewards(tokenAddress, memberId, rounds[])
 **与 Launch 交互**（BSC 版新增）：
 - Mint 合约维护 `launchCredit[tokenAddress][memberId]`：累计铸造激励余额
 - 每次成功铸造治理激励后，Mint 合约自动累加该 memberId 的 launchCredit
-- Launch 合约通过 `Mint.getLaunchCredit(tokenAddress, memberId)` 查询累计余额
-- 发射时，Launch 合约结算发射次数并调用 `Mint.consumeLaunchCredit(tokenAddress, memberId, amount)` 扣除已使用的余额
-- 这种设计避免了高频治理激励铸造时的跨合约调用，节省 gas
+- **发射次数产生**：铸造治理激励后，如果 `launchCredit >= threshold`，Mint 合约计算产生的发射次数，消耗对应的 launchCredit，并调用 `Launch.addLaunchCount(tokenAddress, memberId, count)` 增加发射次数
+- `Launch.addLaunchCount()` 只能由 Mint 合约调用（权限控制）
+- 这种设计在产生发射次数时才跨合约调用，高频治理激励铸造时只累加 launchCredit，节省 gas
 
 ---
 
@@ -772,15 +783,19 @@ mintGovRewards(tokenAddress, memberId, rounds[])
 **旧版**：`launchCount[tokenAddress][address]`  
 **新版**：`launchCount[tokenAddress][memberId]`
 
-**保留逻辑**（参考 `LOVE20TKM/core/contracts/Launch.sol`）：
-- 阈值向上取整：`threshold = ceil((maxSupply - totalSupplyBeforeMint) × launchRatio / 1e18)`
-- 累计和余额结转：`launchCredit` 保留整数除法余额
+**发射次数产生机制**（BSC 版新增）：
+- Mint 合约维护 `launchCredit[tokenAddress][memberId]`：累计铸造激励余额
+- 每次成功铸造治理激励后，Mint 合约累加激励金额到 launchCredit
+- 判断 launchCredit 是否达到阈值：`threshold = ceil((maxSupply - totalSupply) × launchRatio / 1e18)`
+- 如果 `launchCredit >= threshold`：
+  - 计算产生的发射次数：`count = floor(launchCredit / threshold)`
+  - 扣除已使用的 launchCredit：`launchCredit -= count × threshold`
+  - 调用 `Launch.addLaunchCount(tokenAddress, memberId, count)` 增加发射次数
+- Launch 合约的 `addLaunchCount()` 只能由 Mint 合约调用（权限控制）
 
 **launchCredit 说明**：
-- 发射阈值计算使用向上取整：`threshold = ceil((maxSupply - totalSupply) × launchRatio / 1e18)`
-- 每次超过阈值时，计算整数发射次数：`count = floor(delta / threshold)`
-- 余额 `delta % threshold` 累计到 `launchCredit[tokenAddress][memberId]`
-- 后续继续累计，`launchCredit` 达到新的阈值时继续产生发射次数
+- 发射阈值使用向上取整，随 totalSupply 动态调整
+- 余额累计机制：未达阈值的部分保留在 launchCredit，继续累计
 - **融合时只转移整数次数，不转移 `launchCredit`**（源的 launchCredit 保留，用户应在融合前等待 launchCredit 转化为整数次数）
 - **提供查询接口**：用户可以查询任意 `(tokenAddress, memberId)` 的 `launchCredit` 余额，用于预测还需要多少激励才能产生下一次发射次数
 
@@ -789,35 +804,39 @@ mintGovRewards(tokenAddress, memberId, rounds[])
 **Round 1**：
 - 成员 A 铸造 80 token 治理激励
 - `threshold = ceil(10000 × 0.01) = 100 token`
-- `delta = 80`，未达阈值
-- `launchCredit[A] = 80`，`launchCount[A] = 0`
+- `launchCredit[A] = 80`，未达阈值
+- Mint 不调用 Launch，`launchCount[A] = 0`
 
 **Round 2**：
 - 成员 A 铸造 50 token 治理激励
-- `threshold = ceil((10000 - 80) × 0.01) = ceil(99.2) = 100 token`
-- `delta = 50 + launchCredit[A] = 50 + 80 = 130`
+- `launchCredit[A] = 80 + 50 = 130`
+- `threshold = ceil((10000 - 80) × 0.01) = 100 token`
 - `count = floor(130 / 100) = 1`
-- `launchCredit[A] = 130 % 100 = 30`，`launchCount[A] = 1`
+- Mint 消耗 100 token launchCredit，调用 `Launch.addLaunchCount(tokenAddress, A, 1)`
+- `launchCredit[A] = 30`，`launchCount[A] = 1`
 
 **Round 3**：
 - 成员 A 铸造 90 token 治理激励
-- `threshold = ceil((10000 - 130) × 0.01) = ceil(98.7) ≈ 99 token`
-- `delta = 90 + launchCredit[A] = 90 + 30 = 120`
+- `launchCredit[A] = 30 + 90 = 120`
+- `threshold = ceil((10000 - 130) × 0.01) = 99 token`
 - `count = floor(120 / 99) = 1`
-- `launchCredit[A] = 120 % 99 = 21`，`launchCount[A] = 2`
+- Mint 消耗 99 token launchCredit，调用 `Launch.addLaunchCount(tokenAddress, A, 1)`
+- `launchCredit[A] = 21`，`launchCount[A] = 2`
 
 **Round 4**：
 - 成员 A 铸造 200 token 治理激励
-- `threshold = ceil((10000 - 220) × 0.01) = ceil(97.8) = 98 token`
-- `delta = 200 + launchCredit[A] = 200 + 21 = 221`
+- `launchCredit[A] = 21 + 200 = 221`
+- `threshold = ceil((10000 - 220) × 0.01) = 98 token`
 - `count = floor(221 / 98) = 2`（一次性跨越两个阈值）
-- `launchCredit[A] = 221 % 98 = 25`，`launchCount[A] = 4`
+- Mint 消耗 196 token launchCredit，调用 `Launch.addLaunchCount(tokenAddress, A, 2)`
+- `launchCredit[A] = 25`，`launchCount[A] = 4`
 
 **关键**：launchCredit 避免余额丢失，确保所有激励最终转化为发射次数。
 
 **新增约束**：
 - 每个社区最多产生 `maxLaunchCount` 次发射（初始化参数）
-- 达到上限后，该社区不再产生新的发射次数，但已有的整数次数仍可融合转移和消耗
+- 达到上限后，该社区不再产生新的发射次数，launchCredit 继续累计但不再转化
+- 已有的整数次数仍可融合转移和消耗
 
 ### 8.2 发射次数融合（新增）
 
@@ -984,7 +1003,7 @@ BSC 首个代币的初始分发来源：
 - 向非调用者持有目标 NFT 的融合（只增加，不减少目标状态）
 - LP 份额与手续费销毁统计
 - PancakeSwap 兼容性
-- 加速质押投票快照和补差
+- 加速质押累计值继承机制
 
 **Proposal**：
 - 零地址 Target 拒绝
@@ -993,14 +1012,15 @@ BSC 首个代币的初始分发来源：
 **Mint**：
 - Round 级准备与 Proposal 单项铸造
 - 治理激励三段结果（voteReward, boostReward, burnReward）
-- 投票增量补差
 - 批量多轮铸造原子性
+- launchCredit 累计和发射次数产生
 
 **Launch**：
 - 发射阈值向上取整
 - 多阈值跨越
 - 社区 maxLaunchCount 上限
 - 向非调用者持有目标 NFT 部分融合
+- addLaunchCount 权限控制（只能由 Mint 合约调用）
 
 **首个代币**：
 - 一次性启动路径原子性
