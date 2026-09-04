@@ -75,7 +75,7 @@ LOVE20 是社群铸币协议。每个 LOVE20 代币都有一个 `parentTokenAddr
 **BSC 版变更**：
 - 最大长度：`64 bytes` → `32 bytes`（避免与钱包地址混淆）
 - 其他 UTF-8 校验规则、ASCII 大小写不敏感、禁止字符类型保持一致
-- 名称重复检查：使用名称哈希（`keccak256`）存储已使用的名称，不存储完整字符串
+- 名称存储和查询：使用 `mapping(string => uint256)` 存储规范化名称（小写）到 `memberId` 的映射，支持通过名称查找 memberId
 
 Gas 成本在旧版实际部署中已验证可行，无需重新评估。
 
@@ -694,6 +694,7 @@ mintGovRewards(tokenAddress, memberId, rounds[])
 - 余额 `delta % threshold` 累计到 `launchCredit[tokenAddress][memberId]`
 - 后续继续累计，`launchCredit` 达到新的阈值时继续产生发射次数
 - **融合时只转移整数次数，不转移 `launchCredit`**（源的 launchCredit 保留，用户应在融合前等待 launchCredit 转化为整数次数）
+- **提供查询接口**：用户可以查询任意 `(tokenAddress, memberId)` 的 `launchCredit` 余额，用于预测还需要多少激励才能产生下一次发射次数
 
 **launchCredit 累计示例**（假设 `maxSupply = 10000 token`，`launchRatio = 0.01 = 1e16`，`totalSupply` 初始为 0）：
 
