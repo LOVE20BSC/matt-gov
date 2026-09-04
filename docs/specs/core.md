@@ -75,6 +75,7 @@ LOVE20 是社群铸币协议。每个 LOVE20 代币都有一个 `parentTokenAddr
 **BSC 版变更**：
 - 最大长度：`64 bytes` → `32 bytes`（避免与钱包地址混淆）
 - 其他 UTF-8 校验规则、ASCII 大小写不敏感、禁止字符类型保持一致
+- 名称重复检查：使用名称哈希（`keccak256`）存储已使用的名称，不存储完整字符串
 
 Gas 成本在旧版实际部署中已验证可行，无需重新评估。
 
@@ -402,6 +403,11 @@ govVotes = lpShares × promisedWaitingPhases
 3. 申请绑定 `memberId`、申请时 Phase 和解锁期；MemberNFT 转移不重置倒计时
 4. 经过 `promisedWaitingPhases` 个底层 Phase 后，当前持有人一次性提取 LP 对应的两种资产和加速质押代币
 5. 解锁期结束后，当前 MemberNFT 持有人（可能已不是申请时的持有人）有权提取全部资产
+
+**解锁状态查询**：
+- Stake 合约提供查询接口，返回解锁申请状态（申请时 Phase、承诺解锁期、是否可提取）
+- MemberNFT 持有人或潜在买家可以查询任意 `memberId` 在任意代币的解锁状态
+- MemberNFT 转移是 ERC721 标准行为，Stake 合约不限制解锁中的 NFT 转移
 
 ### 5.6 融合（新增）
 
