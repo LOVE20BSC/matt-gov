@@ -14,7 +14,7 @@ LOVE20 是社群铸币协议。每个 LOVE20 代币都有一个 `parentTokenAddr
 
 - `MemberNFT`：统一参与身份（合并旧 LOVE20Group）
 - `Stake`：治理质押、加速质押、LP 份额和手续费结算
-- `Submit`：Proposal 创建和推举
+- `Submit`：Proposal 创建和推举（BSC 版新增）
 - `Vote`：治理投票及 Proposal Target 回调
 - `Mint`：轮次激励准备、治理激励和 Proposal 激励铸造
 - `Phase`：无语义的动态时间片时间线（全新设计）
@@ -32,7 +32,7 @@ LOVE20 是社群铸币协议。每个 LOVE20 代币都有一个 `parentTokenAddr
 - `baseDivisor`：铸造费用基准除数（例如 1e8）
 - `bytesThreshold`：名称长度阈值，低于此值费用按倍数增长（例如 7）
 - `multiplier`：短名称费用增长倍数（例如 10）
-- `maxMemberNameLength`：成员名称最大字节长度（例如 64）
+- `maxMemberNameLength`：成员名称最大字节长度（例如 32，避免与钱包地址混淆）
 
 **Phase 构造参数**（参考 `Phase.sol` 构造函数）：
 - `originBlocks`：协议启动区块号
@@ -56,7 +56,7 @@ LOVE20 是社群铸币协议。每个 LOVE20 代币都有一个 `parentTokenAddr
 - `tokenFactoryAddress`：TokenFactory 合约地址
 - `mintAddress`：Mint 合约地址
 - `memberNFTAddress`：MemberNFT 合约地址
-- `launchRatio`：发射阈值比例（1e18 精度，例如 1e16 = 1%）
+- `launchRatio`：发射阈值比例（1e18 精度，例如 1e16 = 1%，BSC 版新增参数）
 - `maxLaunchCount`：每个社区最大发射次数（例如 100）
 
 **TokenFactory 子币创建参数**（参考 `LOVE20Token.sol` 构造函数）：
@@ -134,12 +134,12 @@ mintCost = byteLength >= bytesThreshold
 
 `baseDivisor`、`bytesThreshold` 和 `multiplier` 均在部署时确定且必须大于零。`unmintedSupply` = 协议首个 LOVE20 代币的 `maxSupply - totalSupply`（即首个代币的未铸造量）。铸造费用使用协议首个 LOVE20 代币支付；铸造时从调用者转入 `mintCost` 并立即销毁，累计到 `totalBurnedForMint`。
 
-**计算示例**（假设参数：`baseDivisor = 1000`, `bytesThreshold = 8`, `multiplier = 2`, `unmintedSupply = 10000`）：
-- `baseCost = 10000 / 1000 = 10 token`
-- 铸造 "Alice"（5 bytes）：`mintCost = 10 × 2^(8-5) = 10 × 8 = 80 token`
-- 铸造 "Bob"（3 bytes）：`mintCost = 10 × 2^(8-3) = 10 × 32 = 320 token`
-- 铸造 "LongName"（8 bytes）：`mintCost = 10 token`（达到阈值，无倍数）
-- 铸造 "VeryLongName"（12 bytes）：`mintCost = 10 token`（超过阈值，无倍数）
+**计算示例**（假设参数：`baseDivisor = 1e8`, `bytesThreshold = 7`, `multiplier = 10`, `unmintedSupply = 1e10 token`）：
+- `baseCost = 1e10 / 1e8 = 100 token`
+- 铸造 "Alice"（5 bytes）：`mintCost = 100 × 10^(7-5) = 100 × 100 = 10000 token`
+- 铸造 "Bob"（3 bytes）：`mintCost = 100 × 10^(7-3) = 100 × 10000 = 1000000 token`
+- 铸造 "LongName"（8 bytes）：`mintCost = 100 token`（达到阈值，无倍数）
+- 铸造 "VeryLongName"（12 bytes）：`mintCost = 100 token`（超过阈值，无倍数）
 
 **短名称稀缺性**：名称越短，费用呈指数增长，激励用户使用较长名称。
 
@@ -174,6 +174,8 @@ MemberNFT 的转移不复制、不拆分、不重置任何历史。依赖身份�
 
 ### 4.1 设计理念
 
+**全新设计**：BSC 版 Phase 是完全重新设计的动态时间片系统，与旧版静态 Phase 完全不同。旧版 Phase (`LOVE20TKM/core/src/Phase.sol`) 只是简单的区块计数器（不可变的 `originBlocks` 和 `phaseBlocks`），新版增加了观测点记录和动态校准能力。**不要参考旧版 Phase.sol 实现**。
+
 `Phase` 只维护连续的无语义时间片，**不命名 Vote、Join、Verify、Mint 等业务阶段**，也不定义上层 Round。
 
 - 底层时间基础设施：提供统一的时间分片
@@ -186,7 +188,7 @@ MemberNFT 的转移不复制、不拆分、不重置任何历史。依赖身份�
 - `phaseBlocks > 0`（初始 Phase 区块数）
 - `targetDays > 0`（目标天数，用于动态校准）
 
-第一个 Phase 编号为 `1`。
+**Phase 编号从 1 开始**：第一个 Phase 编号为 1，`block.number = originBlocks` 时处于 Phase 1。Phase 0 不存在，`0` 是哨兵值表示未设置。由于 Phase 区块数会动态调整，每个 Phase 对应的区块范围由当时的 `phaseBlocks` 决定。
 
 **目标天数说明**：
 - `targetDays` 用于计算目标秒数：`targetSeconds = targetDays × 86400`
@@ -238,7 +240,11 @@ function sync() external returns (bool adjusted, uint256 newPhaseBlocks)
 
 每次 `sync()` 都先追加当前观测点，即使不调整参数。校准使用满足 `currentBlock - observation.blockNumber >= currentPhaseBlocks` 的最近一条历史观测（`currentPhaseBlocks` 指当前的 `phaseBlocks` 值）；若最近观测点不满足，继续往前追溯直到找到满足条件的观测点；若没有观测点满足条件，则使用最早的观测点。
 
-**调整规则**：
+**首次 sync() 处理**：
+- 第一次调用 `sync()` 时，还没有历史观测点，只记录当前观测点（`block.number` 和 `block.timestamp`），不执行调整
+- 后续 `sync()` 调用才能基于历史观测点进行阈值判断和调整
+
+**调整规则**（只在有符合条件的历史观测点时才执行）：
 - 根据观测数据计算目标天数对应的区块数：`observedPhaseBlocks = elapsedBlocks × targetSeconds / elapsedSeconds`
 - 计算与当前 `phaseBlocks` 的偏差：`deviation = |observedPhaseBlocks - currentPhaseBlocks| / currentPhaseBlocks`
 - **触发调整的偏差阈值**：`±10%`
@@ -597,6 +603,12 @@ Proposal 由 `tokenAddress + proposalId` 定位。
 - 后续再次投票时，增量 = 当前份额 - 首次快照份额
 - 两个快照独立维护，详见第 5.4 节
 
+**加速质押累计总量维护**（新增说明，参考 `LOVE20TKM/core/src/LOVE20Verify.sol` 108-112 行）：
+- Vote 合约维护 `stakedAmountOfVoters[tokenAddress][round]`：该 Round 所有投票者的加速质押累计总量
+- 投票时，如果该 memberId 在该 Round 首次投票，累加其加速质押份额到该状态
+- 如果该 memberId 非首次投票，只累加相比于上次投票加速质押的增量（新快照 - 旧快照）
+- 该状态用于 Mint 合约判断是否有加速质押参与，决定加速激励池的分配或销毁（见第 7.1 节）
+
 **变更**：主体身份 `address` → `memberId`
 
 ---
@@ -828,6 +840,48 @@ function mergeLaunchCount(
 
 ---
 
+## 8.4 TokenFactory
+
+TokenFactory 负责创建所有 LOVE20 代币实例。
+
+**职责**：
+- 部署新的 LOVE20Token 合约实例
+- 只能由 Launch 合约调用（权限控制）
+- 返回新创建的代币地址
+
+**接口**：
+```solidity
+function createToken(
+    string memory name,
+    string memory symbol,
+    uint256 initialSupply,
+    uint256 maxSupply,
+    address to
+) external returns (address tokenAddress)
+```
+
+**参数**（见第 1.1 节）：
+- `name`：代币名称
+- `symbol`：代币符号
+- `initialSupply`：初始供应量（发射时铸造给 distributor）
+- `maxSupply`：最大供应量
+- `to`：初始代币接收者（distributor 地址）
+
+**权限**：只能由 Launch 合约调用
+
+**效果**：
+- 部署新的 LOVE20Token 合约实例
+- 铸造 `initialSupply` 给 `to` 地址
+- 返回新代币地址
+
+**失败条件**：
+- 调用者不是 Launch 合约
+- `maxSupply < initialSupply`
+- `to` 是零地址
+- 代币名称或符号为空
+
+---
+
 ## 9. 首个代币部署（新增依赖）
 
 ### 9.1 启动路径
@@ -840,7 +894,7 @@ function mergeLaunchCount(
 3. 协议代币登记
 4. 核心 `minter` 设置
 5. 首批代币铸造并发送到 Airdrop 合约
-6. 首个代币/WBNB Pair 的创建或确认（如果 Pair 已存在则使用已存在的 Pair，否则通过 Factory 创建新 Pair）
+6. 通过 PancakeSwap Factory 创建首个代币/WBNB Pair
 
 任一步失败则整个启动回滚。启动成功后该路径永久关闭，不能创建第二个首个代币或改写其父币和分发结果。
 
