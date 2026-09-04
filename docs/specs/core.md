@@ -60,6 +60,9 @@ LOVE20 是社群铸币协议。每个 LOVE20 代币都有一个 `parentTokenAddr
 - `tokenFactoryAddress`：TokenFactory 合约地址
 - `mintAddress`：Mint 合约地址
 - `memberNFTAddress`：MemberNFT 合约地址
+- `rootParentTokenAddress`：协议树根父币地址（BSC 为 WBNB）
+- `pairFactoryAddress`：PancakeSwap Factory 合约地址（用于创建 Pair）
+- `routerAddress`：PancakeSwap Router 合约地址（用于添加流动性）
 - `launchRatio`：发射阈值比例（1e18 精度，例如 1e16 = 1%，BSC 版新增参数）
 - `maxLaunchCount`：每个社区最大发射次数（例如 100）
 
@@ -180,10 +183,10 @@ MemberNFT 的转移不复制、不拆分、不重置任何历史。依赖身份�
 
 **全新设计**：BSC 版 Phase 是完全重新设计的动态时间片系统，与旧版静态 Phase 完全不同。旧版 Phase (`LOVE20TKM/core/src/Phase.sol`) 只是简单的区块计数器（不可变的 `originBlocks` 和 `phaseBlocks`），新版增加了观测点记录和动态校准能力。**不要参考旧版 Phase.sol 实现**。
 
-`Phase` 只维护连续的无语义时间片，**不命名 Vote、Join、Verify、Mint 等业务阶段**，也不定义上层 Round。
+`Phase` 只维护连续的无语义时间片，不命名业务阶段，也不定义上层 Round。
 
 - 底层时间基础设施：提供统一的时间分片
-- 上层按需映射：Core 治理层、Action 行动层自行映射 Phase 到业务 Round
+- 上层按需映射：Core 治理层、扩展层自行映射 Phase 到业务 Round
 
 ### 4.2 初始化参数
 
@@ -227,6 +230,8 @@ function sync() external returns (bool adjusted, uint256 newPhaseBlocks)
 - ❌ 投票时：不自动同步（依赖推举时的同步）
 - ❌ 铸造时：不自动同步（已进入下一个 Phase）
 - ❌ 外部调用：只有 Submit 合约可以调用
+
+Submit 合约负责在每轮首个推举时调用 `sync()`，确保 Phase 动态校准及时生效（详见第 6.3 节）。
 
 **设计理由**：
 - 推举时同步确保下一轮的 Phase 参数更准确
@@ -423,7 +428,7 @@ govVotes = lpShares × promisedWaitingPhases
 
 加速质押在旧版和新版都参与治理激励的加速部分分配（见第 7.3 节）。
 
-加速质押不产生治理投票权，但参与投票激励。流动性质押产生治理投票权，并参与投票激励（对应旧版"验证激励"）分配。两类质押可以同时存在，共享解锁生命周期。
+加速质押不产生治理投票权，但参与投票激励。流动性质押产生治理投票权，并参与投票激励分配。两类质押可以同时存在，共享解锁生命周期。
 
 **投票记账**（保留旧版逻辑）：参考 `LOVE20TKM/core/src/LOVE20Stake.sol` 的 `_cumulatedTokenAmountByAccount` 机制
 
@@ -738,7 +743,7 @@ burnReward = theoreticalBoost - boostReward  // 溢出部分销毁
 
 **单轮铸造失败条件**：
 - Round 尚未结束（`Phase.currentPhase() <= round`）
-- Round 激励池未准备（未调用 `prepareRoundReward`）
+- Round 激励池未准备（未调用 `prepareRewardIfNeeded`）
 - 该 memberId 在该 Round 没有投票记录
 - 该 Round 该 memberId 的激励已铸造
 
@@ -750,6 +755,13 @@ mintGovReward(tokenAddress, memberId, round)
 mintGovRewards(tokenAddress, memberId, rounds[]) 
     returns (voteReward[], boostReward[], burnReward[])
 ```
+
+**与 Launch 交互**（BSC 版新增）：
+- Mint 合约维护 `launchCredit[tokenAddress][memberId]`：累计铸造激励余额
+- 每次成功铸造治理激励后，Mint 合约自动累加该 memberId 的 launchCredit
+- Launch 合约通过 `Mint.getLaunchCredit(tokenAddress, memberId)` 查询累计余额
+- 发射时，Launch 合约结算发射次数并调用 `Mint.consumeLaunchCredit(tokenAddress, memberId, amount)` 扣除已使用的余额
+- 这种设计避免了高频治理激励铸造时的跨合约调用，节省 gas
 
 ---
 
@@ -807,24 +819,7 @@ mintGovRewards(tokenAddress, memberId, rounds[])
 - 每个社区最多产生 `maxLaunchCount` 次发射（初始化参数）
 - 达到上限后，该社区不再产生新的发射次数，但已有的整数次数仍可融合转移和消耗
 
-### 8.2 发射（保留流程）
-
-**参考实现**：`LOVE20TKM/core/contracts/Launch.sol`
-
-任何当前持有目标 MemberNFT 的钱包或合约都可以触发该社区子币发射，但必须消耗该成员的一次 `launchCount`。
-
-分发合约由发射调用者决定，不同分发合约可实现各自的领取逻辑。分发合约接口没有通用定义，各自按需实现；建议至少提供 `claim(tokenAddress)` 接口和领取状态查询接口。
-
-**发射安全性**：
-- 使用重入保护（`nonReentrant`）
-- 遵循检查-更新-交互顺序：
-  1. 检查：验证 `launchCount[tokenAddress][memberId] > 0`、代币参数有效性等
-  2. 更新：扣除 `launchCount[tokenAddress][memberId] -= 1`
-  3. 交互：创建子币、铸造首批代币、调用 distributor
-- 整个发射流程原子性：如果分发合约调用失败（`revert`），整个交易回滚，子币创建不成功，发射次数不消耗
-- 发射者需自行验证 distributor 合约的可靠性，承担 gas 耗尽等风险
-
-### 8.3 发射次数融合（新增）
+### 8.2 发射次数融合（新增）
 
 **接口**：
 ```solidity
@@ -846,6 +841,23 @@ function mergeLaunchCount(
 - 转移不破坏目标 MemberNFT 的既有状态（只增加，不减少）
 
 成功后源次数减少、目标次数增加；目标原有次数及其他状态不减少，其他质押、投票、历史发射和事件不改变。
+
+### 8.3 发射（保留流程）
+
+**参考实现**：`LOVE20TKM/core/contracts/Launch.sol`
+
+任何当前持有目标 MemberNFT 的钱包或合约都可以触发该社区子币发射，但必须消耗该成员的一次 `launchCount`。
+
+分发合约由发射调用者决定，不同分发合约可实现各自的领取逻辑。分发合约接口没有通用定义，各自按需实现；建议至少提供 `claim(tokenAddress)` 接口和领取状态查询接口。
+
+**发射安全性**：
+- 使用重入保护（`nonReentrant`）
+- 遵循检查-更新-交互顺序：
+  1. 检查：验证 `launchCount[tokenAddress][memberId] > 0`、代币参数有效性等
+  2. 更新：扣除 `launchCount[tokenAddress][memberId] -= 1`
+  3. 交互：创建子币、铸造首批代币、调用 distributor
+- 整个发射流程原子性：如果分发合约调用失败（`revert`），整个交易回滚，子币创建不成功，发射次数不消耗
+- 发射者需自行验证 distributor 合约的可靠性，承担 gas 耗尽等风险
 
 ---
 
