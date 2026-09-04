@@ -14,7 +14,7 @@ LOVE20 是社群铸币协议。每个 LOVE20 代币都有一个 `parentTokenAddr
 
 - `MemberNFT`：统一参与身份（合并旧 LOVE20Group）
 - `Stake`：治理质押、加速质押、LP 份额和手续费结算
-- `Submit`：Proposal 创建和推举（BSC 版新增）
+- `Submit`：Proposal 创建和推举（旧版 Action 重命名为 Proposal）
 - `Vote`：治理投票及 Proposal Target 回调
 - `Mint`：轮次激励准备、治理激励和 Proposal 激励铸造
 - `Phase`：无语义的动态时间片时间线（全新设计）
