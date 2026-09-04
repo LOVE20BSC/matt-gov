@@ -34,18 +34,22 @@ LOVE20 是社群铸币协议。每个 LOVE20 代币都有一个 `parentTokenAddr
 - `multiplier`：短名称费用增长倍数（例如 10）
 - `maxMemberNameLength`：成员名称最大字节长度（例如 32，避免与钱包地址混淆）
 
-**Phase 构造参数**（参考 `Phase.sol` 构造函数）：
+**Phase 构造参数**（BSC 版全新设计，不参考旧版）：
 - `originBlocks`：协议启动区块号
 - `phaseBlocks`：初始 Phase 时长（区块数）
-- `targetDays`：目标天数，用于动态校准（例如 7 天）
+- `targetDays`：目标天数，用于动态校准（例如 7 天，BSC 版新增）
 
 **Stake 初始化参数**（参考 `LOVE20Stake.sol` initialize）：
 - `promisedWaitingPhasesMin`：最小承诺解锁期（Phase 数）
 - `promisedWaitingPhasesMax`：最大承诺解锁期（Phase 数）
 
-**Mint 初始化参数**（BSC 版调整）：
+**Submit 初始化参数**（参考 `LOVE20Submit.sol` initialize）：
+- `stakeAddress`：Stake 合约地址
+- `submitMinPerThousand`：推举门槛（千分比，例如 10 = 1%）
+
+**Mint 初始化参数**（BSC 版调整，旧版 Action → Proposal）：
 - `voteAddress`：Vote 合约地址
-- `submitAddress`：Submit 合约地址（BSC 版没有 Verify 合约）
+- `submitAddress`：Submit 合约地址
 - `stakeAddress`：Stake 合约地址
 - `proposalRewardMinVotePerThousand`：Proposal 获得激励的最低票数比例（千分比，例如 50 = 5%）
 - `roundRewardGovPerThousand`：治理激励池比例（千分比，例如 30 = 3%）
@@ -581,13 +585,17 @@ Proposal 由 `tokenAddress + proposalId` 定位。
 
 ### 6.3 创建和推举（保留逻辑）
 
-**参考实现**：`LOVE20TKM/core/contracts/Submit.sol`
+**参考实现**：`LOVE20TKM/core/src/LOVE20Submit.sol`
 
 **保留**：
-- 推举门槛计算（SUBMIT_MIN_RATIO）
+- 推举门槛计算（`SUBMIT_MIN_PER_THOUSAND`，千分比）
 - 同一 Round 推举去重
+- Proposal ID 单调递增分配
 
-**变更**：主体身份 `address` → `memberId`
+**变更**：
+- 主体身份 `address` → `memberId`
+- 旧版 `Action` → 新版 `Proposal`
+- **新增**：每轮首个推举时自动调用 `Phase.sync()` 进行动态校准（BSC 版新功能）
 
 ### 6.4 投票（保留逻辑）
 
@@ -603,11 +611,12 @@ Proposal 由 `tokenAddress + proposalId` 定位。
 - 后续再次投票时，增量 = 当前份额 - 首次快照份额
 - 两个快照独立维护，详见第 5.4 节
 
-**加速质押累计总量维护**（新增说明，参考 `LOVE20TKM/core/src/LOVE20Verify.sol` 108-112 行）：
+**加速质押累计总量维护**（新增说明）：
 - Vote 合约维护 `stakedAmountOfVoters[tokenAddress][round]`：该 Round 所有投票者的加速质押累计总量
 - 投票时，如果该 memberId 在该 Round 首次投票，累加其加速质押份额到该状态
 - 如果该 memberId 非首次投票，只累加相比于上次投票加速质押的增量（新快照 - 旧快照）
 - 该状态用于 Mint 合约判断是否有加速质押参与，决定加速激励池的分配或销毁（见第 7.1 节）
+- 参考旧版 `LOVE20Verify.sol` 108-112 行的 `stakedAmountOfVerifiers` 维护逻辑，BSC 版由 Vote 合约接管此职责
 
 **变更**：主体身份 `address` → `memberId`
 
@@ -664,10 +673,10 @@ proposalVotes × 1000 >= totalVotes × proposalRewardMinVotePerThousand
 
 **BSC 版说明**：Core 层不包含 Action 扩展逻辑，铸造激励直接发送给 `target` 地址。如果 `target` 是扩展合约（如 ActionTarget），由扩展合约自行处理后续分发逻辑。
 
-### 7.3 治理激励（术语调整）
+### 7.3 治理激励
 
 **治理池拆分**（保持旧版机制）：
-- **投票激励部分**（50%）：按成员实际投票行为分配（对应旧版"验证激励"）
+- **投票激励部分**（50%）：按成员实际投票行为分配
 - **加速激励部分**（50%）：按加速质押份额占总加速质押的比例分配
 
 **计算公式**：
