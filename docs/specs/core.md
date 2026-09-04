@@ -23,6 +23,49 @@ LOVE20 是社群铸币协议。每个 LOVE20 代币都有一个 `parentTokenAddr
 
 核心不解释任何具体 Proposal 扩展的业务字段。扩展只通过 Proposal Target 的通用接口接入。
 
+### 1.1 初始化参数
+
+以下参数在协议部署和初始化时确定，之后不可更改：
+
+**MemberNFT 构造参数**（参考 `LOVE20Group.sol` 构造函数）：
+- `love20TokenAddress`：协议首个 LOVE20 代币地址
+- `baseDivisor`：铸造费用基准除数（例如 1e8）
+- `bytesThreshold`：名称长度阈值，低于此值费用按倍数增长（例如 7）
+- `multiplier`：短名称费用增长倍数（例如 10）
+- `maxMemberNameLength`：成员名称最大字节长度（例如 64）
+
+**Phase 构造参数**（参考 `Phase.sol` 构造函数）：
+- `originBlocks`：协议启动区块号
+- `phaseBlocks`：初始 Phase 时长（区块数）
+- `targetDays`：目标天数，用于动态校准（例如 7 天）
+
+**Stake 初始化参数**（参考 `LOVE20Stake.sol` initialize）：
+- `promisedWaitingPhasesMin`：最小承诺解锁期（Phase 数）
+- `promisedWaitingPhasesMax`：最大承诺解锁期（Phase 数）
+
+**Mint 初始化参数**（BSC 版调整）：
+- `voteAddress`：Vote 合约地址
+- `submitAddress`：Submit 合约地址（BSC 版没有 Verify 合约）
+- `stakeAddress`：Stake 合约地址
+- `proposalRewardMinVotePerThousand`：Proposal 获得激励的最低票数比例（千分比，例如 50 = 5%）
+- `roundRewardGovPerThousand`：治理激励池比例（千分比，例如 30 = 3%）
+- `roundRewardProposalPerThousand`：Proposal 激励池比例（千分比，例如 10 = 1%）
+- `maxGovBoostRewardMultiplier`：加速激励倍数上限（例如 2）
+
+**Launch 初始化参数**（BSC 版重新设计）：
+- `tokenFactoryAddress`：TokenFactory 合约地址
+- `mintAddress`：Mint 合约地址
+- `memberNFTAddress`：MemberNFT 合约地址
+- `launchRatio`：发射阈值比例（1e18 精度，例如 1e16 = 1%）
+- `maxLaunchCount`：每个社区最大发射次数（例如 100）
+
+**TokenFactory 子币创建参数**（参考 `LOVE20Token.sol` 构造函数）：
+- `name`：代币名称
+- `symbol`：代币符号
+- `initialSupply`：初始供应量（发射时铸造给 distributor）
+- `maxSupply`：最大供应量
+- `to`：初始代币接收者（distributor 地址）
+
 ---
 
 ## 2. 参与主体与通用约束
@@ -73,7 +116,7 @@ LOVE20 是社群铸币协议。每个 LOVE20 代币都有一个 `parentTokenAddr
 **实现基线**：参考 `LOVE20TKM/group/contracts/LOVE20Group.sol` 的名称校验逻辑。
 
 **BSC 版变更**：
-- 最大长度：`64 bytes` → `32 bytes`（避免与钱包地址混淆）
+- 最大长度由部署参数 `maxMemberNameLength` 确定（例如 `32 bytes`，避免与钱包地址混淆）
 - 其他 UTF-8 校验规则、ASCII 大小写不敏感、禁止字符类型保持一致
 - 名称存储和查询：使用 `mapping(string => uint256)` 存储规范化名称（小写）到 `memberId` 的映射，支持通过名称查找 memberId
 
@@ -139,11 +182,16 @@ MemberNFT 的转移不复制、不拆分、不重置任何历史。依赖身份�
 ### 4.2 初始化参数
 
 部署构造参数：
-- `startBlock > 0`
-- `initialPhaseBlocks > 0`
-- `targetDays > 0`
+- `originBlocks > 0`
+- `phaseBlocks > 0`（初始 Phase 区块数）
+- `targetDays > 0`（目标天数，用于动态校准）
 
 第一个 Phase 编号为 `1`。
+
+**目标天数说明**：
+- `targetDays` 用于计算目标秒数：`targetSeconds = targetDays × 86400`
+- Phase 动态校准以此为目标，自动调整 `phaseBlocks` 使实际运行时间接近目标天数
+- 例如 `targetDays = 7` 表示目标是每个 Phase 约 7 天
 
 ### 4.3 核心能力
 
@@ -504,8 +552,9 @@ Proposal 由 `tokenAddress + proposalId` 定位。
 **结构**（保留）：
 - `ProposalHead`：`id`、`author`、`createAtBlock`
 - `ProposalBody`：`title`、`details`；`title` 非空，`details` 可为空
-- `target`：激励铸造接收主体
+- `target`：激励铸造接收主体（必须是非零地址）
 - `targetMode`：`NoCallback` 或 `Callback`
+- `keys`、`values`：KV 数据（可选，两者长度必须相等或同时为空）
 
 ### 6.2 Target 模式（修改）
 
@@ -562,15 +611,21 @@ Proposal 由 `tokenAddress + proposalId` 定位。
 ```text
 reservedAvailable = rewardReserved - rewardMinted - rewardBurned
 available = maxSupply - totalSupply - reservedAvailable
-govReward = available × ROUND_REWARD_GOV_RATIO / 1e18
-proposalReward = available × ROUND_REWARD_PROPOSAL_RATIO / 1e18
+govReward = available × roundRewardGovPerThousand / 1000
+proposalReward = available × roundRewardProposalPerThousand / 1000
 ```
+
+其中 `roundRewardGovPerThousand` 和 `roundRewardProposalPerThousand` 为初始化参数（千分比），例如：
+- `roundRewardGovPerThousand = 30`（3%）
+- `roundRewardProposalPerThousand = 10`（1%）
 
 Proposal 激励门槛：
 ```text
 proposalVotes > 0
-proposalVotes × 1e18 >= totalVotes × PROPOSAL_REWARD_MIN_VOTE_RATIO
+proposalVotes × 1000 >= totalVotes × proposalRewardMinVotePerThousand
 ```
+
+其中 `proposalRewardMinVotePerThousand` 为初始化参数（千分比），例如 `50`（5%）。
 
 **轮次激励池准备逻辑**（新增优化）：
 - `prepareRewardIfNeeded(tokenAddress, round)` 可由任何地址调用（保持旧版函数命名）
@@ -595,7 +650,7 @@ proposalVotes × 1e18 >= totalVotes × PROPOSAL_REWARD_MIN_VOTE_RATIO
 实际数量 = proposalReward × proposalVotes / eligibleProposalVotes
 ```
 
-行动类 Proposal 由关联 Executor 调用 `ActionTarget`，再由 `ActionTarget` 以自身身份调用 `mintProposalReward`；ActionTarget 在同一交易中把全部实际数量转给 Executor。
+**BSC 版说明**：Core 层不包含 Action 扩展逻辑，铸造激励直接发送给 `target` 地址。如果 `target` 是扩展合约（如 ActionTarget），由扩展合约自行处理后续分发逻辑。
 
 ### 7.3 治理激励（术语调整）
 
@@ -621,13 +676,13 @@ burnReward = theoreticalBoost - boostReward  // 溢出部分销毁
 **关键特性**：
 - 50/50 拆分是协议固定设计，使用整数除法简化计算
 - `boostPoolAmount = govReward - votePoolAmount` 确保两池总和精确等于 `govReward`
-- 2 倍上限是固定协议常量，不是部署参数
+- 加速激励上限倍数由初始化参数 `maxGovBoostRewardMultiplier` 确定（例如 `2`，表示 2 倍上限）
 - `memberBoost` = 该 memberId 在投票时记录的加速质押份额（boostShares），计算和记账机制见第 5.4 节
 - `totalBoost` = 本轮所有投票者的加速质押份额总和
 - 若 `totalBoost == 0`，在该 Round 的首次治理激励铸造时，判断并将整个加速池一次性计入 `rewardBurned`
 - 由于加速质押只在投票时记录（见第 5.4 节），如果某个 memberId 没有投票，则不会产生加速质押记录，因此不存在 `voteReward = 0` 但有 `boostReward` 的情况
 
-**2 倍上限示例**（假设 `govReward = 1000 token`，`totalVotes = 100`，`totalBoost = 200`）：
+**2 倍上限示例**（假设 `govReward = 1000 token`，`totalVotes = 100`，`totalBoost = 200`，`maxGovBoostRewardMultiplier = 2`）：
 
 **场景 1：未达上限**
 - 成员 A：投票 10 票，加速质押 10 份额
@@ -653,7 +708,7 @@ burnReward = theoreticalBoost - boostReward  // 溢出部分销毁
 - `burnReward = 0`
 - **C 总激励：50 token**（仅投票激励）
 
-**上限设计理由**：防止极端加速质押占用过多激励，确保投票行为仍是核心贡献。
+**上限设计理由**：防止极端加速质押占用过多激励，确保投票行为仍是核心贡献。上限倍数由初始化参数 `maxGovBoostRewardMultiplier` 控制，为不同社区提供灵活性。
 
 **批量铸造**（新增）：
 - `mintGovRewards(tokenAddress, memberId, rounds[])`
@@ -728,7 +783,7 @@ mintGovRewards(tokenAddress, memberId, rounds[])
 **关键**：launchCredit 避免余额丢失，确保所有激励最终转化为发射次数。
 
 **新增约束**：
-- 每个社区最多产生 `maxLaunchCount` 次发射（部署时传入）
+- 每个社区最多产生 `maxLaunchCount` 次发射（初始化参数）
 - 达到上限后，该社区不再产生新的发射次数，但已有的整数次数仍可融合转移和消耗
 
 ### 8.2 发射（保留流程）
