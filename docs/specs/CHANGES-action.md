@@ -21,7 +21,7 @@
 | LP 行动 | 重构 | LOVE20TKM/extension-lp: V2 | action/LPAction.sol | 只迁移 V2，去掉 V1 |
 | 链群行动 | 修改 | LOVE20TKM/action: GroupAction | action/ChainGroupAction.sol | 主体改 memberId，保留 17 组索引 |
 | 链群服务 | 修改 | LOVE20TKM/action: GroupService | action/ChainGroupService.sol | 去 gas 补偿，100% 二次分配 |
-| ActionRound | 新增 | - | action/ActionRound.sol | 阶段映射逻辑（3阶段/4阶段） |
+| ActionRound | 约定 | - | 各 Executor | 阶段映射逻辑（LP 3 阶段，链群/服务 4 阶段），不新增独立合约 |
 
 ---
 
@@ -185,7 +185,7 @@ effectiveRatio = min(effectiveLpRatio, govRatioCap)
 #### 按 Round 参与历史
 **保留逻辑**：参考 `LOVE20TKM/action/GroupAction` 的历史快照机制
 
-链群 Executor 通过加入阶段内逐笔发生的加入、追加、体验加入、部分撤回和全部退出交易，自然形成每轮参与快照。同一 Round 内的多笔交易持续更新该 Round 的最终值，不为同一 Round 重复创建版本。
+链群 Executor 通过加入阶段内逐笔发生的加入、追加、体验加入、部分撤回和全部退出交易，自然形成每轮参与快照。同一 Round 内的多笔交易持续更新该 Round 的最终值，不为同一 Round 重复创建版本；退出写入显式零值，供后续 RoundHistory 识别终止点。
 
 #### 公共验证者机制
 **保留逻辑**：参考 `LOVE20TKM/action/GroupAction` 的候选申请、排名、分割线开放
@@ -195,10 +195,11 @@ effectiveRatio = min(effectiveLpRatio, govRatioCap)
 - 分割线开放：`openBlock = verifyPhaseStartBlock + ceil(verifyPhaseBlocks × splits[rank - 2] / 1e18)`
 
 #### 激励计算
-**保留公式**：
+**BSC 调整**：所有链群成员按同一原始得分/最终得分规则计算，全行动统一分母，不在链群内二次按比例分配：
 ```text
-groupReward = proposalReward × groupScore / totalGroupScore
-memberReward = groupReward × memberScore / groupScore
+memberScore = participationAmount × finalScore
+totalFinalScore = sum(memberScore across all groups)
+memberReward = floor(proposalReward × memberScore / totalFinalScore)
 ```
 
 ### 🔄 关键变化
@@ -244,12 +245,12 @@ verifierWeightNumerator(m) = Σ(A[a] × r[a])
 
 ownerWeightNumerator(m) = Σ(groupReward(a, m) × (1e18 - r[a]))
 
-theoreticalVerifierReward(m) = serviceReward × verifierWeightNumerator(m) / (T × 1e18)
-theoreticalOwnerReward(m) = serviceReward × ownerWeightNumerator(m) / (T × 1e18)
+theoreticalVerifierReward(m) = serviceReward × verifierWeightNumerator(m) / (totalGroupActionReward × 1e18)
+theoreticalOwnerReward(m) = serviceReward × ownerWeightNumerator(m) / (totalGroupActionReward × 1e18)
 ```
 
 #### 二次分配
-**保留逻辑**：链群 owner 当前持有人可以配置 `recipientIds[]` 和 `ratios[]`
+**保留逻辑**：链群 owner 当前持有人可以按 `sourceTokenAddress + sourceActionId + groupId + round` 配置 `recipientIds[]` 和 `ratios[]`；查询轮次没有配置时沿用不晚于该轮的最近配置。
 
 ### 🔄 关键变化
 
@@ -259,7 +260,7 @@ theoreticalOwnerReward(m) = serviceReward × ownerWeightNumerator(m) / (T × 1e1
 
 #### 100% 二次分配安全收敛
 - **旧**：二次分配可能因舍入导致超额
-- **新**：使用全精度计算，确保 100% 分配时安全收敛且不包含 gas 补偿
+- **新**：配置比例总和超过 `1e18` 时拒绝，正好 `1e18` 合法；使用统一预算计算，确保 100% 分配不下溢且不包含 gas 补偿
 
 **改进计算**：
 ```text
@@ -267,7 +268,7 @@ actualVerifierReward = actualReward × theoreticalVerifierReward / theoreticalRe
 actualOwnerReward = actualReward - actualVerifierReward
 ```
 
-统一缩放比例，避免两次独立取整后超过实际预算。
+各接收者金额向下取整，舍入余数归 owner；不通过运行时缩放掩盖非法配置。
 
 #### 同币或父币服务
 - **旧**：可能有限制
@@ -331,7 +332,7 @@ actualOwnerReward = actualReward - actualVerifierReward
 - [ ] 按 Round 参与历史自然形成，不重复创建版本
 - [ ] forceExit 只清除登记，不调用 Executor
 - [ ] 服务激励不包含 gas 补偿
-- [ ] 100% 二次分配使用统一缩放比例
+- [ ] 100% 二次分配不下溢，超比例配置被拒绝
 
 ---
 

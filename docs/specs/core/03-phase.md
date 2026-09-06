@@ -1,183 +1,61 @@
 # Phase 与 Round
 
-本文档定义 Phase 时间片系统及其与治理 Round 的关系。
+Phase 维护连续的无语义时间片、同步观测和动态校准，不内置 Vote、Join、Verify、Mint 或业务 Round。不能把旧静态 Phase 直接作为本版实现。
 
----
+## 参数与查询
 
-## 1. 设计理念
+`originBlocks`、初始 `phaseBlocks`、`targetDays` 为正数；`adjustThreshold` 使用 `1e18` 精度且大于零。`block.number == originBlocks` 时为 Phase 1；不存在有效 Phase 0。`targetSeconds = targetDays * 86400`，如 7 天。
 
-### 1.1 全新设计
+| 接口示意 | 返回或作用 |
+| --- | --- |
+| `currentPhase()` | 当前区块的 Phase |
+| `phaseInfo(phaseNumber)` | 阶段起始区块和区块数 |
+| `phaseAtBlock(blockNumber)` | 指定区块的 Phase |
+| `syncObservationsCount()` | 同步观测数量 |
+| `syncObservation(observationId)` | 按从 1 开始的 ID 读取观测 |
 
-**重要**：BSC 版 Phase 是完全重新设计的动态时间片系统，与旧版静态 Phase 完全不同。旧版 Phase (`LOVE20TKM/core/src/Phase.sol`) 只是简单的区块计数器（不可变的 `originBlocks` 和 `phaseBlocks`），新版增加了观测点记录和动态校准能力。**不要参考旧版 Phase.sol 实现**。
-
-### 1.2 设计原则
-
-`Phase` 只维护连续的无语义时间片，不命名业务阶段，也不定义上层 Round。
-
-- 底层时间基础设施：提供统一的时间分片
-- 上层按需映射：Core 治理层、扩展层自行映射 Phase 到业务 Round
-
----
-
-## 2. 初始化参数
-
-部署构造参数：
-- `originBlocks > 0`
-- `phaseBlocks > 0`（初始 Phase 区块数）
-- `targetDays > 0`（目标天数，用于动态校准）
-
-### 2.1 Phase 编号
-
-**Phase 编号从 1 开始**：第一个 Phase 编号为 1，`block.number = originBlocks` 时处于 Phase 1。Phase 0 不存在，`0` 是哨兵值表示未设置。由于 Phase 区块数会动态调整，每个 Phase 对应的区块范围由当时的 `phaseBlocks` 决定。
-
-### 2.2 目标天数
-
-- `targetDays` 用于计算目标秒数：`targetSeconds = targetDays × 86400`
-- Phase 动态校准以此为目标，自动调整 `phaseBlocks` 使实际运行时间接近目标天数
-- 例如 `targetDays = 7` 表示目标是每个 Phase 约 7 天
-
----
-
-## 3. 核心能力
-
-### 3.1 公开接口
-
-- `currentPhase()`：当前区块对应的 Phase
-- `phaseInfo(phaseNumber)`：阶段起始区块和阶段区块数
-- `phaseAtBlock(blockNumber)`：指定区块的 Phase
-- `syncObservationsCount()`、`syncObservation(observationId)`：同步观测数量和按 1-based ID 查询观测
-- `sync()`：Submit 合约调用的校准入口
-
-### 3.2 sync() 接口
+以上查询尚未给出完整返回类型。同步接口为：
 
 ```solidity
-function sync() external returns (bool adjusted, uint256 newPhaseBlocks)
+function sync() external returns (bool adjusted, uint256 newPhaseBlocks);
 ```
 
-**权限**：只能由 Submit 合约调用
+## 同步
 
-**返回值**：
-- `adjusted`：本次调用是否调整了 Phase 长度（true = 调整了，false = 仅记录观测点未调整）
-- `newPhaseBlocks`：调整后的 Phase 区块数（如果 `adjusted == false`，返回当前的 `phaseBlocks`）
+任何地址可调用 `sync`，但同一 Phase 实例在每个治理投票 Round 最多执行一次有效同步。治理 Round 与 Phase 一对一，因此按调用前的 `currentPhase()` 全局限频，不按 token 或调用者分别计数。
 
-**副作用**：
-- 总是追加当前观测点（`block.number` 和 `block.timestamp`）
-- 根据调整规则（第4节）决定是否调整未来 Phase 的长度
-- 如果调整，触发 `PhaseAdjusted` 事件
+维护 `lastSyncPhase`，初值为 0。若等于本次 Phase，直接返回 `(false, currentPhaseBlocks)`，不追加观测、不调整参数、不发事件；否则记录本 Phase 并追加 `block.number`、`block.timestamp`。首次同步或未达到调整条件仍消耗本轮同步机会，失败回滚则不消耗。
 
----
+每轮首个成功推举仍自动调用 `sync`；如果已经有人同步，自动调用无操作返回，不能阻塞推举。没有推举时任何人仍可同步；投票和铸造本身不触发同步。无人调用也不停止 Phase 推进。
 
-## 4. Phase 同步时机
+首次有效同步只记录观测；调整时发出 `PhaseAdjusted`。新参数不得改变当前或过去 Phase 的编号和边界，不能通过校准重获本轮同步机会。`adjusted = false` 时，`newPhaseBlocks` 返回当前值。
 
-### 4.1 同步触发点
+## 校准
 
-- ✅ 每轮首个推举：Submit 自动调用 `Phase.sync()`
-- ❌ 投票时：不自动同步（依赖推举时的同步）
-- ❌ 铸造时：不自动同步（已进入下一个 Phase）
-- ❌ 外部调用：只有 Submit 合约可以调用
+1. 先从最近观测向前检查最多 10 条；仍未找到合格观测时，用二分查找最近的合格观测。
+2. 对满足条件的记录计算以下公式，除法向下取整。
+3. `deviation > adjustThreshold` 才调整，等于阈值时不调整。
+4. 新长度至少为 1，只用于尚未生成的 Phase，已生成阶段不回写。
 
-Submit 合约负责在每轮首个推举时调用 `sync()`，确保 Phase 动态校准及时生效。
+```text
+observedPhaseBlocks = floor(elapsedBlocks * targetSeconds / elapsedSeconds)
+deviation = floor(abs(observedPhaseBlocks - currentPhaseBlocks) * 1e18 / currentPhaseBlocks)
+newPhaseBlocks = max(1, observedPhaseBlocks)
+```
 
-### 4.2 设计理由
+`deviation` 是比例表达式，不能先用整数除法截成零再与阈值比较。`elapsedBlocks` 和 `elapsedSeconds` 是选定观测到本次同步的区块差与秒差。
 
-- 推举时同步确保下一轮的 Phase 参数更准确
-- 避免每次投票都同步，节省 gas
+例如当前长度 100、阈值 20% 时，估算 110 保持 100，估算 130 调整为 130。
 
-### 4.3 极端情况
+## 治理 Round
 
-**如果某个 Round 没有推举**：
-- Phase 不会自动同步（`sync()` 只能由 Submit 合约调用）
-- 只能等待下一个 Round 的首个推举触发同步
-- 未同步不影响协议运行，只影响下一个 Phase 的长度校准
+Submit 和 Vote 的 `currentRound()` 等于 `Phase.currentPhase()`。创建、推举、投票仅写当前治理 Round。当前 Phase 大于 N 时，Vote 对外确认 Round N 已结束，Mint 才能准备和铸造其激励。
 
-**没有推举的 Round**：
-- 仍然是有效的时间片（Phase N 对应治理 Round N）
-- 由于没有 Proposal，该 Round 不产生投票和激励
-- Phase 校准延迟到下一个有推举的 Round
+## 校准边界
 
----
+- 默认从最近观测向前检查最多 10 条；仍未找到合格观测时，用二分查找最近的合格观测。
+- 没有合格观测、`elapsedBlocks == 0` 或 `elapsedSeconds == 0` 时只记录观测，不调整参数。
+- 偏差阈值由初始化参数 `adjustThreshold` 提供，按 `1e18` 精度；超过阈值才调整。
+- 新长度为 `max(1, floor(elapsedBlocks * targetSeconds / elapsedSeconds))`；已生成 Phase 不回写。
 
-## 5. 动态校准
-
-### 5.1 基本规则
-
-每次 `sync()` 都先追加当前观测点，即使不调整参数。校准使用满足 `currentBlock - observation.blockNumber >= currentPhaseBlocks` 的最近一条历史观测（`currentPhaseBlocks` 指当前的 `phaseBlocks` 值）；若最近观测点不满足，继续往前追溯直到找到满足条件的观测点；若没有观测点满足条件，则使用最早的观测点。
-
-### 5.2 首次 sync() 处理
-
-- 第一次调用 `sync()` 时，还没有历史观测点，只记录当前观测点（`block.number` 和 `block.timestamp`），不执行调整
-- 后续 `sync()` 调用才能基于历史观测点进行阈值判断和调整
-
-### 5.3 调整规则
-
-**只在有符合条件的历史观测点时才执行**：
-
-1. 根据观测数据计算目标天数对应的区块数：
-   ```
-   observedPhaseBlocks = elapsedBlocks × targetSeconds / elapsedSeconds
-   ```
-
-2. 计算与当前 `phaseBlocks` 的偏差：
-   ```
-   deviation = |observedPhaseBlocks - currentPhaseBlocks| / currentPhaseBlocks
-   ```
-
-3. **触发调整的偏差阈值**：`±10%`
-   - 偏差在 `±10%` 内时不调整
-   - 偏差超过 `±10%` 时触发调整
-
-4. **单次调整幅度上限**：`±20%`
-   - 如果 `observedPhaseBlocks` 在 `currentPhaseBlocks × [0.8, 1.2]` 范围内，使用计算值
-   - 如果 `observedPhaseBlocks < currentPhaseBlocks × 0.8`，限制为 `currentPhaseBlocks × 0.8`
-   - 如果 `observedPhaseBlocks > currentPhaseBlocks × 1.2`，限制为 `currentPhaseBlocks × 1.2`
-
-5. 尚未生成的 Phase 使用 `newPhaseBlocks`
-
-已经生成的 Phase 不回写。
-
-### 5.4 调整示例
-
-**假设**：`targetDays = 1`，`targetSeconds = 86400`，`currentPhaseBlocks = 28800`
-
-#### 场景 1：不调整（在 ±10% 内）
-- 上次观测：区块 1000，时间戳 1000000
-- 当前观测：区块 30000（经过 29000 区块），时间戳 1087200（经过 87200 秒）
-- `observedPhaseBlocks = 29000 × 86400 / 87200 ≈ 28747`
-- 偏差：`|28747 - 28800| / 28800 ≈ 0.18%` < 10%
-- **不调整**，保持 `phaseBlocks = 28800`
-
-#### 场景 2：向下调整（Phase 过慢）
-- 上次观测：区块 1000，时间戳 1000000
-- 当前观测：区块 30000（经过 29000 区块），时间戳 1100000（经过 100000 秒）
-- `observedPhaseBlocks = 29000 × 86400 / 100000 = 25056`
-- 偏差：`|25056 - 28800| / 28800 ≈ 13%` > 10% 且 ≤ 20%
-- **调整为 25056 区块/Phase**（加快节奏）
-
-#### 场景 3：向上调整（Phase 过快）
-- 上次观测：区块 1000，时间戳 1000000
-- 当前观测：区块 30000（经过 29000 区块），时间戳 1075000（经过 75000 秒）
-- `observedPhaseBlocks = 29000 × 86400 / 75000 = 33408`
-- 偏差：`|33408 - 28800| / 28800 ≈ 16%` > 10% 且 ≤ 20%
-- **调整为 33408 区块/Phase**（放慢节奏）
-
-#### 场景 4：极端调整（超过 20% 上限）
-- 上次观测：区块 1000，时间戳 1000000
-- 当前观测：区块 30000（经过 29000 区块），时间戳 1150000（经过 150000 秒）
-- `observedPhaseBlocks = 29000 × 86400 / 150000 = 16704`
-- 偏差：`|16704 - 28800| / 28800 ≈ 42%` > 20%
-- **按 20% 上限调整为 28800 × 0.8 = 23040 区块/Phase**（渐进式调整）
-
-**关键**：根据观测数据计算目标天数对应的区块数，与当前 phaseBlocks 对比，超出阈值则调整。
-
----
-
-## 6. 与治理 Round 的关系
-
-### 6.1 术语定义
-
-- **治理 Round**：Core Submit 和 Vote 把 Phase N 一对一解释为治理 Round N
-- **当前治理 Round**：`Phase.currentPhase()` 返回的 Phase 编号，即当前治理 Round 编号
-
-### 6.2 治理流程
-
-核心 `Submit` 和 `Vote` 提供无参数的 `currentRound()`。创建、推举和投票只写入当前治理 Round；当 `Phase.currentPhase() > N` 时，治理 Round N 的 Vote 时间片结束，`Vote` 对外返回该 Round 已结束，核心激励可以准备和铸造。
+验收见 [Core 验收](08-testing.md)。

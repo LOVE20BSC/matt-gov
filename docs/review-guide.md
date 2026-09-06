@@ -55,7 +55,7 @@
 快速发现断链和旧入口：
 
 ```sh
-rg -n 'core\.md|action\.md|group-chat\.md|08-genesis|launchFirstToken|initializeGenesis|TODO|TBD|待定|未明确' matt-gov --glob '*.md'
+rg -n 'core\.md|action\.md|group-chat\.md|launchFirstToken|initializeGenesis|TODO|TBD|待定|未明确' matt-gov --glob '*.md'
 ```
 
 审查过程中不要修改旧 `LOVE20TKM` 仓库。需要验证旧逻辑时，只记录仓库、提交、文件路径、函数名和行号。

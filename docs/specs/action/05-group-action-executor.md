@@ -1,85 +1,61 @@
-# Group Action 执行合约
+# 链群行动 Executor
 
-本文档定义 Group Action 执行合约规格。
+链群使用 MemberNFT 身份，`groupId` 是链群主体的 `memberId`，不是钱包地址。参与资产见 [共同模型](03-participation.md)，四阶段映射见 [阶段模型](02-phase-model.md)。
 
----
+## 当前归属与索引
 
-## 1. 保留逻辑（引用旧代码）
+事实关系为 `tokenAddress + actionId + groupId + memberId`。跨本 Executor 的所有社区和行动维护 17 组可枚举索引：
 
-### 1.1 17 组全局索引
+| 维度 | 查询名 |
+| --- | --- |
+| Group ID | `gGroupIds`、`gGroupIdsByMemberId`、`gGroupIdsByTokenAddress`、`gGroupIdsByTokenAddressByMemberId`、`gGroupIdsByTokenAddressByActionId` |
+| Token Address | `gTokenAddresses`、`gTokenAddressesByMemberId`、`gTokenAddressesByGroupId`、`gTokenAddressesByGroupIdByMemberId` |
+| Action ID | `gActionIdsByTokenAddress`、`gActionIdsByTokenAddressByMemberId`、`gActionIdsByTokenAddressByGroupId`、`gActionIdsByTokenAddressByGroupIdByMemberId` |
+| Member ID | `gMemberIds`、`gMemberIdsByGroupId`、`gMemberIdsByTokenAddress`、`gMemberIdsByTokenAddressByGroupId` |
 
-**完全保留**：`LOVE20TKM/action/GroupAction` 的索引结构
+每组提供全量数组、追加 `Count` 的数量查询和追加 `AtIndex` 的单项查询。加入/退出同步维护，不依赖扫描事件。仍有其他有效关系时不能提前移除上层索引；最后关系退出才逐层清理。ActionTarget.forceExit 不修改这些索引。
 
-Group Action Executor 以当前有效的 `tokenAddress + actionId + groupId + memberId` 参与关系为事实来源。必须维护下列 17 组跨其所有代币社区和 Group Action 的可枚举全局索引：
+## Round 历史
 
-- **Group ID**：`gGroupIds`、`gGroupIdsByMemberId`、`gGroupIdsByTokenAddress`、`gGroupIdsByTokenAddressByMemberId`、`gGroupIdsByTokenAddressByActionId`
-- **Token Address**：`gTokenAddresses`、`gTokenAddressesByMemberId`、`gTokenAddressesByGroupId`、`gTokenAddressesByGroupIdByMemberId`
-- **Action ID**：`gActionIdsByTokenAddress`、`gActionIdsByTokenAddressByMemberId`、`gActionIdsByTokenAddressByGroupId`、`gActionIdsByTokenAddressByGroupIdByMemberId`
-- **Member ID**：`gMemberIds`、`gMemberIdsByGroupId`、`gMemberIdsByTokenAddress`、`gMemberIdsByTokenAddressByGroupId`
+加入阶段每笔加入、追加、体验加入、部分撤回及退出，都更新当轮参与记录。同一 Round 多次操作只保留该轮最终值，不新增多个版本；无人交互的 Round 继承最近历史，不逐轮复制或同步。
 
-每组索引都提供同名全量数组查询、追加 `Count` 的数量查询和追加 `AtIndex` 的单项查询。
+加入结束后不得回写目标 Round。验证直接读取该轮链群和成员历史，不需要前置准备交易；验证按历史成员顺序使用连续游标，不能重复、跳过或乱序。
 
-**设计理由**：Group Action Executor 需支持跨社区和跨行动的全局查询（如"某成员参与的所有群组"、"某群组在所有社区的行动"、"某代币社区的所有群组"），因此维护多维度的可枚举索引。索引在加入/退出时同步更新，查询时无需扫描历史事件。
+原存储示意为 `mapping(round => mapping(groupId => mapping(memberId => ParticipationData)))`；外层仍须隔离 token 和 action。沿用旧 RoundHistory 语义：无记录表示继承最近历史，退出通过显式记录零值形成终止点，不能直接删除历史记录。
 
-### 1.2 按 Round 参与历史
+## 候选与验证
 
-**参考**：`LOVE20TKM/action/GroupAction` 的历史快照机制
+候选只在投票阶段新增、撤销或修改；排序按 `candidateVotes` 降序、`applicationId` 升序，平票时较早申请优先。
 
-Group Action Executor 通过加入阶段内逐笔发生的加入、追加、体验加入、部分撤回和全部退出交易，自然形成每轮参与快照。同一 Round 内的多笔交易持续更新该 Round 的最终值，不为同一 Round 重复创建版本。整轮无人交互时自然继承上一轮状态，不需要复制或同步交易。
+第 1 名在验证阶段起点开放，后续排名按下式开放：
 
-**实现机制**：加入阶段内的每笔交易直接写入该 Round 的参与记录（`mapping(round => mapping(groupId => mapping(memberId => ParticipationData)))`）；查询时，若某 Round 无记录则回退查找上一轮记录，实现懒继承。退出时清除当前 Round 的记录，自然形成该 Round "未参与"的状态。
-
-### 1.3 公共验证者机制
-
-**参考**：`LOVE20TKM/action/GroupAction` 的候选申请、排名、分割线开放
-
-候选申请只在投票阶段新增、撤销或修改。排名按累计候选票降序、`applicationId` 升序。分割线开放公式：
 ```text
-openOffset = ceil(verifyPhaseBlocks × splits[rank - 2] / 1e18)
+openOffset = ceil(verifyPhaseBlocks * splits[rank - 2] / 1e18)
 openBlock = verifyPhaseStartBlock + openOffset
 ```
 
-**排名规则细节**：
-- 排名依据：累计候选票（candidateVotes）降序为主序，applicationId 升序为次序
-- 平票处理：candidateVotes 相同时，applicationId 较小的排名靠前（较早申请的优先）
-- splits 数组长度为 `n-1`（n 为候选人数），`splits[0]` 对应第 2 名的开放时间占比
-- 第 1 名在验证阶段开始时立即开放（openBlock = verifyPhaseStartBlock）
-- 第 2 名及之后按 splits 数组计算开放时间，分段释放验证权限以激励候选竞争
+`splits[0]` 对应第 2 名。`block.number >= openBlock` 才开放，不能因取整提前。
 
-### 1.4 激励计算
+首个有效验证批次永久锁定验证者 MemberNFT；NFT 转移后新持有人续验，不能由未经授权候选接管。需完成目标 Round 的全部链群验证；无候选或锁定者失联、未完成时，行动层激励为零，底层 Proposal 激励仍可独立铸造或销毁。相关验收见 [组织验收](../../acceptance.md#公共验证者与-round-历史)。
 
-**参考**：`LOVE20TKM/action/GroupAction`
+## 行动激励
 
-**变量定义**：
-- `groupScore` = 该群组在该行动 Round 中的激励分配权重（所有成员的激励分配权重之和）
-- `totalGroupScore` = 该行动 Round 中所有群组的激励分配权重总和
-- `memberScore` = 该成员在该群组、该行动 Round 中的激励分配权重（该成员参与代币数量 × 原始验证得分）
+公共验证者对所有链群成员使用同一规则记录 `originScore`（0–100）并计算 `finalScore`。行动激励直接按所有链群成员的最终得分统一加权：
 
-**验证得分说明**：由公共验证者在验证阶段为每个成员评定（0-100），记录为 `originScore`；`memberScore = 参与代币数量 × originScore`。群组激励计算使用 originScore 结合参与代币数量，保持公平性。
-
-**公式**：
 ```text
-groupReward = proposalReward × groupScore / totalGroupScore
-memberReward = groupReward × memberScore / groupScore
+memberScore = 参与代币数量 * finalScore
+totalFinalScore = sum(memberScore across all groups)
+memberReward = floor(proposalReward * memberScore / totalFinalScore)
 ```
 
-其中 `groupScore` 和 `memberScore` 基于验证阶段确认的参与数据计算。
+所有链群使用同一原始得分和最终得分规则；按目标 Round 已确认参与数据汇总全行动的 `totalFinalScore` 后直接分配。`totalVotes` 或 `totalFinalScore` 为零时不除零，行动层激励为零；链群 owner 的聚合份额由其成员最终激励之和得到，不在链群内再次按比例分配。
 
----
+Executor 先按 [统一铸造链路](07-minting.md#铸造链路) 取得整笔激励，再内部分配。
 
-## 2. 关键变更
+## 实现约束
 
-### 2.1 主体身份
+- 退出零值与无记录继续使用旧 RoundHistory 的显式记录语义；不得通过清空 mapping 伪造退出。
+- `candidateCount = n` 时 `splits.length == max(n - 1, 0)`；排名在验证阶段开始时冻结，申请只能在投票阶段修改。
+- 激活、配置更新、候选申请及验证批次 ABI 以实现接口补齐；原 `LOVE20TKM/action/GroupAction` 仅作为行为参考。
 
-- **旧**：`groupId` 可以是地址或 MemberNFT
-- **新**：`groupId` 必须是 `memberId`，群组 owner 就是该 MemberNFT
-
-### 2.2 阶段模型
-
-- **旧**：固定 4 阶段
-- **新**：从 Core Phase 自行映射 4 阶段
-
-### 2.3 激励铸造
-
-- **旧**：逐人调用 Core Mint
-- **新**：Executor 通过 ActionTarget 一次性铸造整个 Proposal 激励，再内部分配
+验收见 [Action 验收](08-testing.md)。

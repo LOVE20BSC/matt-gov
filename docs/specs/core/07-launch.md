@@ -1,14 +1,10 @@
-# Launch 与 TokenFactory 规格
+# Launch 与 TokenFactory
 
-本文档定义 Launch 和 TokenFactory 合约规格。
+Launch 负责基础发射与次数账本；TokenFactory 负责创建 LOVE20Token。首币启动不另设合约或外部入口，也不创建独立 `launch` 仓库。
 
----
+## 初始化和首个代币
 
-## 1. 初始化和首个代币
-
-`Launch` 是基础子币发射合约，也是首个代币的启动合约。它不拆出独立的首个代币合约或 `launch` 代码库。
-
-### 1.1 一次性初始化与首个代币部署
+首币参数与依赖在同一次初始化中传入；供应量在工厂初始化固定，不在 Launch 再保存一份：
 
 ```solidity
 function init(
@@ -16,96 +12,47 @@ function init(
     address mint,
     address memberNFT,
     address rootParentToken,
-    address pairFactory,
-    address router,
     address distributor,
     uint256 launchRatio,
     uint256 maxLaunchCount,
     string calldata name,
-    string calldata symbol,
-    uint256 initialSupply,
-    uint256 maxSupply
-) external
+    string calldata symbol
+) external;
 ```
 
-`Launch.init(...)` 只允许部署授权者调用且只能成功一次。它写入全部依赖和发射参数，并在同一笔交易中通过 `TokenFactory` 创建父币为 `rootParentToken` 的首个 `LOVE20Token`、登记首个代币、设置核心 `minter`、将首批供应量发送到 `distributor`、创建首个代币/WBNB Pair，并调用 `MemberNFT.init(tokenAddress)`。任一步失败整笔回滚；成功后不得重复创建或改写首个代币。不存在单独的外部首币部署函数。
+先部署全部合约取得地址，并完成 `TokenFactory.init`，再由部署授权者调用一次 `Launch.init`。本次交易写入依赖和参数，调用 `TokenFactory.createToken(rootParentToken, name, symbol, distributor)`；工厂完成首币、Pair 和父币/minter 绑定，Launch 登记首币并调用 `MemberNFT.init(tokenAddress)`。Launch 不再次创建 Pair，也不重复铸造首批供应。
 
-首个代币的 `distributor` 使用已部署的 Airdrop 合约。Airdrop 由 `LOVE20TKM/burn` 在 Burn 活动结束后单独部署到 BSC；BSC 只记录其地址和来源证据，不迁移 Burn 业务合约。
+首币不消耗成员发射次数。任一步失败回滚全部初始化效果；成功后不得重初始化、替换依赖或改写首币。部署参数的含义见 [参数表](00-protocol-model.md#初始化参数)。
 
-## 2. 发射次数（按 memberId 记录）
+首币 `distributor` 为 Burn 活动结束后由旧 `LOVE20TKM/burn` 来源单独部署的 Airdrop；Burn 业务不迁移。旧仓库只读，来源提交、来源区块、Merkle Root、部署地址及公开源码证据见 [仓库清单](../../repositories.md)。不能把部署外部 Airdrop 误写为改造旧仓库。
 
-### 2.1 存储变更
+## 发射次数
 
-- **旧版**：`launchCount[tokenAddress][address]`  
-- **新版**：`launchCount[tokenAddress][memberId]`
+| 账本 | 所属与作用域 |
+| --- | --- |
+| `launchCredit[tokenAddress][memberId]` | Mint 保存尚未转换的治理激励额度 |
+| `launchCount[tokenAddress][memberId]` | Core 保存成员可用整数次数 |
+| `issuedLaunchCount[tokenAddress]` | 社区累计已产生次数；融合或消耗不减少 |
+| `maxLaunchCount` | 每社区累计次数上限 |
 
-### 2.2 发射次数产生机制（BSC 版新增）
+每次治理激励实际铸造后，按以下顺序处理；只有正数实际铸造金额参与累计：
 
-- Mint 合约维护 `launchCredit[tokenAddress][memberId]`：累计铸造激励余额
-- 每次成功铸造治理激励后，Mint 合约累加激励金额到 launchCredit
-- 先判断 `issuedLaunchCount[tokenAddress] >= maxLaunchCount`；达到上限时本次治理激励不再写入 `launchCredit`，已有额度保留但不再转化。
-- 否则按本次治理激励铸造前的剩余供应量计算：`threshold = ceil((maxSupply - totalSupplyBeforeMint) × launchRatio / 1e18)`。
-- 如果 `threshold == 0`（包括剩余供应量为 `0`）：本次不累计或转换发射额度。
-- 如果 `launchCredit >= threshold`：
-  - 计算产生的发射次数：`count = floor(launchCredit / threshold)`
-  - 扣除已使用的 launchCredit：`launchCredit -= count × threshold`
-  - 调用 `Launch.addLaunchCount(tokenAddress, memberId, count)` 增加发射次数
-- Launch 合约的 `addLaunchCount()` 只能由 Mint 合约调用（权限控制）
+1. 先判断 `issuedLaunchCount >= maxLaunchCount`；成立则停止，不累计新额度，已有额度保留。
+2. 否则用本次铸造前的供应量计算 `threshold`；为 0 时停止，不累计、不转换，也不执行除法。
+3. 加入本次实际治理激励，计算完整次数并受剩余社区次数约束，扣除已转换额度；剩余额度保留到下次。
+4. 正数新增次数由 Mint 调用 `Launch.addLaunchCount(tokenAddress, memberId, count)` 增加，其他调用者拒绝。与治理激励铸造整体回滚。
 
-### 2.3 launchCredit 说明
+```text
+threshold = ceil((maxSupply - totalSupplyBeforeMint) * launchRatio / 1e18)
+count = min(floor(launchCredit / threshold), maxLaunchCount - issuedLaunchCount)
+launchCredit -= count * threshold
+```
 
-- 发射阈值使用向上取整，随 totalSupply 动态调整
-- 余额累计机制：未达到社区上限且未达阈值的部分保留在 `launchCredit`，继续累计
-- **融合时只转移整数次数，不转移 `launchCredit`**（源的 launchCredit 保留，用户应在融合前等待 launchCredit 转化为整数次数）
-- **提供查询接口**：用户可以查询任意 `(tokenAddress, memberId)` 的 `launchCredit` 余额，用于预测还需要多少激励才能产生下一次发射次数
+`launchRatio` 使用 `1e18` 精度。次数消耗或融合不释放累计上限；达到上限后不再生成新次数或累计新额度，已有整数次数仍可使用。任意 token、memberId 的 `launchCredit` 需可查询。
 
-### 2.4 launchCredit 累计示例
+例（最小单位）：当前阈值为 100、原额度为 80、本次铸造 50、剩余次数足够，则得到 1 次，余数 30。下次按新的铸造前供应量重新计算阈值，不沿用 100。
 
-**假设**：`maxSupply = 10000 token`，`launchRatio = 0.01 = 1e16`，`totalSupply` 初始为 0
-
-#### Round 1
-- 成员 A 铸造 80 token 治理激励
-- `threshold = ceil(10000 × 0.01) = 100 token`
-- `launchCredit[A] = 80`，未达阈值
-- Mint 不调用 Launch，`launchCount[A] = 0`
-
-#### Round 2
-- 成员 A 铸造 50 token 治理激励
-- `launchCredit[A] = 80 + 50 = 130`
-- `threshold = ceil((10000 - 80) × 0.01) = 100 token`
-- `count = floor(130 / 100) = 1`
-- Mint 消耗 100 token launchCredit，调用 `Launch.addLaunchCount(tokenAddress, A, 1)`
-- `launchCredit[A] = 30`，`launchCount[A] = 1`
-
-#### Round 3
-- 成员 A 铸造 90 token 治理激励
-- `launchCredit[A] = 30 + 90 = 120`
-- `threshold = ceil((10000 - 130) × 0.01) = 99 token`
-- `count = floor(120 / 99) = 1`
-- Mint 消耗 99 token launchCredit，调用 `Launch.addLaunchCount(tokenAddress, A, 1)`
-- `launchCredit[A] = 21`，`launchCount[A] = 2`
-
-#### Round 4
-- 成员 A 铸造 200 token 治理激励
-- `launchCredit[A] = 21 + 200 = 221`
-- `threshold = ceil((10000 - 220) × 0.01) = 98 token`
-- `count = floor(221 / 98) = 2`（一次性跨越两个阈值）
-- Mint 消耗 196 token launchCredit，调用 `Launch.addLaunchCount(tokenAddress, A, 2)`
-- `launchCredit[A] = 25`，`launchCount[A] = 4`
-
-**关键**：launchCredit 避免余额丢失，确保所有激励最终转化为发射次数。
-
-### 2.5 新增约束
-
-- 每个社区最多产生 `maxLaunchCount` 次发射（初始化参数）
-- 达到上限后，该社区不再产生新的发射次数，也不再累计新的 `launchCredit`
-- 已有的整数次数仍可融合转移和消耗
-
----
-
-## 3. 发射次数融合（新增）
-
-### 3.1 接口
+## 次数融合
 
 ```solidity
 function mergeLaunchCount(
@@ -113,94 +60,56 @@ function mergeLaunchCount(
     uint256 sourceMemberId,
     uint256 targetMemberId,
     uint256 count
-) external
+) external;
 ```
 
-### 3.2 设计意图
+源、目标必须不同且存在，`count > 0`，源次数足够。只校验调用者持有源 NFT，不要求持有目标。成功后原子扣减源次数、增加目标次数；不转移 `launchCredit`，不改变其他质押、投票、发射历史或事件，也不减少目标既有状态。此操作可用于 NFT 场外交易。
 
-发射次数融合支持单向转移（调用者只需控制来源 MemberNFT），目的是让发射次数可以通过 MemberNFT 作为载体进行场外交易。
+## 普通发射
 
-### 3.3 约束
+当前成员 NFT 持有人可发射社区子币，消耗其一次 `launchCount`。发射流程按检查、更新、交互执行并防重入：先验证成员次数和代币参数，扣减次数，再创建子币、分发首批供应并调用 distributor。外部失败时子币创建和次数消耗全部回滚。
 
-- 源、目标必须是不同且已存在的 MemberNFT
-- `count > 0`，调用者只需控制源 MemberNFT
-- 目标 MemberNFT 必须存在（`ownerOf(targetMemberId)` 不回滚）
-- 发射次数转移不携带 `launchCredit`，只转移整数次数
-- 转移不破坏目标 MemberNFT 的既有状态（只增加，不减少）
+普通发射的社区必须与 `parentTokenAddress` 一致，`distributor` 非零。部署时保留符号不得本地发射或复用；`NoCallback` / `Callback`、KV 校验要求见 [组织验收](../../acceptance.md#子币发射分发边界)，完整分发回调 ABI 尚未定义。
 
-成功后源次数减少、目标次数增加；目标原有次数及其他状态不减少，其他质押、投票、历史发射和事件不改变。
+distributor 自行实现领取与查询逻辑，`claim(tokenAddress)` 只是建议接口，不是协议必需 ABI。发射者负责选择分发目标，承担其失败和 Gas 耗尽风险。
 
----
+## TokenFactory
 
-## 4. 发射（保留流程）
+保留旧工厂“初始化配置 + 创建代币/Pair”的职责。来源为 [LOVE20TokenFactory.sol](https://github.com/LOVE20TKM/core/blob/0e3efcc13a7b9e202033f62e4858795bf43b557e/src/LOVE20TokenFactory.sol)；BSC 新增 `distributor`，删除 SL/ST 创建及相关依赖。LOVE20Token 的完整参数在构造函数中一次传入，不再提供 `init`。
 
-### 4.1 参考实现
+```solidity
+function init(
+    address pairFactoryAddress,
+    address launchAddress,
+    address mintAddress,
+    uint256 initialSupply,
+    uint256 maxSupply
+) external;
+```
 
-`LOVE20TKM/core/contracts/Launch.sol`
-
-### 4.2 发射规则
-
-任何当前持有目标 MemberNFT 的钱包或合约都可以触发该社区子币发射，但必须消耗该成员的一次 `launchCount`。
-
-分发合约由发射调用者决定，不同分发合约可实现各自的领取逻辑。分发合约接口没有通用定义，各自按需实现；建议至少提供 `claim(tokenAddress)` 接口和领取状态查询接口。
-
-### 4.3 发射安全性
-
-- 使用重入保护（`nonReentrant`）
-- 遵循检查-更新-交互顺序：
-  1. 检查：验证 `launchCount[tokenAddress][memberId] > 0`、代币参数有效性等
-  2. 更新：扣除 `launchCount[tokenAddress][memberId] -= 1`
-  3. 交互：创建子币、铸造首批代币、调用 distributor
-- 整个发射流程原子性：如果分发合约调用失败（`revert`），整个交易回滚，子币创建不成功，发射次数不消耗
-- 发射者需自行验证 distributor 合约的可靠性，承担 gas 耗尽等风险
-
----
-
-## 5. TokenFactory
-
-### 5.1 职责
-
-TokenFactory 负责创建所有 LOVE20 代币实例。
-
-- 部署新的 LOVE20Token 合约实例
-- 只能由 Launch 合约调用（权限控制）
-- 返回新创建的代币地址
-
-### 5.2 接口
+工厂由部署授权者初始化一次，固定 Pair Factory、Launch、Mint、首批供应量和最大供应量；要求依赖有效、`initialSupply <= maxSupply`。不调用 Launch 业务，因此可在首币存在前初始化。Stake 通过符合 Uniswap V2 接口的 Pair Factory 查询 Pair，不要求 TokenFactory 维护 `pairOf` 映射。
 
 ```solidity
 function createToken(
-    string memory name,
-    string memory symbol,
-    uint256 initialSupply,
-    uint256 maxSupply,
-    address to
-) external returns (address tokenAddress)
+    address parentTokenAddress,
+    string calldata name,
+    string calldata symbol,
+    address distributor
+) external returns (address tokenAddress);
 ```
 
-### 5.3 参数
+仅已初始化工厂允许 Launch 调用。父币或 distributor 为零、名称或符号为空时拒绝。创建时原子执行：
 
-详见 `00-protocol-model.md` 第 2.7 节
+1. 创建 LOVE20Token，使用工厂固定的供应参数，将 `initialSupply` 直接铸给 distributor，不先交给 Launch。
+2. 通过 Pair Factory 创建该代币与 parentTokenAddress 的 Pair。
+3. LOVE20Token 构造函数直接写入父币和 Mint 权限；不创建 SL/ST，质押账本仍在 Stake。
+4. 发出代币创建事件并返回 tokenAddress；任一步失败全部回滚。
 
-- `name`：代币名称
-- `symbol`：代币符号
-- `initialSupply`：初始供应量（发射时铸造给 distributor）
-- `maxSupply`：最大供应量
-- `to`：初始代币接收者（distributor 地址）
+父币社区是否合法、发射次数和分发回调由 Launch 检查。首币使用 WBNB，普通子币使用已登记 LOVE20 父币。
 
-### 5.4 权限
+## 实现约束
 
-只能由 Launch 合约调用
+- LOVE20Token 不提供 `init`；构造函数直接接收 `name`、`symbol`、`initialSupply`、`maxSupply`、`distributor`、`minter` 和 `parentTokenAddress`。
+- `MemberNFT.init(firstToken)` 由 Launch 调用；Launch 地址在 MemberNFT 部署时预先绑定，避免初始化循环依赖。
 
-### 5.5 效果
-
-- 部署新的 LOVE20Token 合约实例
-- 铸造 `initialSupply` 给 `to` 地址
-- 返回新代币地址
-
-### 5.6 失败条件
-
-- 调用者不是 Launch 合约
-- `maxSupply < initialSupply`
-- `to` 是零地址
-- 代币名称或符号为空
+验收见 [Core 验收](08-testing.md)。旧来源 `LOVE20TKM/core/src/LOVE20Launch.sol` 已核对，仅作为保留行为参考。

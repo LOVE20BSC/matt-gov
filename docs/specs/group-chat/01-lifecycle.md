@@ -1,50 +1,33 @@
-# 生命周期和管理权限
+# 生命周期与群聊内委托
 
-本文档定义 Chat 的激活、管理操作和委托机制。
+## 激活与配置
 
----
+保留 GroupChat 的 `activateChat` 和五个配置 setter。仅 groupId 当前 owner 可首次激活；NFT 必须存在，Chat 尚未激活，非零规则地址必须有代码。激活永久记录首次 owner/区块/时间，默认允许发言并加入可发现群列表。
 
-## 1. 激活
+激活后，owner 或有效 delegate 可更新发言开关和四个槽位；普通管理员无此权限。相同配置重复设置按旧实现无操作返回。typed Manager 未暴露配置转发，故不能由激活付款者重配，见 [Manager](06-manager.md)。
 
-**参考实现**：`LOVE20TKM/group-chat/GroupChat.sol`
+## NFT 委托
 
-只有 `groupId` 当前 MemberNFT owner 可以调用 `activateChat`。激活前必须验证群 NFT 存在、Chat 尚未激活，且所有非零规则地址都有合约代码。
+迁移旧 `group/src/GroupDelegate.sol`，依赖 MemberNFT，但代码和授权消费者仅在 group-chat：
 
-首次激活写入 `firstActivatedOwner`、首个区块和时间戳，并永久保留。激活默认 `postingAllowed = true`，设置初始四个规则槽位，并把 `groupId` 加入可发现群列表。
+- `setDelegateId(groupId, delegateId)` 由群 NFT 当前 owner 调用。0 表示撤销；非零 delegateId 必须存在且不同于 groupId。
+- 每群至多一个 delegateId。保存群与 delegate NFT 的 owner 快照；任一 owner 变化或白名单不允许则无效。转回快照 owner 且白名单允许时恢复，不删除历史记录。
+- delegate NFT 当前持有人可批量清除自己收到的委托、开关委托方白名单和维护允许的 groupId 列表。
+- 保留有效 delegate 查询、批量查询、被委托群/白名单枚举与分页、幂等行为及旧事件。
 
----
+## 权限范围
 
-## 2. 管理操作
+| 操作 | 允许身份 |
+| --- | --- |
+| 激活 Chat | 群 owner |
+| 发言开关、四个槽位 | 群 owner 或有效 delegate |
+| 授予/撤销管理员 | 群 owner 或有效 delegate |
+| 成员名单、人工黑名单 | 群 owner、有效 delegate 或有效 admin |
+| 发言 | 始终校验调用者持有显式 senderId；委托不能冒充群 NFT |
+| Core 质押、投票、铸造、发射、Action 验证 | 此委托不产生任何权限 |
 
-**参考实现**：`LOVE20TKM/group-chat/GroupChat.sol`
+管理员保留群 NFT 和 admin NFT 双 owner 快照、转移失效/转回恢复及旧数量上限。删除 GroupDefaults 查找，改由操作显式提供 adminId。
 
-激活后，群 owner 或当前有效的 Group Chat Delegate 可以：
-- 设置 `postingAllowed`
-- 更新 `scopeSource`、`banSource`、`beforePostPlugin` 和 `afterPostPlugin`
+“限制在群聊内”不等于“只剩开关和槽位”：旧群内的管理员、成员及人工黑名单管理能力继续保留。Core MemberNFT 的 ERC721 转移授权与此业务委托分开。
 
-**普通 owner Chat vs Manager Chat 的管理差异**：
-- **普通 owner Chat**（如群组 Chat）：owner 持有 MemberNFT，可随时更新四个规则槽位
-- **Manager Chat**（代币社区/治理/行动 Chat）：Manager 合约持有 MemberNFT，规则槽位在激活时一次性注入，Manager 通常不提供重新配置接口
-
----
-
-## 3. Group Chat Delegate（限定范围）
-
-**参考实现**：`LOVE20TKM/group-chat/GroupChat.sol`（委托语义）
-
-Group Chat Delegate 使用 NFT 委托语义：每个 `groupId` 最多设置一个 `delegateId`，并保留被委托群列表、委托方白名单开关和白名单分页查询。
-
-**委托权限限定**（重要变更）：
-
-**可以做**：
-- 管理发言开关和四个规则槽位
-
-**不可以做**：
-- 不可以调用 `post` 代替其他 `senderId`
-- 不可以获得治理票、质押权、发射次数、Action 验证权或任何群外权限
-
-**委托失效**：
-- 委托保存群和 delegate MemberNFT 的 owner 快照
-- 任一 NFT 当前 owner 与快照不一致时委托失效
-- 转回快照 owner 时可以自动恢复
-- 原始记录和历史查询不因转移删除
+来源：旧 GroupDelegate、GroupAdmin、GroupMember、GroupBanList，提交见 [入口](README.md#已核对来源)。验收见 [群聊验收](08-testing.md)。

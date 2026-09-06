@@ -21,8 +21,8 @@
 | Submit | 保留 | LOVE20TKM/core: Submit.sol | core/Submit.sol | 主体改为 memberId |
 | Vote | 保留 | LOVE20TKM/core: Vote.sol | core/Vote.sol | 主体改为 memberId |
 | Mint | 修改 | LOVE20TKM/core: Mint.sol | core/Mint.sol | 治理激励公式调整 |
-| LOVE20Token | 保留 | LOVE20TKM/core: LOVE20Token.sol | core/LOVE20Token.sol | ERC20 基础不变 |
-| TokenFactory | 保留 | LOVE20TKM/core: TokenFactory.sol | core/TokenFactory.sol | 创建流程不变 |
+| LOVE20Token | 重构 | LOVE20TKM/core: LOVE20Token.sol | core/LOVE20Token.sol | ERC20、父币、maxSupply 和 minter 保留；移除 SL/ST 依赖 |
+| TokenFactory | 微调 | LOVE20TKM/core: TokenFactory.sol | core/TokenFactory.sol | 旧创建职责保留；新增 distributor，移除 SL/ST 创建 |
 | Launch | 修改 | LOVE20TKM/core: Launch.sol | core/Launch.sol | 发射次数按 memberId 记录 |
 
 ---
@@ -34,7 +34,7 @@
 - 升级为协议唯一身份 NFT
 
 ### ✅ 保留逻辑
-- **名称校验**：参考 `LOVE20TKM/group/LOVE20Group.sol` 的 UTF-8 校验、ASCII 大小写不敏感、禁止字符类型
+- **名称校验**：参考 `LOVE20TKM/group/src/LOVE20Group.sol` 的 UTF-8 校验、ASCII 大小写不敏感、禁止字符类型
 - **铸造费用公式**：保留短名称稀缺性公式（baseCost × multiplier ^ (bytesThreshold - byteLength)）
 
 ### 🔄 关键变化
@@ -49,7 +49,7 @@
 
 ### 📍 实现参考
 ```
-旧代码：LOVE20TKM/group/contracts/LOVE20Group.sol
+旧代码：LOVE20TKM/group/src/LOVE20Group.sol
 关注：名称校验（134-198行）、铸造费用（78-95行）
 ```
 
@@ -68,8 +68,10 @@
 ### 关键特性
 - 第一个 Phase 编号为 `1`
 - 支持空 Phase（无交互时不逐个写入）
-- `sync()` 任何地址可调用，用于校准时间
-- Submit 每轮首个推举自动调用一次 `sync()`
+- `sync()` 任何地址可调用；按调用前 `currentPhase()` 全局限频，每个治理投票 Round 最多一次有效同步
+- 同轮重复 `sync()` 无操作返回，不追加观测、不调整参数、不发事件，不能阻塞 Submit
+- Submit 每轮首个推举自动调用一次 `sync()`；已同步时该调用无操作返回
+- 默认先回溯最近 10 条观测，未命中时二分查找；偏差阈值 `adjustThreshold` 在初始化时配置
 
 ### 为什么新增
 - 不同行动类型需要不同阶段数（LP 3阶段，链群 4阶段）
@@ -80,7 +82,7 @@
 ## 3. Stake（重构）
 
 ### ✅ 保留逻辑
-- **LP 份额计算**：参考 `LOVE20TKM/core/Stake.sol` 154-184 行
+- **LP 份额计算**：参考 `LOVE20TKM/core/src/LOVE20Stake.sol` 154-184 行
 - **手续费结算公式**：参考同文件 248-276 行（sqrt(k) 方法）
 - **治理票公式**：`govVotes = lpShares × promisedWaitingPhases`
 
@@ -107,7 +109,7 @@
 
 ### 📍 实现参考
 ```
-旧代码：LOVE20TKM/core/contracts/Stake.sol
+旧代码：LOVE20TKM/core/src/LOVE20Stake.sol
 保留公式：LP份额（154-184行）、手续费（248-276行）
 删除：SL/ST铸造逻辑（移除 ERC20 依赖）
 ```
@@ -117,9 +119,9 @@
 ## 4. Submit（保留，主体变更）
 
 ### ✅ 保留逻辑
-- Proposal 创建和推举流程：参考 `LOVE20TKM/core/Submit.sol`
+- Proposal 创建和推举流程：参考 `LOVE20TKM/core/src/LOVE20Submit.sol`
 - 推举门槛计算（SUBMIT_MIN_RATIO）
-- 每轮首个推举触发 Phase 同步
+- 每轮首个推举触发 Phase 同步；若本轮已有同步则无操作返回，不影响推举
 
 ### 🔄 关键变化
 - **主体身份**：`submitterAddress` → `submitterId (memberId)`
@@ -127,7 +129,7 @@
 
 ### 📍 实现参考
 ```
-旧代码：LOVE20TKM/core/contracts/Submit.sol
+旧代码：LOVE20TKM/core/src/LOVE20Submit.sol
 保留：推举门槛、去重逻辑
 修改：所有 address 参数改为 uint256 memberId
 ```
@@ -137,7 +139,7 @@
 ## 5. Vote（保留，主体变更）
 
 ### ✅ 保留逻辑
-- 投票流程和票数记录：参考 `LOVE20TKM/core/Vote.sol`
+- 投票流程和票数记录：参考 `LOVE20TKM/core/src/LOVE20Vote.sol`
 - 投票增量机制（支持同一 Round 多次投票）
 - Proposal Target 回调机制
 
@@ -147,7 +149,7 @@
 
 ### 📍 实现参考
 ```
-旧代码：LOVE20TKM/core/contracts/Vote.sol
+旧代码：LOVE20TKM/core/src/LOVE20Vote.sol
 保留：投票记录结构、增量逻辑
 修改：所有 address 参数改为 uint256 memberId
 ```
@@ -157,7 +159,7 @@
 ## 6. Mint（修改）
 
 ### ✅ 保留逻辑
-- 轮次激励池准备：参考 `LOVE20TKM/core/Mint.sol`
+- 轮次激励池准备：参考 `LOVE20TKM/core/src/LOVE20Mint.sol`
 - Proposal 激励门槛和分配公式
 
 ### 🔄 关键变化
@@ -186,7 +188,7 @@
 
 ### 📍 实现参考
 ```
-旧代码：LOVE20TKM/core/contracts/Mint.sol
+旧代码：LOVE20TKM/core/src/LOVE20Mint.sol
 保留：轮次准备、Proposal 分配
 修改：治理激励改为 50%/50% 拆分，增加 2 倍上限
 ```
@@ -196,7 +198,7 @@
 ## 7. Launch（修改）
 
 ### ✅ 保留逻辑
-- 发射次数阈值向上取整：参考 `LOVE20TKM/core/Launch.sol`
+- 发射次数阈值向上取整：参考 `LOVE20TKM/core/src/LOVE20Launch.sol`
 - 次数累计和余额结转逻辑
 - 子币创建和首批分发流程
 
@@ -222,30 +224,32 @@
 
 ### 📍 实现参考
 ```
-旧代码：LOVE20TKM/core/contracts/Launch.sol
+旧代码：LOVE20TKM/core/src/LOVE20Launch.sol
 保留：阈值公式（向上取整）、累计逻辑
 修改：地址 → memberId，新增融合接口
 ```
 
 ---
 
-## 8. LOVE20Token & TokenFactory（保留）
+## 8. LOVE20Token & TokenFactory（职责保留、依赖调整）
 
-### ✅ 完全保留
+### ✅ 保留
 - ERC20 标准实现
 - 代币树结构（parentTokenAddress）
 - maxSupply 限制
 - minter 权限控制
 - TokenFactory 创建流程
 
-### 🔄 微调
+### 🔄 BSC 调整
+- `TokenFactory.createToken` 新增非零 `distributor`，首批供应量直接铸给该地址
+- 删除 SL/ST 实例创建及其 Stake 依赖；Pair 仍由工厂创建
 - 首个代币依赖 Airdrop 合约分发（来源：LOVE20TKM/burn 仓库）
 
 ### 📍 实现参考
 ```
 旧代码：
-  LOVE20TKM/core/contracts/LOVE20Token.sol
-  LOVE20TKM/core/contracts/TokenFactory.sol
+  LOVE20TKM/core/src/LOVE20Token.sol
+  LOVE20TKM/core/src/LOVE20TokenFactory.sol
 保留：完整 ERC20 逻辑、代币树结构
 ```
 
@@ -278,7 +282,7 @@
 |------|--------|----------|
 | GroupDefaults | LOVE20TKM/group | BSC 不迁移默认配置 |
 | LOVE20MemberMarket | LOVE20TKM/core | 未部署，不属于核心依赖 |
-| SL/ST Token | LOVE20TKM/core/Stake.sol | 去凭证化，状态直接归 memberId |
+| SL/ST Token | LOVE20TKM/core/src/LOVE20Stake.sol | 去凭证化，状态直接归 memberId |
 | 地址主体接口 | 所有合约 | 统一使用 memberId |
 
 ---
@@ -310,4 +314,4 @@
 4. **发射次数融合**：部分融合、向非调用者持有的目标 NFT 转移
 5. **治理激励拆分**：三段返回值（voteReward, boostReward, burnReward）
 6. **批量多轮铸造**：原子性，任一 Round 失败则整笔回滚
-7. **Phase 动态校准**：±10% 内不调整，超出范围时计算新 phaseBlocks
+7. **Phase 动态校准**：由初始化的 `adjustThreshold` 控制，超过阈值时计算新 phaseBlocks

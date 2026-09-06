@@ -1,60 +1,30 @@
-# Manager 和群组 Chat
+# Manager 与群组 Chat
 
-本文档定义 Manager 合约机制和群组 Chat 的特殊规则。
+## 四类 Manager
 
----
+保留 TokenMainManager、TokenGovManager、TokenActionMainManager、TokenActionGovManager；每个 Manager 可以管理多个 Chat，不为每个 Chat 部署新 Manager。
 
-## 1. Manager
+同一个 token（token Manager）或 token + actionId（action Manager）只能在同一 Manager 中激活一次。保留 tokenOfGroup/groupIdOfToken、actionOfGroup/groupIdOfAction 及批量、分页查询；行动定位使用已有 `actionOfGroup(groupId)` 返回 token 和 actionId，不另加重复的 getActionId。
 
-**参考实现**：`LOVE20TKM/group-chat/TokenMainManager` 等
+## NFT 付款与持有
 
-协议提供四类 typed Manager：`TokenMainManager`、`TokenGovManager`、`TokenActionMainManager` 和 `TokenActionGovManager`。
+保留旧 BaseManager 的激活交易：
 
-**关键设计**：
-- Manager 创建并持有一个 MemberNFT
-- 把该 `memberId` 作为 `groupId` 激活到同一个 `GroupChat` 合约
-- 一次性注入规则模块
-- 不创建独立 Chat 合约，不复制 MemberNFT、不创建治理状态、不改变行动状态
+1. 校验 LOVE20 token、存在的 Proposal 及未重复激活，生成唯一名称；保留名称前缀、ASCII 清理/截断、12 位十六进制后缀和最多 8 次重试，长度读取 MemberNFT 配置。
+2. Manager 计算铸造费用，从激活者 msg.sender 转入首币并按需授权 MemberNFT；零费用不转账。付款/授权失败或实际费用与报价不一致则回滚。
+3. Manager 铸造并持有 NFT，以其 memberId 为 groupId 记录业务映射；scope 使用 Manager 自身，其他槽位使用构造时固定的模块，然后激活同一个 GroupChat 合约。
+4. 任一步失败整体回滚，付款、NFT、映射和激活不能半完成；激活者只是付费者，不因付费获得 Chat 管理权。
 
-**行动 Chat 与 Proposal 的关联**（黑名单权重查询）：
-- 每个行动 Manager 在创建时关联一个 `actionId`（对应 Core 的 Proposal ID）
-- 行动 Chat 的黑名单投票通过查询 Manager 获得 `actionId`，再查询该 Proposal 的投票权重
-- Manager 必须提供 `getActionId(groupId) returns (uint256 actionId)` 接口供黑名单源查询
-- 一个代币社区可能有多个行动 Proposal，每个行动 Manager 关联不同的 `actionId`
+BSC MemberNFT 的返回值/费用查询 ABI 与旧 group 不完全相同，迁移时适配接口并保留付款金额校验，不新增补贴、退款账户或代付凭证。
 
-**Chat 类型区分机制**：
-Manager 通过注入不同的 `scopeSource` 和 `banSource` 实现类型区分。
+## 转移与失效
 
-**参考旧代码命名**：`LOVE20TKM/group-chat/src/sources/`
-- Scope 实现：`GroupMemberScope`、`GroupJoinScopeSource`
-- Ban 实现：`AdminBanSource`、`GovVotedBanSource`
+旧 Manager 没有 NFT 转出、NFT approve、配置重配、升级或恢复入口，BSC 也不新增。onERC721Received 只接受来自协议 NFT 合约、from 为零的铸造回调；普通安全转入被拒绝，这不代表能阻止 ERC721 的非安全 transferFrom 强行转入。
 
-Manager 在创建 Chat 时应发出事件，标注 Chat 类型。
+Manager 无私钥，不存在自然人“丢失 Manager 私钥”；若依赖业务故障，按旧路径失败，不向激活付款者赋予接管权，也不自动替换映射。普通 owner Chat 的 NFT 可转移，委托/admin 有效性依旧按快照处理，不能与 managed NFT 混淆。
 
----
+## owner 管理型群组 Chat
 
-## 2. 群组 Chat
+群组直接用 owner 持有的 MemberNFT 激活，不走 Manager；owner/有效 delegate 可更新四个槽位。GroupMemberScope 和组合归属源行为见 [类型与资格](05-chat-types.md)，后者只把旧 GroupJoin 地址关系查询替换为 BSC 标准链群 Executor 的 memberId 查询。
 
-**参考实现**：`LOVE20TKM/group-chat/GroupChat`（群组配置）
-
-群组 Chat 不使用 Manager，由群组 owner 持有的 MemberNFT 直接作为 `groupId` 激活和管理。
-
-**两个标准 scopeSource**：
-
-**GroupMemberScope**：
-- 只读取管理员维护的 `groupId -> memberId` 成员名单
-
-**GroupActionScope**（新增）：
-- 部署时接收 GroupChat 的成员集合查询接口和 Group Action Executor 地址作为构造参数
-- Executor 必须是协议部署的标准 Group Action Executor
-- 成员名单命中时直接允许
-- 否则检查 `gTokenAddressesByGroupIdByMemberIdCount(groupId, senderId) > 0`
-  （查询该成员在该群组 Executor 服务的所有 Group Action 中参与的代币社区数量）
-- 该查询覆盖该 Executor 服务的所有代币社区和所有 Group Action
-
-**Group Action Executor 是归属唯一依据**：
-- Group Chat 不复制归属状态，也不遍历 ActionTarget
-- 成员通过 Executor 正常退出其在该群组的最后一个行动后资格立即失效
-- `forceExit` 只清除 ActionTarget 的通用参与登记，不修改 Executor 的资产或群组归属
-
-**群组 owner 在激活时传入所需的 `scopeSource`、`banSource` 和插件；激活后，群组 owner 或有效 Group Chat Delegate 可以更新这些规则槽位。这与 Manager Chat 不同：Manager Chat 的规则槽位在激活时一次性注入且通常不提供重新配置接口。**
+核对来源：旧 `src/managers/BaseManager.sol`、`BaseTokenScopeManager.sol`、`BaseTokenActionScopeManager.sol`，提交见 [入口](README.md#已核对来源)。

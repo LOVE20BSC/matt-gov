@@ -1,63 +1,33 @@
-# Group Chat 概览
+# Group Chat 范围与身份
 
-本文档定义 Group Chat 系统的定位、边界和核心规则。
+Group Chat 是公开链上群聊，保存配置、消息和查询索引；不管理治理质押、Proposal、行动资产或发射状态。不包含 P2P、私聊、阅读权限、链下消息、治理投票、行动验证或代币经济。
 
----
+## 迁移边界
 
-## 1. 定位与边界
+保留旧 `src/GroupChat.sol`、`GroupAdmin.sol`、`GroupMember.sol`、`GroupBanList.sol`、Manager、scope/ban 及插件的业务行为。只有以下变化：
 
-`group-chat` 是公开链上群聊业务。它只保存群聊配置、消息和查询索引，不保存治理质押、Proposal、行动资产或代币发射状态。
+- GroupNFT 依赖统一为 Core MemberNFT；业务主体一律为 memberId。
+- 删除 `postAsDefaultSender`、GroupDefaults 依赖、地址黑名单目标、地址投票者、地址/ID 双轨批量接口及其状态、索引、错误和事件。
+- 非身份地址继续存在：ERC20/合约地址、付款地址、owner 快照、调用者审计字段、ERC721 接收回调参数不能误删。
+- NFT 委托实现迁入 group-chat，仅本仓库消费者读取；Core、Action、Launch 不导入或使用该委托作为授权。
+- 按已确认的 BSC 边界接入 Phase 和 ActionTarget/Executor；除此之外不增加、删减群聊功能。
 
-**核心规则**：
-- **1 个 MemberNFT = 1 个 Chat**：`groupId` 是群聊身份 NFT 的 `memberId`
-- **发言身份是 `senderId`**：地址只用于校验该 NFT 的当前控制者，不作为消息或成员主体
-- **消息只新增，不编辑、不删除**
-- **成员资格、黑名单和发言插件通过规则槽位外置**
-- **Group Chat Delegate 只在本代码库内生效**，不产生任何跨代码库权限
+## 身份
 
-**不包含**：P2P Chat、私聊、阅读权限、链下消息、治理投票、行动验证和代币经济。
+一个 MemberNFT 对应一个 Chat。群主体为 `groupId`，发言主体为 `senderId`；两者可以不同。成员、管理员、delegate、被提及者、黑名单目标和黑名单投票者均用 memberId。
 
----
+代表身份写入时校验 `MemberNFT.ownerOf(memberId) == msg.sender`；sender/admin/voter 显式传入，不从地址默认身份推导。NFT 转移不改写历史消息或身份关系；委托和管理员的有效性仍按旧 owner 快照规则判断。
 
-## 2. 身份和对象
+## 数据对象
 
-### 2.1 MemberNFT 身份
+保留旧 `src/interfaces/IGroupChat.sol` 的 ChatInfo、Message、RoundSpan 类型和字段：
 
-群、群管理员、群成员、委托者、发言者和被提及者都以 `memberId` 标识。任何需要代表身份写入状态的调用都必须验证 `MemberNFT.ownerOf(memberId) == msg.sender`。
+| 对象 | 字段 |
+| --- | --- |
+| ChatInfo | groupId、owner、activated、postingAllowed、scopeSource、banSource、beforePostPlugin、afterPostPlugin、firstActivatedOwner、firstActivatedBlockNumber、firstActivatedTimestamp |
+| Message | groupId、senderId、senderAddress、round、messageId、content、blockNumber、timestamp、mentionedSenderIds、mentionAll、quotedMessageId |
+| RoundSpan | round、startMessageId、endMessageId、messageCount |
 
-**关键约束**：
-- 群聊不把钱包地址作为长期业务主体
-- 不维护地址到默认 MemberNFT 的映射
-- MemberNFT 转移只改变当前控制者；群身份、历史消息、历史事件、成员列表和委托记录不被改写
+owner 实时读取；senderAddress 仅作审计，不作主体或资格分支。消息在每个 Chat 内从 1 连续编号，只追加不改删；Round 读取需使用 BSC 历史 Phase，见 [查询](04-query.md)。
 
-**不存在的接口**：
-- 地址主体发言入口
-- 地址到默认 MemberNFT 的映射
-- 地址黑名单
-- 地址黑名单投票
-
-### 2.2 ChatInfo
-
-**参考实现**：`LOVE20TKM/group-chat/GroupChat.sol`
-
-每个 `groupId` 的配置至少包含：
-- `groupId`
-- 实时 `owner`
-- `activated`、`postingAllowed`
-- `scopeSource`、`banSource`
-- `beforePostPlugin`、`afterPostPlugin`
-- `firstActivatedOwner`、`firstActivatedBlockNumber`、`firstActivatedTimestamp`
-
-`groupId` 的当前控制者每次都从 `MemberNFT.ownerOf(groupId)` 实时读取，不缓存为权限依据。
-
-### 2.3 Message
-
-**参考实现**：`LOVE20TKM/group-chat/GroupChat.sol`
-
-每条消息至少保存：`groupId`、`senderId`、`senderAddress`、`round`、`messageId`、`content`、`blockNumber`、`timestamp`、`mentionedSenderIds`、`mentionAll` 和 `quotedMessageId`。
-
-**关键设计**：
-- `senderId` 可以与 `groupId` 不同，表示一个成员以自己的 MemberNFT 身份在另一个群发言
-- 发言交易的 `msg.sender` 必须是 `senderId` 当前控制者
-- `senderAddress` 只保存当时的实际调用地址用于审计，不参与消息身份、索引、资格或黑名单判断
-- `messageId` 在单个 Chat 内从 `1` 开始连续递增
+源码基线见 [入口](README.md#已核对来源)，不是要求重新设计这些对象。

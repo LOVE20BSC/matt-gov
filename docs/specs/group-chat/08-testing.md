@@ -1,63 +1,21 @@
-# 验收场景
+# Group Chat 验收
 
-本文档定义 Group Chat 系统的验收测试场景。
+本表是待实现的最小场景，运行证据按 [组织验收](../../acceptance.md) 记录。
 
----
+| 范围 | 场景 | 预期 |
+| --- | --- | --- |
+| 核心 | 一 NFT 一 Chat、激活、转移 | owner 实时变化，历史不回写 |
+| 身份 | 默认映射、地址发言、地址黑名单/投票 | ABI、状态、索引和专属事件完全删除，不仅是运行时拒绝 |
+| Delegate | 设置、撤销、快照失效/恢复 | 只管理 Chat，不冒充 sender |
+| 发言 | 校验顺序、scope/ban、before/after | before 回滚，after 失败保留消息 |
+| 消息 | 提及、mentionAll、引用、ID | 规则和索引一致 |
+| 查询 | Round、sender、mention、分页 | 空值、越界和 reverse 符合最终 ABI |
+| 类型 | 五类资格和黑名单权重 | 使用对应 memberId 和快照来源 |
+| 群组 | 成员名单、Executor 归属、forceExit | 最后关系退出才失去归属，forceExit 不改归属 |
+| Manager | 激活付款、费用不一致、NFT 接收、重复激活 | 调用者支付，Manager 持有；失败整体回滚；一个 Manager 管理多个 Chat |
+| Manager | 转出 NFT、approve、重配、付费者接管 | 不新增这些入口，普通 owner Chat 不受此限制 |
+| 群内委托 | 管理管理员、成员、人工黑名单；调用 Core/Action/Launch | 保留原群内权限，但委托不能授权任何群外业务 |
+| 黑名单 | 当前行动 Vote Round、全社区分母、权重归零刷新 | 不使用创建 Round；保留 settledWeight、改票/撤票/刷新与 stateVersion |
+| 持币 | 首币余额 0、1、2 个最小单位 | 前两者不满足持币分支，2 满足；其他资格分支照常 |
 
-## 1. 核心机制
-
-至少覆盖：
-- 1 个 MemberNFT = 1 个 Chat
-- 群 NFT 转移后的 owner 连续性和历史不回写
-- 激活一次性、默认开放发言、规则槽位更新和无代码地址拒绝
-
----
-
-## 2. Group Chat Delegate
-
-至少覆盖：
-- 设置、撤销、作用域、权限限制和不能冒充 sender
-
----
-
-## 3. 身份约束
-
-至少覆盖：
-- 不存在默认 MemberNFT 映射
-- 不存在地址主体发言入口
-- 不存在地址黑名单
-- 不存在地址黑名单投票或其他地址主体接口
-
----
-
-## 4. 发言机制
-
-至少覆盖：
-- 普通发言、owner/Delegate 资格绕过、scope/ban 拒绝
-- before 插件回滚、after 插件失败但消息保留
-- 正文、提及、mention-all、引用和 1-based 消息 ID 边界
-
----
-
-## 5. 查询
-
-至少覆盖：
-- 按 Round/sender/mention/mention-all 查询
-- 空 Round、反向分页和越界返回
-
----
-
-## 6. 群管理
-
-至少覆盖：
-- 成员/管理员批量操作、当前 owner 实时授权和 MemberNFT 不存在回滚
-
----
-
-## 7. 类型和资格
-
-至少覆盖：
-- 四类 typed Manager 的资格、黑名单和不可重配边界
-- 群组 owner 管理型 Chat 的标准资格源与可重配边界
-- 群组归属跨社区和跨行动查询
-- 所有业务状态只按 `memberId` 记录
+以 [源码基线](README.md#已核对来源) 做保留行为的差异回归；身份映射与已确认 BSC 依赖是唯一允许差异。旧测试因调用 ABI 变化而适配，不重新定义支付、消息、分页或失败处理。以上为规格要求，尚未运行 BSC 合约测试。

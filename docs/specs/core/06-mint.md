@@ -1,191 +1,115 @@
-# Mint 规格
+# Mint
 
-本文档定义 Mint 合约规格。
+Mint 准备并结算治理和 Proposal 激励，不读取行动验证结果。初始化参数见 [参数表](00-protocol-model.md#初始化参数)，通用权限见 [通用规则](01-common-rules.md)。
 
----
+## 账本与数据来源
 
-## 1. 轮次激励池（修改）
+| 数据 | 作用域与含义 |
+| --- | --- |
+| `rewardReserved` | 每个 token 的累计预留总额，包含后来铸造或销毁的额度 |
+| `rewardMinted` | 每个 token 的累计已铸造激励 |
+| `rewardBurned` | 每个 token 的累计已取消预留额度；不铸造该部分代币 |
+| `govReward` / `proposalReward` | 每个 token、Round 准备后冻结的完整治理池 / Proposal 池 |
+| `totalVotes` | Vote 的本轮 `votesNum[tokenAddress][round]` |
+| `memberBoost` | Vote 按 token、Round、memberId 保存的已计入加速快照 |
+| `totalBoost` | Vote 的 `stakedAmountOfVoters[tokenAddress][round]` |
+| `eligibleProposalVotes` | Vote 在投票阶段维护的本轮所有达标 Proposal 票数之和，Round 结束后自然冻结 |
 
-### 1.1 参考实现
+Proposal 达标条件：
 
-`LOVE20TKM/core/contracts/Mint.sol`
-
-### 1.2 账本关系与公式
-
-```text
-reservedAvailable = rewardReserved - rewardMinted - rewardBurned
-available = maxSupply - totalSupply - reservedAvailable
-govReward = available × roundRewardGovPerThousand / 1000
-proposalReward = available × roundRewardProposalPerThousand / 1000
-```
-
-对每个代币社区，`rewardReserved`、`rewardMinted`、`rewardBurned` 是累计账本：
-
-```text
-unsettled = rewardReserved - rewardMinted - rewardBurned
-```
-
-`rewardReserved` 包含可铸造额度和准备阶段已确定要销毁的额度，因此始终满足 `rewardReserved >= rewardMinted + rewardBurned`。每个轮次只在准备时增加一次 `rewardReserved`，后续任何铸造或销毁都不得再次增加它。
-
-其中 `roundRewardGovPerThousand` 和 `roundRewardProposalPerThousand` 为初始化参数（千分比），例如：
-- `roundRewardGovPerThousand = 30`（3%）
-- `roundRewardProposalPerThousand = 10`（1%）
-
-Proposal 激励门槛：
 ```text
 proposalVotes > 0
-proposalVotes × 1000 >= totalVotes × proposalRewardMinVotePerThousand
+proposalVotes * 1000 >= totalVotes * proposalRewardMinVotePerThousand
 ```
 
-其中 `proposalRewardMinVotePerThousand` 为初始化参数（千分比），例如 `50`（5%）。
+`PerThousand` 参数使用千分比，例如门槛 50 表示 5%。账本始终满足：
 
-### 1.3 轮次激励池准备逻辑（新增优化）
-
-`prepareRewardIfNeeded(tokenAddress, round)` 可由任何地址调用，且每个 `(tokenAddress, round)` 只成功准备一次。Round 结束后执行以下固定流程：
-
-1. 读取 Vote 在投票阶段冻结的 `totalVotes`、`eligibleProposalVotes` 和 `totalBoost`。若 `totalVotes == 0`，本轮两项激励均为 `0`，只记录“已准备”状态。
-2. 若 `totalVotes > 0`，按本节公式计算 `govReward` 和 `proposalReward`，并一次性执行 `rewardReserved += govReward + proposalReward`。
-3. 若 `totalBoost == 0`，将加速池 `govReward - floor(govReward / 2)` 计入 `rewardBurned`；该额度已经包含在本轮新增的 `rewardReserved` 中。
-4. 若 `eligibleProposalVotes == 0`，将完整 `proposalReward` 计入 `rewardBurned`；该额度已经包含在本轮新增的 `rewardReserved` 中，本轮不得铸造 Proposal 激励。
-5. 将本轮的 `govReward`、`proposalReward`、`eligibleProposalVotes` 和准备状态冻结。重复调用直接返回，不重算、不改写、不增加 `rewardReserved`。
-
-治理激励或 Proposal 激励后续结算时，只能增加 `rewardMinted` 或 `rewardBurned`；不得再次增加 `rewardReserved`。
-
----
-
-## 2. Proposal 激励铸造（保留逻辑）
-
-### 2.1 参考实现
-
-`LOVE20TKM/core/contracts/Mint.sol`
-
-### 2.2 铸造公式
-
-每个 Proposal 由其 `target` 单独铸造一次：
 ```text
-实际数量 = proposalReward × proposalVotes / eligibleProposalVotes
+rewardReserved >= rewardMinted + rewardBurned
+reservedAvailable = rewardReserved - rewardMinted - rewardBurned
+available = maxSupply - totalSupply - reservedAvailable
 ```
 
-其中 `eligibleProposalVotes` 为准备时从 `Vote` 读取并冻结的本轮所有达标 Proposal 票数总和；Proposal 未达门槛时不参与分配。该值为零时本轮全部 `proposalReward` 已在准备阶段销毁，因此不得执行 Proposal 铸造。
+`reservedAvailable` 是尚未结算的额度，不能再次分配。三个累计账本与本轮池值不能混用。
 
-### 2.3 BSC 版说明
+## 准备一次
 
-Core 层不包含 Action 扩展逻辑，铸造激励直接发送给 `target` 地址。如果 `target` 是扩展合约（如 ActionTarget），由扩展合约自行处理后续分发逻辑。
+接口示意：`prepareRewardIfNeeded(tokenAddress, round)`，任何地址可调用。
 
----
+1. 本轮已准备则直接返回，不更新状态；未结束的 Round 拒绝准备。
+2. 读取 Vote 的冻结结果。若 `totalVotes == 0`，两池记为 0 并标记已准备，累计账本不变。
+3. 否则用准备前的 `available` 计算两池，并在本步骤唯一一次增加 `rewardReserved`。
+4. 若 `totalBoost == 0`，准备时直接取消加速池；若 `eligibleProposalVotes == 0`，准备时直接取消完整 Proposal 池。
+5. 保存轮次池值、达标票数和已准备状态，不逐个预写 Proposal 额度。
 
-## 3. 治理激励
+```text
+govReward = floor(available * roundRewardGovPerThousand / 1000)
+proposalReward = floor(available * roundRewardProposalPerThousand / 1000)
+rewardReserved += govReward + proposalReward
 
-### 3.1 治理池拆分（保持旧版机制）
-
-- **投票激励部分**（50%）：按成员实际投票行为分配
-- **加速激励部分**（50%）：按加速质押份额占总加速质押的比例分配
-
-### 3.2 计算公式
-
-```solidity
-// 固定 50/50 拆分
-votePoolAmount = govReward / 2
-boostPoolAmount = govReward - votePoolAmount  // 避免舍入损失
-
-// 投票激励
-voteReward = (votePoolAmount * memberVotes) / totalVotes  // 向下取整
-
-// 加速激励（有 2 倍上限）
-theoreticalBoost = (boostPoolAmount * memberBoost) / totalBoost  // 向下取整
-boostReward = min(theoreticalBoost, voteReward * maxGovBoostRewardMultiplier)  // 基于投票激励的倍数上限
-burnReward = theoreticalBoost - boostReward  // 溢出部分销毁
+if totalBoost == 0:
+    rewardBurned += govReward - floor(govReward / 2)  // 加速池
+if eligibleProposalVotes == 0:
+    rewardBurned += proposalReward
 ```
 
-### 3.3 关键特性
+这是每轮唯一增加 `rewardReserved` 的位置。后续治理结算按 `voteReward + boostReward` 增加 `rewardMinted`，按加速上限溢出的 `burnReward` 增加 `rewardBurned`；Proposal 结算按实际铸造量增加 `rewardMinted`。准备阶段已经取消的额度不得再次销毁，同一额度不得重复铸造或销毁；任何失败均整体回滚。
 
-- 50/50 拆分是协议固定设计，使用整数除法简化计算
-- `boostPoolAmount = govReward - votePoolAmount` 确保两池总和精确等于 `govReward`
-- 加速激励上限倍数由初始化参数 `maxGovBoostRewardMultiplier` 确定（例如 `2`，表示 2 倍上限）
-- `memberBoost` = 该 memberId 的加速质押份额（boostShares），记账机制见 `04-stake.md` 第 4 节
-- `totalBoost` = 本轮所有投票者的加速质押份额总和（由 Vote 合约维护的 `stakedAmountOfVoters`）
-- 若 `totalBoost == 0`，`prepareRewardIfNeeded` 为本轮完整预留 `govReward` 后，将加速激励部分一次性计入 `rewardBurned`；后续治理激励铸造不再重复判断或重复销毁
-- **加速激励只能由投票者铸造**：只有在该 Round 投票的 memberId 才能铸造治理激励（包含投票激励和加速激励）；未投票的 memberId 即使有加速质押也无法铸造
+例（最小单位）：两池为 5 和 3，且 `totalBoost = eligibleProposalVotes = 0`。准备增加预留 8、销毁 6，留下投票激励 2；再次准备不变。
 
-### 3.4 2 倍上限示例
+## Proposal 结算
 
-**假设**：`govReward = 1000 token`，`totalVotes = 100`，`totalBoost = 200`，`maxGovBoostRewardMultiplier = 2`
+接口示意：`mintProposalReward(tokenAddress, round, proposalId)`。只允许该 Proposal 已记录的 Target 调用，每个 token、Round、Proposal 只能铸造一次；未准备、未结束、Proposal 不达标或 `eligibleProposalVotes == 0` 时拒绝。
 
-#### 场景 1：未达上限
-- 成员 A：投票 10 票，加速质押 10 份额
-- `voteReward = 500 × 10 / 100 = 50 token`
-- `theoreticalBoost = 500 × 10 / 200 = 25 token`
-- `boostReward = min(25, 50 × 2) = 25 token`（未达上限）
-- `burnReward = 0`
-- **A 总激励：75 token**
-
-#### 场景 2：达到上限
-- 成员 B：投票 10 票，加速质押 100 份额
-- `voteReward = 500 × 10 / 100 = 50 token`
-- `theoreticalBoost = 500 × 100 / 200 = 250 token`
-- `boostReward = min(250, 50 × 2) = 100 token`（达到上限）
-- `burnReward = 250 - 100 = 150 token`（销毁）
-- **B 总激励：150 token**（投票 50 + 加速 100）
-
-#### 场景 3：无加速质押
-- 成员 C：投票 10 票，加速质押 0 份额
-- `voteReward = 500 × 10 / 100 = 50 token`
-- `theoreticalBoost = 0`
-- `boostReward = 0`
-- `burnReward = 0`
-- **C 总激励：50 token**（仅投票激励）
-
-### 3.5 上限设计理由
-
-防止极端加速质押占用过多激励，确保投票行为仍是核心贡献。上限倍数由初始化参数 `maxGovBoostRewardMultiplier` 控制，为不同社区提供灵活性。
-
----
-
-## 4. 批量铸造（新增）
-
-### 4.1 接口
-
-```solidity
-mintGovReward(tokenAddress, memberId, round) 
-    returns (voteReward, boostReward, burnReward)
-
-mintGovRewards(tokenAddress, memberId, rounds[]) 
-    returns (voteReward[], boostReward[], burnReward[])
+```text
+实际铸造量 = floor(proposalReward * proposalVotes / eligibleProposalVotes)
 ```
 
-### 4.2 行为
+代币铸给 Target；行动类 Target 的后续转发见 [行动铸造链路](../action/07-minting.md#铸造链路)。无合格 Proposal 的完整池已在准备时取消，不能再次销毁。
 
-- `mintGovRewards(tokenAddress, memberId, rounds[])`
-- 按输入顺序逐轮执行，返回与 `rounds` 等长的三类激励结果数组
-- 任一 Round 失败则整笔交易回滚
+## 治理结算
 
-### 4.3 单轮铸造失败条件
+只允许成员 NFT 当前持有人为本轮实际投过票的 `memberId` 结算。使用以下公式，金额除法向下取整：
 
-- Round 尚未结束（`Phase.currentPhase() <= round`）
-- Round 激励池未准备（未调用 `prepareRewardIfNeeded`）
-- 该 memberId 在该 Round 没有投票记录
-- 该 Round 该 memberId 的激励已铸造
+```text
+votePoolAmount = floor(govReward / 2)
+boostPoolAmount = govReward - votePoolAmount
+voteReward = floor(votePoolAmount * memberVotes / totalVotes)
 
----
+if totalBoost == 0:
+    boostReward = 0
+    burnReward = 0
+else:
+    theoreticalBoost = floor(boostPoolAmount * memberBoost / totalBoost)
+    boostReward = min(theoreticalBoost, voteReward * maxGovBoostRewardMultiplier)
+    burnReward = theoreticalBoost - boostReward
+```
 
-## 5. 与 Launch 交互（BSC 版新增）
+`memberVotes` 为本轮累计投出票数；`memberBoost` 和 `totalBoost` 均取 Vote 的同轮冻结快照，记账时机见 [Vote](05-submit-vote.md#投票和加速快照)。投票后仅追加质押、不再投票，不增加本轮加速权重；NFT 转移不重算快照。两池按固定 50/50 拆分，奇数余量归加速池。`totalBoost == 0` 时整份加速池已在准备时取消，本次不得再计 `burnReward`。未投票者即使有加速质押也不能领取治理激励。
 
-### 5.1 launchCredit 维护
+例：两池各 500、成员投票占 10%、加速份额占 50%、倍数上限为 2。结果为 `voteReward = 50`、`boostReward = 100`、`burnReward = 150`；实际铸造 150。
 
-- Mint 合约维护 `launchCredit[tokenAddress][memberId]`：累计铸造激励余额
-- 每次成功铸造治理激励后，Mint 合约自动累加该 memberId 的 launchCredit
+## 单轮与批量接口
 
-### 5.2 发射次数产生
+以下为参数和返回值示意，不是完整 ABI：
 
-铸造治理激励后，如果 `launchCredit >= threshold`：
-- Mint 合约计算产生的发射次数
-- 消耗对应的 launchCredit
-- 调用 `Launch.addLaunchCount(tokenAddress, memberId, count)` 增加发射次数
+```text
+mintGovReward(tokenAddress, memberId, round)
+    -> (voteReward, boostReward, burnReward)
+mintGovRewards(tokenAddress, memberId, rounds[])
+    -> (voteReward[], boostReward[], burnReward[])
+```
 
-### 5.3 权限控制
+批量按输入顺序执行，结果数组与输入等长；任一 Round 未结束、未准备、没有投票记录或已铸造，则整笔回滚。治理激励和发射额度/次数更新也必须原子完成。
 
-`Launch.addLaunchCount()` 只能由 Mint 合约调用（权限控制）
+## 发射额度
 
-### 5.4 设计理由
+Mint 保存 `launchCredit[tokenAddress][memberId]`。只有实际铸造的治理激励可累计；上限、零阈值、计算顺序和余数规则只在 [Launch](07-launch.md#发射次数) 定义。产生正数次数时调用仅授权 Mint 的 `Launch.addLaunchCount`。
 
-这种设计在产生发射次数时才跨合约调用，高频治理激励铸造时只累加 launchCredit，节省 gas。
+## 实现约束
+
+- 完整 ABI 以实现接口为准；初始化时拒绝两项激励比例之和超过 `1000`。
+- 各项分配向下取整产生的极小舍入余数不单独维护，也不追加结算状态；累计账本只记录实际铸造和明确销毁的额度。
+- 历史来源 `LOVE20TKM/core/src/LOVE20Mint.sol` 只作为行为参考，不替代本文件的账本规则。
+
+验收见 [Core 验收](08-testing.md)。

@@ -1,39 +1,38 @@
-# 发言机制
+# 发言
 
-本文档定义 Chat 的发言流程、校验规则和插件处理。
+## 校验顺序
 
----
+发言入口接收 `groupId`、`senderId`、`content`、`mentionedSenderIds`、`mentionAll`、`quotedMessageId`，按以下顺序检查：
 
-## 1. 参数和基础校验
+1. groupId 的 NFT 存在。
+2. Chat 已激活且 `postingAllowed = true`。
+3. senderId 的 NFT 存在，且调用者为当前 owner。
+4. content 非空，字节数不超过 `MAX_CONTENT_LENGTH`，默认 4096。
+5. 提及数不超过 `MAX_MENTIONED_SENDER_IDS`，默认 32；每个 NFT 存在且不重复。
+6. mentionAll 为 true 时，sender 必须为群本身、有效 delegate 或有效 admin。
+7. quotedMessageId 为 0 表示无引用；非零必须指向本 Chat 已存在消息。
+8. 执行 [规则槽位](02-rules.md#顺序与例外) 的 scope、ban 和插件逻辑。
 
-**参考实现**：`LOVE20TKM/group-chat/GroupChat.sol`
+## 消息与插件
 
-发言入口接收 `groupId`、`senderId`、`content`、`mentionedSenderIds`、`mentionAll` 和 `quotedMessageId`。
+分配新 messageId，追加消息并更新 sender、mention、mention-all、round 索引，发出 `PostMessage` 及提及事件。
 
-**校验顺序**：
-1. `groupId` 对应的 MemberNFT 存在
-2. Chat 已激活且 `postingAllowed = true`
-3. `senderId` 对应的 MemberNFT 存在，且 `msg.sender` 是其当前 owner
-4. `content` 非空，字节长度不超过 `MAX_CONTENT_LENGTH`（默认 `4096` bytes）
-5. `mentionedSenderIds` 数量不超过 `MAX_MENTIONED_SENDER_IDS`（默认 `32`），每个 MemberNFT 存在且不重复
-6. `mentionAll = true` 时，`senderId` 必须是该群 `groupId`、有效 `delegateId` 或有效 `adminId`
-7. `quotedMessageId = 0` 表示无引用，非零时必须指向当前 Chat 已存在的消息
-8. 按规则槽位顺序执行资格、黑名单和插件检查
+| 失败位置 | 结果 |
+| --- | --- |
+| beforePostPlugin | 整笔发言回滚 |
+| afterPostPlugin | 消息与通知事件保留；捕获错误并发出 `FailAfterPostPlugin(groupId, messageId, pluginAddress, round, errorData)` |
 
----
+after 插件在消息及通知事件之后调用。上述是业务容错要求，不代表无限 Gas 或任意错误数据都天然可安全捕获。
 
-## 2. 消息写入和插件
+## 预检查
 
-**参考实现**：`LOVE20TKM/group-chat/GroupChat.sol`
+删除旧预检查中的 senderAddress 参数，调用方不必持有 sender NFT；写入时仍必须校验真实 msg.sender。
 
-消息追加后分配新的 `messageId`，更新按 sender、mention、mention-all 和 round 的轻量索引，并发出 `PostMessage`。
+```solidity
+function canPost(uint256 groupId, uint256 senderId)
+    external view returns (bool allowed, bytes4 reasonCode);
+```
 
-**插件失败处理**：
-- `beforePostPlugin` 回滚时，整笔发言回滚
-- `afterPostPlugin` 在消息和通知事件写入后调用；其失败不会回滚消息，而是捕获错误并发出 `FailAfterPostPlugin(groupId, messageId, pluginAddress, round, errorData)`
+保留旧 reasonCode 的错误 selector 语义：成功返回 `(true, bytes4(0))`；失败返回 GroupNotExist、ChatNotActivated、PostingNotAllowed、ScopeRejected、BanRejected、ScopeSourceFailed 或 BanSourceFailed 的 selector。无内容预检查不验证正文、提及、引用或 before 插件。
 
----
-
-## 3. canPost（预检查）
-
-`canPost(groupId, senderId)` 只执行无内容预检查并返回 `(allowed, reasonCode)`；不要求查询调用者本人持有该 NFT，也不检查正文、提及、引用或 `beforePostPlugin`。
+正文 4096 bytes、提及 32 个是旧公测 profile 的部署值，保留构造参数而非新增硬编码。错误和插件捕获机制沿用已核对的旧 GroupChat，不另设计恢复流程。身份接口和事件按 [迁移边界](00-overview.md#迁移边界) 适配，验收见 [群聊验收](08-testing.md)。

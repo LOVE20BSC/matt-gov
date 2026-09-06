@@ -1,30 +1,23 @@
-# 事件、错误和安全性
+# Group Chat 事件、错误与安全
 
-本文档定义 Group Chat 的事件、错误代码和安全性约束。
+## 事件
 
----
+覆盖激活、发言开关、四个规则槽位、发言、提及、mention-all、after 插件失败、Delegate 设置/撤销、成员/管理员变化和 Manager 创建/激活。
 
-## 1. 事件
+配置事件应包含 `groupId`、新旧地址、操作 `memberId` 和调用地址；消息事件应包含 `groupId`、`senderId`、`senderAddress`、`round` 和 `messageId`。地址只用于审计，不作业务主体。
 
-至少发出：
-- `Activate`、`SetPostingAllowed`
-- 四个规则槽位的设置事件
-- `PostMessage`、`MentionSenderId`、`MentionAll`、`FailAfterPostPlugin`
-- Group Chat Delegate 设置/撤销、成员集合变化、管理员变化
-- Manager 创建/激活实例事件
+## 错误
 
-配置变化事件包含 `groupId`、新旧合约地址、操作 `memberId` 和实际调用地址；消息事件包含 `groupId`、`senderId`、`senderAddress`、`round` 和 `messageId`。地址字段仅用于审计，不作为业务主体或地址维度索引。
+拒绝不存在的群或 sender、重复激活、越权管理、非 sender owner 发言、未激活、关闭发言、空或超长正文、提及超限/重复、无效引用、非法 mentionAll、无代码规则地址、scope/ban 拒绝和重入。
 
----
+## 安全
 
-## 2. 错误
+消息只增不改；配置和消息写入防重入；规则源、插件、Manager 不能越权修改核心状态；无升级管理员或隐含后门。
 
-至少拒绝：不存在的群或 sender、重复激活、非 owner/Delegate 管理、非 sender owner 发言、Chat 未激活、发言关闭、空正文、正文超长、提及数量超限或重复、无效引用、非管理员 `mentionAll`、规则地址无代码、scope/ban 拒绝和重入。
+## 迁移规则
 
----
+保留旧 `src/interfaces/` 中非地址主体功能的事件、错误名/参数和 indexed 字段；只对身份替换所影响的 operator/voter 参数改为 memberId，调用地址可继续作审计。删除默认身份和地址目标路径专属事件/错误，不新增一套平行行为。
 
-## 3. 安全性
+保留 Activate、SetPostingAllowed、SetScopeSource、SetBanSource、SetBeforePostPlugin、SetAfterPostPlugin、PostMessage、MentionSenderId、MentionAll 和 FailAfterPostPlugin；后者 errorData 仍为捕获到的 bytes。scope/ban 的返回 false 和外部调用失败继续分别报 Rejected 与 SourceFailed，不能误改为静默放行。
 
-- 消息只增不改，配置和消息写入使用重入保护
-- 规则源、插件和 Manager 不能越权写入 Chat 核心存储
-- 协议没有升级管理员和隐含后门
+验收见 [Group Chat 验收](08-testing.md)。

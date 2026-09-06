@@ -1,67 +1,40 @@
-# LP 行动执行合约
+# LP Executor
 
-本文档定义 LP 行动执行合约规格。
+仅迁移 LP V2 业务，不迁移 V1 和旧工厂。参与身份见 [共同参与模型](03-participation.md)，时间映射见 [行动阶段](02-phase-model.md)。
 
----
+## 时间权重
 
-## 1. 保留逻辑（引用旧代码）
-
-### 1.1 时间权重计算
-
-**参考**：`LOVE20TKM/contracts/extension-lp/contracts/LpActionV2.sol` 的 `calculateTimeWeight` 函数
+每笔加入使用加入阶段起点和长度冻结时间扣减：
 
 ```text
-deduction_i = min(
-    amount_i,
-    amount_i × (joinBlock_i - joinPhaseStartBlock) / joinPhaseBlocks
-)
+deduction_i = min(amount_i, floor(amount_i * (joinBlock_i - joinPhaseStartBlock) / joinPhaseBlocks))
 effectiveAmount = joinedAmount - deduction
-effectiveLpRatio = effectiveAmount × 1e18 / totalEffectiveAmount
+effectiveLpRatio = floor(effectiveAmount * 1e18 / totalEffectiveAmount)
 ```
 
-### 1.2 治理票上限
+`amount_i` 是本笔加入量，`deduction` 为扣减汇总，`joinedAmount` 是成员加入总量。`totalEffectiveAmount` 是该行动 Round 的有效参与总量。阶段长度和起点不能在结算时改用另一阶段的值。
 
-**参考**：`LOVE20TKM/contracts/extension-lp/contracts/LpActionV2.sol` 的 `govRatioMultiplier`
+例：阶段共 100 区块，成员在开始后第 25 区块加入 100 个最小单位，扣减 25，有效量 75。
 
-**变量定义**：
-- `validGovVotes(memberId)` = 该 memberId 在该代币社区的当前有效治理票（铸币时从 Stake 合约实时查询）
-- `totalGovVotes` = 该代币社区当前总有效治理票（铸币时从 Stake 合约实时查询）
-- `effectiveLpRatio` = 经过时间权重扣减后的 LP 占比（见上述时间权重计算）
-- `govRatioMultiplier` = 该 LP 行动 Proposal 创建时设置的治理票权重倍数（初始化参数）
+## 治理上限与分配
 
-**公式**：
+`govRatioMultiplier` 在 Proposal 创建时设置，使用 `1e18` 精度。成员 `validGovVotes(memberId)` 和社区 `totalGovVotes` 均在铸币时从 Stake 实时读取，用于上限而非 LP 权重。
+
+启用上限且分母非零时：
+
 ```text
-govRatio = validGovVotes(memberId) × 1e18 / totalGovVotes
-govRatioCap = govRatio × govRatioMultiplier / 1e18
+govRatio = floor(validGovVotes(memberId) * 1e18 / totalGovVotes)
+govRatioCap = floor(govRatio * govRatioMultiplier / 1e18)
 effectiveRatio = min(effectiveLpRatio, govRatioCap)
-mintReward = proposalReward × effectiveRatio / 1e18
+mintReward = floor(proposalReward * effectiveRatio / 1e18)
 ```
 
-治理票用于计算激励上限，而非权重依据，因此使用实时值更公平：成员解锁质押后治理影响力降低，LP 激励上限也相应降低。
+[组织验收](../../acceptance.md#行动公式零值边界) 规定：`totalEffectiveAmount == 0` 时行动激励为零；启用治理上限且 `totalGovVotes == 0` 时为零；`govRatioMultiplier == 0` 时关闭上限，不能因治理票为零而清零激励。先处理这些分支，再执行除法。
 
----
+Executor 经 [铸造链路](07-minting.md#铸造链路) 一次取得本 Round 整笔 Proposal 激励，再按上述比例内部结算和处理溢出销毁；任何失败回滚。LP 参与和退出沿用 ExtensionLpV2 的聚合余额与按 Round 记录的扣减，不新增 lot 或部分撤回模型。LP 手续费结算属于 Core Stake，不属于本 Executor。
 
-## 2. 关键变更
+## 实现约束
 
-### 2.1 阶段模型
+沿用 `LOVE20TKM/extension-lp/src/ExtensionLp.sol` 的聚合 `joinedAmount`、`_deduction`、`_totalDeduction`、加入区块和加入金额数组，以及完整 `exit` 清理逻辑；仅替换参与主体为 `memberId`，不引入旧版不存在的部分撤回。
 
-- **旧**：固定 4 阶段（Vote、Join、Verify、Mint）
-- **新**：3 阶段（投票、加入、铸币），无验证阶段
-
-### 2.2 激励铸造
-
-- **旧**：逐人调用 Core Mint
-- **新**：Executor 先经 ActionTarget 一次性铸造整个 Proposal 的 `proposalReward`，再按有效 LP 占比计算参与者激励
-
-**铸造流程**：
-1. Executor 通过 ActionTarget 调用 `mintProposalReward`
-2. ActionTarget 调用 Core Mint
-3. Core Mint 把全部 `proposalReward` 铸给 ActionTarget
-4. ActionTarget 把全部金额转给 Executor
-5. Executor 按参与者 `effectiveRatio` 分配
-
----
-
-## 3. 删除能力
-
-**V1 实现**：旧版本已废弃，仅迁移 V2（当前生产版本）。V1 与 V2 的核心差异：V1 不支持时间权重扣减和治理票上限约束，V2 引入这两项机制以提升公平性和防止末期涌入。
+验收见 [Action 验收](08-testing.md)。
