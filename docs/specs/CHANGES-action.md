@@ -307,7 +307,7 @@ theoreticalOwnerReward(m) = serviceReward × ownerWeightNumerator(m) / (totalGro
 
 | 组件 | 原位置 | 删除原因 |
 |------|--------|----------|
-| LP V1 | LOVE20TKM/extension-lp/src/ExtensionLp.sol（V1 对应旧实现） | 只迁移 V2 |
+| LP V1 | LOVE20TKM/extension-lp（V1 历史实现，未迁移） | 只迁移 V2 |
 | 地址主体接口 | 所有 Executor | 统一使用 memberId |
 | gas 补偿 | GroupService | 简化激励模型 |
 

@@ -19,10 +19,10 @@
 服务 Executor 首次计算某个 `actionTokenAddress + groupActionId + round` 时，读取并保存 `totalGroupActionReward`；后续该键的结算只读缓存，不重复遍历链群行动。另用 `denominatorCached` 区分“尚未计算”和“已计算且为 0”。
 
 ```solidity
-mapping(address actionTokenAddress => mapping(uint256 groupActionId => mapping(uint256 round => uint256)))
-    totalGroupActionReward;
-mapping(address actionTokenAddress => mapping(uint256 groupActionId => mapping(uint256 round => bool)))
-    denominatorCached;
+mapping(address => mapping(uint256 => mapping(uint256 => uint256)))
+    _totalGroupActionReward;
+mapping(address => mapping(uint256 => mapping(uint256 => bool)))
+    _denominatorCached;
 ```
 
 ```solidity
