@@ -6,7 +6,7 @@
 | --- | --- | --- |
 | [ActionTarget](01-action-target.md) | 三类回调、映射、重复创建、非授权调用、Round 查询 | 只用关联 Executor，回调失败全回滚，列表与本轮投票一致 |
 | ActionTarget | forceExit | 只清登记，不调用 Executor、不返还资产、不改链群归属 |
-| [LP](04-lp-executor.md) | 时间加权、治理上限、完整退出 | 按 V2 聚合扣减结算，结算不超预算，零分母不 panic |
+| [LP](04-lp-executor.md) | 时间加权、治理上限、部分撤回、完整退出 | 按 V2 聚合扣减结算，结算不超预算，零分母不 panic |
 | [阶段](02-phase-model.md) | LP 冷启动、链群/服务对齐 | 按确认后的三/四阶段映射，未开始回滚 RoundNotStarted |
 | [链群行动](05-group-action-executor.md) | 激活、配置更新、自有/体验参与 | 按角色权限更新各自账本 |
 | 链群行动 | 17 组索引；跨社区、跨行动、最后关系退出 | 全量/Count/AtIndex 一致，逐层清理，不提前删除 |

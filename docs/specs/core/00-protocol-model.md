@@ -36,7 +36,7 @@ Core 不解释具体 Proposal 的业务字段，扩展通过 Target 接入。
 | Mint | `maxGovBoostRewardMultiplier` | 加速激励相对投票激励的倍数上限，如 `2` |
 | Launch | `tokenFactoryAddress`、`mintAddress`、`memberNFTAddress` | 代币工厂、铸造和身份依赖 |
 | Launch | `rootParentTokenAddress` | 根父币 WBNB |
-| Launch | `distributor`、`name`、`symbol` | 首币分发目标、名称和符号；`distributor` 非零 |
+| Launch | `distributor`、`distributorMode`、`name`、`symbol` | 首币分发目标、回调模式、名称和符号；`distributor` 非零 |
 | Launch | `launchRatio` | 发射阈值比例，`1e18` 精度，如 `1e16 = 1%` |
 | Launch | `maxLaunchCount` | 每社区累计次数上限，如 `100` |
 | TokenFactory | `launchAddress`、`mintAddress`、`pairFactoryAddress` | 唯一创建调用方、代币 minter 和 Pair Factory |

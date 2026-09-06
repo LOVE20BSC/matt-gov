@@ -32,7 +32,7 @@
 - 旧 `IExtensionCenter` 接口
 
 ### ✅ 保留逻辑
-- **Proposal → Executor 映射**：参考 `LOVE20TKM/action/ExtensionCenter` 的映射逻辑
+- **Proposal → Executor 映射**：参考 `LOVE20TKM/extension/src/ExtensionCenter.sol` 的映射逻辑
 - **参与登记**：参考 `addAccount` / `removeAccount` 逻辑
 
 ### 🔄 关键变化
@@ -63,7 +63,7 @@
 
 ### 📍 实现参考
 ```
-旧代码：LOVE20TKM/action/ExtensionCenter（接口定义）
+旧代码：LOVE20TKM/extension/src/ExtensionCenter.sol（接口定义）
 保留：Proposal 映射、参与登记
 新增：forceExit、统一查询接口
 ```
@@ -121,7 +121,7 @@ Phase 4 起，链群行动进入稳态运行。
 ### ✅ 保留逻辑
 
 #### 时间权重公式
-参考 `LOVE20TKM/extension-lp/V2` 的时间扣减逻辑：
+参考 `LOVE20TKM/extension-lp/src/ExtensionLp.sol` 的时间扣减逻辑：
 ```text
 deduction_i = min(
     amount_i,
@@ -157,7 +157,7 @@ effectiveRatio = min(effectiveLpRatio, govRatioCap)
 
 ### 📍 实现参考
 ```
-旧代码：LOVE20TKM/extension-lp/V2
+旧代码：LOVE20TKM/extension-lp/src/ExtensionLp.sol、ExtensionLpFactoryV2.sol
 保留：时间权重公式、治理票上限
 修改：主体身份、阶段映射、激励铸造流程
 删除：V1 实现
@@ -173,7 +173,7 @@ effectiveRatio = min(effectiveLpRatio, govRatioCap)
 ### ✅ 保留逻辑
 
 #### 17 组全局索引
-**完全保留**：参考 `LOVE20TKM/action/GroupAction` 的全局索引结构
+**完全保留**：参考 `LOVE20TKM/extension-group/src/ExtensionGroupAction.sol` 的全局索引结构
 
 - Group ID：`gGroupIds`、`gGroupIdsByMemberId`、`gGroupIdsByTokenAddress`、`gGroupIdsByTokenAddressByMemberId`、`gGroupIdsByTokenAddressByActionId`
 - Token Address：`gTokenAddresses`、`gTokenAddressesByMemberId`、`gTokenAddressesByGroupId`、`gTokenAddressesByGroupIdByMemberId`
@@ -183,23 +183,23 @@ effectiveRatio = min(effectiveLpRatio, govRatioCap)
 每组索引都提供 `全量数组`、`Count`、`AtIndex` 查询。
 
 #### 按 Round 参与历史
-**保留逻辑**：参考 `LOVE20TKM/action/GroupAction` 的历史快照机制
+**保留逻辑**：参考 `LOVE20TKM/extension-group/src/ExtensionGroupAction.sol` 的历史快照机制
 
 链群 Executor 通过加入阶段内逐笔发生的加入、追加、体验加入、部分撤回和全部退出交易，自然形成每轮参与快照。同一 Round 内的多笔交易持续更新该 Round 的最终值，不为同一 Round 重复创建版本；退出写入显式零值，供后续 RoundHistory 识别终止点。
 
 #### 公共验证者机制
-**保留逻辑**：参考 `LOVE20TKM/action/GroupAction` 的候选申请、排名、分割线开放
+**保留逻辑**：参考 `LOVE20TKM/extension-group/src/GroupVerify.sol` 的候选申请、排名、分割线开放
 
 - 候选申请只在投票阶段新增、撤销或修改
 - 排名按累计候选票降序、`applicationId` 升序
 - 分割线开放：`openBlock = verifyPhaseStartBlock + ceil(verifyPhaseBlocks × splits[rank - 2] / 1e18)`
 
 #### 激励计算
-**BSC 调整**：所有链群成员按同一原始得分/最终得分规则计算，全行动统一分母，不在链群内二次按比例分配：
+**BSC 调整**：所有链群成员按同一原始得分规则计算，`finalScore = 参与代币数量 × 原始验证得分`，全行动统一分母，不在链群内二次按比例分配：
 ```text
-memberScore = participationAmount × finalScore
-totalFinalScore = sum(memberScore across all groups)
-memberReward = floor(proposalReward × memberScore / totalFinalScore)
+finalScore = participationAmount × originScore
+totalFinalScore = sum(finalScore across all groups)
+memberReward = floor(proposalReward × finalScore / totalFinalScore)
 ```
 
 ### 🔄 关键变化
@@ -218,7 +218,7 @@ memberReward = floor(proposalReward × memberScore / totalFinalScore)
 
 ### 📍 实现参考
 ```
-旧代码：LOVE20TKM/action/GroupAction
+旧代码：LOVE20TKM/extension-group/src/ExtensionGroupAction.sol、GroupVerify.sol
 保留：17 组索引、Round 历史、公共验证者、激励公式
 修改：主体身份、阶段映射、激励铸造流程
 ```
@@ -233,7 +233,7 @@ memberReward = floor(proposalReward × memberScore / totalFinalScore)
 ### ✅ 保留逻辑
 
 #### 服务范围和聚合
-**保留逻辑**：参考 `LOVE20TKM/action/GroupService` 的聚合计算
+**保留逻辑**：参考 `LOVE20TKM/extension-group/src/ExtensionGroupService.sol` 的聚合计算
 
 一个链群服务 Proposal 面向整个 `actionTokenAddress` 社区的链群行动集合。服务 Executor 在铸币阶段通过 ActionTarget 一次性取得 `serviceReward`，随后逐个检查 `actionTokenAddress` 社区的链群行动并计算权重。
 
@@ -262,13 +262,7 @@ theoreticalOwnerReward(m) = serviceReward × ownerWeightNumerator(m) / (totalGro
 - **旧**：二次分配可能因舍入导致超额
 - **新**：配置比例总和超过 `1e18` 时拒绝，正好 `1e18` 合法；使用统一预算计算，确保 100% 分配不下溢且不包含 gas 补偿
 
-**改进计算**：
-```text
-actualVerifierReward = actualReward × theoreticalVerifierReward / theoreticalReward
-actualOwnerReward = actualReward - actualVerifierReward
-```
-
-各接收者金额向下取整，舍入余数归 owner；不通过运行时缩放掩盖非法配置。
+**改进计算**：先按 `totalGroupActionReward` 统一计算服务预算，再按公共验证者比例拆分；各接收者金额向下取整，舍入余数归 owner。不通过运行时缩放掩盖非法配置。
 
 #### 同币或父币服务
 - **旧**：可能有限制
@@ -276,7 +270,7 @@ actualOwnerReward = actualReward - actualVerifierReward
 
 ### 📍 实现参考
 ```
-旧代码：LOVE20TKM/action/GroupService
+旧代码：LOVE20TKM/extension-group/src/ExtensionGroupService.sol
 保留：服务范围、权重计算、二次分配
 修改：去 gas 补偿、100% 二次分配安全收敛
 ```
@@ -313,7 +307,7 @@ actualOwnerReward = actualReward - actualVerifierReward
 
 | 组件 | 原位置 | 删除原因 |
 |------|--------|----------|
-| LP V1 | LOVE20TKM/extension-lp/V1 | 只迁移 V2 |
+| LP V1 | LOVE20TKM/extension-lp/src/ExtensionLp.sol（V1 对应旧实现） | 只迁移 V2 |
 | 地址主体接口 | 所有 Executor | 统一使用 memberId |
 | gas 补偿 | GroupService | 简化激励模型 |
 

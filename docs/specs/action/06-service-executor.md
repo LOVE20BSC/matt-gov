@@ -16,7 +16,24 @@
 | `groupReward(a, m)` | 链群 m 在行动 a 的成员激励总和 |
 | `serviceReward` | 本服务 Proposal 的整笔激励 |
 
-服务 Executor 首次计算某个服务 `round` 时，读取并保存 `totalGroupActionReward`；后续该轮结算只读缓存，不重复遍历链群行动。另用 `denominatorCached` 区分“尚未计算”和“已计算且为 0”。
+服务 Executor 首次计算某个 `actionTokenAddress + groupActionId + round` 时，读取并保存 `totalGroupActionReward`；后续该键的结算只读缓存，不重复遍历链群行动。另用 `denominatorCached` 区分“尚未计算”和“已计算且为 0”。
+
+```solidity
+mapping(address actionTokenAddress => mapping(uint256 groupActionId => mapping(uint256 round => uint256)))
+    totalGroupActionReward;
+mapping(address actionTokenAddress => mapping(uint256 groupActionId => mapping(uint256 round => bool)))
+    denominatorCached;
+```
+
+```solidity
+function totalGroupActionReward(
+    address actionTokenAddress,
+    uint256 groupActionId,
+    uint256 round
+) external view returns (uint256 reward, bool cached);
+
+function burnRewardIfNeeded(uint256 round) external;
+```
 
 保留的权重公式：
 
@@ -31,7 +48,7 @@ theoreticalOwnerReward(m) = floor(serviceReward * ownerWeightNumerator(m) / (tot
 
 ## 治理上限
 
-建议只约束链群 owner，公共验证者按实际验证工作量直接获得权重激励，不受该上限影响。owner 超出上限的部分销毁，不转给其他 owner 或验证者：
+只约束链群 owner，公共验证者按实际验证工作量直接获得权重激励，不受该上限影响。owner 超出上限的部分销毁，不转给其他 owner 或验证者：
 
 ```text
 theoreticalOwnerRatio(m) = floor(ownerWeightNumerator(m) / totalGroupActionReward)  // 1e18 精度
@@ -42,9 +59,9 @@ actualOwnerReward(m) = floor(serviceReward * actualOwnerRatio(m) / 1e18)
 ownerOverflow(m) = theoreticalOwnerReward(m) - actualOwnerReward(m)
 ```
 
-其中 `theoreticalOwnerReward(m)` 使用上节权重公式；`validGovVotes(m)` 和 `totalGovVotes` 在服务铸造时读取最新有效治理票。先判断各角色权重分子，分子为零直接返回，不执行除法。`totalGovVotes == 0` 且上限启用时，owner 实际激励为 0，理论 owner 激励按 owner 分别记入 `rewardBurned`。`govRatioMultiplier == 0` 关闭 owner 上限，此时 `actualOwnerReward = theoreticalOwnerReward`。`totalGroupActionReward == 0` 时不进行比例计算；沿用旧 `ExtensionBaseReward.burnRewardIfNeeded(round)` 的专用入口，由任何地址在轮次结束后幂等销毁该轮未分配服务激励。
+其中 `theoreticalOwnerReward(m)` 使用上节权重公式；`validGovVotes(actionTokenAddress, m)` 和 `totalGovVotes(actionTokenAddress)` 在服务铸造时读取最新有效治理票。先判断各角色权重分子，分子为零直接返回，不执行除法。`totalGovVotes == 0` 且上限启用时，owner 实际激励为 0，理论 owner 激励按 owner 分别记入服务执行合约的 `ownerBurned`。`govRatioMultiplier == 0` 关闭 owner 上限，此时 `actualOwnerReward = theoreticalOwnerReward`。`totalGroupActionReward == 0` 时不进行比例计算；沿用旧 `ExtensionBaseReward.burnRewardIfNeeded(round)` 的专用入口，由任何地址在轮次结束后幂等销毁该轮未分配服务激励。
 
-`govRatioMultiplier` 来自服务 Proposal 创建时的 KV；治理票使用服务铸造时最新有效值；owner 超额按每个 owner 单独计入 `rewardBurned`。`govRatioMultiplier == 0` 关闭上限。服务 Proposal 本轮没有激励时由 `Mint.prepareRewardIfNeeded` 处理，Executor 不重复判断。
+`govRatioMultiplier` 来自服务 Proposal 创建时的 KV；治理票使用 `actionTokenAddress` 社区在服务铸造时的最新有效值；owner 超额按每个 owner 单独记入 `ownerBurned`。服务代币已经由 Mint 铸造并转入 Executor 后，销毁直接调用该代币的 `burn(amount)`；不重复修改 Core Mint 的 `rewardBurned`。服务 Proposal 本轮没有激励时由 `Mint.prepareRewardIfNeeded` 处理，Executor 不重复判断。
 
 ## 二次分配
 
@@ -64,6 +81,6 @@ actualRecipientReward[i] = theoreticalRecipientReward[i]
 
 - `DistributionOverflow` 在配置比例总和超过 `1e18` 时触发；正好 `1e18` 合法。
 - 二次分配配置键为 `sourceTokenAddress + sourceActionId + groupId + round`；分配事件另带服务 Proposal 上下文。
-- 原来源 `LOVE20TKM/action/GroupService` 仅作为行为参考；服务加入、配置及结算 ABI 在实现接口中补齐。
+- 原来源 `LOVE20TKM/extension-group/src/ExtensionGroupService.sol` 仅作为行为参考；服务加入、配置及结算 ABI 在实现接口中补齐。
 
 铸造见 [统一链路](07-minting.md#铸造链路)，验收见 [Action 验收](08-testing.md)。

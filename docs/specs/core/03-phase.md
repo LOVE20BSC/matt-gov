@@ -14,7 +14,19 @@ Phase 维护连续的无语义时间片、同步观测和动态校准，不内�
 | `syncObservationsCount()` | 同步观测数量 |
 | `syncObservation(observationId)` | 按从 1 开始的 ID 读取观测 |
 
-以上查询尚未给出完整返回类型。同步接口为：
+公开查询接口：
+
+```solidity
+function currentPhase() external view returns (uint256 phase);
+function phaseInfo(uint256 phaseNumber)
+    external view returns (uint256 startBlock, uint256 phaseBlocks);
+function phaseAtBlock(uint256 blockNumber) external view returns (uint256 phase);
+function syncObservationsCount() external view returns (uint256 count);
+function syncObservation(uint256 observationId)
+    external view returns (uint256 blockNumber, uint256 blockTimestamp);
+```
+
+同步接口为：
 
 ```solidity
 function sync() external returns (bool adjusted, uint256 newPhaseBlocks);

@@ -8,7 +8,7 @@ executor -> ActionTarget -> Mint -> ActionTarget -> executor
 
 只有关联 Executor 可发起 ActionTarget 的铸造入口；ActionTarget 作为 Target 调用 Mint，取得指定 token、Round、Proposal 的完整激励并在同一交易全部转回 Executor，不留余额。Executor 再按所属业务完成成员、验证者和 owner 分配。任一步失败回滚，不允许重复结算。
 
-服务轮次没有可分配源行动时，使用 Executor 的 `burnRewardIfNeeded(round)` 专用入口；该入口只能处理已结束轮次，且重复调用无操作。
+服务轮次没有可分配源行动时，使用 Executor 的 `burnRewardIfNeeded(round)` 专用入口；该入口只能处理已结束轮次，Executor 直接调用服务代币 `burn(amount)`，且重复调用无操作。
 
 Core 的预留、铸造和取消额度账本见 [Mint](../core/06-mint.md)，不能把 Executor 内部转账再次计作 Core 铸造。
 

@@ -40,12 +40,12 @@ openBlock = verifyPhaseStartBlock + openOffset
 
 ## 行动激励
 
-公共验证者对所有链群成员使用同一规则记录 `originScore`（0–100）并计算 `finalScore`。行动激励直接按所有链群成员的最终得分统一加权：
+公共验证者对所有链群成员使用同一规则记录 `originScore`（0–100）。每个行动者的 `finalScore` 是其参与代币数量乘原始验证得分，并按目标 Round 累计；行动激励直接按所有链群成员的最终得分统一加权：
 
 ```text
-memberScore = 参与代币数量 * finalScore
-totalFinalScore = sum(memberScore across all groups)
-memberReward = floor(proposalReward * memberScore / totalFinalScore)
+finalScore = participationAmount * originScore
+totalFinalScore = sum(finalScore across all groups)
+memberReward = floor(proposalReward * finalScore / totalFinalScore)
 ```
 
 所有链群使用同一原始得分和最终得分规则；按目标 Round 已确认参与数据汇总全行动的 `totalFinalScore` 后直接分配。`totalVotes` 或 `totalFinalScore` 为零时不除零，行动层激励为零；链群 owner 的聚合份额由其成员最终激励之和得到，不在链群内再次按比例分配。
@@ -56,6 +56,6 @@ Executor 先按 [统一铸造链路](07-minting.md#铸造链路) 取得整笔激
 
 - 退出零值与无记录继续使用旧 RoundHistory 的显式记录语义；不得通过清空 mapping 伪造退出。
 - `candidateCount = n` 时 `splits.length == max(n - 1, 0)`；排名在验证阶段开始时冻结，申请只能在投票阶段修改。
-- 激活、配置更新、候选申请及验证批次 ABI 以实现接口补齐；原 `LOVE20TKM/action/GroupAction` 仅作为行为参考。
+- 激活、配置更新、候选申请及验证批次 ABI 以实现接口补齐；原 `LOVE20TKM/extension-group/src/ExtensionGroupAction.sol` 与 `GroupVerify.sol` 仅作为行为参考。
 
 验收见 [Action 验收](08-testing.md)。

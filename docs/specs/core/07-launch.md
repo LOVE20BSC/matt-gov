@@ -7,12 +7,15 @@ Launch 负责基础发射与次数账本；TokenFactory 负责创建 LOVE20Token
 首币参数与依赖在同一次初始化中传入；供应量在工厂初始化固定，不在 Launch 再保存一份：
 
 ```solidity
+enum DistributorMode { NoCallback, Callback }
+
 function init(
     address tokenFactory,
     address mint,
     address memberNFT,
     address rootParentToken,
     address distributor,
+    DistributorMode distributorMode,
     uint256 launchRatio,
     uint256 maxLaunchCount,
     string calldata name,
@@ -69,7 +72,28 @@ function mergeLaunchCount(
 
 当前成员 NFT 持有人可发射社区子币，消耗其一次 `launchCount`。发射流程按检查、更新、交互执行并防重入：先验证成员次数和代币参数，扣减次数，再创建子币、分发首批供应并调用 distributor。外部失败时子币创建和次数消耗全部回滚。
 
-普通发射的社区必须与 `parentTokenAddress` 一致，`distributor` 非零。部署时保留符号不得本地发射或复用；`NoCallback` / `Callback`、KV 校验要求见 [组织验收](../../acceptance.md#子币发射分发边界)，完整分发回调 ABI 尚未定义。
+```solidity
+function launchToken(
+    string calldata tokenSymbol,
+    address parentTokenAddress,
+    address distributor,
+    DistributorMode distributorMode
+) external returns (address tokenAddress);
+```
+
+普通发射的社区必须与 `parentTokenAddress` 一致，`distributor` 非零。部署时保留符号不得本地发射或复用。分发支持 `NoCallback` 和 `Callback` 两种模式，不使用 Proposal KV：
+
+```solidity
+interface ILaunchDistributor {
+    function onTokenLaunched(
+        address tokenAddress,
+        address parentTokenAddress,
+        uint256 launcherMemberId
+    ) external;
+}
+```
+
+`NoCallback` 不调用回调；`Callback` 要求 `distributor` 为合约并调用 `onTokenLaunched`，回调失败则整笔发射回滚。首币在 `Launch.init` 中使用同一回调约定，`launcherMemberId` 为 `0`。
 
 distributor 自行实现领取与查询逻辑，`claim(tokenAddress)` 只是建议接口，不是协议必需 ABI。发射者负责选择分发目标，承担其失败和 Gas 耗尽风险。
 
