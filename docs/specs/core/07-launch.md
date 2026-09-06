@@ -93,7 +93,7 @@ interface ILaunchDistributor {
 }
 ```
 
-`NoCallback` 不调用回调；`Callback` 要求 `distributor` 为合约并调用 `onTokenLaunched`，回调失败则整笔发射回滚。首币在 `Launch.init` 中使用同一回调约定，`launcherMemberId` 为 `0`。
+`NoCallback` 不调用回调；`Callback` 要求 `distributor` 为合约并调用 `onTokenLaunched`，回调失败则整笔发射回滚。首币使用旧 Burn `Airdrop`，固定采用 `NoCallback`；普通发射才可选择 `Callback`。
 
 distributor 自行实现领取与查询逻辑，`claim(tokenAddress)` 只是建议接口，不是协议必需 ABI。发射者负责选择分发目标，承担其失败和 Gas 耗尽风险。
 

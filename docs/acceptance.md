@@ -96,7 +96,7 @@
 - 次数融合不携带 `launchCredit`
 
 ### 子币发射分发边界
-**覆盖要求**：覆盖只有 `Launch` 可调用 `TokenFactory`、首个代币通过一次性启动路径使用 WBNB 且不消耗发射次数、启动后不能重复创建首个代币、普通发射社区与 `parentTokenAddress` 一致、非零 `distributor`、`NoCallback`/`Callback` 两种分发模式、Callback 合约接口和回调失败回滚、首次代币使用 Airdrop 目标，以及部署时登记的保留符号不能本地发射或复用。
+**覆盖要求**：覆盖只有 `Launch` 可调用 `TokenFactory`、首个代币通过一次性启动路径使用 WBNB 且不消耗发射次数、启动后不能重复创建首个代币、普通发射社区与 `parentTokenAddress` 一致、非零 `distributor`、普通发射的 `NoCallback`/`Callback` 两种分发模式、Callback 合约接口和回调失败回滚、首币固定使用 Airdrop 与 `NoCallback`，以及部署时登记的保留符号不能本地发射或复用。
 
 **测试方式**：
 - 单元测试：`core/test/Launch.t.sol` 的首个代币启动、普通发射场景
