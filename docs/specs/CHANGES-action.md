@@ -195,11 +195,11 @@ effectiveRatio = min(effectiveLpRatio, govRatioCap)
 - 分割线开放：`openBlock = verifyPhaseStartBlock + ceil(verifyPhaseBlocks × splits[rank - 2] / 1e18)`
 
 #### 激励计算
-**BSC 调整**：所有链群成员按同一原始得分规则计算，`finalScore = 参与代币数量 × 原始验证得分`，全行动统一分母，不在链群内二次按比例分配：
+**BSC 调整**：所有链群成员按同一原始得分规则计算，`finalScore` 为各次 `参与代币数量 × 原始验证得分` 的累计值，全行动统一分母，不在链群内二次按比例分配：
 ```text
-finalScore = participationAmount × originScore
+finalScore(memberId) = sum(participationAmount_i × originScore_i)
 totalFinalScore = sum(finalScore across all groups)
-memberReward = floor(proposalReward × finalScore / totalFinalScore)
+memberReward(memberId) = floor(proposalReward × finalScore(memberId) / totalFinalScore)
 ```
 
 ### 🔄 关键变化

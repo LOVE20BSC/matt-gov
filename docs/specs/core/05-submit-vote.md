@@ -89,6 +89,14 @@ function submissionAtIndex(address tokenAddress, uint256 round, uint256 index)
 - 批量投票或 Target 回调失败时，对应外层交易整体回滚。
 
 ```solidity
+function init(
+    address phaseAddress,
+    address stakeAddress,
+    address submitAddress,
+    address memberNFTAddress,
+    address mintAddress
+) external;
+
 function vote(
     address tokenAddress,
     uint256[] calldata proposalIds,

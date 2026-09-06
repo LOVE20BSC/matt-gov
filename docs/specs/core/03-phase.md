@@ -6,6 +6,15 @@ Phase 维护连续的无语义时间片、同步观测和动态校准，不内�
 
 `originBlocks`、初始 `phaseBlocks`、`targetDays` 为正数；`adjustThreshold` 使用 `1e18` 精度且大于零。`block.number == originBlocks` 时为 Phase 1；不存在有效 Phase 0。`targetSeconds = targetDays * 86400`，如 7 天。
 
+```solidity
+constructor(
+    uint256 originBlocks,
+    uint256 phaseBlocks,
+    uint256 targetDays,
+    uint256 adjustThreshold
+);
+```
+
 | 接口示意 | 返回或作用 |
 | --- | --- |
 | `currentPhase()` | 当前区块的 Phase |

@@ -16,6 +16,10 @@
 ## 铸造
 
 ```solidity
+function init(address firstTokenAddress) external;
+```
+
+```solidity
 function mint(string memory name) external returns (uint256 memberId);
 ```
 
