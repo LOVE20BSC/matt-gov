@@ -21,7 +21,7 @@ Core 规格已按合约拆分到 `core/` 目录：
 - **[core/05-submit-vote.md](core/05-submit-vote.md)** - Submit 与 Vote 规格
 - **[core/06-mint.md](core/06-mint.md)** - Mint 规格
 - **[core/07-launch.md](core/07-launch.md)** - Launch 与 TokenFactory 规格
-- **[core/09-testing.md](core/09-testing.md)** - 事件、错误和验收
+- **[core/08-testing.md](core/08-testing.md)** - 事件、错误和验收
 
 ### Action 规格（已拆分）
 
@@ -90,7 +90,7 @@ Group Chat 规格已按功能模块拆分到 `group-chat/` 目录：
 
 1. 使用 CHANGES 文档的"验收边界"
 2. 对照各模块的 testing.md 验收场景
-   - Core: `core/09-testing.md`
+   - Core: `core/08-testing.md`
    - Action: `action/08-testing.md`
    - Group Chat: `group-chat/08-testing.md`
 3. 确保所有场景覆盖
