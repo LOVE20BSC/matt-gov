@@ -249,6 +249,8 @@ theoreticalVerifierReward(m) = serviceReward × verifierWeightNumerator(m) / (to
 theoreticalOwnerReward(m) = serviceReward × ownerWeightNumerator(m) / (totalGroupActionReward × 1e18)
 ```
 
+`totalGroupActionReward` 统计 `actionTokenAddress` 社区本轮全部链群行动激励，首次按 `actionTokenAddress + groupActionId + round` 计算并缓存；完整验证行动才贡献分子。各角色分子为零时直接返回，不执行除法。
+
 #### 二次分配
 **保留逻辑**：链群 owner 当前持有人可以按 `sourceTokenAddress + sourceActionId + groupId + round` 配置 `recipientIds[]` 和 `ratios[]`；查询轮次没有配置时沿用不晚于该轮的最近配置。
 
@@ -257,6 +259,7 @@ theoreticalOwnerReward(m) = serviceReward × ownerWeightNumerator(m) / (totalGro
 #### 去 gas 补偿
 - **旧**：服务激励包含 gas 补偿部分
 - **新**：服务激励不包含 gas 补偿
+- owner 超出治理票占比上限的部分由 Executor 直接调用服务代币 `burn`，按 owner 单独记录
 
 #### 100% 二次分配安全收敛
 - **旧**：二次分配可能因舍入导致超额
