@@ -2,7 +2,7 @@
 
 服务 Proposal 的代币为 `serviceTokenAddress`，面向整个 `actionTokenAddress` 社区的链群行动，不绑定单个源 actionId。两者必须相同，或服务代币是行动代币的直接父币；其他关系拒绝。
 
-阶段、行动列表与验证完成查询见 [服务验证复用](02-phase-model.md#服务验证复用)。分母统计 `actionTokenAddress` 社区本轮全部链群行动的总激励，分子只来自完成全部验证的行动；不要求源行动已铸币，不包含 Gas 补偿。服务 Proposal 本轮没有可铸造激励时，由 `Mint.prepareRewardIfNeeded` 决定为零，Executor 不重复判断原因，owner 和公共验证者激励均为零。
+阶段、行动列表与验证完成查询见 [服务验证复用](02-phase-model.md#服务验证复用)。分母统计 `actionTokenAddress` 社区本轮全部链群行动的总激励，分子只统计完成全部验证的行动；不要求源行动已铸币，不包含 Gas 补偿。服务 Proposal 本轮没有可铸造激励时，由 `Mint.prepareRewardIfNeeded` 决定为零，Executor 不重复判断原因，owner 和公共验证者激励均为零。
 
 ## 权重
 

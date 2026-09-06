@@ -235,15 +235,15 @@ memberReward = floor(proposalReward × finalScore / totalFinalScore)
 #### 服务范围和聚合
 **保留逻辑**：参考 `LOVE20TKM/extension-group/src/ExtensionGroupService.sol` 的聚合计算
 
-一个链群服务 Proposal 面向整个 `actionTokenAddress` 社区的链群行动集合。服务 Executor 在铸币阶段通过 ActionTarget 一次性取得 `serviceReward`，随后逐个检查 `actionTokenAddress` 社区的链群行动并计算权重。
+一个链群服务 Proposal 面向整个 `actionTokenAddress` 社区的链群行动集合。服务 Executor 在铸币阶段通过 ActionTarget 一次性取得 `serviceReward`，随后以该社区本轮全部链群行动激励作为分母，仅将完成全部验证的行动计入各角色权重分子。
 
 #### 权重计算
 **保留公式**：
 ```text
 verifierWeightNumerator(m) = Σ(A[a] × r[a])
-    // 仅对 verifierId[a] == m 的行动累加
+    // 仅累加完成全部验证且 verifierId[a] == m 的行动
 
-ownerWeightNumerator(m) = Σ(groupReward(a, m) × (1e18 - r[a]))
+ownerWeightNumerator(m) = Σ(groupReward(a, m) × (1e18 - r[a]))  // 仅累加完成全部验证的行动
 
 theoreticalVerifierReward(m) = serviceReward × verifierWeightNumerator(m) / (totalGroupActionReward × 1e18)
 theoreticalOwnerReward(m) = serviceReward × ownerWeightNumerator(m) / (totalGroupActionReward × 1e18)
