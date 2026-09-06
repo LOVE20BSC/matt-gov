@@ -42,6 +42,7 @@ mapping(address => mapping(uint256 => mapping(uint256 => uint256))) cumulatedBoo
 function init(
     address phaseAddress,
     address memberNFTAddress,
+    address voteAddress,
     address routerAddress,
     address pairFactoryAddress,
     uint256 promisedWaitingPhasesMin,
@@ -65,12 +66,9 @@ function stakeToken(
 
 function unstake(address tokenAddress, uint256 memberId) external;
 function withdraw(address tokenAddress, uint256 memberId) external;
-function mergeStake(
-    address tokenAddress,
-    uint256 sourceMemberId,
-    uint256 targetMemberId
-) external;
 ```
+
+`init` 仅部署授权者可调用一次。所有成员写操作校验当前 NFT 持有人；`voteAddress` 用于融合时检查来源本轮投票。金额单位为代币最小单位，等待期为 Phase；费用计算仍按下述旧账本适配。
 
 调用者提供社区代币及父币，Stake 转入双币并通过 Router 添加 LP，再按 LP 数量计份额；提取时移除 LP 并返还双币。
 
@@ -96,7 +94,13 @@ function accountStakeStatus(address tokenAddress, uint256 memberId)
 function validGovVotes(address tokenAddress, uint256 memberId)
     external view returns (uint256);
 function govVotesNum(address tokenAddress) external view returns (uint256);
+function tokenStakeGlobals(address tokenAddress) external view returns (TokenStakeGlobals memory);
+function canWithdraw(address tokenAddress, uint256 memberId) external view returns (bool);
+function cumulatedTokenAmountByAccount(address tokenAddress, uint256 round, uint256 memberId)
+    external view returns (uint256);
 ```
+
+无质押的有效成员返回零状态；`canWithdraw` 在未申请或未到期时返回 false。历史查询读取不晚于目标 Round 的最近记录，含明确归零记录。Vote 从上述历史查询取加速份额，并自行维护投票快照。
 
 ## 治理票与加速质押
 

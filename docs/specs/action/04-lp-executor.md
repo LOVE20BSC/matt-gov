@@ -1,74 +1,77 @@
 # LP Executor
 
-仅迁移 LP V2 业务，不迁移 V1 和旧工厂。参与身份见 [共同参与模型](03-participation.md)，时间映射见 [行动阶段](02-phase-model.md)。
+沿用旧 `ExtensionLp` 的聚合余额、时间扣减和历史查询，采用 V2 的 LP 准入规则；不部署旧业务工厂。BSC 新增部分撤回，业务按 `tokenAddress + actionId` 隔离，参与主体为 MemberNFT。
+
+## 配置与接口
+
+部署依赖通过一次性 `init` 绑定；每个行动的配置由创建回调解析，不能放进共享合约的全局 init。
+
+```solidity
+function init(address actionTargetAddress, address memberNFTAddress, address phaseAddress,
+    address stakeAddress, address mintAddress, address pairFactoryAddress) external;
+function join(address tokenAddress, uint256 actionId, uint256 memberId,
+    uint256 amount, string[] calldata verificationInfos) external;
+function withdraw(address tokenAddress, uint256 actionId, uint256 memberId, uint256 amount) external;
+function exit(address tokenAddress, uint256 actionId, uint256 memberId) external;
+function joinedAmount(address tokenAddress, uint256 actionId) external view returns (uint256);
+function joinedAmountByMemberId(address tokenAddress, uint256 actionId, uint256 memberId)
+    external view returns (uint256);
+function joinedAmountByRound(address tokenAddress, uint256 actionId, uint256 round)
+    external view returns (uint256);
+function joinedAmountByMemberIdByRound(address tokenAddress, uint256 actionId, uint256 memberId, uint256 round)
+    external view returns (uint256);
+function deduction(address tokenAddress, uint256 actionId, uint256 round, uint256 memberId)
+    external view returns (uint256 amount, uint256[] memory joinBlocks, uint256[] memory joinAmounts);
+function totalDeduction(address tokenAddress, uint256 actionId, uint256 round) external view returns (uint256);
+function govRatio(address tokenAddress, uint256 actionId, uint256 round, uint256 memberId)
+    external view returns (uint256 ratio, bool claimed);
+```
+
+创建 KV 的键为 `keccak256` 后的名称，值用 `abi.encode`：`joinTokenAddress(address)`、`govRatioMultiplier(uint256)`、`minGovRatio(uint256)` 必填；可选 `verificationKeys(string[])` 和 `verificationKeyGuides(string[])` 必须等长。LP 必须是已配置 Pair Factory 登记的交易对，V2 不要求交易对包含激励代币。两个治理比例使用 `1e18` 精度，`minGovRatio <= 1e18`。
+
+写操作要求调用者持有 memberId；加入/追加金额为正，首次加入满足 `minGovRatio`。LP 从调用者转入 Executor，撤回时转给当前持有人。首次参与登记到 ActionTarget，全部退出后清除；失败全部回滚。激励接口见 [行动铸造](07-minting.md#铸造链路)。
 
 ## 时间权重
 
-```solidity
-function init(address actionTargetAddress, address tokenAddress, address joinTokenAddress)
-    external;
-function join(
-    uint256 memberId,
-    uint256 amount,
-    string[] calldata verificationInfos
-) external;
-function withdraw(uint256 memberId, uint256 amount) external;
-function exit(uint256 memberId) external;
-function joinedAmount() external view returns (uint256);
-function joinedAmountByMemberId(uint256 memberId)
-    external view returns (uint256);
-function joinedAmountByRound(uint256 round)
-    external view returns (uint256);
-function joinedAmountByMemberIdByRound(uint256 memberId, uint256 round)
-    external view returns (uint256);
-```
-
-每笔加入使用加入阶段起点和长度冻结时间扣减：
+每笔加入按本轮加入 Phase 的起点和长度计算：
 
 ```text
-deduction_i = min(amount_i, floor(amount_i * (joinBlock_i - joinPhaseStartBlock) / joinPhaseBlocks))
+deductionAdded = min(amount, floor(amount * elapsedJoinBlocks / joinPhaseBlocks))
 effectiveAmount = joinedAmount - deduction
+totalEffectiveAmount = totalJoinedAmount - totalDeduction
 effectiveLpRatio = floor(effectiveAmount * 1e18 / totalEffectiveAmount)
 ```
 
-`amount_i` 是本笔加入量，`deduction` 为扣减汇总，`joinedAmount` 是成员加入总量。`totalEffectiveAmount` 是该行动 Round 的有效参与总量。阶段长度和起点不能在结算时改用另一阶段的值。
-
-例：阶段共 100 区块，成员在开始后第 25 区块加入 100 个最小单位，扣减 25，有效量 75。
+余额按 RoundHistory 继承，扣减只属于加入发生的 Round。跨轮持续参与时旧余额保留，新一轮扣减从 0 开始；追加只累加本次扣减。阶段起点和长度不可用结算时参数重算。
 
 ## 部分撤回
 
-LP 支持部分撤回，沿用 V2 的聚合账本，不新增 lot：
-
-`amount` 不得超过当前 `joinedAmount`。撤回时按当前聚合比例同步减少 `joinedAmount`、`deduction` 和 `totalDeduction`；全额撤回执行旧 V2 的 `exit` 清理，加入区块与加入金额数组一并清空。撤回发生在加入阶段时更新当前 Round，阶段结束后不得回写已冻结 Round。
+撤回只更新当前加入 Round，不能改已冻结历史；金额须满足 `0 < amount <= joinedAmount`，并沿用旧退出等待：`block.number >= lastJoinedBlock + 1`。
 
 ```text
-deductionReduction = amount == joinedAmount
-    ? deduction
-    : floor(deduction * amount / joinedAmount)
+deductionReduction = floor(deduction * amount / joinedAmount)
 joinedAmount -= amount
+totalJoinedAmount -= amount
 deduction -= deductionReduction
 totalDeduction -= deductionReduction
 ```
 
+所有右侧均使用撤回前值。减少成员扣减和总扣减的数量必须相同；全额撤回时公式自然取尽剩余扣减，不留余数。部分撤回保留原加入区块/金额数组作为记录，不逐笔缩放；数组之和不再代表当前余额。全部退出清空当前 Round 的上述数组、当前参与登记和最后加入区块，不删除过去 Round。
+
+例（最小单位）：余额 7、扣减 3，撤回 2 后扣减减少 0，剩余余额 5、扣减 3；再全部退出取尽剩余扣减 3。
+
 ## 治理上限与分配
 
-`govRatioMultiplier` 在 Proposal 创建时设置，使用 `1e18` 精度。成员 `validGovVotes(memberId)` 和社区 `totalGovVotes` 均在铸币时从 Stake 实时读取，用于上限而非 LP 权重。
-
-启用上限且分母非零时：
+成员与社区治理票均在领取时读取 `Stake.validGovVotes(tokenAddress, memberId)` 和 `Stake.govVotesNum(tokenAddress)`。已领取轮次的 `govRatio` 返回当时记录，不受后续质押变化影响。
 
 ```text
-govRatio = floor(validGovVotes(memberId) * 1e18 / totalGovVotes)
+theoreticalReward = floor(proposalReward * effectiveLpRatio / 1e18)
+govRatio = floor(validGovVotes * 1e18 / totalGovVotes)
 govRatioCap = floor(govRatio * govRatioMultiplier / 1e18)
-effectiveRatio = min(effectiveLpRatio, govRatioCap)
-mintReward = floor(proposalReward * effectiveRatio / 1e18)
+mintReward = floor(proposalReward * min(effectiveLpRatio, govRatioCap) / 1e18)
+burnReward = theoreticalReward - mintReward
 ```
 
-[组织验收](../../acceptance.md#行动公式零值边界) 规定：`totalEffectiveAmount == 0` 时行动激励为零；启用治理上限且 `totalGovVotes == 0` 时为零；`govRatioMultiplier == 0` 时关闭上限，不能因治理票为零而清零激励。先处理这些分支，再执行除法。
+先处理零值：无有效参与量时成员激励为零；乘数为 0 时关闭上限并返回理论激励；上限启用且总治理票为 0 时该成员理论激励全部销毁。未参与的轮次查询返回零。销毁调用 Token.burn，不修改 Core 的取消预留账本。
 
-Executor 经 [铸造链路](07-minting.md#铸造链路) 一次取得本 Round 整笔 Proposal 激励，再按上述比例内部结算和处理溢出销毁；任何失败回滚。LP 参与和退出沿用 ExtensionLpV2 的聚合余额与按 Round 记录的扣减，不新增 lot。LP 手续费结算属于 Core Stake，不属于本 Executor。
-
-## 实现约束
-
-沿用 `LOVE20TKM/extension-lp/src/ExtensionLp.sol` 的聚合 `joinedAmount`、`_deduction`、`_totalDeduction`、加入区块和加入金额数组，以及完整 `exit` 清理逻辑；仅替换参与主体为 `memberId`，部分撤回只按聚合账本比例扣减。
-
-验收见 [Action 验收](08-testing.md)。
+来源：旧 `extension-lp/src/ExtensionLp.sol`、`ExtensionLpFactoryV2.sol` 和 `extension/src/ExtensionBaseRewardTokenJoin.sol`。部分撤回是 BSC 新增，不声称旧 V2 已具备。验收见 [Action 验收](08-testing.md)。

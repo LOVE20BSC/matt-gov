@@ -28,12 +28,12 @@ Core 不解释具体 Proposal 的业务字段，扩展通过 Target 接入。
 | MemberNFT | `multiplier` | 每缩短一字节的费用倍数，如 `10` |
 | MemberNFT | `maxMemberNameLength` | 最大字节数，如 `32` |
 | Phase 构造参数 | `originBlocks`、`phaseBlocks`、`targetDays`、`adjustThreshold` | 启动区块、初始区块数、目标天数、偏差阈值；前三者大于零，阈值使用 `1e18` 精度 |
-| Stake | `phaseAddress`、`memberNFTAddress`、`routerAddress`、`pairFactoryAddress` | 时间、身份、路由和 Pair Factory 依赖 |
+| Stake | `phaseAddress`、`memberNFTAddress`、`voteAddress`、`routerAddress`、`pairFactoryAddress` | 时间、身份、融合投票检查、路由和 Pair Factory 依赖 |
 | Stake | `promisedWaitingPhasesMin`、`promisedWaitingPhasesMax` | 承诺解锁期的最小、最大 Phase 数 |
 | Submit | `phaseAddress`、`stakeAddress`、`memberNFTAddress` | 时间、质押和身份依赖 |
 | Submit | `submitMinPerThousand` | 推举门槛，千分比，如 `10 = 1%` |
 | Vote | `phaseAddress`、`stakeAddress`、`submitAddress`、`memberNFTAddress`、`mintAddress` | 时间、票权、提案、身份和激励门槛依赖 |
-| Mint | `voteAddress`、`submitAddress`、`stakeAddress`、`launchAddress` | 投票、提案、质押和发射依赖 |
+| Mint | `voteAddress`、`submitAddress`、`stakeAddress`、`launchAddress`、`memberNFTAddress` | 投票、提案、质押、发射和铸造权限依赖 |
 | Mint | `proposalRewardMinVotePerThousand` | 提案激励门槛，千分比，如 `50 = 5%` |
 | Mint | `roundRewardGovPerThousand`、`roundRewardProposalPerThousand` | 治理池、提案池占可用供应的千分比，如 `30`、`10` |
 | Mint | `maxGovBoostRewardMultiplier` | 加速激励相对投票激励的倍数上限，如 `2` |

@@ -4,14 +4,32 @@
 
 ## 事件
 
-事件使用适用的 `tokenAddress`、`memberId`、`proposalId`、`round` 主键，覆盖：
+```solidity
+event PhaseSynchronized(uint256 indexed phase, uint256 blockNumber, uint256 timestamp,
+    bool adjusted, uint256 phaseBlocks);
+event PhaseAdjusted(uint256 indexed effectivePhase, uint256 oldPhaseBlocks, uint256 newPhaseBlocks);
+event ProposalCreated(address indexed tokenAddress, uint256 indexed proposalId, uint256 indexed author,
+    string title, string details, address target, uint8 targetMode);
+event ProposalSubmitted(address indexed tokenAddress, uint256 indexed round, uint256 indexed proposalId,
+    uint256 submitterId);
+event VoteCast(address indexed tokenAddress, uint256 indexed round, uint256 indexed proposalId,
+    uint256 voterId, uint256 votes);
+event RewardPrepared(address indexed tokenAddress, uint256 indexed round, uint256 govReward,
+    uint256 proposalReward, uint256 rewardReserved, uint256 rewardBurned);
+event GovernanceRewardMinted(address indexed tokenAddress, uint256 indexed round, uint256 indexed memberId,
+    uint256 voteReward, uint256 boostReward, uint256 burnReward);
+event ProposalRewardMinted(address indexed tokenAddress, uint256 indexed round, uint256 indexed proposalId,
+    address target, uint256 amount);
+event RewardBurned(address indexed tokenAddress, uint256 indexed round, uint256 amount, bytes32 reason);
+event LaunchCountAdded(address indexed tokenAddress, uint256 indexed memberId, uint256 count);
+event LaunchCountMerged(address indexed tokenAddress, uint256 indexed sourceMemberId,
+    uint256 indexed targetMemberId, uint256 count);
+event LaunchCountConsumed(address indexed tokenAddress, uint256 indexed memberId, uint256 count);
+event TokenCreated(address indexed tokenAddress, address indexed parentTokenAddress,
+    string name, string symbol, address distributor);
+```
 
-- MemberNFT 铸造/转移；质押/解锁/提取/融合。
-- Phase 生成/同步；Proposal 创建/推举/投票。
-- 激励准备/铸造/销毁；发射额度及次数增加/融合/消耗。
-- 子币创建/分发；Pair 手续费结算/销毁。
-
-具体事件 ABI 尚未完整定义。
+事件使用 `tokenAddress`、`memberId`、`proposalId`、`round` 主键；地址字段仅表示代币、Target、Distributor 或调用审计地址。
 
 ## 拒绝条件
 

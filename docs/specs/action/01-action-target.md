@@ -26,7 +26,7 @@ values[0] = abi.encode(executorAddress)
 登记当前成员是否参与行动，供参与列表和外部资格查询；包括链群行动，但不保存 Executor 的资产、验证或链群归属。
 
 ```solidity
-function init(address memberNFTAddress, address voteAddress, address mintAddress)
+function init(address memberNFTAddress, address submitAddress, address voteAddress, address mintAddress)
     external;
 function isAccountJoined(
     address tokenAddress,
@@ -52,7 +52,12 @@ function unregisterParticipation(
     uint256 actionId,
     uint256 memberId
 ) external;
+function executor(address tokenAddress, uint256 proposalId) external view returns (address);
+function mintProposalReward(address tokenAddress, uint256 round, uint256 proposalId)
+    external returns (uint256 amount);
 ```
+
+`init` 仅部署授权者可调用一次。register/unregister/mint 仅关联 Executor 可调用；创建/推举回调仅 Submit 可调用，投票回调仅 Vote 可调用。重复登记、重复清除均不改状态；重复铸造回滚。不存在关联时 `executor` 返回零，但写操作拒绝零关联。`isAccountJoined` 无记录时返回 false。
 
 ## forceExit
 
@@ -83,10 +88,10 @@ function proposals(address tokenAddress, uint256 round)
     );
 ```
 
-从 Vote 读取本轮有票 Proposal，再按映射筛选，不维护独立反向索引，不在这里计算激励门槛。按旧 Verify/Vote 的本轮 Proposal 列表查询，不能读成历史累计。Proposal 数量受推举门槛约束，不另设人工数量上限；服务结算只扫描该轮实际有票且已关联的列表。
+从 Vote 的 `votedProposalIdsCount` / `votedProposalIdsAtIndex` 读取本轮有票 Proposal，再按映射筛选，不维护独立反向索引，不在这里计算激励门槛；不能读成历史累计。不另设人工 Proposal 数量上限，服务结算只扫描该轮实际有票且已关联的列表。
 
 ## 实现约束
 
-空集合返回空数组，分页越界按统一查询规则处理。服务结算只扫描 Vote 已记录的本轮列表，不新增独立反向索引或人工数量上限。
+列表按单轮完整返回，不新增分页。空集合返回空数组；Count 返回数量，AtIndex 的索引从 0 开始，越界回滚 `IndexOutOfBounds`。forceExit 重复清理无操作，不发重复事件；不能以清理失败阻塞 Executor 正常退还资产。
 
 激励转发见 [铸造链路](07-minting.md#铸造链路)，验收见 [Action 验收](08-testing.md)。

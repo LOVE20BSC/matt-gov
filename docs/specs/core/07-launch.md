@@ -75,10 +75,18 @@ function mergeLaunchCount(
 function launchToken(
     string calldata tokenSymbol,
     address parentTokenAddress,
+    uint256 memberId,
     address distributor,
     DistributorMode distributorMode
 ) external returns (address tokenAddress);
+
+function addLaunchCount(address tokenAddress, uint256 memberId, uint256 count) external;
+function launchCount(address tokenAddress, uint256 memberId) external view returns (uint256);
+function issuedLaunchCount(address tokenAddress) external view returns (uint256);
+function isLOVE20Token(address tokenAddress) external view returns (bool);
 ```
+
+`memberId` 必须由调用者当前持有；不用地址默认 NFT 映射。名称沿用旧 Launch 的 `tokenSymbol + "@" + parentSymbol` 生成方式。
 
 普通发射的社区必须与 `parentTokenAddress` 一致，`distributor` 非零。部署时保留符号不得本地发射或复用。分发支持 `NoCallback` 和 `Callback` 两种模式，不使用 Proposal KV：
 
@@ -93,6 +101,8 @@ interface ILaunchDistributor {
 ```
 
 `NoCallback` 不调用回调；`Callback` 要求 `distributor` 为合约并调用 `onTokenLaunched`，回调失败则整笔发射回滚。首币使用旧 Burn `Airdrop`，固定采用 `NoCallback`；普通发射才可选择 `Callback`。
+
+回调仅由 Launch 调用，发生于代币/Pair 创建、首批供应到账、代币登记与次数扣减之后；`launcherMemberId` 取本次 `memberId`。distributor 校验调用方并防止同一 token 重复处理；Launch 不开放额外的补触发回调入口。两种模式均允许非零合约接收，EOA 仅允许 NoCallback。
 
 distributor 自行实现领取与查询逻辑，`claim(tokenAddress)` 只是建议接口，不是协议必需 ABI。发射者负责选择分发目标，承担其失败和 Gas 耗尽风险。
 

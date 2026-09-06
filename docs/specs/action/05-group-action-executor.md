@@ -2,6 +2,42 @@
 
 链群使用 MemberNFT 身份，`groupId` 是链群主体的 `memberId`，不是钱包地址。参与资产见 [共同模型](03-participation.md)，四阶段映射见 [阶段模型](02-phase-model.md)。
 
+## 配置与参与接口
+
+旧 `GroupManager` / `GroupJoin` 的 extension 地址改为 `tokenAddress + actionId`；不为每个 Proposal 部署 Executor。部署依赖通过 init 绑定，业务配置由 Proposal 创建回调写入。
+
+```solidity
+struct GroupConfig {
+    string description;
+    uint256 maxCapacity;
+    uint256 minJoinAmount;
+    uint256 maxJoinAmount;
+    uint256 maxAccounts;
+}
+function init(address actionTargetAddress, address memberNFTAddress, address phaseAddress,
+    address stakeAddress, address mintAddress, uint256[] calldata splits) external;
+function activateGroup(address tokenAddress, uint256 actionId, uint256 groupId, GroupConfig calldata config) external;
+function deactivateGroup(address tokenAddress, uint256 actionId, uint256 groupId) external;
+function updateGroupInfo(address tokenAddress, uint256 actionId, uint256 groupId, GroupConfig calldata config) external;
+function groupInfo(address tokenAddress, uint256 actionId, uint256 groupId)
+    external view returns (GroupConfig memory config, bool active, uint256 activatedRound, uint256 deactivatedRound);
+function join(address tokenAddress, uint256 actionId, uint256 groupId, uint256 memberId,
+    uint256 amount, string[] calldata verificationInfos) external;
+function withdraw(address tokenAddress, uint256 actionId, uint256 memberId, uint256 amount) external;
+function exit(address tokenAddress, uint256 actionId, uint256 memberId) external;
+function joinInfo(address tokenAddress, uint256 actionId, uint256 round, uint256 memberId)
+    external view returns (uint256 joinedRound, uint256 amount, uint256 groupId);
+function groupIds(address tokenAddress, uint256 actionId, uint256 round) external view returns (uint256[] memory);
+function memberIdsByGroupId(address tokenAddress, uint256 actionId, uint256 round, uint256 groupId)
+    external view returns (uint256[] memory);
+function joinedAmountByMemberId(address tokenAddress, uint256 actionId, uint256 round, uint256 memberId)
+    external view returns (uint256);
+```
+
+创建 KV 沿用旧行动参数：`joinTokenAddress(address)`、`activationStakeAmount(uint256)`、`maxJoinAmountRatio(uint256)`、`activationMinGovRatio(uint256)`，键取 `keccak256`、值取 `abi.encode`。验证信息键和说明沿用 LP 的可选 KV。配置和激活资格、质押退还及容量计算沿用旧 GroupManager；`maxCapacity = 0` 使用理论容量，`maxJoinAmount/maxAccounts = 0` 不另设群级上限，非零最大加入量不得低于最小加入量。
+
+管理操作要求持有 groupId；自有参与操作要求持有 memberId。同一行动中成员只能归属一个链群，追加不得改群；换群须先正常退出。`amount` 查询包含自有和体验参与总量；withdraw/exit 只处理自有账本，体验账本按 [参与规则](03-participation.md) 独立处理。无参与记录返回零元组，历史集合无记录返回空数组。
+
 ## 当前归属与索引
 
 事实关系为 `tokenAddress + actionId + groupId + memberId`。跨本 Executor 的所有社区和行动维护 17 组可枚举索引：
@@ -27,6 +63,49 @@
 
 候选只在投票阶段新增、撤销或修改；排序按 `candidateVotes` 降序、`applicationId` 升序，平票时较早申请优先。
 
+```solidity
+struct VerifierApplication {
+    uint256 applicationId;
+    uint256 memberId;
+    string description;
+    uint256 ratioForPublicVerifier;
+    uint256 votes;
+    bool active;
+}
+function applyForVerifier(address tokenAddress, uint256 actionId, uint256 memberId,
+    string calldata description, uint256 ratioForPublicVerifier) external returns (uint256 applicationId);
+function cancelVerifierApplication(address tokenAddress, uint256 actionId, uint256 memberId) external;
+function currentApplicationId(address tokenAddress, uint256 actionId, uint256 round, uint256 memberId)
+    external view returns (uint256);
+function verifierApplication(address tokenAddress, uint256 actionId, uint256 round, uint256 applicationId)
+    external view returns (VerifierApplication memory);
+function verifierApplicationsCount(address tokenAddress, uint256 actionId, uint256 round)
+    external view returns (uint256);
+function verifierApplicationAtIndex(address tokenAddress, uint256 actionId, uint256 round, uint256 index)
+    external view returns (VerifierApplication memory);
+function rankedApplicationIds(address tokenAddress, uint256 actionId, uint256 round)
+    external view returns (uint256[] memory);
+function submitOriginScores(address tokenAddress, uint256 actionId, uint256 round,
+    uint256 verifierMemberId, uint256 groupId, uint256 startIndex, uint256[] calldata originScores) external;
+function verifiedMemberCount(address tokenAddress, uint256 actionId, uint256 round, uint256 groupId)
+    external view returns (uint256);
+function lockedVerifierId(address tokenAddress, uint256 actionId, uint256 round) external view returns (uint256);
+function isRoundVerified(address tokenAddress, uint256 actionId, uint256 round) external view returns (bool);
+function originScore(address tokenAddress, uint256 actionId, uint256 round, uint256 memberId)
+    external view returns (uint256 score, bool verified);
+function finalScore(address tokenAddress, uint256 actionId, uint256 round, uint256 memberId)
+    external view returns (uint256);
+function totalFinalScore(address tokenAddress, uint256 actionId, uint256 round) external view returns (uint256);
+function generatedActionRewardByGroupId(address tokenAddress, uint256 actionId, uint256 round, uint256 groupId)
+    external view returns (uint256);
+```
+
+申请者须持有 memberId 且有该社区有效治理票；比例范围 `0..1e18`。apply 新建或替换当前申请：旧 ID 失效但保留票数，新 ID 单调递增且从零计票。取消只移除当前关联和榜内项，不扫描榜外补位。不存在申请查询回滚；无当前申请 ID 返回 0。
+
+投票 KV 使用 `keccak256("candidateMemberId")` / `abi.encode(uint256)`，对应当前有效 applicationId；每次回调将全部治理票增量记给该候选。候选字段为空时不增加候选票，有字段但申请已失效则回滚。排名增量维护，只保存可开放的前 n 名；榜满时榜外候选必须票数严格超过末位才替换，不因修改旧申请自动转移票数。
+
+`submitOriginScores` 仅接受当前验证 Round；调用者持有 verifierMemberId，批次数组非空，每项不超过 100，`startIndex` 等于该群已验证数量且不能超出历史成员数。全部校验成功才锁定和计分；同一成员记录只消费一次。未验证的分数查询返回 `(0, false)`，与已验证零分区分。
+
 第 1 名在验证阶段起点开放，后续排名按下式开放：
 
 ```text
@@ -40,10 +119,10 @@ openBlock = verifyPhaseStartBlock + openOffset
 
 ## 行动激励
 
-公共验证者对所有链群成员使用同一规则记录 `originScore`（0–100）。每个行动者的 `finalScore` 是其各次验证的“参与代币数量 × 原始验证得分”之和，并按目标 Round 累计；行动激励直接按所有链群成员的最终得分统一加权：
+公共验证者按同一规则记录原始分和最终分，不保留 distrust、群级扣分或代理验证。连续批次累计全行动得分；每条冻结成员记录只计入一次，不允许对同一份参与量重复评分。
 
 ```text
-finalScore(memberId) = sum(participationAmount_i * originScore_i)
+finalScore(memberId) = participationAmount(memberId) * originScore(memberId)
 totalFinalScore = sum(finalScore across all groups)
 memberReward(memberId) = floor(proposalReward * finalScore(memberId) / totalFinalScore)
 ```
@@ -55,7 +134,7 @@ Executor 先按 [统一铸造链路](07-minting.md#铸造链路) 取得整笔激
 ## 实现约束
 
 - 退出零值与无记录继续使用旧 RoundHistory 的显式记录语义；不得通过清空 mapping 伪造退出。
-- `candidateCount = n` 时 `splits.length == max(n - 1, 0)`；排名在验证阶段开始时冻结，申请只能在投票阶段修改。
-- 激活、配置更新、候选申请及验证批次 ABI 以实现接口补齐；原 `LOVE20TKM/extension-group/src/ExtensionGroupAction.sol` 与 `GroupVerify.sol` 仅作为行为参考。
+- `candidateCount = n` 表示最大可开放排名数，不是本轮总申请人数；`n = splits.length + 1`。分割线严格递增且在 `(0, 1e18)` 内，空数组只开放第 1 名。投票结束后排名自然冻结，不增加冻结交易。
+- 候选竞选是 BSC 新逻辑；旧 `GroupVerify.submitOriginScores` 仅作为连续批次和原始分校验的参考，不是候选机制来源。
 
 验收见 [Action 验收](08-testing.md)。

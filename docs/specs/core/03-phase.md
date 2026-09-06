@@ -15,7 +15,7 @@ constructor(
 );
 ```
 
-| 接口示意 | 返回或作用 |
+| 接口 | 返回或作用 |
 | --- | --- |
 | `currentPhase()` | 当前区块的 Phase |
 | `phaseInfo(phaseNumber)` | 阶段起始区块和区块数 |

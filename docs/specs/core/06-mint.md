@@ -11,7 +11,7 @@ Mint 准备并结算治理和 Proposal 激励，不读取行动验证结果。�
 | `rewardBurned` | 每个 token 的累计已取消预留额度；不铸造该部分代币 |
 | `govReward` / `proposalReward` | 每个 token、Round 准备后冻结的完整治理池 / Proposal 池 |
 | `totalVotes` | Vote 的本轮 `votesNum[tokenAddress][round]` |
-| `memberBoost` | Vote 按 token、Round、memberId 保存的已计入加速快照 |
+| `memberBoost` | Vote 的 `stakedAmountOfVotersByMemberId(tokenAddress, round, memberId)` |
 | `totalBoost` | Vote 的 `stakedAmountOfVoters[tokenAddress][round]` |
 | `eligibleProposalVotes` | Vote 在投票阶段维护的本轮所有达标 Proposal 票数之和，Round 结束后自然冻结 |
 
@@ -40,6 +40,7 @@ function init(
     address submitAddress,
     address stakeAddress,
     address launchAddress,
+    address memberNFTAddress,
     uint256 proposalRewardMinVotePerThousand,
     uint256 roundRewardGovPerThousand,
     uint256 roundRewardProposalPerThousand,
@@ -144,7 +145,19 @@ function govReward(address tokenAddress, uint256 round)
     external view returns (uint256);
 function proposalReward(address tokenAddress, uint256 round)
     external view returns (uint256);
+function proposalRewardInfo(address tokenAddress, uint256 round, uint256 proposalId)
+    external view returns (uint256 amount, bool prepared, bool minted);
+function govRewardByAccount(address tokenAddress, uint256 round, uint256 memberId)
+    external view returns (uint256 voteReward, uint256 boostReward, uint256 burnReward, bool minted);
+function isProposalIdWithReward(address tokenAddress, uint256 round, uint256 proposalId)
+    external view returns (bool);
+function rewardAvailable(address tokenAddress) external view returns (uint256);
+function reservedAvailable(address tokenAddress) external view returns (uint256);
+function launchCredit(address tokenAddress, uint256 memberId) external view returns (uint256);
+function proposalRewardMinVotePerThousand() external view returns (uint256);
 ```
+
+`proposalRewardInfo` 未准备时返回 `(0, false, false)`，不能把它缓存为最终零激励；准备后按冻结池和票数计算 amount，已铸造也返回原金额。未达标返回 0。治理查询未准备或未投票时返回零金额；不存在的 Proposal/成员回滚。铸造金额为 0 时按旧逻辑拒绝 `NoRewardAvailable`，重复保护使用独立状态位，不能用金额是否大于零判断。
 
 批量按输入顺序执行，结果数组与输入等长；任一 Round 未结束、未准备、没有投票记录或已铸造，则整笔回滚。治理激励和发射额度/次数更新也必须原子完成。
 

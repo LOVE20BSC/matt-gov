@@ -14,23 +14,33 @@ Core 的预留、铸造和取消额度账本见 [Mint](../core/06-mint.md)，不
 
 ## 事件
 
-下列为已有事件名称与参数示意，尚未给出完整类型和 indexed 定义：
+```solidity
+event ProposalLinked(address indexed tokenAddress, uint256 indexed proposalId, address indexed executor);
+event ActionJoined(address indexed tokenAddress, uint256 indexed actionId, uint256 indexed memberId,
+    uint256 round, uint256 amount, bool isExperience, uint256 providerMemberId);
+event ActionWithdrawn(address indexed tokenAddress, uint256 indexed actionId, uint256 indexed memberId,
+    uint256 round, uint256 amount, bool isExperience, uint256 providerMemberId);
+event ActionExited(address indexed tokenAddress, uint256 indexed actionId, uint256 indexed memberId,
+    uint256 round, bool isExperience, uint256 providerMemberId);
+event ForceExited(address indexed tokenAddress, uint256 indexed actionId, uint256 indexed memberId);
+event VerifierApplied(address indexed tokenAddress, uint256 indexed actionId, uint256 indexed memberId,
+    uint256 round, uint256 applicationId);
+event VerificationBatchSubmitted(address indexed tokenAddress, uint256 indexed actionId, uint256 indexed groupId,
+    uint256 round, uint256 batchIndex, uint256[] scores);
+event VerifierLocked(address indexed tokenAddress, uint256 indexed actionId, uint256 indexed round,
+    uint256 memberId);
+event ActionRewardMinted(address indexed tokenAddress, uint256 indexed actionId, uint256 indexed round,
+    uint256 totalAmount, bytes32 recipientType);
+event ServiceRewardDistributed(address indexed serviceTokenAddress, uint256 indexed serviceProposalId,
+    address indexed actionTokenAddress, uint256 memberId, uint256 verifierReward, uint256 ownerReward,
+    uint256 ownerBurned, uint256 round);
+event SecondaryDistributionConfigured(address indexed sourceTokenAddress, uint256 indexed sourceActionId,
+    uint256 indexed groupId, uint256 round, uint256[] recipientIds, uint256[] ratios);
+event RewardBurned(address indexed tokenAddress, uint256 indexed actionId, uint256 indexed round,
+    uint256 amount, bytes32 reason);
+```
 
-| 事件 | 触发语义 |
-| --- | --- |
-| `ProposalLinked(tokenAddress, proposalId, executor)` | 关联 Executor |
-| `ActionJoined(tokenAddress, actionId, memberId, round, amount, isExperience, providerMemberId)` | 自有或体验加入 |
-| `ActionWithdrawn(tokenAddress, actionId, memberId, round, amount, isExperience, providerMemberId)` | 部分撤回 |
-| `ActionExited(tokenAddress, actionId, memberId, round, isExperience, providerMemberId)` | 全部退出 |
-| `ForceExited(tokenAddress, actionId, memberId)` | 仅清除通用登记 |
-| `VerifierApplied(tokenAddress, actionId, memberId, round, applicationId)` | 候选申请 |
-| `VerificationBatchSubmitted(tokenAddress, actionId, groupId, round, batchIndex, scores[])` | 验证批次 |
-| `VerifierLocked(tokenAddress, actionId, round, memberId)` | 验证者锁定 |
-| `ActionRewardMinted(tokenAddress, actionId, round, totalAmount, recipientType)` | 成员/验证者/owner 激励 |
-| `ServiceRewardDistributed(serviceTokenAddress, serviceProposalId, actionTokenAddress, memberId, verifierReward, ownerReward, round)` | 服务分配 |
-| `SecondaryDistributionConfigured(sourceTokenAddress, sourceActionId, groupId, round, recipientIds[], ratios[])` | 二次分配配置；缺少当前轮次时沿用最近历史配置 |
-
-事件还须覆盖候选排名、验证完成和激励销毁；对应签名尚未确定。
+事件按 BSC 业务主体使用 `memberId`；事件中的地址仅表示代币、合约或调用审计地址。
 
 ## 错误
 

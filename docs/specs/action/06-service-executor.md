@@ -16,7 +16,7 @@
 | `groupReward(a, m)` | 链群 m 在行动 a 的成员激励总和 |
 | `serviceReward` | 本服务 Proposal 的整笔激励 |
 
-服务 Executor 首次计算某个 `actionTokenAddress + groupActionId + round` 时，读取并保存 `totalGroupActionReward`；后续该键的结算只读缓存，不重复遍历链群行动。另用 `denominatorCached` 区分“尚未计算”和“已计算且为 0”。
+首次成功执行可铸币轮次的准备/领取/销毁交易时，按 `actionTokenAddress + groupActionId + round` 缓存分母；其中 `actionTokenAddress` 与 `groupActionId` 是 Service Executor 绑定的行动身份，不是单个被聚合源行动。分母仍统计该身份对应社区本轮全部链群行动激励，不缩成单行动激励。源社区 Core 轮次必须先 prepare，未准备的零值不能缓存。后续读取缓存；查询不能写状态，未缓存时只计算返回。已计算的零值通过 `denominatorCached` 区分。
 
 ```solidity
 mapping(address => mapping(uint256 => mapping(uint256 => uint256)))
@@ -32,8 +32,20 @@ function totalGroupActionReward(
     uint256 round
 ) external view returns (uint256 reward, bool cached);
 
+function init(address actionTargetAddress, address memberNFTAddress, address phaseAddress,
+    address stakeAddress, address mintAddress, address groupActionExecutorAddress) external;
+function join(address serviceTokenAddress, uint256 serviceProposalId, uint256 memberId,
+    string[] calldata verificationInfos) external;
+function exit(address serviceTokenAddress, uint256 serviceProposalId, uint256 memberId) external;
+function joinInfo(address serviceTokenAddress, uint256 serviceProposalId, uint256 round, uint256 memberId)
+    external view returns (bool joined);
+function actionTokenAddress(address serviceTokenAddress, uint256 serviceProposalId) external view returns (address);
+function serviceRewardByMember(address serviceTokenAddress, uint256 serviceProposalId, uint256 round, uint256 memberId)
+    external view returns (uint256 verifierReward, uint256 ownerReward, uint256 ownerBurned, bool claimed);
 function burnRewardIfNeeded(uint256 round) external;
 ```
+
+创建 KV 固定为 `actionTokenAddress(address)` 和 `govRatioMultiplier(uint256)`，键取 keccak256，值取 abi.encode；代币关系在创建时校验。join/exit 校验当前 NFT 持有人，按 RoundHistory 记录服务资格。加入资格仍为有效链群 owner 或有效候选，领取只计算该轮实际贡献。共同准备/领取/销毁 ABI 见 [行动铸造](07-minting.md#铸造链路)。
 
 保留的权重公式：
 
@@ -59,13 +71,25 @@ actualOwnerReward(m) = floor(serviceReward * actualOwnerRatio(m) / 1e18)
 ownerOverflow(m) = theoreticalOwnerReward(m) - actualOwnerReward(m)
 ```
 
-其中 `theoreticalOwnerReward(m)` 使用上节权重公式；`validGovVotes(actionTokenAddress, m)` 和 `totalGovVotes(actionTokenAddress)` 在服务铸造时读取最新有效治理票。先判断各角色权重分子，分子为零直接返回，不执行除法。`totalGovVotes == 0` 且上限启用时，owner 实际激励为 0，理论 owner 激励按 owner 分别记入服务执行合约的 `ownerBurned`。`govRatioMultiplier == 0` 关闭 owner 上限，此时 `actualOwnerReward = theoreticalOwnerReward`。`totalGroupActionReward == 0` 时不进行比例计算；沿用旧 `ExtensionBaseReward.burnRewardIfNeeded(round)` 的专用入口，由任何地址在轮次结束后幂等销毁该轮未分配服务激励。
+其中 `theoreticalOwnerReward(m)` 使用上节权重公式；治理票读取 `Stake.validGovVotes(actionTokenAddress, m)` 和 `Stake.govVotesNum(actionTokenAddress)`。每个角色先检查自己的分子，为零只跳过该角色，不影响同一 memberId 的另一角色；两个分子都为零则直接返回。上限启用且总治理票为零时只销毁 owner 理论激励；乘数为零直接关闭上限。治理票在该成员实际领取时读取，已结算的查询返回历史结果，不重新套用最新票权。
 
 `govRatioMultiplier` 来自服务 Proposal 创建时的 KV；治理票使用 `actionTokenAddress` 社区在服务铸造时的最新有效值；owner 超额按每个 owner 单独记入 `ownerBurned`。服务代币已经由 Mint 铸造并转入 Executor 后，销毁直接调用该代币的 `burn(amount)`；不重复修改 Core Mint 的 `rewardBurned`。服务 Proposal 本轮没有激励时由 `Mint.prepareRewardIfNeeded` 处理，Executor 不重复判断。
 
 ## 二次分配
 
 链群 NFT 当前持有人按 `sourceTokenAddress + sourceActionId + groupId + round` 配置 `recipientIds[]`、`ratios[]`；查询指定 `round` 没有配置时，回退到不晚于该轮的最近配置，不使用未来轮次；不存在更早配置时视为未配置。所有对同一源行动提供激励的服务 Proposal 复用该配置。接收者为 memberId，比例使用 `1e18` 精度。owner 部分先按各源行动权重拆分，再应用对应配置；验证者部分直接给锁定验证者，不参与二次分配。
+
+```solidity
+function setRecipients(address sourceTokenAddress, uint256 sourceActionId, uint256 groupId,
+    uint256[] calldata recipientIds, uint256[] calldata ratios, string[] calldata remarks) external;
+function recipients(address sourceTokenAddress, uint256 sourceActionId, uint256 groupId, uint256 round)
+    external view returns (uint256[] memory recipientIds, uint256[] memory ratios, string[] memory remarks);
+function rewardDistribution(address serviceTokenAddress, uint256 serviceProposalId, uint256 round,
+    uint256 sourceActionId, uint256 groupId) external view returns (
+        uint256[] memory recipientIds, uint256[] memory ratios, uint256[] memory amounts, uint256 ownerAmount);
+```
+
+setRecipients 沿用旧 GroupRecipients：只写当前验证 Round，不允许指定已结束轮次；同轮更新覆盖该轮配置。三数组等长、最多 10 项，接收 NFT 有效、不得重复或等于 groupId。全部传空表示显式清空，该轮及后续回退到空配置，不能重新找到清空前配置。没有配置时 owner 保留全部该项预算。付款使用结算时接收 NFT 当前持有人。
 
 配置比例总和不得超过 `1e18`，正好 100% 合法；超过时在配置阶段拒绝。以下计算中的 `actualOwnerReward` 是本次待分配预算，金额逐步向下取整：
 
@@ -81,6 +105,7 @@ actualRecipientReward[i] = theoreticalRecipientReward[i]
 
 - `DistributionOverflow` 在配置比例总和超过 `1e18` 时触发；正好 `1e18` 合法。
 - 二次分配配置键为 `sourceTokenAddress + sourceActionId + groupId + round`；分配事件另带服务 Proposal 上下文。
-- 原来源 `LOVE20TKM/extension-group/src/ExtensionGroupService.sol` 仅作为行为参考；服务加入、配置及结算 ABI 在实现接口中补齐。
+- ownerBurned 按 `serviceTokenAddress + serviceProposalId + round + memberId` 保存实际销毁量，不影响源行动缓存；领取与销毁失败时标记、转账和代币 burn 全部回滚。
+- 来源为旧 `extension-group/src/ExtensionGroupService.sol`、`GroupRecipients.sol` 与 `extension/src/ExtensionBaseReward.sol`。公共验证者份额及全社区分母以本文件 BSC 规则为准。
 
 铸造见 [统一链路](07-minting.md#铸造链路)，验收见 [Action 验收](08-testing.md)。
