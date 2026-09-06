@@ -288,7 +288,7 @@ theoreticalOwnerReward(m) = serviceReward × ownerWeightNumerator(m) / (totalGro
 
 #### 部分撤回边界
 - **旧**：可能以交易为单位
-- **新**：以行动快照为边界，加入阶段内的撤回直接更新该 Round 的参与权
+- **新**：LP 和链群行动均支持部分撤回；按各自聚合账本更新当前 Round，LP 的 `deduction` 按撤回比例向下取整，全额撤回沿用 V2 的 `exit` 清理
 
 #### forceExit 不处理资产
 - **新增**：`forceExit` 只清除 ActionTarget 登记，不返还体验资产

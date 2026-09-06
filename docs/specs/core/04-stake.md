@@ -38,6 +38,40 @@ mapping(address => mapping(uint256 => mapping(uint256 => uint256))) cumulatedBoo
 
 ## 流动性质押与手续费
 
+```solidity
+function init(
+    address phaseAddress,
+    address memberNFTAddress,
+    address routerAddress,
+    address pairFactoryAddress,
+    uint256 promisedWaitingPhasesMin,
+    uint256 promisedWaitingPhasesMax
+) external;
+
+function stakeLiquidity(
+    address tokenAddress,
+    uint256 tokenAmount,
+    uint256 parentTokenAmount,
+    uint256 promisedWaitingPhases,
+    uint256 memberId
+) external returns (uint256 govVotesAdded, uint256 lpSharesAdded);
+
+function stakeToken(
+    address tokenAddress,
+    uint256 tokenAmount,
+    uint256 promisedWaitingPhases,
+    uint256 memberId
+) external returns (uint256 govVotesAdded);
+
+function unstake(address tokenAddress, uint256 memberId) external;
+function withdraw(address tokenAddress, uint256 memberId) external;
+function mergeStake(
+    address tokenAddress,
+    uint256 sourceMemberId,
+    uint256 targetMemberId
+) external;
+```
+
 调用者提供社区代币及父币，Stake 转入双币并通过 Router 添加 LP，再按 LP 数量计份额；提取时移除 LP 并返还双币。
 
 ```text
@@ -55,6 +89,14 @@ newFeeLp = totalLp - newWithdrawableLp
 手续费增量归协议，不归旧质押者。重分类后可提取 LP 下降；相同新存入 LP 对应更多份额。无池价变化的比例模型中，这是剥离手续费，不是损失本金；整数舍入仍须按公式计算。
 
 例（整数模型）：原可提取 LP 为 120，旧/新 sqrt(k) 基准为 100/120，重分类后可提取 LP 为 100、手续费 LP 为 20。原总份额为 120 时，新存入 100 LP 得到 120 份额。
+
+```solidity
+function accountStakeStatus(address tokenAddress, uint256 memberId)
+    external view returns (StakeData memory);
+function validGovVotes(address tokenAddress, uint256 memberId)
+    external view returns (uint256);
+function govVotesNum(address tokenAddress) external view returns (uint256);
+```
 
 ## 治理票与加速质押
 

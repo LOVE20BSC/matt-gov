@@ -4,6 +4,25 @@
 
 ## 时间权重
 
+```solidity
+function init(address actionTargetAddress, address tokenAddress, address joinTokenAddress)
+    external;
+function join(
+    uint256 memberId,
+    uint256 amount,
+    string[] calldata verificationInfos
+) external;
+function withdraw(uint256 memberId, uint256 amount) external;
+function exit(uint256 memberId) external;
+function joinedAmount() external view returns (uint256);
+function joinedAmountByMemberId(uint256 memberId)
+    external view returns (uint256);
+function joinedAmountByRound(uint256 round)
+    external view returns (uint256);
+function joinedAmountByMemberIdByRound(uint256 memberId, uint256 round)
+    external view returns (uint256);
+```
+
 每笔加入使用加入阶段起点和长度冻结时间扣减：
 
 ```text
@@ -20,11 +39,16 @@ effectiveLpRatio = floor(effectiveAmount * 1e18 / totalEffectiveAmount)
 
 LP 支持部分撤回，沿用 V2 的聚合账本，不新增 lot：
 
-```solidity
-function withdraw(uint256 amount) external;
-```
-
 `amount` 不得超过当前 `joinedAmount`。撤回时按当前聚合比例同步减少 `joinedAmount`、`deduction` 和 `totalDeduction`；全额撤回执行旧 V2 的 `exit` 清理，加入区块与加入金额数组一并清空。撤回发生在加入阶段时更新当前 Round，阶段结束后不得回写已冻结 Round。
+
+```text
+deductionReduction = amount == joinedAmount
+    ? deduction
+    : floor(deduction * amount / joinedAmount)
+joinedAmount -= amount
+deduction -= deductionReduction
+totalDeduction -= deductionReduction
+```
 
 ## 治理上限与分配
 

@@ -34,7 +34,22 @@ available = maxSupply - totalSupply - reservedAvailable
 
 ## 准备一次
 
-接口示意：`prepareRewardIfNeeded(tokenAddress, round)`，任何地址可调用。
+```solidity
+function init(
+    address voteAddress,
+    address submitAddress,
+    address stakeAddress,
+    address launchAddress,
+    uint256 proposalRewardMinVotePerThousand,
+    uint256 roundRewardGovPerThousand,
+    uint256 roundRewardProposalPerThousand,
+    uint256 maxGovBoostRewardMultiplier
+) external;
+
+function prepareRewardIfNeeded(address tokenAddress, uint256 round) external;
+```
+
+`prepareRewardIfNeeded` 任何地址可调用。
 
 1. 本轮已准备则直接返回，不更新状态；未结束的 Round 拒绝准备。
 2. 读取 Vote 的冻结结果。若 `totalVotes == 0`，两池记为 0 并标记已准备，累计账本不变。
@@ -59,7 +74,15 @@ if eligibleProposalVotes == 0:
 
 ## Proposal 结算
 
-接口示意：`mintProposalReward(tokenAddress, round, proposalId)`。只允许该 Proposal 已记录的 Target 调用，每个 token、Round、Proposal 只能铸造一次；未准备、未结束、Proposal 不达标或 `eligibleProposalVotes == 0` 时拒绝。
+```solidity
+function mintProposalReward(
+    address tokenAddress,
+    uint256 round,
+    uint256 proposalId
+) external returns (uint256 amount);
+```
+
+只允许该 Proposal 已记录的 Target 调用，每个 token、Round、Proposal 只能铸造一次；未准备、未结束、Proposal 不达标或 `eligibleProposalVotes == 0` 时拒绝。
 
 ```text
 实际铸造量 = floor(proposalReward * proposalVotes / eligibleProposalVotes)
@@ -91,13 +114,36 @@ else:
 
 ## 单轮与批量接口
 
-以下为参数和返回值示意，不是完整 ABI：
+```solidity
+function mintGovReward(
+    address tokenAddress,
+    uint256 memberId,
+    uint256 round
+) external returns (
+    uint256 voteReward,
+    uint256 boostReward,
+    uint256 burnReward
+);
 
-```text
-mintGovReward(tokenAddress, memberId, round)
-    -> (voteReward, boostReward, burnReward)
-mintGovRewards(tokenAddress, memberId, rounds[])
-    -> (voteReward[], boostReward[], burnReward[])
+function mintGovRewards(
+    address tokenAddress,
+    uint256 memberId,
+    uint256[] calldata rounds
+) external returns (
+    uint256[] memory voteRewards,
+    uint256[] memory boostRewards,
+    uint256[] memory burnRewards
+);
+
+function rewardReserved(address tokenAddress) external view returns (uint256);
+function rewardMinted(address tokenAddress) external view returns (uint256);
+function rewardBurned(address tokenAddress) external view returns (uint256);
+function isRewardPrepared(address tokenAddress, uint256 round)
+    external view returns (bool);
+function govReward(address tokenAddress, uint256 round)
+    external view returns (uint256);
+function proposalReward(address tokenAddress, uint256 round)
+    external view returns (uint256);
 ```
 
 批量按输入顺序执行，结果数组与输入等长；任一 Round 未结束、未准备、没有投票记录或已铸造，则整笔回滚。治理激励和发射额度/次数更新也必须原子完成。
@@ -108,7 +154,7 @@ Mint 保存 `launchCredit[tokenAddress][memberId]`。只有实际铸造的治理
 
 ## 实现约束
 
-- 完整 ABI 以实现接口为准；初始化时拒绝两项激励比例之和超过 `1000`。
+- 初始化时拒绝两项激励比例之和超过 `1000`。
 - 各项分配向下取整产生的极小舍入余数不单独维护，也不追加结算状态；累计账本只记录实际铸造和明确销毁的额度。
 - 历史来源 `LOVE20TKM/core/src/LOVE20Mint.sol` 只作为行为参考，不替代本文件的账本规则。
 

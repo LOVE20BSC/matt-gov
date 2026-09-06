@@ -15,7 +15,6 @@ function init(
     address memberNFT,
     address rootParentToken,
     address distributor,
-    DistributorMode distributorMode,
     uint256 launchRatio,
     uint256 maxLaunchCount,
     string calldata name,
