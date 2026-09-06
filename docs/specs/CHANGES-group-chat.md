@@ -228,7 +228,7 @@
 - 链群 Chat 不使用 Manager
 - 由链群 owner 持有的 MemberNFT 直接作为 `groupId` 激活和管理
 
-关于 forceExit 对链群 Chat 资格的影响，详见 action.md 第 2.3 节"forceExit"的完整说明。
+关于 forceExit 对链群 Chat 资格的影响，详见 `action/01-action-target.md` 的 forceExit 说明。
 - 由链群 owner 持有的 MemberNFT 直接作为 `groupId` 激活和管理
 - 成员集合和管理员集合维护
 
@@ -291,7 +291,7 @@
 
 ## 验收边界
 
-核心验收场景见 `group-chat.md` 第 9 节。关键变更的专项验收：
+核心验收场景见 `group-chat/08-testing.md` 和组织级 `docs/acceptance.md`。关键变更的专项验收：
 
 1. **1 个 MemberNFT = 1 个 Chat**：`groupId` 就是 `memberId`，群 NFT 转移后 owner 连续性
 2. **不存在默认 NFT 映射**：无地址主体发言入口、无地址黑名单、无地址黑名单投票

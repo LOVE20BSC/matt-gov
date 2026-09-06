@@ -103,7 +103,7 @@ Phase 4 起，链群行动进入稳态运行。
 **链群服务行动执行合约**（4 阶段，与被服务的链群行动对齐）：
 - 投票 Round = currentPhase()
 - 加入 Round = currentPhase() - 1
-- 验证 Round = currentPhase() - 2（复用同轮次链群行动的验证结果，详见 action.md 第 3.2 节）
+- 验证 Round = currentPhase() - 2（复用同轮次链群行动的验证结果，详见 `action/02-phase-model.md`）
 - 铸币 Round = currentPhase() - 3
 
 ### 为什么改变
@@ -337,7 +337,7 @@ actualOwnerReward = actualReward - actualVerifierReward
 
 ## 验收边界
 
-核心验收场景见 `action.md` 第 9 节。关键变更的专项验收：
+核心验收场景见 `action/08-testing.md` 和组织级 `docs/acceptance.md`。关键变更的专项验收：
 
 1. **ActionTarget 映射**：Proposal → Executor 映射正确，查询接口返回本轮有投票的行动
 2. **forceExit**：只清除 ActionTarget 登记，不调用 Executor，不返还资产

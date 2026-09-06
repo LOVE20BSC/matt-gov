@@ -10,7 +10,7 @@
 
 `LOVE20TKM/core/contracts/Mint.sol`
 
-### 1.2 保留公式
+### 1.2 账本关系与公式
 
 ```text
 reservedAvailable = rewardReserved - rewardMinted - rewardBurned
@@ -18,6 +18,14 @@ available = maxSupply - totalSupply - reservedAvailable
 govReward = available × roundRewardGovPerThousand / 1000
 proposalReward = available × roundRewardProposalPerThousand / 1000
 ```
+
+对每个代币社区，`rewardReserved`、`rewardMinted`、`rewardBurned` 是累计账本：
+
+```text
+unsettled = rewardReserved - rewardMinted - rewardBurned
+```
+
+`rewardReserved` 包含可铸造额度和准备阶段已确定要销毁的额度，因此始终满足 `rewardReserved >= rewardMinted + rewardBurned`。每个轮次只在准备时增加一次 `rewardReserved`，后续任何铸造或销毁都不得再次增加它。
 
 其中 `roundRewardGovPerThousand` 和 `roundRewardProposalPerThousand` 为初始化参数（千分比），例如：
 - `roundRewardGovPerThousand = 30`（3%）
@@ -33,18 +41,15 @@ proposalVotes × 1000 >= totalVotes × proposalRewardMinVotePerThousand
 
 ### 1.3 轮次激励池准备逻辑（新增优化）
 
-- `prepareRewardIfNeeded(tokenAddress, round)` 可由任何地址调用（保持旧版函数命名）
-- 通常在 Round 结束后首次铸造前调用
-- 首次铸造时如果未准备则回滚，提示调用者先准备激励池
-- 准备时检查 `totalVotes`（Vote 合约的 `votesNum[tokenAddress][round]`）：
-  - **如果 `totalVotes = 0`**：不预留激励，`govReward[tokenAddress][round] = 0`，`proposalReward[tokenAddress][round] = 0`，`rewardReserved` 不增加
-  - **如果 `totalVotes > 0`**：
-    - 按公式计算 `govReward` 和 `proposalReward`
-    - 检查 `stakedAmountOfVoters[tokenAddress][round]`（该 Round 所有投票者的加速质押代币累计总量，由 Vote 合约维护）：
-      - 如果为 0，将加速激励部分（`govReward / 2`）立即计入 `rewardBurned`，治理激励池实际只预留 `govReward / 2`
-      - 如果大于 0，正常预留完整 `govReward`
-    - 累加到 `rewardReserved`
-- 准备操作是幂等的：重复调用已准备的 Round 直接返回，不重复预留
+`prepareRewardIfNeeded(tokenAddress, round)` 可由任何地址调用，且每个 `(tokenAddress, round)` 只成功准备一次。Round 结束后执行以下固定流程：
+
+1. 读取 Vote 在投票阶段冻结的 `totalVotes`、`eligibleProposalVotes` 和 `totalBoost`。若 `totalVotes == 0`，本轮两项激励均为 `0`，只记录“已准备”状态。
+2. 若 `totalVotes > 0`，按本节公式计算 `govReward` 和 `proposalReward`，并一次性执行 `rewardReserved += govReward + proposalReward`。
+3. 若 `totalBoost == 0`，将加速池 `govReward - floor(govReward / 2)` 计入 `rewardBurned`；该额度已经包含在本轮新增的 `rewardReserved` 中。
+4. 若 `eligibleProposalVotes == 0`，将完整 `proposalReward` 计入 `rewardBurned`；该额度已经包含在本轮新增的 `rewardReserved` 中，本轮不得铸造 Proposal 激励。
+5. 将本轮的 `govReward`、`proposalReward`、`eligibleProposalVotes` 和准备状态冻结。重复调用直接返回，不重算、不改写、不增加 `rewardReserved`。
+
+治理激励或 Proposal 激励后续结算时，只能增加 `rewardMinted` 或 `rewardBurned`；不得再次增加 `rewardReserved`。
 
 ---
 
@@ -60,6 +65,8 @@ proposalVotes × 1000 >= totalVotes × proposalRewardMinVotePerThousand
 ```text
 实际数量 = proposalReward × proposalVotes / eligibleProposalVotes
 ```
+
+其中 `eligibleProposalVotes` 为准备时从 `Vote` 读取并冻结的本轮所有达标 Proposal 票数总和；Proposal 未达门槛时不参与分配。该值为零时本轮全部 `proposalReward` 已在准备阶段销毁，因此不得执行 Proposal 铸造。
 
 ### 2.3 BSC 版说明
 
@@ -97,7 +104,7 @@ burnReward = theoreticalBoost - boostReward  // 溢出部分销毁
 - 加速激励上限倍数由初始化参数 `maxGovBoostRewardMultiplier` 确定（例如 `2`，表示 2 倍上限）
 - `memberBoost` = 该 memberId 的加速质押份额（boostShares），记账机制见 `04-stake.md` 第 4 节
 - `totalBoost` = 本轮所有投票者的加速质押份额总和（由 Vote 合约维护的 `stakedAmountOfVoters`）
-- 若 `totalBoost == 0`，在该 Round 的首次治理激励铸造时，判断并将整个加速池一次性计入 `rewardBurned`
+- 若 `totalBoost == 0`，`prepareRewardIfNeeded` 为本轮完整预留 `govReward` 后，将加速激励部分一次性计入 `rewardBurned`；后续治理激励铸造不再重复判断或重复销毁
 - **加速激励只能由投票者铸造**：只有在该 Round 投票的 memberId 才能铸造治理激励（包含投票激励和加速激励）；未投票的 memberId 即使有加速质押也无法铸造
 
 ### 3.4 2 倍上限示例

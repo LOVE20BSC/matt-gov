@@ -4,32 +4,62 @@
 
 ---
 
-## 1. 发射次数（按 memberId 记录）
+## 1. 初始化和首个代币
 
-### 1.1 存储变更
+`Launch` 是基础子币发射合约，也是首个代币的启动合约。它不拆出独立的首个代币合约或 `launch` 代码库。
+
+### 1.1 一次性初始化与首个代币部署
+
+```solidity
+function init(
+    address tokenFactory,
+    address mint,
+    address memberNFT,
+    address rootParentToken,
+    address pairFactory,
+    address router,
+    address distributor,
+    uint256 launchRatio,
+    uint256 maxLaunchCount,
+    string calldata name,
+    string calldata symbol,
+    uint256 initialSupply,
+    uint256 maxSupply
+) external
+```
+
+`Launch.init(...)` 只允许部署授权者调用且只能成功一次。它写入全部依赖和发射参数，并在同一笔交易中通过 `TokenFactory` 创建父币为 `rootParentToken` 的首个 `LOVE20Token`、登记首个代币、设置核心 `minter`、将首批供应量发送到 `distributor`、创建首个代币/WBNB Pair，并调用 `MemberNFT.init(tokenAddress)`。任一步失败整笔回滚；成功后不得重复创建或改写首个代币。不存在单独的外部首币部署函数。
+
+首个代币的 `distributor` 使用已部署的 Airdrop 合约。Airdrop 由 `LOVE20TKM/burn` 在 Burn 活动结束后单独部署到 BSC；BSC 只记录其地址和来源证据，不迁移 Burn 业务合约。
+
+## 2. 发射次数（按 memberId 记录）
+
+### 2.1 存储变更
 
 - **旧版**：`launchCount[tokenAddress][address]`  
 - **新版**：`launchCount[tokenAddress][memberId]`
 
-### 1.2 发射次数产生机制（BSC 版新增）
+### 2.2 发射次数产生机制（BSC 版新增）
 
 - Mint 合约维护 `launchCredit[tokenAddress][memberId]`：累计铸造激励余额
 - 每次成功铸造治理激励后，Mint 合约累加激励金额到 launchCredit
-- 判断 launchCredit 是否达到阈值：`threshold = ceil((maxSupply - totalSupply) × launchRatio / 1e18)`
+- 先判断 `issuedLaunchCount[tokenAddress] >= maxLaunchCount`；达到上限时本次治理激励不再写入 `launchCredit`，已有额度保留但不再转化。
+- 否则按本次治理激励铸造前的剩余供应量计算：`threshold = ceil((maxSupply - totalSupplyBeforeMint) × launchRatio / 1e18)`。
+- 如果 `threshold == 0`（包括剩余供应量为 `0`）：本次不累计或转换发射额度。
 - 如果 `launchCredit >= threshold`：
   - 计算产生的发射次数：`count = floor(launchCredit / threshold)`
   - 扣除已使用的 launchCredit：`launchCredit -= count × threshold`
   - 调用 `Launch.addLaunchCount(tokenAddress, memberId, count)` 增加发射次数
 - Launch 合约的 `addLaunchCount()` 只能由 Mint 合约调用（权限控制）
 
-### 1.3 launchCredit 说明
+### 2.3 launchCredit 说明
 
 - 发射阈值使用向上取整，随 totalSupply 动态调整
-- 余额累计机制：未达阈值的部分保留在 launchCredit，继续累计
+- 余额累计机制：未达到社区上限且未达阈值的部分保留在 `launchCredit`，继续累计
 - **融合时只转移整数次数，不转移 `launchCredit`**（源的 launchCredit 保留，用户应在融合前等待 launchCredit 转化为整数次数）
 - **提供查询接口**：用户可以查询任意 `(tokenAddress, memberId)` 的 `launchCredit` 余额，用于预测还需要多少激励才能产生下一次发射次数
 
-### 1.4 launchCredit 累计示例
+### 2.4 launchCredit 累计示例
 
 **假设**：`maxSupply = 10000 token`，`launchRatio = 0.01 = 1e16`，`totalSupply` 初始为 0
 
@@ -65,17 +95,17 @@
 
 **关键**：launchCredit 避免余额丢失，确保所有激励最终转化为发射次数。
 
-### 1.5 新增约束
+### 2.5 新增约束
 
 - 每个社区最多产生 `maxLaunchCount` 次发射（初始化参数）
-- 达到上限后，该社区不再产生新的发射次数，launchCredit 继续累计但不再转化
+- 达到上限后，该社区不再产生新的发射次数，也不再累计新的 `launchCredit`
 - 已有的整数次数仍可融合转移和消耗
 
 ---
 
-## 2. 发射次数融合（新增）
+## 3. 发射次数融合（新增）
 
-### 2.1 接口
+### 3.1 接口
 
 ```solidity
 function mergeLaunchCount(
@@ -86,11 +116,11 @@ function mergeLaunchCount(
 ) external
 ```
 
-### 2.2 设计意图
+### 3.2 设计意图
 
 发射次数融合支持单向转移（调用者只需控制来源 MemberNFT），目的是让发射次数可以通过 MemberNFT 作为载体进行场外交易。
 
-### 2.3 约束
+### 3.3 约束
 
 - 源、目标必须是不同且已存在的 MemberNFT
 - `count > 0`，调用者只需控制源 MemberNFT
@@ -102,19 +132,19 @@ function mergeLaunchCount(
 
 ---
 
-## 3. 发射（保留流程）
+## 4. 发射（保留流程）
 
-### 3.1 参考实现
+### 4.1 参考实现
 
 `LOVE20TKM/core/contracts/Launch.sol`
 
-### 3.2 发射规则
+### 4.2 发射规则
 
 任何当前持有目标 MemberNFT 的钱包或合约都可以触发该社区子币发射，但必须消耗该成员的一次 `launchCount`。
 
 分发合约由发射调用者决定，不同分发合约可实现各自的领取逻辑。分发合约接口没有通用定义，各自按需实现；建议至少提供 `claim(tokenAddress)` 接口和领取状态查询接口。
 
-### 3.3 发射安全性
+### 4.3 发射安全性
 
 - 使用重入保护（`nonReentrant`）
 - 遵循检查-更新-交互顺序：
@@ -126,9 +156,9 @@ function mergeLaunchCount(
 
 ---
 
-## 4. TokenFactory
+## 5. TokenFactory
 
-### 4.1 职责
+### 5.1 职责
 
 TokenFactory 负责创建所有 LOVE20 代币实例。
 
@@ -136,7 +166,7 @@ TokenFactory 负责创建所有 LOVE20 代币实例。
 - 只能由 Launch 合约调用（权限控制）
 - 返回新创建的代币地址
 
-### 4.2 接口
+### 5.2 接口
 
 ```solidity
 function createToken(
@@ -148,7 +178,7 @@ function createToken(
 ) external returns (address tokenAddress)
 ```
 
-### 4.3 参数
+### 5.3 参数
 
 详见 `00-protocol-model.md` 第 2.7 节
 
@@ -158,17 +188,17 @@ function createToken(
 - `maxSupply`：最大供应量
 - `to`：初始代币接收者（distributor 地址）
 
-### 4.4 权限
+### 5.4 权限
 
 只能由 Launch 合约调用
 
-### 4.5 效果
+### 5.5 效果
 
 - 部署新的 LOVE20Token 合约实例
 - 铸造 `initialSupply` 给 `to` 地址
 - 返回新代币地址
 
-### 4.6 失败条件
+### 5.6 失败条件
 
 - 调用者不是 Launch 合约
 - `maxSupply < initialSupply`

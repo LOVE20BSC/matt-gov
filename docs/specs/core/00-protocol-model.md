@@ -27,15 +27,16 @@ LOVE20 是社群铸币协议。每个 LOVE20 代币都有一个 `parentTokenAddr
 
 以下参数在协议部署和初始化时确定，之后不可更改：
 
-### 2.1 MemberNFT 构造参数
+### 2.1 MemberNFT 初始化参数
 
 **参考**：`LOVE20Group.sol` 构造函数
 
-- `love20TokenAddress`：协议首个 LOVE20 代币地址
 - `baseDivisor`：铸造费用基准除数（例如 1e8）
 - `bytesThreshold`：名称长度阈值，低于此值费用按倍数增长（例如 7）
 - `multiplier`：短名称费用增长倍数（例如 10）
 - `maxMemberNameLength`：成员名称最大字节长度（例如 32，避免与钱包地址混淆）
+
+首个代币地址不在部署时传入；首币由 `Launch.init(...)` 创建后，调用一次性 `MemberNFT.init(tokenAddress)` 绑定。
 
 ### 2.2 Phase 构造参数
 
@@ -47,7 +48,7 @@ LOVE20 是社群铸币协议。每个 LOVE20 代币都有一个 `parentTokenAddr
 
 ### 2.3 Stake 初始化参数
 
-**参考**：`LOVE20Stake.sol` initialize
+**参考**：旧版 `LOVE20Stake.sol` 初始化逻辑；BSC 版一次性入口统一命名为 `init(...)`
 
 - `promisedWaitingPhasesMin`：最小承诺解锁期（Phase 数）
 - `promisedWaitingPhasesMax`：最大承诺解锁期（Phase 数）
@@ -85,7 +86,9 @@ LOVE20 是社群铸币协议。每个 LOVE20 代币都有一个 `parentTokenAddr
 - `launchRatio`：发射阈值比例（1e18 精度，例如 1e16 = 1%，BSC 版新增参数）
 - `maxLaunchCount`：每个社区最大发射次数（例如 100）
 
-### 2.7 TokenFactory 子币创建参数
+### 2.7 TokenFactory 初始化与子币创建参数
+
+- `launchAddress`：唯一允许创建代币的 `Launch` 合约地址；通过 `TokenFactory.init(...)` 一次性写入
 
 **参考**：`LOVE20Token.sol` 构造函数
 

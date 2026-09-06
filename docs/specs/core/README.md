@@ -2,7 +2,7 @@
 
 状态：BSC 版实现前冻结的独立规格。
 
-Core 治理层包含 8 个合约和通用规则。本文档定义 BSC Core 的协议行为。**保留旧逻辑的部分直接引用旧代码位置**，避免重复描述。详细变更清单见 [`../CHANGES-core.md`](../CHANGES-core.md)。
+Core 治理层包含 9 个合约和通用规则。本文档定义 BSC Core 的协议行为。**保留旧逻辑的部分直接引用旧代码位置**，避免重复描述。详细变更清单见 [`../CHANGES-core.md`](../CHANGES-core.md)。
 
 ---
 
@@ -18,7 +18,6 @@ Core 治理层包含 8 个合约和通用规则。本文档定义 BSC Core 的�
 | [05-submit-vote.md](05-submit-vote.md) | Submit + Vote（Proposal 流程）| ~150 行 |
 | [06-mint.md](06-mint.md) | Mint 规格 | ~200 行 |
 | [07-launch.md](07-launch.md) | Launch + TokenFactory | ~200 行 |
-| [08-genesis.md](08-genesis.md) | 首个代币部署 | ~100 行 |
 | [09-testing.md](09-testing.md) | 事件、错误、验收 | ~150 行 |
 
 ---
@@ -46,8 +45,7 @@ Core 治理层包含 8 个合约和通用规则。本文档定义 BSC Core 的�
 2. **质押层**：Stake
 3. **治理层**：Submit, Vote
 4. **铸造层**：Mint
-5. **发射层**：Launch, TokenFactory
-6. **启动层**：首个代币部署
+5. **发射层**：Launch, TokenFactory（`Launch.init` 同时完成首个代币部署）
 
 ---
 
@@ -65,6 +63,6 @@ MemberNFT → Stake → Submit → Vote → Mint → Launch
 
 ## 阅读建议
 
-- **首次阅读**：按文档编号顺序（00 → 09）
+- **首次阅读**：按文档编号顺序（00 → 07），最后阅读 `09-testing.md`
 - **实现查阅**：根据合约名称直接定位对应文档
 - **验收核对**：重点查看 `09-testing.md` 的验收场景

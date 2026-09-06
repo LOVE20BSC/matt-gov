@@ -13,9 +13,9 @@
 4. **docs/acceptance.md** — 跨仓库验收标准
 
 **规格文档（"是什么"）**
-5. **docs/specs/core.md** — Core 层规格（546行）
-6. **docs/specs/action.md** — Action 层规格（545行）
-7. **docs/specs/group-chat.md** — 群聊规格（455行）
+5. **docs/specs/core/** — Core 层拆分规格
+6. **docs/specs/action/** — Action 层拆分规格
+7. **docs/specs/group-chat/** — 群聊拆分规格
 8. **docs/specs/compatibility.md** — 外部依赖兼容性（105行）
 
 **变更文档（"为什么"和"从哪来"）**
@@ -85,8 +85,8 @@
 
 **跨文档一致性**
 - [ ] CONTEXT.md 的术语与各规格文档是否一致
-- [ ] core.md 定义的回调接口与 action.md 实现是否匹配
-- [ ] action.md 的查询接口与 group-chat.md 依赖是否对应
+- [ ] `core/` 定义的回调接口与 `action/` 实现是否匹配
+- [ ] `action/` 的查询接口与 `group-chat/` 依赖是否对应
 - [ ] repositories.md 的依赖关系与各规格的 import 是否一致
 
 **与组织约束一致性**
@@ -274,21 +274,21 @@
 - [ ] 主体模型是否清晰（memberId vs 地址的使用边界）
 - [ ] 架构分层是否明确（Core/Action/Chat 的边界）
 
-### docs/specs/core.md
+### docs/specs/core/
 - [ ] MemberNFT 转移语义是否明确
 - [ ] Stake 的两类质押关系是否清楚
 - [ ] Phase 与 Round 的映射关系是否正确
 - [ ] Mint 的激励分配公式是否完整
 - [ ] Launch 的发射次数计算是否正确
 
-### docs/specs/action.md
+### docs/specs/action/
 - [ ] ActionTarget 的回调机制是否完整
 - [ ] ActionRound 的三/四阶段映射是否清晰
 - [ ] LP 行动的时间权重公式是否正确
 - [ ] 链群验证的批次和锁定逻辑是否清楚
 - [ ] 链群服务的聚合和分配是否正确
 
-### docs/specs/group-chat.md
+### docs/specs/group-chat/
 - [ ] 五类 Chat 的资格定义是否完整
 - [ ] 黑名单的双阈值逻辑是否清楚
 - [ ] Group Chat Delegate 的边界是否明确
@@ -307,19 +307,19 @@
 ### docs/specs/CHANGES-core.md
 - [ ] 迁移矩阵是否完整（覆盖所有旧组件）
 - [ ] 引用旧代码位置是否正确（文件路径、行号）
-- [ ] 与 core.md 的一致性（保留/修改/删除是否对应）
+- [ ] 与 `core/` 的一致性（保留/修改/删除是否对应）
 - [ ] 迁移原则是否在规格中贯彻
 
 ### docs/specs/CHANGES-action.md
 - [ ] 迁移矩阵是否完整
 - [ ] 引用旧代码位置是否正确
-- [ ] 与 action.md 的一致性
+- [ ] 与 `action/` 的一致性
 - [ ] LP V1/V2 的删除/保留边界是否清晰
 
 ### docs/specs/CHANGES-group-chat.md
 - [ ] 迁移矩阵是否完整
 - [ ] 引用旧代码位置是否正确
-- [ ] 与 group-chat.md 的一致性
+- [ ] 与 `group-chat/` 的一致性
 - [ ] Group Chat Delegate 边界是否与 core 一致
 
 ---
@@ -401,7 +401,7 @@ CHANGES 文档（CHANGES-core.md, CHANGES-action.md, CHANGES-group-chat.md）记
 CHANGES-core.md 说：
   "✅ 保留逻辑：铸造费用公式"
   
-检查 core.md 第 3.3 节：
+检查 `core/` 下对应章节：
   - [ ] 是否有铸造费用公式
   - [ ] 公式是否与 CHANGES 描述一致
   - [ ] 是否引用了同样的旧代码位置
@@ -428,8 +428,8 @@ CHANGES-core.md 说：
 - [ ] 是否有组件在 CHANGES 中删除，但规格中又出现
 
 **特别检查**：
-- CHANGES 说 LP V1 不迁移 → action.md 是否只有 V2
-- CHANGES 说 SL/ST 不迁移 → core.md 是否没有这些 token
+- CHANGES 说 LP V1 不迁移 → `action/` 是否只有 V2
+- CHANGES 说 SL/ST 不迁移 → `core/` 是否没有这些 token
 - CHANGES 说 Burn 不迁移 → 但 Airdrop 作为外部依赖的描述是否清晰
 
 ---
@@ -453,27 +453,27 @@ CHANGES-core.md 说：
 ## 与规格文档一致性检查
 
 ### ✅ 保留项对照
-- [x] MemberNFT 名称校验 — CHANGES 说保留，core.md 第 3.2 节确认
-- [x] 铸造费用公式 — CHANGES 说保留，core.md 第 3.3 节确认
-- [ ] XXX 逻辑 — CHANGES 说保留，但 core.md 未找到
+- [x] MemberNFT 名称校验 — CHANGES 说保留，`core/02-member-nft.md` 确认
+- [x] 铸造费用公式 — CHANGES 说保留，`core/02-member-nft.md` 确认
+- [ ] XXX 逻辑 — CHANGES 说保留，但 `core/` 未找到
 
 ### 🔄 修改项对照
-- [x] Stake 去凭证化 — CHANGES 说修改，core.md 第 4 节确认
-- [ ] XXX — CHANGES 说修改，但 core.md 描述不清晰
+- [x] Stake 去凭证化 — CHANGES 说修改，`core/04-stake.md` 确认
+- [ ] XXX — CHANGES 说修改，但 `core/` 描述不清晰
 
 ### ❌ 删除项对照
-- [x] SL/ST token — CHANGES 说删除，core.md 确实没有
-- [ ] XXX — CHANGES 说删除，但 core.md 仍有引用
+- [x] SL/ST token — CHANGES 说删除，`core/` 确实没有
+- [ ] XXX — CHANGES 说删除，但 `core/` 仍有引用
 ```
 
 #### 3. 迁移原则贯彻检查
 ```markdown
 ## 迁移原则贯彻检查
 
-- [x] 身份统一 — core.md 所有接口都用 memberId
-- [ ] 去凭证化 — core.md 第 X 节仍提到 SL token（冲突）
-- [x] 时间灵活 — core.md 使用 Phase
-- [x] 独立协议 — core.md 没有旧合约兼容逻辑
+- [x] 身份统一 — `core/` 所有接口都用 memberId
+- [ ] 去凭证化 — `core/` 第 X 节仍提到 SL token（冲突）
+- [x] 时间灵活 — `core/` 使用 Phase
+- [x] 独立协议 — `core/` 没有旧合约兼容逻辑
 ```
 
 ---

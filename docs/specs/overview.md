@@ -366,9 +366,9 @@ Proposal 激励：
 
 阅读完本概览后，建议按以下顺序深入：
 
-1. **[core.md](core.md)**：理解治理层的具体机制（质押、投票、铸币）
-2. **[action.md](action.md)**：理解三类行动的运作方式
-3. **[group-chat.md](group-chat.md)**：理解群聊资格和黑名单机制
+1. **[core/README.md](core/README.md)**：理解治理层的具体机制（质押、投票、铸币）
+2. **[action/README.md](action/README.md)**：理解三类行动的运作方式
+3. **[group-chat/README.md](group-chat/README.md)**：理解群聊资格和黑名单机制
 4. **CHANGES-*.md**：了解相对于旧协议的具体变更
 
 每个规格文档的开头都会重新说明该模块的设计理念和典型流程。

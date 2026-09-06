@@ -1,5 +1,7 @@
 # BSC 规格文档说明
 
+权威规范以 `core/`、`action/`、`group-chat/` 下的拆分文件为准；同级旧版整篇文件仅作迁移历史汇总，不据此实现或继续修改。
+
 本目录包含 BSC 版协议的规格文档。
 
 ---
@@ -19,7 +21,6 @@ Core 规格已按合约拆分到 `core/` 目录：
 - **[core/05-submit-vote.md](core/05-submit-vote.md)** - Submit 与 Vote 规格
 - **[core/06-mint.md](core/06-mint.md)** - Mint 规格
 - **[core/07-launch.md](core/07-launch.md)** - Launch 与 TokenFactory 规格
-- **[core/08-genesis.md](core/08-genesis.md)** - 首个代币部署
 - **[core/09-testing.md](core/09-testing.md)** - 事件、错误和验收
 
 ### Action 规格（已拆分）
@@ -77,12 +78,12 @@ Group Chat 规格已按功能模块拆分到 `group-chat/` 目录：
 
 **Core 合约实现**：
 1. 查看 **[CHANGES-core.md](CHANGES-core.md)** 了解变更
-2. 按合约定位到 `core/` 下对应文档
+2. 按合约定位到 `core/` 下对应拆分文档
 3. 参考文档中引用的旧代码位置
 
 **Action 和 Group Chat 实现**：
 1. 查看对应的 CHANGES 文档
-2. 按功能模块定位到 `action/` 或 `group-chat/` 下对应文档
+2. 按功能模块定位到 `action/` 或 `group-chat/` 下对应拆分文档
 3. 参考文档中引用的旧代码位置
 
 ### 验收时核对
@@ -101,7 +102,7 @@ Group Chat 规格已按功能模块拆分到 `group-chat/` 目录：
 ### Core（拆分前后对比）
 
 - **拆分前**：1 个文件，1028 行
-- **拆分后**：11 个文件（1 个索引 + 10 个模块），1449 行总计，平均 131 行/文件
+- **拆分后**：10 个文件（1 个索引 + 9 个模块），1425 行总计
 
 ### Action（拆分前后对比）
 
