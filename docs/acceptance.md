@@ -43,7 +43,7 @@
 - Foundry 覆盖率报告显示相关函数分支覆盖率达 100%
 
 ### LP 行动执行合约
-**覆盖要求**：覆盖旧 `extension-lp` V2 业务在 `action` 中的重写路径，包括 MemberNFT 参与、每笔加入时冻结时间扣减、完整退出、整笔 Proposal 激励铸造后的内部成员结算/溢出销毁和失败回滚；不验收或迁移 V1 LP 实现。LP 手续费结算属于 `core/Stake`，不由 LP 行动 Executor 承担。
+**覆盖要求**：覆盖旧 `LOVE20TKM/extension-lp` V2 业务在 `action` 中的重写路径，包括 MemberNFT 参与、每笔加入时冻结时间扣减、完整退出、整笔 Proposal 激励铸造后的内部成员结算/溢出销毁和失败回滚；不验收或迁移 V1 LP 实现。LP 手续费结算属于 `core/Stake`，不由 LP 行动 Executor 承担。
 
 **测试方式**：
 - 单元测试：`action/test/LPExecutor.t.sol` 的时间扣减、部分撤回、完整退出、激励结算场景
@@ -135,11 +135,11 @@
 - ASCII 大小写不敏感
 - 自转账不破坏持有人统计
 
-### 链群全局索引与 Group Chat 主体
-**覆盖要求**：覆盖链群 Executor 的 17 组 Group ID、Token Address、Action ID、Member ID 索引及每组全量数组/`Count`/`AtIndex` 一致性；覆盖同一成员跨社区、跨行动参与，退出一个行动但仍有其他关系时不得提前删除上层索引，最后一个关系退出后逐层清理，以及 `forceExit` 不修改这些业务索引。覆盖四类 typed Manager、普通 owner 管理型 Chat、规则槽位、插件、消息与分页行为；覆盖成员、管理员、委托、发言、提及、黑名单目标和黑名单投票者均按 `memberId` 运行，并确认不存在默认 MemberNFT 映射、默认身份发言入口、地址黑名单/投票/查询或其他地址主体接口。治理黑名单覆盖代币治理票与行动 Proposal 投票两类票权、全社区治理票分母、支持票严格超过反对票 `10` 倍且达到 `0.3%` 的双阈值、撤票和任何人刷新。链群 Chat 覆盖纯成员名单和”成员名单或链群 Executor 当前归属”标准资格源，并使用 `gTokenAddressesByGroupIdByMemberIdCount(groupId, senderId) > 0` 判断 Executor 归属；最后一次正常退出使资格失效，ActionTarget 的 `forceExit` 不单独改变资格。owner 快照及消息/事件调用地址只用于 NFT 转移有效性和审计，不得成为业务主体。
+### GroupAction 全局索引与 Group Chat 主体
+**覆盖要求**：覆盖 GroupAction Executor 的 17 组 Group ID、Token Address、Action ID、Member ID 索引及每组全量数组/`Count`/`AtIndex` 一致性；覆盖同一成员跨社区、跨行动参与，退出一个行动但仍有其他关系时不得提前删除上层索引，最后一个关系退出后逐层清理，以及 `forceExit` 不修改这些业务索引。覆盖四类 typed Manager、普通 owner 管理型 Chat、规则槽位、插件、消息与分页行为；覆盖成员、管理员、委托、发言、提及、黑名单目标和黑名单投票者均按 `memberId` 运行，并确认不存在默认 MemberNFT 映射、默认身份发言入口、地址黑名单/投票/查询或其他地址主体接口。治理黑名单覆盖代币治理票与行动 Proposal 投票两类票权、全社区治理票分母、支持票严格超过反对票 `10` 倍且达到 `0.3%` 的双阈值、撤票和任何人刷新。Group Chat 的群组资格以成员名单或 GroupAction 当前归属为任一满足；最后一个 GroupAction 归属正常退出后，才失去归属分支；ActionTarget 的 `forceExit` 不单独改变资格。owner 快照及消息/事件调用地址只用于 NFT 转移有效性和审计，不得成为业务主体。
 
 **测试方式**：
-- 单元测试：`action/test/ChainGroupExecutor.t.sol` 的17组索引一致性场景
+- 单元测试：`action/test/GroupActionExecutor.t.sol` 的17组索引一致性场景
 - 单元测试：`group-chat/test/GroupChat.t.sol` 的成员、委托、黑名单场景
 - 集成测试：跨行动参与、`forceExit` 后索引和资格状态
 - 验收证据：索引查询日志、Group Chat 资格判断日志
@@ -163,7 +163,7 @@
 - executor 保留项校验正确
 
 ### ActionTarget / Executor 状态边界
-**覆盖要求**：覆盖仅关联 Executor 可登记/正常清除、当前 MemberNFT 持有人可 `forceExit`、强制退出后 ActionTarget 当前参与查询清除而 Executor 资产及链群归属状态不回写，以及不通过旧 Executor 状态自动恢复登记。
+**覆盖要求**：覆盖仅关联 Executor 可调用 ActionTarget.join/exit、当前 MemberNFT 持有人可 `forceExit`、强制退出后 ActionTarget 当前加入查询清除而 Executor 资产及 GroupAction 归属状态不回写，以及后续 Executor 正常调用 exit 不回滚，也不通过旧 Executor 状态自动恢复加入。
 
 **测试方式**：
 - 单元测试：`action/test/ActionTarget.t.sol` 的 forceExit 场景
@@ -173,7 +173,8 @@
 **判定标准**：
 - forceExit 后 ActionTarget 查询返回空
 - Executor 资产状态未改变
-- 链群归属不因 forceExit 变化
+- GroupAction 归属不因 forceExit 变化
+- Executor 后续正常调用 exit 成功
 
 ### Proposal Target 回调
 **覆盖要求**：覆盖 Proposal 创建、提案推举、提案投票三类回调；覆盖创建回调只发生一次、推举已有 Proposal 不重复创建回调、`submitterId`、`voterId`、增量票和 KV 透传，以及回调失败时对应外层交易整体回滚。
@@ -189,10 +190,10 @@
 - 参数透传无丢失
 
 ### 公共验证者与 Round 历史
-**覆盖要求**：覆盖加入、追加、体验加入、部分撤回和全部退出逐笔更新当前 Round；覆盖同轮多次变更、显式零值退出、最后成员退出移除链群、无交互 Round 继承最近历史，以及加入阶段结束后不能回写。验证阶段无需前置状态准备交易即可读取目标 Round 历史；验证提交按成员历史顺序使用连续游标。所有链群成员将各次 `参与代币数量 × 原始验证得分` 累加为统一 `finalScore`，再用全行动总 `finalScore` 分配激励，不因所属链群不同而改变相同参与量/得分的权重。首个验证批次永久锁定后验证者停止提交时，本轮行动层激励保持为 `0`，底层 Proposal 激励仍可按规则铸造或销毁，且不允许未经授权的其他候选人接管。
+**覆盖要求**：覆盖加入、追加、体验加入、部分撤回和全部退出逐笔更新当前 Round；Provider 只能撤回自己的体验代币，不能代成员退出；体验撤回使成员总参与量归零时自动退出。覆盖同轮多次变更、显式零值退出、最后成员退出移除 Group、无交互 Round 继承最近历史，以及加入阶段结束后不能回写。验证阶段无需前置状态准备交易即可读取目标 Round 历史；验证提交按成员历史顺序使用连续游标。每个成员的 `finalScore = participationAmount × originScore`，再用全行动总 `finalScore` 分配激励，不因所属 Group 不同而改变相同参与量/得分的权重。首个验证批次永久锁定后验证者停止提交时，本轮行动层激励保持为 `0`，底层 Proposal 激励仍可按规则铸造或销毁，且不允许未经授权的其他候选人接管。
 
 **测试方式**：
-- 单元测试：`action/test/ChainGroupExecutor.t.sol` 的 Round 历史、验证场景
+- 单元测试：`action/test/GroupActionExecutor.t.sol` 的 Round 历史、验证场景
 - 集成测试：多轮变更、验证者锁定场景
 - 验收证据：Round 历史查询日志、验证激励分配日志
 
@@ -206,7 +207,7 @@
 
 **测试方式**：
 - 单元测试：`core/test/Phase.t.sol` 的同步、校准场景
-- 单元测试：`action/test/ChainGroupExecutor.t.sol` 的候选排名、分割线场景
+- 单元测试：`action/test/GroupActionExecutor.t.sol` 的候选排名、分割线场景
 - 验收证据：Phase 调整日志、候选排序日志
 
 **判定标准**：
@@ -214,19 +215,19 @@
 - 候选排序规则正确
 - Phase 历史不可回写
 
-### ActionRound 统一性
-**覆盖要求**：覆盖 `Phase 1..3` 对 LP 行动和 `Phase 1..4` 对链群行动、链群服务行动的冷启动期，各 Executor 查询尚未开始阶段时回滚 `RoundNotStarted` 且不返回 `0`。覆盖 LP 行动使用 3 阶段模型（投票-加入-铸币），链群行动使用 4 阶段模型（投票-加入-验证-铸币），链群服务行动保留 4 阶段并复用被服务链群行动同轮次的验证结果，不在服务 Executor 内执行验证。覆盖各 Executor 从 `Phase.currentPhase()` 正确计算自己的业务 Round，投票和加入的 Phase 映射在所有行动类型中一致（投票发生在 Phase p，同轮次加入发生在 Phase p+1）。各 Executor 提供标准查询接口，实现可参考旧代码库 `LOVE20TKM` 中的 Extension 接口。
+### 行动轮次统一性
+**覆盖要求**：覆盖 `Phase 1..3` 对 LP 行动和 `Phase 1..4` 对 GroupAction、GroupService 的冷启动期，各 Executor 查询尚未开始阶段时回滚 `RoundNotStarted` 且不返回 `0`。覆盖 LP 行动使用 3 阶段模型（投票-加入-铸币），GroupAction 使用 4 阶段模型（投票-加入-验证-铸币），GroupService 保留 4 阶段并复用被服务 GroupAction 同轮次的验证结果，不在 GroupService 内执行验证。覆盖各 Executor 从 `Phase.currentPhase()` 正确计算自己的业务 Round，投票和加入的 Phase 映射在所有行动类型中一致（投票发生在 Phase p，同轮次加入发生在 Phase p+1）。各 Executor 提供标准查询接口，实现可参考旧代码库 `LOVE20TKM` 中的 Extension 接口。
 
 **测试方式**：
-- 单元测试：`action/test/LPExecutor.t.sol`、`action/test/ChainGroupExecutor.t.sol` 和 `action/test/ChainGroupServiceExecutor.t.sol` 的 Phase 1-3/4 查询场景
-- 集成测试：三类行动在同一 Phase 的投票和加入 Round 一致性，以及服务行动读取被服务链群行动同轮验证结果的结算场景
+- 单元测试：`action/test/LPExecutor.t.sol`、`action/test/GroupActionExecutor.t.sol` 和 `action/test/GroupServiceExecutor.t.sol` 的 Phase 1-3/4 查询场景
+- 集成测试：三类行动在同一 Phase 的投票和加入 Round 一致性，以及服务行动读取被服务 GroupAction 同轮结果的结算场景
 - 验收证据：Round 计算日志
 
 **判定标准**：
 - Phase 1-2 查询 LP 铸币 Round 回滚 RoundNotStarted
-- Phase 1-3 查询链群铸币 Round 回滚 RoundNotStarted
-- 相同 Phase 下，三类行动的投票和加入 Round 相同；链群行动和链群服务行动的验证、铸币 Round 对齐
-- 链群服务行动不执行独立验证，且只计入被服务链群行动同轮已完成全部验证的行动激励
+- Phase 1-3 查询 GroupAction 铸币 Round 回滚 RoundNotStarted
+- 相同 Phase 下，三类行动的投票和加入 Round 相同；GroupAction 和 GroupService 的验证、铸币 Round 对齐
+- GroupService 不执行独立验证，源行动激励查询自行处理同轮验证条件
 - 各 Executor 提供 `currentVoteRound()`、`currentJoinRound()`、`currentMintRound()` 等标准接口
 
 ### LP 兼容性
@@ -242,13 +243,13 @@
 - 手续费重分类公式正确
 - 失败场景正确回滚
 
-### 链群服务结算
-**覆盖要求**：覆盖服务代币与行动代币相同或为其直接父币、非直接关系拒绝；覆盖只有当轮已加入服务 Proposal 的链群 owner/公共验证者候选 MemberNFT 才能按人结算、未加入角色份额不重分配、所有链群行动总激励作为分母且首次计算后缓存、仅完整验证行动贡献分子、公共验证者按工作量直接分配，以及按确认后的 owner 治理票占比处理超额销毁；同时覆盖 `1e18` 乘数精度和 100% 二次分配不下溢。
+### GroupService 结算
+**覆盖要求**：覆盖服务代币与行动代币相同或为其直接父币、非直接关系拒绝；覆盖只有当轮已加入服务 Proposal 的群 owner/公共验证者候选 MemberNFT 才能按人结算、未加入角色份额不重分配、所有 GroupAction 总激励作为分母且首次计算后缓存、源行动激励查询自行处理验证条件、公共验证者按工作量直接分配，以及按确认后的 owner 治理票占比处理超额销毁；同时覆盖 `1e18` 乘数精度和 100% 二次分配不下溢。
 
 `totalGroupActionReward == 0` 时不执行除法；覆盖轮次结束后任何地址调用 `burnRewardIfNeeded(round)`，由 Executor 直接调用服务代币 `burn` 的销毁和重复调用幂等行为。
 
 **测试方式**：
-- 单元测试：`action/test/ChainGroupServiceExecutor.t.sol` 的服务结算场景
+- 单元测试：`action/test/GroupServiceExecutor.t.sol` 的服务结算场景
 - 验收证据：结算金额分配日志、精度验证日志
 
 **判定标准**：

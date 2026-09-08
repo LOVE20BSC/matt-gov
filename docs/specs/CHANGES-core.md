@@ -4,7 +4,7 @@
 
 ## 迁移原则
 
-1. **身份统一**：所有业务主体从钱包地址改为 MemberNFT 的 `memberId`
+1. **身份统一**：所有业务主体统一使用 MemberNFT 的 `memberId`
 2. **去凭证化**：质押不再产生 SL/ST ERC20 代币，状态直接归 `memberId`
 3. **时间灵活**：引入无语义的 Phase 时间线，替代固定 4 阶段映射
 4. **独立协议**：BSC 是新协议代际，不兼容旧合约存储、地址和历史状态
@@ -15,22 +15,22 @@
 
 | 组件 | 状态 | 旧位置 | 新位置 | 核心变化 |
 |------|------|--------|--------|----------|
-| MemberNFT | 合并新增 | LOVE20TKM/group: LOVE20Group.sol | core/MemberNFT.sol | 名称 64→32 bytes，铸造费用公式保留 |
+| MemberNFT | 合并新增 | `LOVE20TKM/group/src/LOVE20Group.sol` | core/MemberNFT.sol | 名称 64→32 bytes，铸造费用公式保留 |
 | Phase | 全新 | - | core/Phase.sol | 替代固定阶段，动态校准 |
-| Stake | 重构 | LOVE20TKM/core: Stake.sol | core/Stake.sol | 去 SL/ST 凭证，按 memberId 归属 |
-| Submit | 保留 | LOVE20TKM/core: Submit.sol | core/Submit.sol | 主体改为 memberId |
-| Vote | 保留 | LOVE20TKM/core: Vote.sol | core/Vote.sol | 主体改为 memberId |
-| Mint | 修改 | LOVE20TKM/core: Mint.sol | core/Mint.sol | 治理激励公式调整 |
-| LOVE20Token | 重构 | LOVE20TKM/core: LOVE20Token.sol | core/LOVE20Token.sol | ERC20、父币、maxSupply 和 minter 保留；移除 SL/ST 依赖 |
-| TokenFactory | 微调 | LOVE20TKM/core: TokenFactory.sol | core/TokenFactory.sol | 旧创建职责保留；新增 distributor，移除 SL/ST 创建 |
-| Launch | 修改 | LOVE20TKM/core: Launch.sol | core/Launch.sol | 发射次数按 memberId 记录 |
+| Stake | 重构 | `LOVE20TKM/core/src/LOVE20Stake.sol` | core/Stake.sol | 去 SL/ST 凭证，按 memberId 归属 |
+| Submit | 保留 | `LOVE20TKM/core/src/LOVE20Submit.sol` | core/Submit.sol | 主体改为 memberId |
+| Vote | 保留 | `LOVE20TKM/core/src/LOVE20Vote.sol` | core/Vote.sol | 主体改为 memberId |
+| Mint | 修改 | `LOVE20TKM/core/src/LOVE20Mint.sol` | core/Mint.sol | 治理激励公式调整 |
+| LOVE20Token | 重构 | `LOVE20TKM/core/src/LOVE20Token.sol` | core/LOVE20Token.sol | ERC20、父币、maxSupply 和 minter 保留；移除 SL/ST 依赖 |
+| TokenFactory | 微调 | `LOVE20TKM/core/src/LOVE20TokenFactory.sol` | core/TokenFactory.sol | 旧创建职责保留；新增 distributor，移除 SL/ST 创建 |
+| Launch | 修改 | `LOVE20TKM/core/src/LOVE20Launch.sol` | core/Launch.sol | 发射次数按 memberId 记录 |
 
 ---
 
 ## 1. MemberNFT（合并新增）
 
 ### 来源
-- 合并旧 `LOVE20TKM/group` 仓库的 `LOVE20Group.sol`
+- 合并旧 `LOVE20TKM/group/src/LOVE20Group.sol`
 - 升级为协议唯一身份 NFT
 
 ### ✅ 保留逻辑
@@ -179,8 +179,8 @@
 - 加速激励名称保持一致
 
 #### 加速质押参与激励分配
-- **旧**：加速质押不参与激励分配
-- **新**：加速质押参与治理激励的加速部分分配（50%），但有 2 倍上限
+- **旧**：加速质押参与治理激励的加速部分分配（50%），并受 2 倍上限
+- **新**：继续参与同一 50% 加速激励，并继续受 2 倍上限；BSC 仅把份额归属从地址改为 `memberId`
 
 #### 批量铸造
 - **新增**：`mintGovRewards(tokenAddress, memberId, rounds[])`
@@ -219,6 +219,7 @@
 
 #### 首个代币部署
 - `Launch.init(...)` 在写入依赖和发射参数的同一笔初始化交易中，通过 `TokenFactory` 创建首个代币、设置 `minter`、发送首批代币到 Airdrop、创建首个代币/WBNB Pair 并绑定 `MemberNFT`
+- `Launch` 的分发参数与 Proposal 的 `target + targetMode` 对齐：首币固定使用 Airdrop 和 `NoCallback`；普通发射可使用 `NoCallback` 或 `Callback`
 - 初始化任一步失败则整笔回滚；成功后不得再次初始化或创建第二个首个代币
 - Airdrop 来源和 Burn 追溯证据按部署记录保存
 
@@ -281,7 +282,6 @@
 | 组件 | 原位置 | 删除原因 |
 |------|--------|----------|
 | GroupDefaults | LOVE20TKM/group | BSC 不迁移默认配置 |
-| LOVE20MemberMarket | LOVE20TKM/core | 未部署，不属于核心依赖 |
 | SL/ST Token | LOVE20TKM/core/src/LOVE20Stake.sol | 去凭证化，状态直接归 memberId |
 | 地址主体接口 | 所有合约 | 统一使用 memberId |
 

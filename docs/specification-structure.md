@@ -34,7 +34,7 @@
 ## 范围
 
 - `core`：治理、MemberNFT、Phase、基础子币发射；首个代币由 `Launch.init` 创建，见 [Launch](specs/core/07-launch.md)。
-- `action`：ActionTarget、LP、链群行动和链群服务；共享边界不要求各 Executor 具有相同业务接口。
+- `action`：ActionTarget、LP、GroupAction 和 GroupService；共享边界不要求各 Executor 具有相同业务接口。
 - `group-chat`：群聊和仅限群聊内部的 Group Chat Delegate。
 - `compatibility`：外部 WBNB/PancakeSwap 接口与行为验证；无生产合约，不是业务运行时依赖。
 - `launch` 仓库本阶段不创建；外围、部署、集成、前端、批量转账和用户文档仓库使用自身 README、部署或测试说明。

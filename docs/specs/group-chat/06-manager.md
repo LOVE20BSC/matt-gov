@@ -25,6 +25,6 @@ Manager 无私钥，不存在自然人“丢失 Manager 私钥”；若依赖业
 
 ## owner 管理型群组 Chat
 
-群组直接用 owner 持有的 MemberNFT 激活，不走 Manager；owner/有效 delegate 可更新四个槽位。GroupMemberScope 和组合归属源行为见 [类型与资格](05-chat-types.md)，后者只把旧 GroupJoin 地址关系查询替换为 BSC 标准链群 Executor 的 memberId 查询。
+群组直接用 owner 持有的 MemberNFT 激活，不走 Manager；owner/有效 delegate 可更新四个槽位。GroupMemberScope 和组合归属源行为见 [类型与资格](05-chat-types.md)，后者只把旧 GroupJoin 地址关系查询替换为 BSC 标准 GroupAction Executor 的 memberId 查询。
 
-核对来源：旧 `src/managers/BaseManager.sol`、`BaseTokenScopeManager.sol`、`BaseTokenActionScopeManager.sol`，提交见 [入口](README.md#已核对来源)。
+核对来源：旧 `LOVE20TKM/group-chat/src/managers/BaseManager.sol`、`LOVE20TKM/group-chat/src/managers/BaseTokenScopeManager.sol`、`LOVE20TKM/group-chat/src/managers/BaseTokenActionScopeManager.sol`，提交见 [入口](README.md#已核对来源)。

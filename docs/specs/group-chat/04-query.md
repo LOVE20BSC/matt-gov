@@ -8,7 +8,7 @@
 
 ## 查询清单
 
-以下接口保留旧 `src/interfaces/IGroupChat.sol` 的参数、返回类型和查询行为。GroupChat 列表查询支持 `offset`、`limit`、`reverse`；成员、委托、黑名单各自的分页签名沿用旧接口，不强加统一参数。
+以下接口保留旧 `LOVE20TKM/group-chat/src/interfaces/IGroupChat.sol` 的参数、返回类型和查询行为。GroupChat 列表查询支持 `offset`、`limit`、`reverse`；成员、委托、黑名单各自的分页签名沿用旧接口，不强加统一参数。
 
 | 范围 | 查询 |
 | --- | --- |
@@ -28,4 +28,4 @@
 - 空 Round 的数量为 0、消息数组为空，roundInfo 返回 `RoundSpan(round, 0, 0, 0)`；rounds 列表只枚举有消息的 Round。
 - BSC 动态 Phase 下，Message.round 按发言时 Phase 固定保存或经不回写的历史 Phase 查询；不能用当前 phaseBlocks 重算旧消息。
 
-来源：旧 GroupChat 的 `_pageCount`、`_pageIndex`、`_roundSpanOrEmpty`、`message`。验收见 [群聊验收](08-testing.md)。
+来源：旧 `LOVE20TKM/group-chat/src/GroupChat.sol` 的 `_pageCount`、`_pageIndex`、`_roundSpanOrEmpty`、`message`。验收见 [群聊验收](08-testing.md)。

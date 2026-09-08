@@ -11,15 +11,15 @@
 
 ## 撤回与退出
 
-- 自有与体验资产可同时存在；链群行动支持部分撤回，仅减少指定账本，不互相抵扣。LP 的部分撤回规则见 [LP Executor](04-lp-executor.md#部分撤回)。
-- 体验成员退出或 Provider 代其退出时，体验资产归还 Provider。
-- Provider 可部分或全部撤回体验资产；撤回后总参与量为零则退出行动，否则保留参与。
+- 自有与体验资产可同时存在；GroupAction 支持自有资产部分撤回，仅减少自有账本，不与体验资产互相抵扣。自有资产归零且体验资产也为零时，自动退出行动。LP 的部分撤回规则见 [LP Executor](04-lp-executor.md#部分撤回)。
+- 成员正常退出时，体验资产归还各 Provider。
+- Provider 只能撤回自己提供的体验代币，不能代成员调用退出；撤回后该成员的总参与量为零时，合约自动完成该成员的退出，否则成员保持加入。
 - 加入阶段内撤回更新当轮参与权；阶段结束后不得回写该 Round 历史。
-- 正常登记与应急清理见 [ActionTarget](01-action-target.md)，资金处理由 Executor 完成。
+- 正常加入/退出与应急清理见 [ActionTarget](01-action-target.md)，资金处理由 Executor 完成。
 
 ## 体验参与接口
 
-以下属于链群 Executor，沿用旧 GroupJoin 的待体验名单和 Provider 授权；不强制 LP 实现体验业务。
+以下属于 GroupAction Executor，沿用旧 `LOVE20TKM/extension-group/src/GroupJoin.sol` 的待体验名单和 Provider 授权；不强制 LP 实现体验业务。
 
 ```solidity
 function trialAccountsWaitingAdd(address tokenAddress, uint256 actionId, uint256 groupId,
@@ -30,7 +30,6 @@ function trialJoin(address tokenAddress, uint256 actionId, uint256 groupId, uint
     uint256 providerMemberId, string[] calldata verificationInfos) external;
 function trialWithdraw(address tokenAddress, uint256 actionId, uint256 memberId,
     uint256 providerMemberId, uint256 amount) external;
-function trialExit(address tokenAddress, uint256 actionId, uint256 memberId, uint256 providerMemberId) external;
 function trialAccountsWaiting(address tokenAddress, uint256 actionId, uint256 groupId, uint256 providerMemberId)
     external view returns (uint256[] memory memberIds, uint256[] memory amounts, uint256[] memory blockNumbers);
 function trialAmount(address tokenAddress, uint256 actionId, uint256 round, uint256 memberId, uint256 providerMemberId)
@@ -39,6 +38,6 @@ function trialAmount(address tokenAddress, uint256 actionId, uint256 round, uint
 
 待体验名单仅 Provider 当前持有人可改；名单身份须存在且不同于 Provider，两个数组等长，额度为正。trialJoin 由参与成员持有人调用，使用已授权额度并从 Provider 当前持有人转入代币；ERC20 allowance 只授权转账，不替代上述名单授权。
 
-trialWithdraw/trialExit 允许该成员或该 Provider 当前持有人调用，资金始终返还 Provider 当前持有人；部分撤回不得超过对应体验账本。自有/其他 Provider 账本不受影响。全部参与余额归零才清除当前行动登记和归属。历史零值按 RoundHistory 记录；无历史额度返回 0，空名单返回等长空数组。
+trialWithdraw 允许成员或对应 Provider 的当前持有人调用；金额须满足 `0 < amount <= 对应体验余额`，代币始终返还该 Provider 当前持有人，不影响自有或其他 Provider 账本。Provider 身份不授予成员 `exit` 权限。撤回后总参与量归零时，Executor 自动完成成员退出、清除群归属并调用 ActionTarget.exit；否则保留加入状态。成员正常 `exit` 时，自有资产返还成员当前持有人，全部体验资产返还各 Provider 当前持有人。历史零值按 RoundHistory 记录；无历史额度返回 0，空名单返回等长空数组。
 
 验收见 [Action 验收](08-testing.md)。

@@ -1,10 +1,10 @@
-# 链群行动 Executor
+# GroupAction Executor
 
-链群使用 MemberNFT 身份，`groupId` 是链群主体的 `memberId`，不是钱包地址。参与资产见 [共同模型](03-participation.md)，四阶段映射见 [阶段模型](02-phase-model.md)。
+GroupAction 使用 MemberNFT 身份，`groupId` 是群主体的 `memberId`，不是钱包地址。参与资产见 [共同模型](03-participation.md)，四阶段映射见 [阶段模型](02-phase-model.md)。
 
 ## 配置与参与接口
 
-旧 `GroupManager` / `GroupJoin` 的 extension 地址改为 `tokenAddress + actionId`；不为每个 Proposal 部署 Executor。部署依赖通过 init 绑定，业务配置由 Proposal 创建回调写入。
+旧 `LOVE20TKM/extension-group/src/GroupManager.sol` / `LOVE20TKM/extension-group/src/GroupJoin.sol` 的 extension 地址改为 `tokenAddress + actionId`；不为每个 Proposal 部署 Executor。部署依赖通过 init 绑定，业务配置由 Proposal 创建回调写入。
 
 ```solidity
 struct GroupConfig {
@@ -36,7 +36,7 @@ function joinedAmountByMemberId(address tokenAddress, uint256 actionId, uint256 
 
 创建 KV 沿用旧行动参数：`joinTokenAddress(address)`、`activationStakeAmount(uint256)`、`maxJoinAmountRatio(uint256)`、`activationMinGovRatio(uint256)`，键取 `keccak256`、值取 `abi.encode`。验证信息键和说明沿用 LP 的可选 KV。配置和激活资格、质押退还及容量计算沿用旧 GroupManager；`maxCapacity = 0` 使用理论容量，`maxJoinAmount/maxAccounts = 0` 不另设群级上限，非零最大加入量不得低于最小加入量。
 
-管理操作要求持有 groupId；自有参与操作要求持有 memberId。同一行动中成员只能归属一个链群，追加不得改群；换群须先正常退出。`amount` 查询包含自有和体验参与总量；withdraw/exit 只处理自有账本，体验账本按 [参与规则](03-participation.md) 独立处理。无参与记录返回零元组，历史集合无记录返回空数组。
+管理操作要求持有 groupId；自有参与操作要求持有 memberId。同一行动中成员只能归属一个 Group，追加不得改群；换群须先正常退出。`amount` 查询包含自有和体验参与总量。withdraw 只减少自有账本；自有余额归零且体验余额也为零时自动退出。Provider 只能用 trialWithdraw 撤回自己的体验代币；若使总参与量归零，合约自动退出成员。成员调用 exit 时同时结清自有和体验账本，分别返还成员和 Provider。无参与记录返回零元组，历史集合无记录返回空数组。
 
 ## 当前归属与索引
 
@@ -55,7 +55,7 @@ function joinedAmountByMemberId(address tokenAddress, uint256 actionId, uint256 
 
 加入阶段每笔加入、追加、体验加入、部分撤回及退出，都更新当轮参与记录。同一 Round 多次操作只保留该轮最终值，不新增多个版本；无人交互的 Round 继承最近历史，不逐轮复制或同步。
 
-加入结束后不得回写目标 Round。验证直接读取该轮链群和成员历史，不需要前置准备交易；验证按历史成员顺序使用连续游标，不能重复、跳过或乱序。
+加入结束后不得回写目标 Round。验证直接读取该轮 Group 和成员历史，不需要前置准备交易；验证按历史成员顺序使用连续游标，不能重复、跳过或乱序。
 
 原存储示意为 `mapping(round => mapping(groupId => mapping(memberId => ParticipationData)))`；外层仍须隔离 token 和 action。沿用旧 RoundHistory 语义：无记录表示继承最近历史，退出通过显式记录零值形成终止点，不能直接删除历史记录。
 
@@ -115,11 +115,11 @@ openBlock = verifyPhaseStartBlock + openOffset
 
 `splits[0]` 对应第 2 名。`block.number >= openBlock` 才开放，不能因取整提前。
 
-首个有效验证批次永久锁定验证者 MemberNFT；NFT 转移后新持有人续验，不能由未经授权候选接管。需完成目标 Round 的全部链群验证；无候选或锁定者失联、未完成时，行动层激励为零，底层 Proposal 激励仍可独立铸造或销毁。相关验收见 [组织验收](../../acceptance.md#公共验证者与-round-历史)。
+首个有效验证批次永久锁定验证者 MemberNFT；NFT 转移后新持有人续验，不能由未经授权候选接管。需完成目标 Round 的全部 Group 验证；无候选或锁定者失联、未完成时，行动层激励为零，底层 Proposal 激励仍可独立铸造或销毁。相关验收见 [组织验收](../../acceptance.md#公共验证者与-round-历史)。
 
 ## 行动激励
 
-公共验证者按同一规则记录原始分和最终分，不保留 distrust、群级扣分或代理验证。连续批次累计全行动得分；每条冻结成员记录只计入一次，不允许对同一份参与量重复评分。
+公共验证者按同一规则记录原始分和最终分。每条冻结成员记录只计入一次，不允许对同一份参与量重复评分。
 
 ```text
 finalScore(memberId) = participationAmount(memberId) * originScore(memberId)
@@ -127,7 +127,7 @@ totalFinalScore = sum(finalScore across all groups)
 memberReward(memberId) = floor(proposalReward * finalScore(memberId) / totalFinalScore)
 ```
 
-所有链群使用同一原始得分和最终得分规则；按目标 Round 已确认参与数据汇总全行动的 `totalFinalScore` 后直接分配。`totalVotes` 或 `totalFinalScore` 为零时不除零，行动层激励为零；链群 owner 的聚合份额由其成员最终激励之和得到，不在链群内再次按比例分配。
+所有 Group 使用同一原始得分和最终得分规则；按目标 Round 已确认参与数据汇总全行动的 `totalFinalScore` 后直接分配。`totalFinalScore` 为零时不除零，行动层激励为零；群 owner 的聚合份额由其成员最终激励之和得到，不在 Group 内再次按比例分配。
 
 Executor 先按 [统一铸造链路](07-minting.md#铸造链路) 取得整笔激励，再内部分配。
 
@@ -135,6 +135,6 @@ Executor 先按 [统一铸造链路](07-minting.md#铸造链路) 取得整笔激
 
 - 退出零值与无记录继续使用旧 RoundHistory 的显式记录语义；不得通过清空 mapping 伪造退出。
 - `candidateCount = n` 表示最大可开放排名数，不是本轮总申请人数；`n = splits.length + 1`。分割线严格递增且在 `(0, 1e18)` 内，空数组只开放第 1 名。投票结束后排名自然冻结，不增加冻结交易。
-- 候选竞选是 BSC 新逻辑；旧 `GroupVerify.submitOriginScores` 仅作为连续批次和原始分校验的参考，不是候选机制来源。
+- 候选竞选是 BSC 新逻辑；旧 `LOVE20TKM/extension-group/src/GroupVerify.sol` 的 `submitOriginScores` 仅作为连续批次和原始分校验的参考，不是候选机制来源。
 
 验收见 [Action 验收](08-testing.md)。

@@ -16,7 +16,7 @@
 
 ## 迁移规则
 
-保留旧 `src/interfaces/` 中非地址主体功能的事件、错误名/参数和 indexed 字段；只对身份替换所影响的 operator/voter 参数改为 memberId，调用地址可继续作审计。删除默认身份和地址目标路径专属事件/错误，不新增一套平行行为。
+保留旧 `LOVE20TKM/group-chat/src/interfaces/` 中非地址主体功能的事件、错误名/参数和 indexed 字段；只对身份替换所影响的 operator/voter 参数改为 memberId，调用地址可继续作审计。删除默认身份和地址目标路径专属事件/错误，不新增一套平行行为。
 
 保留 Activate、SetPostingAllowed、SetScopeSource、SetBanSource、SetBeforePostPlugin、SetAfterPostPlugin、PostMessage、MentionSenderId、MentionAll 和 FailAfterPostPlugin；后者 errorData 仍为捕获到的 bytes。scope/ban 的返回 false 和外部调用失败继续分别报 Rejected 与 SourceFailed，不能误改为静默放行。
 

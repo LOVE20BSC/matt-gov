@@ -4,10 +4,10 @@
 
 | 组件 | 职责 |
 | --- | --- |
-| ActionTarget | 行动类型的统一 Proposal Target，负责映射、回调和参与登记 |
+| ActionTarget | 行动类型的统一 Proposal Target，负责映射、回调和加入状态 |
 | LP Executor | LP 时间权重和内部激励分配 |
-| 链群行动 Executor | 链群归属、参与历史、候选与验证 |
-| 链群服务 Executor | 聚合已验证行动并分配服务激励 |
+| GroupAction Executor | 群归属、参与历史、候选与验证 |
+| GroupService Executor | 聚合 GroupAction 激励并分配服务激励 |
 
 ## Core 依赖
 

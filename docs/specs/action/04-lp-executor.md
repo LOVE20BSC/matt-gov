@@ -1,6 +1,6 @@
 # LP Executor
 
-沿用旧 `ExtensionLp` 的聚合余额、时间扣减和历史查询，采用 V2 的 LP 准入规则；不部署旧业务工厂。BSC 新增部分撤回，业务按 `tokenAddress + actionId` 隔离，参与主体为 MemberNFT。
+沿用旧 `LOVE20TKM/extension-lp/src/ExtensionLp.sol` 的聚合余额、时间扣减和历史查询，采用 V2 的 LP 准入规则；不部署旧业务工厂。BSC 新增部分撤回，业务按 `tokenAddress + actionId` 隔离，参与主体为 MemberNFT。
 
 ## 配置与接口
 
@@ -29,7 +29,7 @@ function govRatio(address tokenAddress, uint256 actionId, uint256 round, uint256
 
 创建 KV 的键为 `keccak256` 后的名称，值用 `abi.encode`：`joinTokenAddress(address)`、`govRatioMultiplier(uint256)`、`minGovRatio(uint256)` 必填；可选 `verificationKeys(string[])` 和 `verificationKeyGuides(string[])` 必须等长。LP 必须是已配置 Pair Factory 登记的交易对，V2 不要求交易对包含激励代币。两个治理比例使用 `1e18` 精度，`minGovRatio <= 1e18`。
 
-写操作要求调用者持有 memberId；加入/追加金额为正，首次加入满足 `minGovRatio`。LP 从调用者转入 Executor，撤回时转给当前持有人。首次参与登记到 ActionTarget，全部退出后清除；失败全部回滚。激励接口见 [行动铸造](07-minting.md#铸造链路)。
+写操作要求调用者持有 memberId；加入/追加金额为正，首次加入满足 `minGovRatio`。LP 从调用者转入 Executor，撤回时转给当前持有人。首次加入时调用 ActionTarget.join，全部退出时调用 ActionTarget.exit；失败全部回滚。激励接口见 [行动铸造](07-minting.md#铸造链路)。
 
 ## 时间权重
 
@@ -56,7 +56,7 @@ deduction -= deductionReduction
 totalDeduction -= deductionReduction
 ```
 
-所有右侧均使用撤回前值。减少成员扣减和总扣减的数量必须相同；全额撤回时公式自然取尽剩余扣减，不留余数。部分撤回保留原加入区块/金额数组作为记录，不逐笔缩放；数组之和不再代表当前余额。全部退出清空当前 Round 的上述数组、当前参与登记和最后加入区块，不删除过去 Round。
+所有右侧均使用撤回前值。减少成员扣减和总扣减的数量必须相同；全额撤回时公式自然取尽剩余扣减，不留余数。部分撤回保留原加入区块/金额数组作为记录，不逐笔缩放；数组之和不再代表当前余额。全部退出清空当前 Round 的上述数组、当前加入状态和最后加入区块，不删除过去 Round。
 
 例（最小单位）：余额 7、扣减 3，撤回 2 后扣减减少 0，剩余余额 5、扣减 3；再全部退出取尽剩余扣减 3。
 
@@ -74,4 +74,4 @@ burnReward = theoreticalReward - mintReward
 
 先处理零值：无有效参与量时成员激励为零；乘数为 0 时关闭上限并返回理论激励；上限启用且总治理票为 0 时该成员理论激励全部销毁。未参与的轮次查询返回零。销毁调用 Token.burn，不修改 Core 的取消预留账本。
 
-来源：旧 `extension-lp/src/ExtensionLp.sol`、`ExtensionLpFactoryV2.sol` 和 `extension/src/ExtensionBaseRewardTokenJoin.sol`。部分撤回是 BSC 新增，不声称旧 V2 已具备。验收见 [Action 验收](08-testing.md)。
+来源：旧 `LOVE20TKM/extension-lp/src/ExtensionLp.sol`、`LOVE20TKM/extension-lp/src/ExtensionLpFactoryV2.sol` 和 `LOVE20TKM/extension/src/ExtensionBaseRewardTokenJoin.sol`。部分撤回是 BSC 新增，不声称旧 V2 已具备。验收见 [Action 验收](08-testing.md)。

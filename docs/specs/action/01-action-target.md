@@ -21,9 +21,9 @@ values[0] = abi.encode(executorAddress)
 
 完整签名统一见 [Core Target 回调](../core/05-submit-vote.md#target-回调)。Executor 只接受 ActionTarget 转发，不接受外部直接调用；同一复合键重复创建回调必须拒绝，任一回调失败均回滚对应外层操作。
 
-## 参与登记
+## 加入与退出
 
-登记当前成员是否参与行动，供参与列表和外部资格查询；包括链群行动，但不保存 Executor 的资产、验证或链群归属。
+记录当前成员是否加入行动，供加入列表和外部资格查询；包括 GroupAction，但不保存 Executor 的资产、验证或群归属。
 
 ```solidity
 function init(address memberNFTAddress, address submitAddress, address voteAddress, address mintAddress)
@@ -42,12 +42,12 @@ function actionIdsByMemberIdAtIndex(
     uint256 memberId,
     uint256 index
 ) external view returns (uint256 actionId);
-function registerParticipation(
+function join(
     address tokenAddress,
     uint256 actionId,
     uint256 memberId
 ) external;
-function unregisterParticipation(
+function exit(
     address tokenAddress,
     uint256 actionId,
     uint256 memberId
@@ -57,7 +57,7 @@ function mintProposalReward(address tokenAddress, uint256 round, uint256 proposa
     external returns (uint256 amount);
 ```
 
-`init` 仅部署授权者可调用一次。register/unregister/mint 仅关联 Executor 可调用；创建/推举回调仅 Submit 可调用，投票回调仅 Vote 可调用。重复登记、重复清除均不改状态；重复铸造回滚。不存在关联时 `executor` 返回零，但写操作拒绝零关联。`isAccountJoined` 无记录时返回 false。
+`init` 仅部署授权者可调用一次。join/exit/mint 仅关联 Executor 可调用；创建/推举回调仅 Submit 可调用，投票回调仅 Vote 可调用。重复加入、重复退出均不改状态；因此 `forceExit` 后，Executor 正常调用 `exit` 必须成功且不改状态。重复铸造回滚。不存在关联时 `executor` 返回零，但写操作拒绝零关联。`isAccountJoined` 无记录时返回 false。
 
 ## forceExit
 
@@ -69,9 +69,9 @@ function forceExit(
 ) external;
 ```
 
-Executor 失效时，成员 NFT 当前持有人可清除通用登记并触发事件。该操作不调用 Executor、不转资产、不承诺返还资产；前端默认隐藏，并需说明与正常退出的区别。
+Executor 失效时，成员 NFT 当前持有人可清除加入状态并触发事件。该操作不调用 Executor、不转资产、不承诺返还资产；前端默认隐藏，并需说明与正常退出的区别。
 
-登记查询立即排除该记录；Executor 的资产、历史、结算及链群归属不变，不能凭旧状态自动恢复登记。链群归属只能经 Executor 正常退出清理；对群聊资格的影响统一见 [Chat 类型](../group-chat/05-chat-types.md#forceexit-与资格)。
+加入查询立即排除该记录；Executor 的资产、历史、结算及 GroupAction 归属不变，不能凭旧状态自动恢复加入状态。GroupAction 归属只能经 Executor 正常退出清理；对群聊资格的影响统一见 [Chat 类型](../group-chat/05-chat-types.md#forceexit-与资格)。
 
 ## Round 查询
 

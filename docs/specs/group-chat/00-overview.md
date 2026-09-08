@@ -4,7 +4,7 @@ Group Chat 是公开链上群聊，保存配置、消息和查询索引；不管
 
 ## 迁移边界
 
-保留旧 `src/GroupChat.sol`、`GroupAdmin.sol`、`GroupMember.sol`、`GroupBanList.sol`、Manager、scope/ban 及插件的业务行为。只有以下变化：
+保留旧 `LOVE20TKM/group-chat/src/GroupChat.sol`、`LOVE20TKM/group-chat/src/GroupAdmin.sol`、`LOVE20TKM/group-chat/src/GroupMember.sol`、`LOVE20TKM/group-chat/src/GroupBanList.sol`、`LOVE20TKM/group-chat/src/managers/`、`LOVE20TKM/group-chat/src/sources/` 及插件的业务行为。只有以下变化：
 
 - GroupNFT 依赖统一为 Core MemberNFT；业务主体一律为 memberId。
 - 删除 `postAsDefaultSender`、GroupDefaults 依赖、地址黑名单目标、地址投票者、地址/ID 双轨批量接口及其状态、索引、错误和事件。
@@ -20,7 +20,7 @@ Group Chat 是公开链上群聊，保存配置、消息和查询索引；不管
 
 ## 数据对象
 
-保留旧 `src/interfaces/IGroupChat.sol` 的 ChatInfo、Message、RoundSpan 类型和字段：
+保留旧 `LOVE20TKM/group-chat/src/interfaces/IGroupChat.sol` 的 ChatInfo、Message、RoundSpan 类型和字段：
 
 | 对象 | 字段 |
 | --- | --- |

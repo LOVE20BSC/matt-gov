@@ -8,7 +8,7 @@
 
 ## NFT 委托
 
-迁移旧 `group/src/GroupDelegate.sol`，依赖 MemberNFT，但代码和授权消费者仅在 group-chat：
+迁移旧 `LOVE20TKM/group/src/GroupDelegate.sol`，依赖 MemberNFT，但代码和授权消费者仅在 group-chat：
 
 - `setDelegateId(groupId, delegateId)` 由群 NFT 当前 owner 调用。0 表示撤销；非零 delegateId 必须存在且不同于 groupId。
 - 每群至多一个 delegateId。保存群与 delegate NFT 的 owner 快照；任一 owner 变化或白名单不允许则无效。转回快照 owner 且白名单允许时恢复，不删除历史记录。
@@ -30,4 +30,4 @@
 
 “限制在群聊内”不等于“只剩开关和槽位”：旧群内的管理员、成员及人工黑名单管理能力继续保留。Core MemberNFT 的 ERC721 转移授权与此业务委托分开。
 
-来源：旧 GroupDelegate、GroupAdmin、GroupMember、GroupBanList，提交见 [入口](README.md#已核对来源)。验收见 [群聊验收](08-testing.md)。
+来源：旧 `LOVE20TKM/group/src/GroupDelegate.sol`、`LOVE20TKM/group-chat/src/GroupAdmin.sol`、`LOVE20TKM/group-chat/src/GroupMember.sol`、`LOVE20TKM/group-chat/src/GroupBanList.sol`，提交见 [入口](README.md#已核对来源)。验收见 [群聊验收](08-testing.md)。
