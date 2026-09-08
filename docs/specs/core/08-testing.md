@@ -53,6 +53,7 @@ error AlreadyInitialized();
 | Stake | LP 份额、手续费销毁统计、PancakeSwap、加速历史继承 | 份额/资产/历史与模块公式一致，不因无记录而错误复活 |
 | [Proposal](05-submit-vote.md) | 零 Target、三类回调失败 | 拒绝并整体回滚 |
 | [Mint](06-mint.md) | Round 准备、单 Proposal 结算、重复准备 | 每轮仅预留一次，单项不能重复结算 |
+| Mint | 约 300 个 Proposal 的准备、缓存读取 | 准备阶段一次扫描并缓存达标 Proposal 总票数；后续单项结算不再扫描 Vote 列表，重复准备不改缓存 |
 | Mint | 两种零总量、三段治理结果、批量多轮 | 预留不重加，销毁不重复，任一失败整体回滚 |
 | Vote / Mint | 投票时快照为 50，随后追加 30；再次投票或不投票；NFT 转移 | 不投票仍按 50，再投票按 80、总量仅加 30；结算和转移不重算 |
 | [Launch](07-launch.md) | 向上取整、跨多个阈值、社区上限 | 余数保留，新增次数不超上限，仅 Mint 可 addLaunchCount |

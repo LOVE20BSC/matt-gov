@@ -173,6 +173,7 @@ Mint 保存 `launchCredit[tokenAddress][memberId]`。只有实际铸造的治理
 ## 实现约束
 
 - 初始化时拒绝两项激励比例之和超过 `1000`。
+- `prepareRewardIfNeeded` 只在首次准备时扫描本轮 Vote 有票 Proposal；实现和验收至少覆盖约 300 个 Proposal 的准备交易。准备成功后，`eligibleProposalVotes[tokenAddress][round]` 只读，不得再次读取 Vote 列表或改写。
 - 各项分配向下取整产生的极小舍入余数不单独维护，也不追加结算状态；累计账本只记录实际铸造和明确销毁的额度。
 - 历史来源 `LOVE20TKM/core/src/LOVE20Mint.sol` 只作为行为参考，不替代本文件的账本规则。
 
