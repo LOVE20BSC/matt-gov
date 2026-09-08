@@ -46,9 +46,24 @@ event RewardBurned(address indexed tokenAddress, uint256 indexed actionId, uint2
 
 ```solidity
 error AlreadyInitialized();
+error InvalidKVLength();
+error InvalidParticipationAmount();
+error InvalidCandidate();
+error InvalidSplits();
+error ApplicationNotActive();
+error InvalidExecutor();
+error UnauthorizedCallback();
+error NotMemberOwner(uint256 memberId);
+error ProposalNotVoted(address tokenAddress, uint256 proposalId);
+error InvalidRound(uint256 round);
+error InsufficientExperienceQuota(uint256 providerMemberId, uint256 required, uint256 available);
+error VerifierAlreadyLocked(address tokenAddress, uint256 actionId, uint256 round);
+error BatchIndexMismatch(uint256 expected, uint256 actual);
+error RewardAlreadyMinted(address tokenAddress, uint256 actionId, uint256 memberId, uint256 round);
+error DistributionOverflow(uint256 configured, uint256 available);
 ```
 
-| 已有错误示意 | 拒绝条件 |
+| 错误 | 拒绝条件 |
 | --- | --- |
 | `InvalidExecutor()` | 零地址、EOA、无代码 Executor |
 | `UnauthorizedCallback()` | 非 ActionTarget 调用 Executor 回调 |
@@ -61,6 +76,6 @@ error AlreadyInitialized();
 | `RewardAlreadyMinted(tokenAddress, actionId, memberId, round)` | 重复成员结算 |
 | `DistributionOverflow(configured, available)` | 配置比例总和超过 `1e18` 时拒绝；正好 `1e18` 合法 |
 
-还须拒绝重复初始化、KV 长度不等、非法参与量、候选/分割线无效和申请已失效。待确认错误的类型和语义不能由实现者擅自补齐。
+`InvalidKVLength` 拒绝 KV 两数组长度不等；`InvalidParticipationAmount` 拒绝零值或超出配置范围的参与量；`InvalidCandidate` 拒绝候选人或申请版本无效；`InvalidSplits` 拒绝分割线不严格递增或超出范围；`ApplicationNotActive` 拒绝使用已失效申请。以上错误均在对应外层交易中回滚。
 
 验收见 [Action 验收](08-testing.md)。

@@ -16,7 +16,7 @@ LOVE20 是基于可验证共识行动的社群铸币协议。它通过 MemberNFT
 ## 四个核心概念
 
 - **MemberNFT**：业务状态绑定 `memberId`；NFT 转移改变控制者，不改写历史，未结算权益由新持有人操作。
-- **Phase / Round**：Phase 是无语义时间片；Core 将 Phase N 解释为治理 Round N，Action 各 Executor 自行映射阶段。具体映射见 [Core Phase](core/03-phase.md) 和 [Action 阶段](action/02-phase-model.md)。
+- **Phase / Round**：Phase 是无语义时间片；Core 将 Phase N 解释为治理 Round N，Action 各 Executor 按自身规格固定映射阶段。具体映射见 [Core Phase](core/03-phase.md) 和 [Action 阶段](action/02-phase-model.md)。
 - **Governance Reward / Proposal Reward**：Mint 在 Round 结束后准备并冻结本轮池；投票和加速激励按治理规则结算，Proposal 激励按达标 Proposal 分配。
 - **Action / Group Chat**：Action 负责可验证的链上行动；Group Chat 只负责沟通、资格和消息索引，不持有行动资产。
 

@@ -8,6 +8,7 @@ Launch 负责基础发射与次数账本；TokenFactory 负责创建 LOVE20Token
 
 ```solidity
 enum DistributorMode { NoCallback, Callback }
+error InvalidKVLength();
 
 function init(
     address tokenFactory,
@@ -24,7 +25,7 @@ function init(
 
 先部署全部合约取得地址，并完成 `TokenFactory.init`，再由部署授权者调用一次 `Launch.init`。本次交易写入依赖和参数，调用 `TokenFactory.createToken(rootParentToken, name, symbol, distributor)`；工厂完成首币、Pair 和父币/minter 绑定，Launch 登记首币并同步调用 `MemberNFT.init(tokenAddress)` 完成其初始化；MemberNFT 不保存 Launch 地址。Launch 不再次创建 Pair，也不重复铸造首批供应。
 
-首币不消耗成员发射次数。本次初始化交易任一步失败回滚全部效果；成功后不得重初始化、替换依赖或改写首币。部署参数的含义见 [参数表](00-protocol-model.md#初始化参数)。
+首币不消耗成员发射次数，也不接收或处理 Launch KV 数组。本次初始化交易任一步失败回滚全部效果；成功后不得重初始化、替换依赖或改写首币。部署参数的含义见 [参数表](00-protocol-model.md#初始化参数)。
 
 首币 `distributor` 为 Burn 活动结束后由旧 `LOVE20TKM/burn` 来源单独部署的 Airdrop；Burn 业务不迁移。旧仓库只读，来源提交、来源区块、Merkle Root、部署地址及公开源码证据见 [仓库清单](../../repositories.md)。不能把部署外部 Airdrop 误写为改造旧仓库。
 
@@ -77,7 +78,9 @@ function launchToken(
     address parentTokenAddress,
     uint256 memberId,
     address distributor,
-    DistributorMode distributorMode
+    DistributorMode distributorMode,
+    bytes32[] calldata keys,
+    bytes[] calldata values
 ) external returns (address tokenAddress);
 
 function addLaunchCount(address tokenAddress, uint256 memberId, uint256 count) external;
@@ -88,19 +91,21 @@ function isLOVE20Token(address tokenAddress) external view returns (bool);
 
 `memberId` 必须由调用者当前持有；不用地址默认 NFT 映射。名称沿用旧 Launch 的 `tokenSymbol + "@" + parentSymbol` 生成方式。
 
-普通发射的社区必须与 `parentTokenAddress` 一致，`distributor` 非零。部署时保留符号不得本地发射或复用。分发支持 `NoCallback` 和 `Callback` 两种模式，不使用 Proposal KV：
+普通发射的社区必须与 `parentTokenAddress` 一致，`distributor` 非零。部署时保留符号不得本地发射或复用。分发支持 `NoCallback` 和 `Callback` 两种模式。Launch 回调使用本次发射的 `keys`/`values` 数组；两数组可以同时为空，非空时必须等长：
 
 ```solidity
 interface ILaunchDistributor {
     function onTokenLaunched(
         address tokenAddress,
         address parentTokenAddress,
-        uint256 launcherMemberId
+        uint256 launcherMemberId,
+        bytes32[] calldata keys,
+        bytes[] calldata values
     ) external;
 }
 ```
 
-`NoCallback` 不调用回调；`Callback` 要求 `distributor` 为合约并调用 `onTokenLaunched`，回调失败则整笔发射回滚。首币使用旧 Burn `Airdrop`，固定采用 `NoCallback`；普通发射才可选择 `Callback`。
+`NoCallback` 不调用回调且要求两数组为空；`Callback` 要求 `distributor` 为合约并调用 `onTokenLaunched`，原样透传 Launch KV，回调失败则整笔发射回滚。首币使用旧 Burn `Airdrop`，固定采用 `NoCallback`；普通发射才可选择 `Callback`。
 
 回调仅由 Launch 调用，发生于代币/Pair 创建、首批供应到账、代币登记与次数扣减之后；`launcherMemberId` 取本次 `memberId`。distributor 校验调用方并防止同一 token 重复处理；Launch 不开放额外的补触发回调入口。两种模式均允许非零合约接收，EOA 仅允许 NoCallback。
 

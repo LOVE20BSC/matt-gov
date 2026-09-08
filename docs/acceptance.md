@@ -99,7 +99,7 @@
 - 次数融合不携带 `launchCredit`
 
 ### 子币发射分发边界
-**覆盖要求**：覆盖只有 `Launch` 可调用 `TokenFactory`、首个代币通过一次性启动路径使用 WBNB 且不消耗发射次数、启动后不能重复创建首个代币、普通发射社区与 `parentTokenAddress` 一致、非零 `distributor`、普通发射的 `NoCallback`/`Callback` 两种分发模式、Callback 合约接口和回调失败回滚、首币固定使用 Airdrop 与 `NoCallback`，以及部署时登记的保留符号不能本地发射或复用。
+**覆盖要求**：覆盖只有 `Launch` 可调用 `TokenFactory`、首个代币通过一次性启动路径使用 WBNB 且不接收 Launch KV、不消耗发射次数、启动后不能重复创建首个代币、普通发射社区与 `parentTokenAddress` 一致、非零 `distributor`、普通发射的 `NoCallback`/`Callback` 两种分发模式、普通发射的 Launch 专属 KV 可空且原样透传、Callback 回调失败回滚、首币固定使用 Airdrop 与 `NoCallback`，以及部署时登记的保留符号不能本地发射或复用。
 
 **测试方式**：
 - 单元测试：`core/test/Launch.t.sol` 的首个代币启动、普通发射场景
@@ -180,7 +180,7 @@
 - Executor 后续正常调用 exit 成功
 
 ### Proposal Target 回调
-**覆盖要求**：覆盖 Proposal 创建、提案推举、提案投票三类回调；覆盖创建回调只发生一次、推举已有 Proposal 不重复创建回调、`submitterId`、`voterId`、增量票和 KV 透传，以及回调失败时对应外层交易整体回滚。
+**覆盖要求**：覆盖 Proposal 创建、提案推举、提案投票三类回调；覆盖创建回调只发生一次、推举已有 Proposal 不重复创建回调、`submitterId`、`voterId`、增量票和 KV 透传；空 KV 也必须触发回调；回调失败时对应外层交易整体回滚。
 
 **测试方式**：
 - 单元测试：`core/test/Submit.t.sol`、`core/test/Vote.t.sol` 的回调场景

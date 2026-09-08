@@ -41,7 +41,7 @@ error ChatNotActivated();
 error PostingNotAllowed();
 error NotChatOwner();
 error NotChatOwnerOrDelegateIdOwner();
-error SenderAddressNotSenderIdOwner();
+error SenderNotMemberOwner(uint256 senderId);
 error RoundNotStarted();
 error Reentrant();
 error PhaseBlocksZero();

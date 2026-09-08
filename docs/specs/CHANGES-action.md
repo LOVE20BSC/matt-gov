@@ -213,7 +213,7 @@ memberReward(memberId) = floor(proposalReward × finalScore(memberId) / totalFin
 
 #### 阶段模型
 - **旧**：固定 4 阶段
-- **新**：从 Core Phase 自行映射 4 阶段（投票、加入、验证、铸币）
+- **新**：GroupAction 按自身阶段规格固定映射 4 阶段（投票、加入、验证、铸币）；其他 Executor 采用各自规格的阶段划分
 
 #### 激励铸造
 - **旧**：`ExtensionGroupAction` 一次性领取行动激励，再在扩展内按成员结算

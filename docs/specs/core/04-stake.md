@@ -142,7 +142,7 @@ function mergeStake(
 ## 实现约束
 
 - 当前质押余额为 `0` 就表示没有质押；只有 RoundHistory 的历史查询需要区分“本轮没有记录”和“本轮明确归零”，直接沿用旧 RoundHistory 的显式记录语义，不新增额外布尔状态。
-- 手续费、LP 增减、基准更新和销毁时机沿用旧 Stake/SLToken 的结算顺序；BSC 仅把份额和可提取 LP 直接存入 Stake，不重新发明计算公式。
+- LP 写操作统一先校验参数和权限并锁定重入；读取 Pair 状态，在任何除法前处理 `pairTotalSupply == 0`、`currentSqrtKOfLp == 0` 和基准未增长；需要 Router、Pair 或 ERC20 调用时，以外部调用成功返回的实际数量计算并更新 `withdrawableLp`、`feeLp`、`sqrtKOfLp`、成员份额和社区总份额。任一步失败全部回滚。BSC 不使用 SL/ST 凭证，所有份额和可提取 LP 直接存入 Stake。
 - 空目标沿用本文件的等待期继承例外；未列出的只读字段按 `StakeData` 和 `TokenStakeGlobals` 直接暴露查询。
 
 历史来源：`LOVE20TKM/core/src/LOVE20Stake.sol` 和 `LOVE20TKM/core/src/LOVE20SLToken.sol`；提交已固定，当前 BSC 行为以本文件为准。验收见 [Core 验收](08-testing.md)。

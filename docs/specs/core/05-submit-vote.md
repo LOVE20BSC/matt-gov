@@ -12,7 +12,7 @@ Proposal 以 `tokenAddress + proposalId` 定位，ID 单调分配。
 | `ProposalBody` | 非空 `title`、可空 `details` |
 | `target` | 非零激励接收地址 |
 | `targetMode` | `NoCallback` 或 `Callback` |
-| `keys` / `values` | 不透明 KV；长度相等，可以同时为空 |
+| `keys` / `values` | 可选的不透明 KV；长度相等，可以同时为空 |
 
 | target | NoCallback | Callback |
 | --- | --- | --- |
@@ -141,7 +141,7 @@ function votedProposalIdsAtIndex(address tokenAddress, uint256 round, uint256 in
     external view returns (uint256 proposalId);
 ```
 
-本节 `init` 属于 Vote；Submit 也提供相同的 `currentRound()`。`isRoundEnded(0)` 返回 false。投票调用者须持有 `memberId`，Proposal 必须已在当前轮推举。`proposalIds`、`votes`、`keys`、`values` 四个批量数组必须非空且等长；每笔 `keys[i]` 与 `values[i]` 等长，但可以同时为空；每笔票数必须为正。按输入顺序累加并回调，重复 Proposal ID 按多笔增量处理，任何一笔失败全部回滚。批量没有协议固定长度上限，调用方可按区块 Gas 分批提交；测试记录首次失败规模。Core 不解析 KV 的业务内容。
+本节 `init` 属于 Vote；Submit 也提供相同的 `currentRound()`。`isRoundEnded(0)` 返回 false。投票调用者须持有 `memberId`，Proposal 必须已在当前轮推举。`proposalIds` 与 `votes` 必须非空且等长；`keys` 与 `values` 可以同时传空外层数组，表示每笔回调均使用空 KV，若传入则必须与 `proposalIds` 等长且每笔内层数组等长；每笔票数必须为正。按输入顺序累加并回调，重复 Proposal ID 按多笔增量处理，任何一笔失败全部回滚。批量没有协议固定长度上限，调用方可按区块 Gas 分批提交；测试记录首次失败规模。Core 不解析 KV 的业务内容。
 
 保留旧 `votesNum*` 查询名；`Account` 参数在 BSC 为 `memberId`，不是地址。Mint 公式中的 `memberBoost` 对应 `stakedAmountOfVotersByMemberId`，`totalBoost` 对应 `stakedAmountOfVoters`。
 
@@ -175,13 +175,13 @@ function onProposalVoted(
 ) external;
 ```
 
-`votes` 为本次增量，不是累计票数；`bytes32` 键用于比较，`bytes` 值承载 ABI 编码。创建、推举、投票分别触发对应回调。
+`votes` 为本次增量，不是累计票数；`bytes32` 键用于比较，`bytes` 值承载 ABI 编码。创建、推举、投票分别触发对应回调。回调不要求 KV 非空；空 `keys`/`values` 仍必须调用回调并传递空数组。
 
 创建和推举回调仅接受 Submit，投票回调仅接受 Vote；Executor 仅接受 ActionTarget 转发。回调前先写入对应 Proposal、推举或投票状态；回调可查询本次新状态，失败则一并回滚。
 
 ## 实现约束
 
-- `NoCallback` 要求 `keys` 与 `values` 均为空，避免静默忽略业务数据。
+- `NoCallback` 要求 `keys` 与 `values` 均为空，避免静默忽略业务数据；`Callback` 允许两数组同时为空。
 - Vote 不在投票期间维护达标 Proposal 总票数。Round 结束后，Mint 只在准备时遍历本轮有票 Proposal，按冻结的 `totalVotes` 和 `proposalRewardMinVotePerThousand` 判断达标状态；准备完成后不再重复扫描 Vote 列表。
 - `proposal` 查询不存在的 ID 回滚 `ProposalNotFound`；有效社区的空列表返回 0 或空数组，AtIndex 越界回滚 `IndexOutOfBounds`；无记录的票数/快照返回 0、`isSubmitted` 返回 false。所有索引从 0 开始，Proposal ID 从 1 开始。
 - 历史来源 `LOVE20TKM/core/src/LOVE20Submit.sol`、`LOVE20TKM/core/src/LOVE20Vote.sol`、`LOVE20TKM/core/src/LOVE20Verify.sol` 仅作为保留逻辑参考，不能替代本文件规则。

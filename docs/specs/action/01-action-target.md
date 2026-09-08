@@ -4,7 +4,7 @@ ActionTarget 是社群行动 Proposal 的统一 Target。Core 和回调使用 `p
 
 ## 创建与回调
 
-创建行动时指定 `tokenAddress`、`title`、`details`，并固定 `target = ActionTarget`、`targetMode = Callback`。KV 使用 Core 的平行 `keys` / `values` 数组：
+创建行动时指定 `tokenAddress`、`title`、`details`，并固定 `target = ActionTarget`、`targetMode = Callback`。Proposal 回调本身不要求 KV 非空；ActionTarget 创建行动另有一个必须的 `executor` 保留项，使用 Core 的平行 `keys` / `values` 数组：
 
 ```text
 keys[0] = keccak256("executor")
