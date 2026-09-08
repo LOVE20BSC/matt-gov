@@ -15,7 +15,7 @@
 
 | 组件 | 状态 | 旧位置 | 新位置 | 核心变化 |
 |------|------|--------|--------|----------|
-| MemberNFT | 复制迁移 | `LOVE20TKM/group/src/LOVE20Group.sol` | core/MemberNFT.sol | 改名与 ERC721 元数据、名称 64→32 bytes、费用代币地址改 init 传入 |
+| MemberNFT | 复制迁移 | `LOVE20TKM/group/src/LOVE20Group.sol` | core/MemberNFT.sol | 接口保留并去 group 字样、名称 64→32 bytes、费用代币地址改 init 传入 |
 | Phase | 全新 | - | core/Phase.sol | 替代固定阶段，动态校准 |
 | Stake | 重构 | `LOVE20TKM/core/src/LOVE20Stake.sol` | core/Stake.sol | 去 SL/ST 凭证，按 memberId 归属 |
 | Submit | 保留 | `LOVE20TKM/core/src/LOVE20Submit.sol` | core/Submit.sol | 主体改为 memberId |
@@ -33,7 +33,7 @@
 
 差异仅三项：
 
-- **合约名 / ERC721 元数据**：`LOVE20Group` → `MemberNFT`，名称 `LOVE20 Member NFT`，符号 `Member`
+- **合约名与接口标识符**：`LOVE20Group` → `MemberNFT`，ERC721 名称 `LOVE20 Member NFT`、符号 `Member`；对外接口全部保留，仅去除 group 字样且不重复 member（如 `groupNameOf` → `nameOf`、`GroupNameEmpty` → `NameEmpty`）——旧 Group 是成员身份 NFT，不是“群”的 NFT
 - **名称长度上限**：`64 bytes` → `32 bytes`（避免与钱包地址混淆）
 - **铸造费用代币地址**：由旧构造函数传入改为 `init(firstTokenAddress)`，由 `Launch.init` 在创建首币时同步调用一次
 
