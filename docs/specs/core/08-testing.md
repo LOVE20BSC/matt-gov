@@ -15,7 +15,7 @@ event ProposalSubmitted(address indexed tokenAddress, uint256 indexed round, uin
 event VoteCast(address indexed tokenAddress, uint256 indexed round, uint256 indexed proposalId,
     uint256 voterId, uint256 votes);
 event RewardPrepared(address indexed tokenAddress, uint256 indexed round, uint256 govReward,
-    uint256 proposalReward, uint256 rewardReserved, uint256 rewardBurned);
+    uint256 proposalReward, uint256 eligibleProposalVotes, uint256 rewardReserved, uint256 rewardBurned);
 event GovernanceRewardMinted(address indexed tokenAddress, uint256 indexed round, uint256 indexed memberId,
     uint256 voteReward, uint256 boostReward, uint256 burnReward);
 event ProposalRewardMinted(address indexed tokenAddress, uint256 indexed round, uint256 indexed proposalId,

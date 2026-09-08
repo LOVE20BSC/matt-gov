@@ -50,5 +50,5 @@ MemberNFT 的首币地址由 `Launch.init` 在创建首币时同步调用 `Membe
 ## 实现约束
 
 - Phase 使用构造参数创建；Core 其他合约先部署，再按依赖顺序调用一次 `init`，依赖后部署的地址通过后续 `init` 绑定。
-- Vote 在投票阶段读取 Mint 配置的 `proposalRewardMinVotePerThousand`，并持续维护本轮达标 Proposal 票数总和；Mint 在准备时读取冻结结果。
+- Mint 在准备时读取 Vote 的冻结结果，按 `proposalRewardMinVotePerThousand` 一次性计算并缓存本轮达标 Proposal 总票数；后续 Proposal 激励结算只读取该缓存。
 - 参数有效范围和组合限制以各模块规格为准；表中示例值不是默认部署配置。

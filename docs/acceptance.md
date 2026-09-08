@@ -26,8 +26,9 @@
 ### Proposal 激励闭环
 **覆盖要求**：
 - 投票阶段结束前后准备
-- 准备只写轮次级总状态且不逐个预写 Proposal
+- 准备只写轮次级总状态，缓存达标 Proposal 总票数且不逐个预写 Proposal
 - 重复准备不改写
+- 准备完成后 Proposal 激励结算不再扫描 Vote 列表
 - 非 Target 铸造拒绝
 - 各 Proposal Target 按冻结状态单独计算并铸造且单 Proposal 只能成功一次
 - 行动类 `ActionTarget -> Mint -> executor` 转发

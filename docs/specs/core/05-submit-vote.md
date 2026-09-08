@@ -98,7 +98,7 @@ function submissionAtIndex(address tokenAddress, uint256 round, uint256 index)
 - 票数累加到 `votesNumByAccount[tokenAddress][round][memberId]`。同轮可多次投票，累计值不得超过本次从 `Stake.validGovVotes` 读取的 `maxVotesNum`。
 - Vote 按 `tokenAddress + round + memberId` 保存已计入的加速快照，同时维护其总和 `stakedAmountOfVoters[tokenAddress][round]`。首次投票计入成员快照，再次投票仅补记当前质押高于已记值的正增量，不重复计入整份快照；未增加时不更新。
 - 质押增加但没有后续投票，不更新 Vote 快照。Round 结束后成员快照与总量冻结；Mint 的 `memberBoost` 和 `totalBoost` 都从 Vote 读取，不能用 Stake 的最新余额替换其中一项。
-- Vote 在投票期间维护 `eligibleProposalVotes`，即本轮所有达标 Proposal 的票数总和。治理 Round 结束后票数自然冻结，Mint 读取而不依赖行动验证结果；门槛公式见 [Mint](06-mint.md#账本与数据来源)。
+- Vote 只保存每个 Proposal 的冻结票数和本轮有票 Proposal 列表，不维护达标 Proposal 总票数；Mint 在准备时按冻结结果计算该总数并缓存，不依赖行动验证结果。
 - 批量投票或 Target 回调失败时，对应外层交易整体回滚。
 
 ```solidity
@@ -130,8 +130,6 @@ function votesNumByProposalId(address tokenAddress, uint256 round, uint256 propo
 function votesNumByAccount(address tokenAddress, uint256 round, uint256 memberId)
     external view returns (uint256);
 function votesNumByAccountByProposalId(address tokenAddress, uint256 round, uint256 memberId, uint256 proposalId)
-    external view returns (uint256);
-function eligibleProposalVotes(address tokenAddress, uint256 round)
     external view returns (uint256);
 function stakedAmountOfVotersByMemberId(address tokenAddress, uint256 round, uint256 memberId)
     external view returns (uint256);
@@ -184,7 +182,7 @@ function onProposalVoted(
 ## 实现约束
 
 - `NoCallback` 要求 `keys` 与 `values` 均为空，避免静默忽略业务数据。
-- `eligibleProposalVotes` 沿用旧逻辑，在每次投票更新后按本轮有票列表重算；达标条件使用更新后的 `totalVotes`，因此总票增加可能使未被本次投票的 Proposal 跌出门槛，也必须扣除。旧 Verify 的 `scoreWithReward` 是对已冻结投票结果增量累计，不是这个重算算法的现成实现。保留轮次账本与 Vote 列表，不新增固定 Proposal 数量上限。
+- Vote 不在投票期间维护达标 Proposal 总票数。Round 结束后，Mint 只在准备时遍历本轮有票 Proposal，按冻结的 `totalVotes` 和 `proposalRewardMinVotePerThousand` 判断达标状态；准备完成后不再重复扫描 Vote 列表。
 - `proposal` 查询不存在的 ID 回滚 `ProposalNotFound`；有效社区的空列表返回 0 或空数组，AtIndex 越界回滚 `IndexOutOfBounds`；无记录的票数/快照返回 0、`isSubmitted` 返回 false。所有索引从 0 开始，Proposal ID 从 1 开始。
 - 历史来源 `LOVE20TKM/core/src/LOVE20Submit.sol`、`LOVE20TKM/core/src/LOVE20Vote.sol`、`LOVE20TKM/core/src/LOVE20Verify.sol` 仅作为保留逻辑参考，不能替代本文件规则。
 

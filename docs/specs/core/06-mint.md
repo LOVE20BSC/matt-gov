@@ -13,7 +13,7 @@ Mint 准备并结算治理和 Proposal 激励，不读取行动验证结果。�
 | `totalVotes` | Vote 的本轮 `votesNum[tokenAddress][round]` |
 | `memberBoost` | Vote 的 `stakedAmountOfVotersByMemberId(tokenAddress, round, memberId)` |
 | `totalBoost` | Vote 的 `stakedAmountOfVoters[tokenAddress][round]` |
-| `eligibleProposalVotes` | Vote 在投票阶段维护的本轮所有达标 Proposal 票数之和，Round 结束后自然冻结 |
+| `eligibleProposalVotes` | Mint 准备时按 Vote 冻结结果计算并缓存的本轮所有达标 Proposal 票数之和 |
 
 Proposal 达标条件：
 
@@ -55,10 +55,11 @@ function prepareRewardIfNeeded(address tokenAddress, uint256 round) external;
 `prepareRewardIfNeeded` 任何地址可调用。
 
 1. 本轮已准备则直接返回，不更新状态；未结束的 Round 拒绝准备。
-2. 读取 Vote 的冻结结果。若 `totalVotes == 0`，两池记为 0 并标记已准备，累计账本不变。
-3. 否则用准备前的 `available` 计算两池，并在本步骤唯一一次增加 `rewardReserved`。
-4. 若 `totalBoost == 0`，准备时直接取消加速池；若 `eligibleProposalVotes == 0`，准备时直接取消完整 Proposal 池。
-5. 保存轮次池值、达标票数和已准备状态，不逐个预写 Proposal 额度。
+2. 读取 Vote 的冻结结果。若 `totalVotes == 0`，两池和 `eligibleProposalVotes` 记为 0 并标记已准备，累计账本不变。
+3. 否则遍历 Vote 本轮有票 Proposal，按冻结 `totalVotes` 判断每个 Proposal 是否达到阈值，并把达标 Proposal 的票数总和写入 `eligibleProposalVotes[tokenAddress][round]`。
+4. 用准备前的 `available` 计算两池，并在本步骤唯一一次增加 `rewardReserved`。
+5. 若 `totalBoost == 0`，准备时直接取消加速池；若缓存的 `eligibleProposalVotes == 0`，准备时直接取消完整 Proposal 池。
+6. 保存轮次池值、达标票数和已准备状态，不逐个预写 Proposal 额度。后续 Proposal 结算只读取缓存，不再扫描 Vote 列表。
 
 ```text
 govReward = floor(available * roundRewardGovPerThousand / 1000)
@@ -147,6 +148,8 @@ function govReward(address tokenAddress, uint256 round)
     external view returns (uint256);
 function proposalReward(address tokenAddress, uint256 round)
     external view returns (uint256);
+function eligibleProposalVotes(address tokenAddress, uint256 round)
+    external view returns (uint256);
 function proposalRewardInfo(address tokenAddress, uint256 round, uint256 proposalId)
     external view returns (uint256 amount, bool prepared, bool minted);
 function govRewardByAccount(address tokenAddress, uint256 round, uint256 memberId)
@@ -159,7 +162,7 @@ function launchCredit(address tokenAddress, uint256 memberId) external view retu
 function proposalRewardMinVotePerThousand() external view returns (uint256);
 ```
 
-`proposalRewardInfo` 未准备时返回 `(0, false, false)`，不能把它缓存为最终零激励；准备后按冻结池和票数计算 amount，已铸造也返回原金额。未达标返回 0。治理查询未准备或未投票时返回零金额；不存在的 Proposal/成员回滚。铸造金额为 0 时按旧逻辑拒绝 `NoRewardAvailable`，重复保护使用独立状态位，不能用金额是否大于零判断。
+`proposalRewardInfo` 未准备时返回 `(0, false, false)`，不能把它缓存为最终零激励；准备后按冻结池、Proposal 票数和已缓存的 `eligibleProposalVotes` 计算 amount，已铸造也返回原金额。未达标返回 0。治理查询未准备或未投票时返回零金额；不存在的 Proposal/成员回滚。铸造金额为 0 时按旧逻辑拒绝 `NoRewardAvailable`，重复保护使用独立状态位，不能用金额是否大于零判断。
 
 批量按输入顺序执行，结果数组与输入等长；任一 Round 未结束、未准备、没有投票记录或已铸造，则整笔回滚。治理激励和发射额度/次数更新也必须原子完成。
 
