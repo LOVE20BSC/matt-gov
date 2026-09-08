@@ -39,6 +39,6 @@ mintCost = byteLength >= bytesThreshold
 
 名称禁止字符清单和 UTF-8 校验沿用旧 `LOVE20Group`，实现时按同一源码规则迁移；最大长度改为 `32 bytes`。费用使用 ERC20，入口为 `nonpayable`，不接受原生代币。
 
-费用参数在部署时固定；`MemberNFT.init(firstToken)` 只能由预先绑定的 Launch 调用一次。依赖后部署的合约按“先部署、后 `init`”顺序绑定。
+费用参数在部署时固定；`MemberNFT.init(firstToken)` 由 `Launch.init` 在创建首币时同步调用一次。依赖后部署的合约按“先部署、后 `init`”顺序绑定。
 
 验收见 [Core 验收](08-testing.md)。

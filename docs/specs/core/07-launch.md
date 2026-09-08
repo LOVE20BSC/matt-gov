@@ -22,9 +22,9 @@ function init(
 ) external;
 ```
 
-先部署全部合约取得地址，并完成 `TokenFactory.init`，再由部署授权者调用一次 `Launch.init`。本次交易写入依赖和参数，调用 `TokenFactory.createToken(rootParentToken, name, symbol, distributor)`；工厂完成首币、Pair 和父币/minter 绑定，Launch 登记首币并调用 `MemberNFT.init(tokenAddress)`。Launch 不再次创建 Pair，也不重复铸造首批供应。
+先部署全部合约取得地址，并完成 `TokenFactory.init`，再由部署授权者调用一次 `Launch.init`。本次交易写入依赖和参数，调用 `TokenFactory.createToken(rootParentToken, name, symbol, distributor)`；工厂完成首币、Pair 和父币/minter 绑定，Launch 登记首币并同步调用 `MemberNFT.init(tokenAddress)` 完成其初始化；MemberNFT 不保存 Launch 地址。Launch 不再次创建 Pair，也不重复铸造首批供应。
 
-首币不消耗成员发射次数。任一步失败回滚全部初始化效果；成功后不得重初始化、替换依赖或改写首币。部署参数的含义见 [参数表](00-protocol-model.md#初始化参数)。
+首币不消耗成员发射次数。本次初始化交易任一步失败回滚全部效果；成功后不得重初始化、替换依赖或改写首币。部署参数的含义见 [参数表](00-protocol-model.md#初始化参数)。
 
 首币 `distributor` 为 Burn 活动结束后由旧 `LOVE20TKM/burn` 来源单独部署的 Airdrop；Burn 业务不迁移。旧仓库只读，来源提交、来源区块、Merkle Root、部署地址及公开源码证据见 [仓库清单](../../repositories.md)。不能把部署外部 Airdrop 误写为改造旧仓库。
 
@@ -143,6 +143,6 @@ function createToken(
 ## 实现约束
 
 - LOVE20Token 不提供 `init`；构造函数直接接收 `name`、`symbol`、`initialSupply`、`maxSupply`、`distributor`、`minter` 和 `parentTokenAddress`。
-- `MemberNFT.init(firstToken)` 由 Launch 调用；Launch 地址在 MemberNFT 部署时预先绑定，避免初始化循环依赖。
+- `MemberNFT.init(firstToken)` 由 `Launch.init` 在创建首币时同步调用完成；MemberNFT 不保存 Launch 地址，费用代币地址是唯一外部地址依赖。
 
 验收见 [Core 验收](08-testing.md)。旧来源 `LOVE20TKM/core/src/LOVE20Launch.sol` 已核对，仅作为保留行为参考。

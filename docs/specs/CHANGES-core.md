@@ -35,7 +35,7 @@
 
 - **合约名 / ERC721 元数据**：`LOVE20Group` → `MemberNFT`，名称 `LOVE20 Member NFT`，符号 `Member`
 - **名称长度上限**：`64 bytes` → `32 bytes`（避免与钱包地址混淆）
-- **铸造费用代币地址**：由旧构造函数传入改为 `init(firstTokenAddress)`，由 Launch 在创建首币后调用一次
+- **铸造费用代币地址**：由旧构造函数传入改为 `init(firstTokenAddress)`，由 `Launch.init` 在创建首币时同步调用一次
 
 ---
 
@@ -202,9 +202,9 @@
 - **达到上限后**：治理激励仍可铸造，但不再增加发射次数
 
 #### 首个代币部署
-- `Launch.init(...)` 在写入依赖和发射参数的同一笔初始化交易中，通过 `TokenFactory` 创建首个代币、设置 `minter`、发送首批代币到 Airdrop、创建首个代币/WBNB Pair 并绑定 `MemberNFT`
+- `Launch.init(...)` 在写入依赖和发射参数的同一笔初始化交易中，通过 `TokenFactory` 创建首个代币、设置 `minter`、发送首批代币到 Airdrop、创建首个代币/WBNB Pair，并同步调用 `MemberNFT.init(firstToken)` 完成其初始化
 - `Launch` 的分发参数与 Proposal 的 `target + targetMode` 对齐：首币固定使用 Airdrop 和 `NoCallback`；普通发射可使用 `NoCallback` 或 `Callback`
-- 初始化任一步失败则整笔回滚；成功后不得再次初始化或创建第二个首个代币
+- `Launch.init` 任一步失败则整笔回滚；成功后不得再次初始化或创建第二个首个代币
 - Airdrop 来源和 Burn 追溯证据按部署记录保存
 
 ### 📍 实现参考

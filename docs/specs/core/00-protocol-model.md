@@ -18,15 +18,14 @@ Core 不解释具体 Proposal 的业务字段，扩展通过 Target 接入。
 
 ## 初始化参数
 
-以下为当前已列明的参数，不是完整初始化 ABI。部署配置中的示例值不等于固定值。除 Phase/LOVE20Token 使用构造函数外，各合约一次性初始化入口使用 `init`；地址绑定与初始化安全见 [通用规则](01-common-rules.md)，首币流程见 [Launch](07-launch.md#初始化和首个代币)。
+以下为当前已列明的参数，不是完整初始化 ABI。部署配置中的示例值不等于固定值。除 Phase/LOVE20Token 使用构造函数、MemberNFT 费用参数在构造函数固定外，各合约一次性初始化入口使用 `init`；地址绑定与初始化安全见 [通用规则](01-common-rules.md)，首币流程见 [Launch](07-launch.md#初始化和首个代币)。
 
 | 所属组件 | 参数 | 含义与单位 |
 | --- | --- | --- |
-| MemberNFT | `launchAddress` | 唯一允许绑定首币的 Launch 地址 |
-| MemberNFT | `baseDivisor` | 首币未铸造量的费用除数，如 `1e8` |
-| MemberNFT | `bytesThreshold` | 短名称字节阈值，如 `7` |
-| MemberNFT | `multiplier` | 每缩短一字节的费用倍数，如 `10` |
-| MemberNFT | `maxMemberNameLength` | 最大字节数，如 `32` |
+| MemberNFT 构造参数 | `baseDivisor` | 首币未铸造量的费用除数，如 `1e8` |
+| MemberNFT 构造参数 | `bytesThreshold` | 短名称字节阈值，如 `7` |
+| MemberNFT 构造参数 | `multiplier` | 每缩短一字节的费用倍数，如 `10` |
+| MemberNFT 构造参数 | `maxMemberNameLength` | 最大字节数，如 `32` |
 | Phase 构造参数 | `originBlocks`、`phaseBlocks`、`targetDays`、`adjustThreshold` | 启动区块、初始区块数、目标天数、偏差阈值；前三者大于零，阈值使用 `1e18` 精度 |
 | Stake | `phaseAddress`、`memberNFTAddress`、`voteAddress`、`routerAddress`、`pairFactoryAddress` | 时间、身份、融合投票检查、路由和 Pair Factory 依赖 |
 | Stake | `promisedWaitingPhasesMin`、`promisedWaitingPhasesMax` | 承诺解锁期的最小、最大 Phase 数 |
@@ -46,7 +45,7 @@ Core 不解释具体 Proposal 的业务字段，扩展通过 Target 接入。
 | TokenFactory | `initialSupply`、`maxSupply` | 初始/最大供应量，工厂 init 固定；`initialSupply <= maxSupply` |
 | TokenFactory.createToken | `distributor` | 本次创建的首批代币接收者；非零 |
 
-MemberNFT 的首币地址在 `Launch.init` 创建首币后通过 `MemberNFT.init(tokenAddress)` 绑定，不在部署时传入。Launch 的首币分发地址、名称和符号，以及 TokenFactory 的初始化/创建参数统一见 [Launch](07-launch.md)，不另维护供应量副本。Router 是 Stake 加减流动性的外部依赖，不参与工厂的代币/Pair 创建。
+MemberNFT 的首币地址由 `Launch.init` 在创建首币时同步调用 `MemberNFT.init(tokenAddress)` 绑定，不在部署时传入；MemberNFT 不保存 Launch 地址。Launch 的首币分发地址、名称和符号，以及 TokenFactory 的初始化/创建参数统一见 [Launch](07-launch.md)，不另维护供应量副本。Router 是 Stake 加减流动性的外部依赖，不参与工厂的代币/Pair 创建。
 
 ## 实现约束
 
