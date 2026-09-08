@@ -40,7 +40,7 @@ function init(address firstTokenAddress) external;
 ```
 
 ```solidity
-function mint(string memory name) external returns (uint256 memberId);
+function mint(string memory name) external returns (uint256 id, uint256 mintCost);
 ```
 
 费用使用首个 LOVE20 代币，计算如下。参数含义见 [初始化参数](00-protocol-model.md#初始化参数)，前三个费用参数均必须大于零。
@@ -53,7 +53,9 @@ mintCost = byteLength >= bytesThreshold
     : baseCost * multiplier ^ (bytesThreshold - byteLength)
 ```
 
-`unmintedSupply` 取首币的未铸造量，`byteLength` 是名称字节数，`^` 表示幂。铸造时从调用者转入 `mintCost` 并立即销毁，累计到 `totalBurnedForMint`，返回新 ID。名称无效或重复、余额或授权不足、费用溢出时回滚。
+`unmintedSupply` 取首币的未铸造量，`byteLength` 是名称字节数，`^` 表示幂。铸造时从调用者转入 `mintCost` 并立即销毁，累计到 `totalBurnedForMint`，返回新 `id` 与本次 `mintCost`。名称无效或重复、余额或授权不足、费用溢出时回滚。
+
+首币符号前 4 个字节为 `Test` 时，若名称长度不足 4 字节或前 4 个字节不是 `Test`，铸造前自动加 `Test` 前缀；前缀计入 `byteLength`、参与名称校验与费用计算，并作为存储名称。
 
 例：`baseCost = 100`、`bytesThreshold = 7`、`multiplier = 10`；6 字节名花费 `1000`，7 字节及以上花费 `100`。金额均以代币最小单位计。
 
@@ -97,11 +99,17 @@ error NameAlreadyExists(uint256 existingId);
 error HolderIndexOutOfBounds(uint256 length);
 ```
 
-`holdersCount` 与 `holdersAtIndex` 是旧实现的非权威辅助查询，自转账后可能过期；可靠的持有人集合应通过 `Transfer` 事件或 `ERC721Enumerable` 重建。
+## 持有人枚举
 
-## 待确认
+`holdersCount()` 返回唯一持有人地址数，`holdersAtIndex(index)` 返回第 `index` 个持有人地址（从 `0` 开始，越界回滚 `HolderIndexOutOfBounds(length)`）。它与 `ERC721Enumerable` 枚举的对象不同：后者按代币枚举（`totalSupply`、`tokenByIndex`、`tokenOfOwnerByIndex`），持有人集合按地址去重，同一地址持有多枚也只出现一次。
 
-- **`mint` 返回值**：旧接口为 `returns (uint256 tokenId, uint256 mintCost)`，本规格当前写为 `returns (uint256 memberId)`。来源：旧 `LOVE20TKM/group/src/interfaces/ILOVE20Group.sol`。受影响操作：调用方是否需要同步取回本次费用。
-- **测试网名称前缀**：旧 `mint` 在首币符号以 `Test` 开头时自动给名称加 `Test` 前缀，影响存储名称、字节长度与费用。来源：旧 `LOVE20TKM/group/src/LOVE20Group.sol` 的 `_addTestPrefixIfNeeded`。BSC 是否保留该行为未定。
+集合在每次余额变动时精确维护，不需要用事件重建：
+
+- 铸造（`from == 0`）：接收方此前余额为 `0` 时加入
+- 销毁（`to == 0`）：发送方此前余额为 `1` 时移除
+- 转账：发送方此前余额为 `1` 时移除，接收方此前余额为 `0` 时加入
+- 自转账（`from == to`）：既不加入也不移除
+
+移除采用 swap-and-pop，因此 `holdersAtIndex` 的索引在移除后会重排，不能作为稳定标识。
 
 验收见 [Core 验收](08-testing.md)。

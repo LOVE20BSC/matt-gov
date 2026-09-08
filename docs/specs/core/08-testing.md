@@ -42,6 +42,7 @@ event TokenCreated(address indexed tokenAddress, address indexed parentTokenAddr
 | 模块 | 场景 | 预期 |
 | --- | --- | --- |
 | [MemberNFT](02-member-nft.md) | NFT 转移、名称 32 bytes 边界、短名费用 | 新持有人控制未结算权益，历史不变；名称与费用符合模块规则 |
+| MemberNFT | 持有人枚举：自转账、转出全部、再转入 | 自转账不移除，余额归零后移除，索引按 swap-and-pop 重排 |
 | [Phase](03-phase.md) | 空阶段、首个推举同步、偏差在/超过 `adjustThreshold` | 时间继续推进，按初始化阈值校准，不改历史 |
 | Phase | 任意地址先同步、同轮跨社区重复、下轮再同步 | 每个投票轮只记录一次；重复无操作、不阻塞 Submit；下轮重新允许 |
 | [Stake](04-stake.md) | 两类资产统一解锁；向非自有目标融合 | 只增目标状态；同一等待期后提取两类资产 |
