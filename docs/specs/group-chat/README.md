@@ -4,8 +4,8 @@
 
 ## 已核对来源
 
-- 旧 `LOVE20TKM/group-chat`：提交 `ce21ea8f29b3750421876ae649fa7d919fe42cff`。
-- 旧 `LOVE20TKM/group/src/GroupDelegate.sol` 的 NFT 委托：提交 `2eb6d6c8d48bf6dd382efa5887124a2c3c722fd9` 与对应接口。
+- 旧 `LOVE20TKM/group-chat`。
+- 旧 `LOVE20TKM/group/src/GroupDelegate.sol` 的 NFT 委托，接口同一提交。
 - 这些是本地干净工作区的源码基线，不等同于链上部署证明。迁移前仍须核对实际部署来源。
 
 | 文档 | 职责 |

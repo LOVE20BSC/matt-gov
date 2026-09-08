@@ -4,8 +4,8 @@
 
 ## 来源
 
-- `LOVE20TKM/group-chat@ce21ea8f29b3750421876ae649fa7d919fe42cff`：`LOVE20TKM/group-chat/src/GroupChat.sol`、`LOVE20TKM/group-chat/src/GroupAdmin.sol`、`LOVE20TKM/group-chat/src/GroupMember.sol`、`LOVE20TKM/group-chat/src/GroupBanList.sol`、`LOVE20TKM/group-chat/src/managers/`、`LOVE20TKM/group-chat/src/sources/`、`LOVE20TKM/group-chat/src/interfaces/`。
-- `LOVE20TKM/group@2eb6d6c8d48bf6dd382efa5887124a2c3c722fd9`：`LOVE20TKM/group/src/GroupDelegate.sol`、`LOVE20TKM/group/src/interfaces/IGroupDelegate.sol`。
+- `LOVE20TKM/group-chat`：`LOVE20TKM/group-chat/src/GroupChat.sol`、`LOVE20TKM/group-chat/src/GroupAdmin.sol`、`LOVE20TKM/group-chat/src/GroupMember.sol`、`LOVE20TKM/group-chat/src/GroupBanList.sol`、`LOVE20TKM/group-chat/src/managers/`、`LOVE20TKM/group-chat/src/sources/`、`LOVE20TKM/group-chat/src/interfaces/`。
+- `LOVE20TKM/group`：`LOVE20TKM/group/src/GroupDelegate.sol`、`LOVE20TKM/group/src/interfaces/IGroupDelegate.sol`。
 - 本轮核对的是干净本地源码。实际迁移仍须冻结部署证明；不得修改旧组织。
 
 ## 变更边界

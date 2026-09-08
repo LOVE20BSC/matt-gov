@@ -39,6 +39,8 @@ UTF-8 有效性：拒绝无效起始字节 `0x80-0xC1` 与 `0xF5-0xFF`、过长�
 function init(address firstTokenAddress) external;
 ```
 
+`init` 只允许第一次成功调用；合约以 `initialized` 状态拒绝后续调用并回滚 `AlreadyInitialized()`。部署验证脚本必须核对首币地址和全部费用参数。
+
 ```solidity
 function mint(string memory name) external returns (uint256 id, uint256 mintCost);
 ```

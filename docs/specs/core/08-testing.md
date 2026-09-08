@@ -33,6 +33,10 @@ event TokenCreated(address indexed tokenAddress, address indexed parentTokenAddr
 
 ## 拒绝条件
 
+```solidity
+error AlreadyInitialized();
+```
+
 必须拒绝无效成员或非来源控制者、零 Target/Distributor、非法模式、KV 长度不等、重复 Proposal/推举、投票超额、Round 未结束或未准备、重复铸造/销毁、待解锁时追加或融合、解锁期不足、跨社区次数操作、次数不足或超上限。重复准备属于幂等返回，不等同于重复结算。
 
 批量治理激励中任一 Round 无效，以及 Pair、Router、Target 外部调用失败时，整笔交易回滚。

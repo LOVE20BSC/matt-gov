@@ -11,6 +11,8 @@ Compatibility 只验证 BSC 外部依赖能否满足 Core/Action 的接口、状
 - `bsc56_public_test`
 - `bsc56_public`
 
+profile 名称确定网络：`bsc97_dev` 的 chain ID 为 `97`，两个 `bsc56_*` 的 chain ID 为 `56`；`anvil` 使用本地启动参数中的 chain ID。名称只确定网络，不替代该 profile 的实际地址、固定区块和代码摘要。
+
 两个 `bsc56_*` 均为 chain ID 56，但地址、配置、代币符号和前端环境必须隔离。未通过本规格的地址不得进入 Core、Action 或 Script 部署配置。
 
 本地参考实现记录 WETH9、ERC20、Uniswap V2 Factory/Pair/Router 的源码版本、编译器、优化器和部署区块。目标 profile 另记录地址、runtime bytecode 摘要、验证源码链接（如有）和测试提交。

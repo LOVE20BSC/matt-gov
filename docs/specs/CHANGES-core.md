@@ -66,8 +66,8 @@
 ## 3. Stake（重构）
 
 ### ✅ 保留逻辑
-- **LP 份额计算**：参考 `LOVE20TKM/core/src/LOVE20Stake.sol` 154-184 行
-- **手续费结算公式**：参考同文件 248-276 行（sqrt(k) 方法）
+- **LP 份额计算**：参考 `LOVE20TKM/core/src/LOVE20Stake.sol`
+- **手续费结算公式**：参考同文件的 sqrt(k) 结算逻辑
 - **治理票公式**：`govVotes = lpShares × promisedWaitingPhases`
 
 ### 🔄 关键变化
@@ -94,7 +94,7 @@
 ### 📍 实现参考
 ```
 旧代码：LOVE20TKM/core/src/LOVE20Stake.sol
-保留公式：LP份额（154-184行）、手续费（248-276行）
+保留公式：LP 份额和手续费结算逻辑
 删除：SL/ST铸造逻辑（移除 ERC20 依赖）
 ```
 
@@ -228,7 +228,7 @@
 ### 🔄 BSC 调整
 - `TokenFactory.createToken` 新增非零 `distributor`，首批供应量直接铸给该地址
 - 删除 SL/ST 实例创建及其 Stake 依赖；Pair 仍由工厂创建
-- 首个代币依赖 Airdrop 合约分发（来源：LOVE20TKM/burn 仓库）
+- 首个代币依赖 Airdrop 合约分发（来源：LOVE20TKM/burn）
 
 ### 📍 实现参考
 ```

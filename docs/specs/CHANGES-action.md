@@ -7,7 +7,7 @@
 ## 迁移原则
 
 1. **身份统一**：所有参与主体统一使用 MemberNFT 的 `memberId`
-2. **时间灵活**：使用 Core Phase 作为时间基础，各 Executor 自行映射业务阶段
+2. **时间灵活**：使用 Core Phase 作为时间基础，各 Executor 按自身固定规格映射业务阶段
 3. **职责分离**：ActionTarget 只做框架，业务逻辑由各 Executor 实现
 4. **随 NFT 转移**：体验资产和行动加入状态归属于 `memberId`，随 MemberNFT 转移
 
@@ -84,7 +84,7 @@
 2. **加入阶段**：获得票的行动开放加入（Phase p+1）
 3. **铸币阶段**：行动完成后铸造激励（Phase p+x，x 由 Executor 决定）
 
-#### 各 Executor 自行映射
+#### 各 Executor 固定映射
 
 **LP 行动执行合约**（3 阶段）：
 - 投票 Round = currentPhase()
@@ -110,7 +110,7 @@ Phase 4 起，GroupAction 进入稳态运行。
 ### 为什么改变
 - LP 行动不需要验证，3 阶段更高效
 - GroupAction 需要验证，保留 4 阶段
-- 各 Executor 可以根据业务需求自行调整
+- 阶段数和映射由各 Executor 当前规格固定；变更必须同步更新本文件、Executor 规格和验收场景
 
 ---
 
@@ -253,7 +253,7 @@ theoreticalVerifierReward(m) = serviceReward × verifierWeightNumerator(m) / (to
 theoreticalOwnerReward(m) = serviceReward × ownerWeightNumerator(m) / (totalGroupActionReward × 1e18)
 ```
 
-`totalGroupActionReward` 统计 `actionTokenAddress` 社区本轮全部 GroupAction 激励，首次按 `actionTokenAddress + groupActionId + round` 计算并缓存。各角色分子为零时直接返回，不执行除法；分母为零时由 `burnRewardIfNeeded(round)` 销毁整笔服务激励。
+`totalGroupActionReward` 统计 `actionTokenAddress` 社区本轮全部 GroupAction 激励，首次按 `actionTokenAddress + round` 计算并缓存。各角色分子为零时直接返回，不执行除法；分母为零时由 `burnRewardIfNeeded(round)` 销毁整笔服务激励。
 
 #### 二次分配
 **保留逻辑**：groupId 当前持有人可以按 `sourceTokenAddress + sourceActionId + groupId + round` 配置 `recipientIds[]` 和 `ratios[]`；查询轮次没有配置时沿用不晚于该轮的最近配置。

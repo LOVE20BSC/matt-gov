@@ -108,7 +108,7 @@ distributor 自行实现领取与查询逻辑，`claim(tokenAddress)` 只是建�
 
 ## TokenFactory
 
-保留旧工厂“初始化配置 + 创建代币/Pair”的职责。来源为 [LOVE20TokenFactory.sol](https://github.com/LOVE20TKM/core/blob/0e3efcc13a7b9e202033f62e4858795bf43b557e/src/LOVE20TokenFactory.sol)；BSC 新增 `distributor`，删除 SL/ST 创建及相关依赖。LOVE20Token 的完整参数在构造函数中一次传入，不再提供 `init`。
+保留旧工厂“初始化配置 + 创建代币/Pair”的职责。来源为 `LOVE20TKM/core/src/LOVE20TokenFactory.sol`（提交见[旧代码基线](../../repositories.md#旧代码基线)）；BSC 新增 `distributor`，删除 SL/ST 创建及相关依赖。LOVE20Token 的完整参数在构造函数中一次传入，不再提供 `init`。
 
 ```solidity
 function init(

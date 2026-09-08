@@ -145,4 +145,4 @@ function mergeStake(
 - 手续费、LP 增减、基准更新和销毁时机沿用旧 Stake/SLToken 的结算顺序；BSC 仅把份额和可提取 LP 直接存入 Stake，不重新发明计算公式。
 - 空目标沿用本文件的等待期继承例外；未列出的只读字段按 `StakeData` 和 `TokenStakeGlobals` 直接暴露查询。
 
-历史来源：`LOVE20TKM/core/src/LOVE20Stake.sol`（质押 120–134、票权 65–88、累计值 335–359 行）和 `LOVE20TKM/core/src/LOVE20SLToken.sol`（份额 79–83、手续费 256–289 行）；路径和行号尚未固定提交核验。验收见 [Core 验收](08-testing.md)。
+历史来源：`LOVE20TKM/core/src/LOVE20Stake.sol` 和 `LOVE20TKM/core/src/LOVE20SLToken.sol`；提交已固定，当前 BSC 行为以本文件为准。验收见 [Core 验收](08-testing.md)。

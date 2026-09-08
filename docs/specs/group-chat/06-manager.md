@@ -6,6 +6,26 @@
 
 同一个 token（token Manager）或 token + actionId（action Manager）只能在同一 Manager 中激活一次。保留 tokenOfGroup/groupIdOfToken、actionOfGroup/groupIdOfAction 及批量、分页查询；行动定位使用已有 `actionOfGroup(groupId)` 返回 token 和 actionId，不另加重复的 getActionId。
 
+```solidity
+function activate(address token) external returns (uint256 groupId);
+function tokenOfGroup(uint256 groupId) external view returns (address);
+function groupIdOfToken(address token) external view returns (uint256);
+function tokensCount() external view returns (uint256);
+function tokens(uint256 offset, uint256 limit, bool reverse)
+    external view returns (address[] memory tokenList, uint256[] memory groupIds);
+function RECENT_ROUNDS() external view returns (uint256);
+function activate(address token, uint256 actionId) external returns (uint256 groupId);
+function actionOfGroup(uint256 groupId) external view returns (address token, uint256 actionId);
+function groupIdOfAction(address token, uint256 actionId) external view returns (uint256);
+function groupIdsOfActions(address token, uint256[] calldata actionIds)
+    external view returns (uint256[] memory groupIds);
+function actionsOfGroups(uint256[] calldata groupIds)
+    external view returns (address[] memory tokens, uint256[] memory actionIds);
+function actionsByTokenCount(address token) external view returns (uint256);
+function actionsByToken(address token, uint256 offset, uint256 limit, bool reverse)
+    external view returns (uint256[] memory actionIds, uint256[] memory groupIds);
+```
+
 ## NFT 付款与持有
 
 保留旧 BaseManager 的激活交易：

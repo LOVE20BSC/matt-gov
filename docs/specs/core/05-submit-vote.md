@@ -143,7 +143,7 @@ function votedProposalIdsAtIndex(address tokenAddress, uint256 round, uint256 in
     external view returns (uint256 proposalId);
 ```
 
-本节 `init` 属于 Vote；Submit 也提供相同的 `currentRound()`。`isRoundEnded(0)` 返回 false。投票调用者须持有 `memberId`，Proposal 必须已在当前轮推举。`proposalIds`、`votes`、`keys`、`values` 四个批量数组必须非空且等长；每笔 `keys[i]` 与 `values[i]` 等长，但可以同时为空；每笔票数必须为正。按输入顺序累加并回调，重复 Proposal ID 按多笔增量处理，任何一笔失败全部回滚。Core 不解析 KV 的业务内容。
+本节 `init` 属于 Vote；Submit 也提供相同的 `currentRound()`。`isRoundEnded(0)` 返回 false。投票调用者须持有 `memberId`，Proposal 必须已在当前轮推举。`proposalIds`、`votes`、`keys`、`values` 四个批量数组必须非空且等长；每笔 `keys[i]` 与 `values[i]` 等长，但可以同时为空；每笔票数必须为正。按输入顺序累加并回调，重复 Proposal ID 按多笔增量处理，任何一笔失败全部回滚。批量没有协议固定长度上限，调用方可按区块 Gas 分批提交；测试记录首次失败规模。Core 不解析 KV 的业务内容。
 
 保留旧 `votesNum*` 查询名；`Account` 参数在 BSC 为 `memberId`，不是地址。Mint 公式中的 `memberBoost` 对应 `stakedAmountOfVotersByMemberId`，`totalBoost` 对应 `stakedAmountOfVoters`。
 
@@ -184,7 +184,7 @@ function onProposalVoted(
 ## 实现约束
 
 - `NoCallback` 要求 `keys` 与 `values` 均为空，避免静默忽略业务数据。
-- `eligibleProposalVotes` 在每次投票更新后按本轮有票列表重算；总票增加可能使未被本次投票的 Proposal 跌出门槛，也必须扣除。旧 Verify 的 `scoreWithReward` 是对已冻结投票结果增量累计，不是这个重算算法的现成实现。保留轮次账本与 Vote 列表，不新增固定 Proposal 数量上限。
+- `eligibleProposalVotes` 沿用旧逻辑，在每次投票更新后按本轮有票列表重算；达标条件使用更新后的 `totalVotes`，因此总票增加可能使未被本次投票的 Proposal 跌出门槛，也必须扣除。旧 Verify 的 `scoreWithReward` 是对已冻结投票结果增量累计，不是这个重算算法的现成实现。保留轮次账本与 Vote 列表，不新增固定 Proposal 数量上限。
 - `proposal` 查询不存在的 ID 回滚 `ProposalNotFound`；有效社区的空列表返回 0 或空数组，AtIndex 越界回滚 `IndexOutOfBounds`；无记录的票数/快照返回 0、`isSubmitted` 返回 false。所有索引从 0 开始，Proposal ID 从 1 开始。
 - 历史来源 `LOVE20TKM/core/src/LOVE20Submit.sol`、`LOVE20TKM/core/src/LOVE20Vote.sol`、`LOVE20TKM/core/src/LOVE20Verify.sol` 仅作为保留逻辑参考，不能替代本文件规则。
 

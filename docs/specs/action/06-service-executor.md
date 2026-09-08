@@ -16,19 +16,18 @@
 | `groupReward(a, m)` | Group m 在行动 a 的成员激励总和 |
 | `serviceReward` | 本服务 Proposal 的整笔激励 |
 
-首次为可铸币服务轮次准备、领取或销毁时，按 `actionTokenAddress + groupActionId + round` 计算并缓存分母；其中 `actionTokenAddress` 与 `groupActionId` 是 GroupService 绑定的行动身份，不是单个被聚合的源行动。分母始终统计该身份对应社区本轮全部 GroupAction 激励，不缩成单行动激励。后续结算读取缓存；查询不能写状态，未缓存时只计算返回。已计算的零值通过 `denominatorCached` 区分。
+首次为可铸币服务轮次准备、领取或销毁时，按 `actionTokenAddress + round` 计算并缓存分母。`actionTokenAddress` 是 GroupService 绑定的社区，不代表某个被聚合的源行动。分母始终统计该社区本轮全部 GroupAction 激励，不缩成单行动激励。后续结算读取缓存；查询不能写状态，未缓存时只计算返回。已计算的零值通过 `denominatorCached` 区分。
 
 ```solidity
-mapping(address => mapping(uint256 => mapping(uint256 => uint256)))
+mapping(address => mapping(uint256 => uint256))
     _totalGroupActionReward;
-mapping(address => mapping(uint256 => mapping(uint256 => bool)))
+mapping(address => mapping(uint256 => bool))
     _denominatorCached;
 ```
 
 ```solidity
 function totalGroupActionReward(
     address actionTokenAddress,
-    uint256 groupActionId,
     uint256 round
 ) external view returns (uint256 reward, bool cached);
 

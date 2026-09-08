@@ -66,6 +66,8 @@ newPhaseBlocks = max(1, observedPhaseBlocks)
 
 `deviation` 是比例表达式，不能先用整数除法截成零再与阈值比较。`elapsedBlocks` 和 `elapsedSeconds` 是选定观测到本次同步的区块差与秒差。
 
+合格观测定义为：从最新观测向前，选择第一个满足 `block.number - observation.blockNumber > currentPhaseBlocks` 的观测；严格大于，等于时继续向前查找。二分查找也以该条件为判定，不存在合格观测时不调整。
+
 例如当前长度 100、阈值 20% 时，估算 110 保持 100，估算 130 调整为 130。
 
 ## 治理 Round
@@ -78,5 +80,6 @@ Submit 和 Vote 的 `currentRound()` 等于 `Phase.currentPhase()`。创建、�
 - 没有合格观测、`elapsedBlocks == 0` 或 `elapsedSeconds == 0` 时只记录观测，不调整参数。
 - 偏差阈值由初始化参数 `adjustThreshold` 提供，按 `1e18` 精度；超过阈值才调整。
 - 新长度为 `max(1, floor(elapsedBlocks * targetSeconds / elapsedSeconds))`；已生成 Phase 不回写。
+- `block.number < originBlocks` 时 `currentPhase()` 和 `phaseAtBlock(block.number)` 返回 `0`；`phaseInfo(0)` 无效。
 
 验收见 [Core 验收](08-testing.md)。

@@ -36,7 +36,7 @@ function trialAmount(address tokenAddress, uint256 actionId, uint256 round, uint
     external view returns (uint256);
 ```
 
-待体验名单仅 Provider 当前持有人可改；名单身份须存在且不同于 Provider，两个数组等长，额度为正。trialJoin 由参与成员持有人调用，使用已授权额度并从 Provider 当前持有人转入代币；ERC20 allowance 只授权转账，不替代上述名单授权。
+待体验名单仅 Provider 当前持有人可改；名单身份须存在且不同于 Provider，两个数组等长，额度为正。批量接口没有协议固定长度上限，调用方按区块 Gas 分批操作，单笔失败整笔回滚。trialJoin 由参与成员持有人调用，使用已授权额度并从 Provider 当前持有人转入代币；ERC20 allowance 只授权转账，不替代上述名单授权。
 
 trialWithdraw 允许成员或对应 Provider 的当前持有人调用；金额须满足 `0 < amount <= 对应体验余额`，代币始终返还该 Provider 当前持有人，不影响自有或其他 Provider 账本。Provider 身份不授予成员 `exit` 权限。撤回后总参与量归零时，Executor 自动完成成员退出、清除群归属并调用 ActionTarget.exit；否则保留加入状态。成员正常 `exit` 时，自有资产返还成员当前持有人，全部体验资产返还各 Provider 当前持有人。历史零值按 RoundHistory 记录；无历史额度返回 0，空名单返回等长空数组。
 

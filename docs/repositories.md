@@ -2,6 +2,20 @@
 
 组织级清单只记录仓库边界、主要依赖和当前状态；具体实现说明与测试命令放在对应仓库的 `README.md`。
 
+## 旧代码基线
+
+所有迁移规格引用的旧代码提交集中定义在这里。正文只写 `LOVE20TKM/<repo>/<path>`；审查时按下表补足提交哈希。除非本表更新，正文中的旧代码来源版本不变。
+
+| 旧仓库 | 固定提交 |
+| --- | --- |
+| `LOVE20TKM/core` | `0e3efcc13a7b9e202033f62e4858795bf43b557e` |
+| `LOVE20TKM/extension` | `92684fa3ad42a881bba883bc8458c80faf2bc4f2` |
+| `LOVE20TKM/extension-group` | `37cf53e0544f4bb03b0625448175ae9638f82dc3` |
+| `LOVE20TKM/extension-lp` | `e05c8770aa2ecbd63d0bc685b560bb41634d8875` |
+| `LOVE20TKM/group` | `2eb6d6c8d48bf6dd382efa5887124a2c3c722fd9` |
+| `LOVE20TKM/group-chat` | `ce21ea8f29b3750421876ae649fa7d919fe42cff` |
+| `LOVE20TKM/burn` | `a7f9aefe7194feaf1582acaa0c9dbffee7026391` |
+
 | 仓库 | 定位 | 主要依赖 | 当前状态 |
 | --- | --- | --- | --- |
 | `matt-gov` | 组织治理、迁移决策和验收记录 | 无 | 活跃 |
@@ -23,4 +37,4 @@
 
 旧 `LOVE20TKM/extension`、`LOVE20TKM/extension-group` 的业务迁入 `action`；旧 `LOVE20TKM/extension-lp` 仅迁移 V2 LP 业务，重写为 `action` 内的 LP 行动执行合约，V1 LP 实现及旧 LP 工厂不迁移。`burn`、未部署的 `chat` 和外部 `v2-periphery` 不在本组织清单中。Burn 业务合约不迁移到 LOVE20BSC 组织，但其空投合约（`Airdrop.sol`）必须在 Burn 活动结束后由旧 [`LOVE20TKM/burn`](https://github.com/LOVE20TKM/burn) 代码库单独部署到 BSC，作为首个代币 `distributor` 的外部依赖；部署记录必须公开指向 [`Airdrop.sol`](https://github.com/LOVE20TKM/burn/blob/main/src/Airdrop.sol)、[`DeployAirdrop.s.sol`](https://github.com/LOVE20TKM/burn/blob/main/script/DeployAirdrop.s.sol)、[`airdrop-design.md`](https://github.com/LOVE20TKM/burn/blob/main/docs/airdrop-design.md)，并记录实际使用的 Burn 提交、来源区块、Merkle Root 和已部署 Airdrop 地址。
 
-旧 `LOVE20TKM/group` 仓库中已部署且仍需要的 `LOVE20Group` 只迁移合约级实现，并入 `core` 后重命名为 `MemberNFT`；旧 `LOVE20Group` 是成员身份 NFT，不是“群”的 NFT，改名即为消除该误解——链群以 `groupId` 为业务标识，不存在第二套 GroupNFT 身份。`GroupDefaults` 属于地址到默认 NFT 的便利映射，BSC 版不迁移、不部署；不新增独立的 `group` 代码库。旧 `GroupDelegate` 不进入 `core`，Chat 所需的委托逻辑仅在 `group-chat` 内实现，并统一称为 **Group Chat Delegate**。
+旧 `LOVE20TKM/group` 仓库中已部署且仍需要的 `LOVE20Group` 只迁移合约级实现，并入 `core` 后重命名为 `MemberNFT`；旧 `LOVE20Group` 是成员身份 NFT，不是“群”的 NFT，改名即为消除该误解——链群以 `groupId` 为业务标识，不存在第二套 GroupNFT 身份。`GroupDefaults` 属于地址到默认 NFT 的便利映射，BSC 版不迁移、不部署；不新增独立的 `group` 代码库。旧 GroupDelegate 不进入 `core`，Chat 所需的委托逻辑仅在 `group-chat` 内实现，并统一称为 **Group Chat Delegate**。

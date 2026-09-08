@@ -231,13 +231,13 @@ rg -n 'core\.md|action\.md|group-chat\.md|launchFirstToken|initializeGenesis|TOD
 - [ ] CHANGES 与当前拆分规格一致
 - [ ] 删除项没有在当前规格重新出现
 
-引用格式统一为：
+旧代码引用格式统一为；提交版本集中查看 [`repositories.md`](repositories.md#旧代码基线)：
 
 ```text
-LOVE20TKM/<repo>@<commit>:<path>#<function-or-symbol>
+LOVE20TKM/<repo>/<path>[#<function-or-symbol>]
 ```
 
-只有无法访问或尚未固定提交的引用，才标为“需人工验证”。不要接受只有文件名、模糊仓库目录或过大的行号范围。
+`#<function-or-symbol>` 仅在需要定位符号时填写；仅提及仓库或组件时可以不写路径。只有无法访问、路径未固定或集中基线表尚未固定提交的引用，才标为“需人工验证”。不要接受只有文件名、模糊仓库目录或过大的行号范围。
 
 ### 组织边界
 

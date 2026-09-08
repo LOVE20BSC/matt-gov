@@ -44,6 +44,10 @@ event RewardBurned(address indexed tokenAddress, uint256 indexed actionId, uint2
 
 ## 错误
 
+```solidity
+error AlreadyInitialized();
+```
+
 | 已有错误示意 | 拒绝条件 |
 | --- | --- |
 | `InvalidExecutor()` | 零地址、EOA、无代码 Executor |

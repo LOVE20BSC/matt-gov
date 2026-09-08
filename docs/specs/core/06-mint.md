@@ -32,6 +32,8 @@ available = maxSupply - totalSupply - reservedAvailable
 
 `reservedAvailable` 是尚未结算的额度，不能再次分配。三个累计账本与本轮池值不能混用。
 
+各项向下取整产生的余数是明确的永久保留量：继续计入 `reservedAvailable`，不进入后续轮次池，也不单独铸造或销毁；该保留量属于供应上限内的协议保留额度。
+
 ## 准备一次
 
 ```solidity
