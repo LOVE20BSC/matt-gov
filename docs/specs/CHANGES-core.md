@@ -15,7 +15,7 @@
 
 | 组件 | 状态 | 旧位置 | 新位置 | 核心变化 |
 |------|------|--------|--------|----------|
-| MemberNFT | 合并新增 | `LOVE20TKM/group/src/LOVE20Group.sol` | core/MemberNFT.sol | 名称 64→32 bytes，铸造费用公式保留 |
+| MemberNFT | 复制迁移 | `LOVE20TKM/group/src/LOVE20Group.sol` | core/MemberNFT.sol | 改名与 ERC721 元数据、名称 64→32 bytes、费用代币地址改 init 传入 |
 | Phase | 全新 | - | core/Phase.sol | 替代固定阶段，动态校准 |
 | Stake | 重构 | `LOVE20TKM/core/src/LOVE20Stake.sol` | core/Stake.sol | 去 SL/ST 凭证，按 memberId 归属 |
 | Submit | 保留 | `LOVE20TKM/core/src/LOVE20Submit.sol` | core/Submit.sol | 主体改为 memberId |
@@ -27,31 +27,15 @@
 
 ---
 
-## 1. MemberNFT（合并新增）
+## 1. MemberNFT（复制迁移）
 
-### 来源
-- 合并旧 `LOVE20TKM/group/src/LOVE20Group.sol`
-- 升级为协议唯一身份 NFT
+旧 `LOVE20TKM/group/src/LOVE20Group.sol` 整体复制为 `core/MemberNFT.sol`，业务逻辑不改；行为规范见 [MemberNFT 规格](core/02-member-nft.md)。"协议唯一身份"仅指各业务合约以 `memberId` 为键使用它（见 Stake、Submit、Vote、Mint、Launch 各节），本合约不新增承载或转移规则。
 
-### ✅ 保留逻辑
-- **名称校验**：参考 `LOVE20TKM/group/src/LOVE20Group.sol` 的 UTF-8 校验、ASCII 大小写不敏感、禁止字符类型
-- **铸造费用公式**：保留短名称稀缺性公式（baseCost × multiplier ^ (bytesThreshold - byteLength)）
+差异仅三项：
 
-### 🔄 关键变化
-- **名称长度**：`64 bytes` → `32 bytes`（避免与钱包地址混淆）
-- **合约名**：`LOVE20Group` → `MemberNFT`
-- **ERC721 名称**：`LOVE20 Member NFT`，符号 `Member`
-- **用途扩展**：从群聊身份扩展为协议全局身份（质押、投票、发射次数）
-
-### ➕ 新增能力
-- 统一承载质押、投票、发射次数等所有业务状态
-- MemberNFT 转移只改变控制者，不改变历史状态
-
-### 📍 实现参考
-```
-旧代码：LOVE20TKM/group/src/LOVE20Group.sol
-关注：名称校验（134-198行）、铸造费用（78-95行）
-```
+- **合约名 / ERC721 元数据**：`LOVE20Group` → `MemberNFT`，名称 `LOVE20 Member NFT`，符号 `Member`
+- **名称长度上限**：`64 bytes` → `32 bytes`（避免与钱包地址混淆）
+- **铸造费用代币地址**：由旧构造函数传入改为 `init(firstTokenAddress)`，由 Launch 在创建首币后调用一次
 
 ---
 
