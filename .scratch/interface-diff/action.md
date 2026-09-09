@@ -175,7 +175,7 @@
 | `trialAmount(tokenAddress, actionId, round, memberId, providerMemberId)` | 无 | 新增 |
 | 无 | `IGroupJoin.trialAccountsWaitingRemoveAll`、`trialAccountsWaitingCount`、`trialAccountsWaitingAtIndex`、`trialAccountsJoined`(+`Count`/`AtIndex`) | 删除 6 项 |
 | 无 | `IGroupJoin.groupIdByAccount` | 删除（`joinInfo` 返回 `groupId`） |
-| 无 | `IGroupJoin.totalJoinedAmountByGroupId`、`joinedAmount`、`totalJoinedAmountByGroupOwner` | 删除，见 [待确认 4](README.md#待确认) |
+| 无 | `IGroupJoin.totalJoinedAmountByGroupId`、`joinedAmount`、`totalJoinedAmountByGroupOwner` | 删除，**已裁决需补回**，见 [已裁决 6](README.md#已裁决待补齐) |
 | 无 | `IGroupJoin.accountsByGroupIdCount`、`accountsByGroupIdAtIndex`、`accountIndexByGroupId` | 删除 |
 
 ### 验证与验证者竞选
