@@ -18,6 +18,19 @@
 
 以下各节不再对每个函数重复标注这一层参数变化的理由。
 
+## 继承关系与完整 ABI 规模
+
+新 action 层有 4 个接口带继承，其**完整 ABI = 自身声明 + 继承成员**。下表给出总数，各节表格只列自身声明的部分。
+
+| 接口 | 自身声明 | 继承自 | 完整 ABI |
+| --- | --- | --- | --- |
+| `IActionTarget` | 12 | `IProposalTarget`（3） | 15 |
+| `ILpExecutor` | 16 | `IProposalTarget`（3） | 19 |
+| `IGroupActionExecutor` | 42 | `IGroupActionIndexes`（51）+ `IProposalTarget`（3） | 96 |
+| `IGroupServiceExecutor` | 15 | `IProposalTarget`（3） | 18 |
+
+旧侧对应情况：旧 `IAdminBanSource`/`IGroupMemberScope`/`IGroupJoinScopeSource`/`IGovVotedBanSource` 均通过 `is IPostBanSource`/`is IPostScopeSource` 继承行为契约（见 [group-chat.md](group-chat.md)）；旧 `IExtensionGroupActionFactory is IGroupActionFactory, IExtensionFactory`，随工厂体系一并删除。
+
 ---
 
 ## 1. IActionTarget vs IExtensionCenter + IExtension
@@ -117,6 +130,8 @@
 ## 3. IGroupActionExecutor vs IGroupAction + IGroupManager + IGroupJoin + IGroupVerify
 
 旧：`LOVE20TKM/extension-group/src/interface/IGroupAction.sol`、`IGroupManager.sol`、`IGroupJoin.sol`、`IGroupVerify.sol`。四个旧接口合并为一个 Executor。
+
+**继承**：`IGroupActionExecutor is IGroupActionIndexes, IProposalTarget`。因此其完整 ABI = 自身声明的 42 个函数 + 继承的 51 个 `g*` 索引函数（见第 4 节）+ 3 个 `IProposalTarget` 回调，共 96 个。下文表格只列自身声明的部分，`g*` 索引按第 4 节的组名收敛。
 
 四阶段轮次（投票、加入、验证、铸币）。
 
@@ -268,9 +283,9 @@
 | `setRecipients(sourceTokenAddress, sourceActionId, groupId, uint256[] recipientIds, ratios[], remarks[])` | `IGroupRecipients.setRecipients(tokenAddress, actionId, groupId, address[] addrs, ratios[], remarks[])` | 改参 |
 | `recipients(sourceTokenAddress, sourceActionId, groupId, round) returns (recipientIds[], ratios[], remarks[])` | `IGroupRecipients.recipients(address groupOwner, tokenAddress, actionId, groupId, round) returns (addrs[], ratios[], remarks[])` | 改参（去 `groupOwner` 参数） |
 | `burnRewardIfNeeded(uint256 round)` | `IReward.burnRewardIfNeeded(round)` | 保留 |
-| `join(serviceTokenAddress, serviceProposalId, memberId, verificationInfos[])` | 无（旧走 `ITokenJoin`/`IJoin`） | 新增 |
-| `exit(serviceTokenAddress, serviceProposalId, memberId)` | 无 | 新增 |
-| `joinInfo(serviceTokenAddress, serviceProposalId, round, memberId) returns (bool joined)` | 无 | 新增 |
+| `join(serviceTokenAddress, serviceProposalId, memberId, verificationInfos[])` | 旧 `IGroupService` 未声明，由 `ITokenJoin.join(uint256 amount, string[] verificationInfos)` 提供 | 跨接口迁移（补齐 `tokenAddress`/`proposalId` 前缀，去掉独立 `amount`） |
+| `exit(serviceTokenAddress, serviceProposalId, memberId)` | 旧由 `ITokenJoin.exit()` / `IJoin.exit()` 提供 | 跨接口迁移 |
+| `joinInfo(serviceTokenAddress, serviceProposalId, round, memberId) returns (bool joined)` | 旧由 `ITokenJoin.joinInfo(address account)` 提供（返回 `joinedRound, amount, lastJoinedBlock, exitableBlock`） | 跨接口迁移+改参（返回值简化为是否参与） |
 | `serviceRewardByMember(serviceTokenAddress, serviceProposalId, round, memberId) returns (verifierReward, ownerReward, ownerBurned, claimed)` | 无 | 新增 |
 | `currentVoteRound`、`currentJoinRound`、`currentVerifyRound`、`currentMintRound` | 无 | 新增 |
 | `init(actionTargetAddress, memberNFTAddress, phaseAddress, stakeAddress, mintAddress, groupActionExecutorAddress)` | 无 | 新增 |
