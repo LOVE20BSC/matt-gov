@@ -90,7 +90,7 @@ else:
     burnReward = theoreticalBoost - boostReward
 ```
 
-`memberVotes` 为本轮累计投出票数；`memberBoost` 和 `totalBoost` 均取 Vote 的同轮冻结快照，记账时机见 [Vote](05-vote.md#投票和加速快照)。投票后仅追加质押、不再投票，不增加本轮加速权重；NFT 转移不重算快照。两池按固定 50/50 拆分，奇数余量归加速池。`totalBoost == 0` 时整份加速池已在准备时取消，本次不得再计 `burnReward`。未投票者即使有加速质押也不能领取治理激励。
+`memberVotes` 为本轮累计投出票数；`memberBoost` 和 `totalBoost` 均取 Vote 的同轮冻结快照，记账时机见 [Vote](06-vote.md#投票和加速快照)。投票后仅追加质押、不再投票，不增加本轮加速权重；NFT 转移不重算快照。两池按固定 50/50 拆分，奇数余量归加速池。`totalBoost == 0` 时整份加速池已在准备时取消，本次不得再计 `burnReward`。未投票者即使有加速质押也不能领取治理激励。
 
 例：两池各 500、成员投票占 10%、加速份额占 50%、倍数上限为 2。结果为 `voteReward = 50`、`boostReward = 100`、`burnReward = 150`；实际铸造 150。
 
@@ -104,7 +104,7 @@ else:
 
 ## 发射额度
 
-Mint 保存 `launchCredit[tokenAddress][memberId]`。只有实际铸造的治理激励可累计；上限、零阈值、计算顺序和余数规则只在 [Launch](07-launch.md#发射次数) 定义。产生正数次数时调用仅授权 Mint 的 `Launch.addLaunchCount`。
+Mint 保存 `launchCredit[tokenAddress][memberId]`。只有实际铸造的治理激励可累计；上限、零阈值、计算顺序和余数规则只在 [Launch](08-launch.md#发射次数) 定义。产生正数次数时调用仅授权 Mint 的 `Launch.addLaunchCount`。
 
 ## 实现约束
 
@@ -115,4 +115,4 @@ Mint 保存 `launchCredit[tokenAddress][memberId]`。只有实际铸造的治理
 - 各项分配向下取整产生的极小舍入余数不单独维护，也不追加结算状态；累计账本只记录实际铸造和明确销毁的额度。
 - 历史来源 `LOVE20TKM/core/src/LOVE20Mint.sol` 只作为行为参考，不替代本文件的账本规则。
 
-验收见 [Core 验收](08-testing.md)。
+验收见 [Core 验收](09-testing.md)。

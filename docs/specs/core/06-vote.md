@@ -28,4 +28,4 @@ Vote 管理当前治理 Round 的 Proposal 投票和加速快照。Proposal 的�
 
 `votes` 为本次增量，不是累计票数；`bytes32` 键用于比较，`bytes` 值承载 ABI 编码。空 KV 仍必须触发回调。投票回调仅接受 Vote，Executor 仅接受 ActionTarget 转发；回调前先写入投票状态，失败则一并回滚。
 
-Mint 的 `memberBoost` 对应 `stakedAmountOfVotersByMemberId`，`totalBoost` 对应 `stakedAmountOfVoters`。验收见 [Core 验收](08-testing.md)。
+Mint 的 `memberBoost` 对应 `stakedAmountOfVotersByMemberId`，`totalBoost` 对应 `stakedAmountOfVoters`。验收见 [Core 验收](09-testing.md)。

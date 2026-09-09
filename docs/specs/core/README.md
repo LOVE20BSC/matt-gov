@@ -10,10 +10,10 @@ Core 定义治理、统一身份、时间线和基础子币发射。按编号阅
 | [03-phase.md](03-phase.md) | 时间片、同步观测和动态校准 |
 | [04-stake.md](04-stake.md) | 质押、手续费、解锁与融合 |
 | [05-submit.md](05-submit.md) | Proposal 创建、推举与 Submit 回调 |
-| [05-vote.md](05-vote.md) | Proposal 投票、快照与 Vote 回调 |
-| [06-mint.md](06-mint.md) | 激励准备、铸造、销毁 |
-| [07-launch.md](07-launch.md) | Launch.init 首币部署、发射次数与 TokenFactory |
-| [08-testing.md](08-testing.md) | 验收 |
+| [06-vote.md](06-vote.md) | Proposal 投票、快照与 Vote 回调 |
+| [07-mint.md](07-mint.md) | 激励准备、铸造、销毁 |
+| [08-launch.md](08-launch.md) | Launch.init 首币部署、发射次数与 TokenFactory |
+| [09-testing.md](09-testing.md) | 验收 |
 
 建议实现顺序：Phase/MemberNFT、Stake、Submit/Vote、Mint、Launch/TokenFactory。实现顺序不等于初始化调用顺序，初始化边界见 Launch。
 

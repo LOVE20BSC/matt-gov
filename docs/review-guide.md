@@ -317,7 +317,7 @@ LOVE20TKM/<repo>/<path>[#<function-or-symbol>]
 
 ## P0 / P1 问题
 ### [P1] <一句话标题>
-- 文件：`docs/specs/core/06-mint.md:42`
+- 文件：`docs/specs/core/07-mint.md:42`
 - 证据：引用原文或公式
 - 问题：说明两种解释或缺失条件
 - 影响：指出会导致错误实现、部署失败或验收无法判定

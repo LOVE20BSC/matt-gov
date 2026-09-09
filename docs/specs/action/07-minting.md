@@ -10,7 +10,7 @@ executor -> ActionTarget -> Mint -> ActionTarget -> executor
 
 服务轮次没有可分配源行动时，使用 Executor 的 `burnRewardIfNeeded(serviceTokenAddress, serviceProposalId, round)` 专用入口；该入口只能处理已结束轮次，Executor 直接调用服务代币 `burn(amount)`，且重复调用无操作。
 
-Core 的预留、铸造和取消额度账本见 [Mint](../core/06-mint.md)，不能把 Executor 内部转账再次计作 Core 铸造。
+Core 的预留、铸造和取消额度账本见 [Mint](../core/07-mint.md)，不能把 Executor 内部转账再次计作 Core 铸造。
 
 事件和错误定义分别见 [`IActionTarget.sol`](../../../interfaces/action/IActionTarget.sol)、[`ILpExecutor.sol`](../../../interfaces/action/ILpExecutor.sol)、[`IGroupActionExecutor.sol`](../../../interfaces/action/IGroupActionExecutor.sol) 和 [`IGroupServiceExecutor.sol`](../../../interfaces/action/IGroupServiceExecutor.sol)。每个接口只声明自身合约实际拥有的事件和错误。
 

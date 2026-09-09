@@ -63,4 +63,4 @@ Submit 和 Vote 的 `currentRound()` 等于 `Phase.currentPhase()`。创建、�
 - 新长度为 `max(1, floor(elapsedBlocks * targetSeconds / elapsedSeconds))`；已生成 Phase 不回写。
 - `block.number < originBlocks` 时 `currentPhase()` 和 `phaseAtBlock(block.number)` 返回 `0`；`phaseInfo(0)` 无效。
 
-验收见 [Core 验收](08-testing.md)。
+验收见 [Core 验收](09-testing.md)。

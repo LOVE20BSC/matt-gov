@@ -30,13 +30,13 @@
 | `IGroupActionExecutor` | 43 | `IGroupActionIndexes`（51）+ `IProposalTarget`（3） | 97 |
 | `IGroupServiceExecutor` | 15 | `IProposalTarget`（3） | 18 |
 
-旧侧对应情况：旧 `IAdminBanSource`/`IGroupMemberScope`/`IGroupJoinScopeSource`/`IGovVotedBanSource` 均通过 `is IPostBanSource`/`is IPostScopeSource` 继承行为契约（见 [group-chat.md](group-chat.md)）；旧 `IExtensionGroupActionFactory is IGroupActionFactory, IExtensionFactory`，随工厂体系一并删除。
+旧侧对应情况：旧 `LOVE20TKM/group-chat/src/interfaces/sources/ban/IAdminBanSource.sol`、`LOVE20TKM/group-chat/src/interfaces/sources/scope/IGroupMemberScope.sol`、`LOVE20TKM/group-chat/src/interfaces/sources/scope/IGroupJoinScopeSource.sol`、`LOVE20TKM/group-chat/src/interfaces/sources/ban/IGovVotedBanSource.sol` 均通过 `is IPostBanSource`/`is IPostScopeSource` 继承行为契约（见 [group-chat.md](group-chat.md)）；旧 `LOVE20TKM/extension-group/src/interface/IExtensionGroupActionFactory.sol` 继承 `IGroupActionFactory`、`IExtensionFactory`，随工厂体系一并删除。
 
 ---
 
 ## 1. IActionTarget vs IExtensionCenter + IExtension
 
-旧：`LOVE20TKM/extension/src/interface/IExtensionCenter.sol`、`IExtension.sol`。
+旧：`LOVE20TKM/extension/src/interface/IExtensionCenter.sol`、`LOVE20TKM/extension/src/interface/IExtension.sol`。
 
 新 `IActionTarget` 继承 `IProposalTarget`，承担「提案与执行合约关联 + 通用加入/退出登记 + 激励中转」。旧 `ExtensionCenter` 的注册中心、委托和验证信息职责不迁移。
 
@@ -87,7 +87,7 @@
 
 ## 2. ILpExecutor vs ILp + ITokenJoin + IReward
 
-旧：`LOVE20TKM/extension-lp/src/interface/ILp.sol`、`LOVE20TKM/extension/src/interface/ITokenJoin.sol`、`IReward.sol`。仅迁移 V2 LP 业务，V1 实现与旧 LP 工厂不迁移。
+旧：`LOVE20TKM/extension-lp/src/interface/ILp.sol`、`LOVE20TKM/extension/src/interface/ITokenJoin.sol`、`LOVE20TKM/extension/src/interface/IReward.sol`。仅迁移 V2 LP 业务，V1 实现与旧 LP 工厂不迁移。
 
 三阶段轮次（投票、加入、铸币）。
 
@@ -130,7 +130,7 @@
 
 ## 3. IGroupActionExecutor vs IGroupAction + IGroupManager + IGroupJoin + IGroupVerify
 
-旧：`LOVE20TKM/extension-group/src/interface/IGroupAction.sol`、`IGroupManager.sol`、`IGroupJoin.sol`、`IGroupVerify.sol`。四个旧接口合并为一个 Executor。
+旧：`LOVE20TKM/extension-group/src/interface/IGroupAction.sol`、`LOVE20TKM/extension-group/src/interface/IGroupManager.sol`、`LOVE20TKM/extension-group/src/interface/IGroupJoin.sol`、`LOVE20TKM/extension-group/src/interface/IGroupVerify.sol`。四个旧接口合并为一个 Executor。
 
 **继承**：`IGroupActionExecutor is IGroupActionIndexes, IProposalTarget`。因此其完整 ABI = 自身声明的 43 个函数 + 继承的 51 个 `g*` 索引函数（见第 4 节）+ 3 个 `IProposalTarget` 回调，共 97 个。下文表格只列自身声明的部分，`g*` 索引按第 4 节的组名收敛。
 
@@ -232,7 +232,7 @@
 | 归类 | 数量 | 错误名 |
 | --- | --- | --- |
 | 已被现有新声明覆盖 | 6 | `JoinAmountZero`、`AmountBelowMinimum`（→ `InvalidParticipationAmount`）、`NotVerifier`（→ `InvalidCandidate`）、`GroupNotActive`（→ `ApplicationNotActive`）、`AlreadyInitialized`（保留）、`InvalidStartIndex`（→ `BatchIndexMismatch`） |
-| **已补回** | 28 | 见 `IGroupActionExecutor.sol` 末尾「自旧 `IGroupJoin`/`IGroupManager`/`IGroupVerify` 补齐」一段，全部按原名补回 |
+| **已补回** | 28 | 见 `interfaces/action/IGroupActionExecutor.sol` 末尾「自旧 `IGroupJoin`/`IGroupManager`/`IGroupVerify` 补齐」一段，全部按原名补回 |
 | 裁决不补 | 6 | `DistrustVoteExceedsVerifyVotes`、`DistrustVoteZeroAmount`、`InvalidReason`（不信任投票机制整块不迁移）；`NotRegisteredExtensionInFactory`、`ExtensionNotInitialized`、`InvalidFactoryAddress`（extension 工厂体系取消） |
 
 这 28 个错误对应新实现仍需暴露的校验，不能用 `require` 或通用错误替代；加上阶段未开始错误后，接口错误数为 44。见 [README「已确认并落地」](README.md#已确认并落地)。
@@ -284,7 +284,7 @@
 
 ## 5. IGroupServiceExecutor vs IGroupService + IGroupRecipients
 
-旧：`LOVE20TKM/extension-group/src/interface/IGroupService.sol`、`IGroupRecipients.sol`。
+旧：`LOVE20TKM/extension-group/src/interface/IGroupService.sol`、`LOVE20TKM/extension-group/src/interface/IGroupRecipients.sol`。
 
 四阶段轮次，复用 GroupAction 的验证结果，自身不执行验证。
 

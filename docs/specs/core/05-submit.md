@@ -1,6 +1,6 @@
 # Submit
 
-Submit 管理 Proposal 创建和当前治理 Round 的推举。Proposal 规则与权限见 [通用规则](01-common-rules.md)，Round 边界见 [Phase](03-phase.md#治理-round)。投票由 [Vote](05-vote.md) 独立管理。
+Submit 管理 Proposal 创建和当前治理 Round 的推举。Proposal 规则与权限见 [通用规则](01-common-rules.md)，Round 边界见 [Phase](03-phase.md#治理-round)。投票由 [Vote](06-vote.md) 独立管理。
 
 ## Proposal
 
@@ -50,4 +50,4 @@ Proposal 以 `tokenAddress + proposalId` 定位，ID 单调分配。
 
 创建和推举分别触发对应回调。回调不要求 KV 非空；空 `keys`/`values` 仍必须调用回调并传递空数组。创建回调仅接受 Submit；Executor 仅接受 ActionTarget 转发。回调前先写入对应 Proposal 或推举状态，失败则一并回滚。
 
-验收见 [Core 验收](08-testing.md)。
+验收见 [Core 验收](09-testing.md)。

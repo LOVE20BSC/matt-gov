@@ -76,4 +76,4 @@ mintCost = byteLength >= bytesThreshold
 
 移除采用 swap-and-pop，因此 `holdersAtIndex` 的索引在移除后会重排，不能作为稳定标识。
 
-验收见 [Core 验收](08-testing.md)。
+验收见 [Core 验收](09-testing.md)。

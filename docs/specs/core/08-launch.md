@@ -90,4 +90,4 @@ LOVE20Token 使用构造函数接收 `name`、`symbol`、`initialSupply`、`maxS
 - LOVE20Token 不提供 `init`；构造函数直接接收 `name`、`symbol`、`initialSupply`、`maxSupply`、`distributor`、`minter` 和 `parentTokenAddress`。
 - `MemberNFT.init(firstToken)` 由 `Launch.init` 在创建首币时同步调用完成；MemberNFT 不保存 Launch 地址，费用代币地址是唯一外部地址依赖。
 
-验收见 [Core 验收](08-testing.md)。旧来源 `LOVE20TKM/core/src/LOVE20Launch.sol` 已核对，仅作为保留行为参考。
+验收见 [Core 验收](09-testing.md)。旧来源 `LOVE20TKM/core/src/LOVE20Launch.sol` 已核对，仅作为保留行为参考。

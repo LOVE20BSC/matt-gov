@@ -50,11 +50,11 @@
 
 | 新接口 | 旧来源 | 状态 |
 | --- | --- | --- |
-| `action/IActionTarget.sol` | `LOVE20TKM/extension/src/interface/IExtensionCenter.sol`、`IExtension.sol` | 重写 |
-| `action/ILpExecutor.sol` | `LOVE20TKM/extension-lp/src/interface/ILp.sol`、`LOVE20TKM/extension/src/interface/ITokenJoin.sol`、`IReward.sol` | 重写 |
-| `action/IGroupActionExecutor.sol` | `LOVE20TKM/extension-group/src/interface/IGroupAction.sol`、`IGroupManager.sol`、`IGroupJoin.sol`、`IGroupVerify.sol` | 重写 |
+| `action/IActionTarget.sol` | `LOVE20TKM/extension/src/interface/IExtensionCenter.sol`、`LOVE20TKM/extension/src/interface/IExtension.sol` | 重写 |
+| `action/ILpExecutor.sol` | `LOVE20TKM/extension-lp/src/interface/ILp.sol`、`LOVE20TKM/extension/src/interface/ITokenJoin.sol`、`LOVE20TKM/extension/src/interface/IReward.sol` | 重写 |
+| `action/IGroupActionExecutor.sol` | `LOVE20TKM/extension-group/src/interface/IGroupAction.sol`、`LOVE20TKM/extension-group/src/interface/IGroupManager.sol`、`LOVE20TKM/extension-group/src/interface/IGroupJoin.sol`、`LOVE20TKM/extension-group/src/interface/IGroupVerify.sol` | 重写 |
 | `action/IGroupActionIndexes.sol` | `LOVE20TKM/extension-group/src/interface/IGroupJoin.sol#g*` | 改名迁移 |
-| `action/IGroupServiceExecutor.sol` | `LOVE20TKM/extension-group/src/interface/IGroupService.sol`、`IGroupRecipients.sol` | 重写 |
+| `action/IGroupServiceExecutor.sol` | `LOVE20TKM/extension-group/src/interface/IGroupService.sol`、`LOVE20TKM/extension-group/src/interface/IGroupRecipients.sol` | 重写 |
 
 ### group-chat
 
@@ -90,7 +90,7 @@
 | `LOVE20TKM/extension/src/interface/IJoin.sol` | 语义并入各 Executor 的 `join`/`exit` | 无独立无金额参与接口 |
 | `LOVE20TKM/extension/src/interface/IReward.sol` | 领取模型改为 `ActionTarget.mintProposalReward` 铸造分发 | 激励由协议按规则铸造 |
 | `LOVE20TKM/extension-lp/src/interface/ILpFactory.sol` | 不迁移 | 同上，取消工厂 |
-| `LOVE20TKM/extension-group/src/interface/IGroupActionFactory.sol`、`IGroupServiceFactory.sol`、`IExtensionGroupActionFactory.sol`、`IExtensionGroupServiceFactory.sol` | 不迁移 | 同上，取消工厂 |
+| `LOVE20TKM/extension-group/src/interface/IGroupActionFactory.sol`、`LOVE20TKM/extension-group/src/interface/IGroupServiceFactory.sol`、`LOVE20TKM/extension-group/src/interface/IExtensionGroupActionFactory.sol`、`LOVE20TKM/extension-group/src/interface/IExtensionGroupServiceFactory.sol` | 不迁移 | 同上，取消工厂 |
 | `LOVE20TKM/group-chat/src/interfaces/sources/ban/IBanVoteWeightSource.sol` | 合并进 `IActionManager`、`ITokenManager` | 扁平化 |
 | `LOVE20TKM/group/src/interfaces/ILOVE20Token.sol` | 不单独迁移：与 `core/ILOVE20Token.sol` 逐字相同（仅 import 路径不同），按 core 版对比 | 跨仓库镜像 |
 | `LOVE20TKM/group-chat/src/interfaces/external/*.sol` | 直接引用 `core`、`action` 接口 | 外部依赖镜像不再复制 |
@@ -149,7 +149,7 @@
 1. **action 层错误声明需补齐**。旧三接口（`IGroupJoin`/`IGroupManager`/`IGroupVerify`）共 **44 条错误声明、40 个不同错误名**，其中 6 个已有新语义对应，6 个随删除机制一并删除，其余 28 个保留并补入 `IGroupActionExecutor`；另补充阶段未开始错误，接口错误数为 44，逐名核对见 [action.md §3「错误」](action.md)。
 2. **链群配置变更事件**。`IGroupActionExecutor` 已声明 `ActivateGroup`、`DeactivateGroup`、`UpdateGroupInfo`，仅去掉 `owner`（主体改为 memberId，owner 快照不再进事件）、保留 `stakeAmount`；事件数为 11，供前端索引与通知。
 3. **group-chat scope/ban 适配接口**。已补回 `IAdminBanSource.sol`、`IGroupMemberScope.sol` 和 `IGroupJoinScopeSource.sol`。三者声明地址 getter，行为契约分别来自 `IPostBanSource.isBanned` 或 `IPostScopeSource.canPost`；`IGroupJoinScopeSource` 使用 `GROUP_ACTION_EXECUTOR_ADDRESS()` 指向 action 层单例 Executor，并保留 `GROUP_MEMBER_ADDRESS()`。
-4. **Mint 依赖地址 getter需补回，激励计算查询保持精简**。旧 `ILOVE20Mint` 提供 `voteAddress`/`verifyAddress`/`stakeAddress`，新版退化为仅 `init` 入参。确认结论：**补回依赖地址 getter**（前端与其他合约发现依赖的常用入口）；`govVerifyReward`/`govBoostReward`/`calculateRoundGovReward`/`calculateRoundActionReward` 等激励计算查询**确认不补**，由调用方自行计算。注意 `verifyAddress` 对应的验证阶段已取消，补回时按新版实际依赖（`voteAddress`/`stakeAddress`/`submitAddress`/`launchAddress`）取用。**已落地**：`ILOVE20Mint` 补回上述 4 个 getter，函数数 19 → 23；4 个激励计算查询确认不补。
+4. **Mint 依赖地址 getter需补回，激励计算查询保持精简**。旧 `ILOVE20Mint` 提供 `voteAddress`/`verifyAddress`/`stakeAddress`，新版退化为仅 `init` 入参。确认结论：**补回 4 个常用依赖 getter**（前端与其他合约发现依赖的常用入口）；`memberNFTAddress` 仅通过 `init` 注入，不单独暴露 getter。`govVerifyReward`/`govBoostReward`/`calculateRoundGovReward`/`calculateRoundActionReward` 等激励计算查询**确认不补**，由调用方自行计算。注意 `verifyAddress` 对应的验证阶段已取消，补回时按新版实际依赖（`voteAddress`/`stakeAddress`/`submitAddress`/`launchAddress`）取用。**已落地**：`ILOVE20Mint` 补回上述 4 个 getter，函数数 19 → 23；4 个激励计算查询确认不补。
 5. **链群维度汇总查询需补回**。旧 `IGroupJoin.totalJoinedAmountByGroupId`、`joinedAmount`、`totalJoinedAmountByGroupOwner` 在新接口没有对应，新版只有 `joinedAmountByMemberId` 与 `memberIdsByGroupId`，只能遍历成员累加。确认结论：**补回汇总查询**，遍历累加在成员规模大时不可用。**已落地**：补回 `totalJoinedAmountByGroupId(tokenAddress, actionId, round, groupId)` 与 `joinedAmount(tokenAddress, actionId, round)`（相对旧版新增 `actionId` 参数，单例多行动模型）；`totalJoinedAmountByGroupOwner` 按裁决不补（群归属改为链群维度，不再按 owner 地址聚合）。
 
 ## 核对方法与覆盖度
