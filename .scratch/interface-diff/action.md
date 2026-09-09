@@ -210,11 +210,11 @@
 | `VerificationBatchSubmitted(tokenAddress, actionId, groupId, round, batchIndex, scores[])` | `IGroupVerify.SubmitOriginScores(tokenAddress, round, actionId, groupId, startIndex, count, isComplete)` | 改名+改参（新增 `scores` 明细，去 `isComplete`） |
 | `VerifierApplied`、`VerifierLocked` | 无 | 新增 |
 | `ActionRewardMinted`、`RewardBurned` | 无（旧在 `IReward`） | 新增 |
-| 无 | `IGroupManager.ActivateGroup`、`DeactivateGroup`、`UpdateGroupInfo` | 删除（链群配置变更无事件） |
+| 无 | `IGroupManager.ActivateGroup`、`DeactivateGroup`、`UpdateGroupInfo` | 删除，**已确认需补回**（见下） |
 | 无 | `IGroupJoin.TrialAccountsWaitingUpdated` | 删除 |
-| 无 | `IGroupVerify.SetGroupDelegate`、`DistrustVote` | 删除 |
+| 无 | `IGroupVerify.SetGroupDelegate`、`DistrustVote` | 删除（验证者委托与不信任投票机制不迁移） |
 
-链群激活、停用、配置更新在新接口没有对应事件，属于可观测性净减少。
+链群激活、停用、配置更新在新接口没有对应事件，属于可观测性净减少。**已确认这三个事件需要补回**——前端依赖它们做索引与通知。见 [README「已裁决待补齐」](README.md#已裁决待补齐)。
 
 ### 错误
 
@@ -224,7 +224,7 @@
 
 本接口独有的 3 个：`InvalidSplits`（`init` 的 `splits` 分成配置校验）、`VerifierAlreadyLocked`（新增的验证者竞选锁定）、`InsufficientExperienceQuota(providerMemberId, required, available)`（覆盖部分旧体验额度校验场景）。其余 7 个是全 action 层共用的样板错误（init/KV/回调权限/成员归属/提案未投票/轮次/重复铸造）。
 
-旧三接口共 44 个错误，只有 5 个能映射到新声明（上一段）；其余 39 个按所属接口完整列出如下，均无新声明。这些校验在规格中仍然存在，仅错误 ABI 未逐项声明。
+旧三接口共 44 个错误，只有 5 个能映射到新声明（上一段）；其余 39 个按所属接口完整列出如下，均无新声明。**已确认这 39 个校验需要补回对应的错误声明**，实现中仍会触发，不能用 `require` 或通用错误替代。见 [README「已裁决待补齐」](README.md#已裁决待补齐)。
 
 - **`IGroupJoin`（23 个）**：`JoinAmountZero`、`AlreadyInOtherGroup`、`NotJoinedAction`、`AmountBelowMinimum`、`ExceedsActionMaxJoinAmount`、`ExceedsGroupMaxJoinAmount`、`GroupCapacityExceeded`、`GroupAccountsFull`、`CannotJoinInactiveGroup`、`NotRegisteredExtensionInFactory`、`ExtensionNotInitialized`、`InvalidGroupId`、`AlreadyJoined`、`TrialAlreadyJoined`、`TrialArrayLengthMismatch`、`TrialAccountIsProvider`、`TrialAccountZero`、`TrialAmountZero`、`TrialAccountAlreadyAdded`、`TrialAccountNotInWaitingList`、`TrialProviderMismatch`、`AlreadyInitialized`、`InvalidFactoryAddress`。
 - **`IGroupManager`（8 个）**：`GroupAlreadyActivated`、`GroupNotActive`、`InvalidMinMaxJoinAmount`、`CannotDeactivateInActivatedRound`、`OnlyGroupOwner`、`NotRegisteredExtensionInFactory`、`InsufficientActivationMinGovRatio`、`NoGovVotes`。

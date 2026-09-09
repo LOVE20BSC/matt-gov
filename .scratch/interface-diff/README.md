@@ -143,6 +143,13 @@
 3. **不再继承 IPhase**。旧 `ILOVE20Stake`、`ILOVE20Submit`、`ILOVE20Vote`、`ILOVE20Verify`、`ILOVE20Join`、`ILOVE20Random` 都 `is IPhase`，因此隐式暴露 `currentRound()`、`roundByBlockNumber()`。新接口改为 `init(phaseAddress, ...)` 依赖注入，各接口只按需自行声明 `currentRound()`（`ILOVE20Submit`、`ILOVE20Vote`、`IGroupChat`）或分阶段轮次（`currentVoteRound`/`currentJoinRound`/`currentVerifyRound`/`currentMintRound`）。
 4. **常量 getter 改为 init 参数**。旧代码把部署参数暴露为全大写 getter（`ROUND_REWARD_GOV_PER_THOUSAND`、`MAX_SUPPLY`、`LAUNCH_AMOUNT` 等）。新接口部分改为小驼峰 getter（`maxSupply`、`initialSupply`、`launchRatio`、`proposalRewardMinVotePerThousand`），部分只作为 `init` 入参而不再提供 getter。后者是可查询能力的净减少，逐项列在各分层文档。
 
+## 已裁决待补齐
+
+以下两条经确认属于**新协议接口需要补齐的缺口**，不是文档缺陷，也不再属于待确认。
+
+1. **action 层错误声明需补齐**。新 `IGroupActionExecutor` 只声明 15 个错误，旧三接口（`IGroupJoin`/`IGroupManager`/`IGroupVerify`）共 44 个错误中仅 5 个有对应。确认结论：这些校验在实现中仍然存在，**需要补回对应的自定义错误声明**，而不是用 `require` 或通用错误替代。待补齐清单见 [action.md §3「错误」](action.md)。
+2. **链群配置变更事件需补回**。旧 `IGroupManager` 的 `ActivateGroup`、`DeactivateGroup`、`UpdateGroupInfo` 三个事件在新 `IGroupActionExecutor` 无对应。确认结论：**需要补回**，前端依赖这些事件做索引与通知。
+
 ## 待确认
 
 只列影响实施的缺口。
