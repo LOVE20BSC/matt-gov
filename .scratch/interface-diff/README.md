@@ -151,3 +151,17 @@
 2. **Submit 推举去重与门槛错误无对应声明**。`docs/specs/CHANGES-core.md` 记录 Submit「保留推举门槛、去重逻辑」，但旧 `ILOVE20Submit` 的 `CannotSubmitAction`、`AlreadySubmitted`、`OnlyOneSubmitPerRound` 在新 `ILOVE20Submit` 的 4 个错误中没有对应项。需要确认这三种失败在新版用什么错误表达。
 3. **Mint 依赖地址与部分激励查询 getter 缺失**。旧 `ILOVE20Mint` 提供 `voteAddress`/`verifyAddress`/`stakeAddress` 和 `govVerifyReward`/`govBoostReward`/`calculateRoundGovReward`/`calculateRoundActionReward` 等查询，新接口只有 `init` 入参而无 getter。需要确认前端和 `interface-test` 是否依赖这些查询。
 4. **GroupActionExecutor 的链群维度汇总查询缺失**。旧 `IGroupJoin.totalJoinedAmountByGroupId`、`joinedAmount`、`totalJoinedAmountByGroupOwner` 在新接口没有对应函数，新接口只提供 `joinedAmountByMemberId` 和 `memberIdsByGroupId`。需要确认链群总额是否由前端遍历成员自行累加。
+
+## 核对方法与覆盖度
+
+本目录的结论不是抽样得出，按以下五层逐条核对，每层均全量：
+
+| 层 | 核对内容 | 结果 |
+| --- | --- | --- |
+| 1 | 规模数字：文件/接口/函数/事件/错误计数，README 表格与脚本输出逐位比对 | 一致 |
+| 2 | 反向：文档反引号内每个标识符，是否在新旧源码全集中 | 0 个虚构标识符 |
+| 3 | 正向：旧侧 1029 条声明（655 函数 / 100 事件 / 274 错误）是否都有归处 | 880 条直接提及 + 88 条归入整块规模账 + 61 条可按简写约定展开，**未归类 0** |
+| 4 | 签名级：文档中每个 `name(args)` 的参数序列 vs 源码真实参数序列 | 286 条检查，0 不符 |
+| 5 | 状态级：标注「保留」的条目，新旧类型序列是否真一致；事件与错误的字段级差异是否被文档覆盖 | 49 条「保留」全部真一致；13 处事件字段差异 + 1 处错误字段差异全部已记录 |
+
+两处有意的收敛（非遗漏）：`IGroupActionIndexes` 的 51 个 g\* 索引按 17 个组名列举；整块不迁移的旧接口只给规模与代表成员，不逐一列举——两者都在本文件中写明了展开规则或规模账。
