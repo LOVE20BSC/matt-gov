@@ -22,10 +22,10 @@ struct VerifierApplication {
 }
 
 interface IGroupActionExecutor is IGroupActionIndexes, IProposalTarget {
-    function JOIN_TOKEN_ADDRESS() external view returns (address);
-    function ACTIVATION_STAKE_AMOUNT() external view returns (uint256);
-    function MAX_JOIN_AMOUNT_RATIO() external view returns (uint256);
-    function ACTIVATION_MIN_GOV_RATIO() external view returns (uint256);
+    function JOIN_TOKEN_ADDRESS(address tokenAddress, uint256 actionId) external view returns (address);
+    function ACTIVATION_STAKE_AMOUNT(address tokenAddress, uint256 actionId) external view returns (uint256);
+    function MAX_JOIN_AMOUNT_RATIO(address tokenAddress, uint256 actionId) external view returns (uint256);
+    function ACTIVATION_MIN_GOV_RATIO(address tokenAddress, uint256 actionId) external view returns (uint256);
     function init(address actionTargetAddress, address memberNFTAddress, address phaseAddress,
         address stakeAddress, address mintAddress, uint256[] calldata splits) external;
     function currentVoteRound() external view returns (uint256);
@@ -48,6 +48,10 @@ interface IGroupActionExecutor is IGroupActionIndexes, IProposalTarget {
     function memberIdsByGroupId(address tokenAddress, uint256 actionId, uint256 round, uint256 groupId)
         external view returns (uint256[] memory);
     function joinedAmountByMemberId(address tokenAddress, uint256 actionId, uint256 round, uint256 memberId)
+        external view returns (uint256);
+    function totalJoinedAmountByGroupId(address tokenAddress, uint256 actionId, uint256 round, uint256 groupId)
+        external view returns (uint256);
+    function joinedAmount(address tokenAddress, uint256 actionId, uint256 round)
         external view returns (uint256);
     function trialAccountsWaitingAdd(address tokenAddress, uint256 actionId, uint256 groupId,
         uint256 providerMemberId, uint256[] calldata memberIds, uint256[] calldata amounts) external;
@@ -87,8 +91,6 @@ interface IGroupActionExecutor is IGroupActionIndexes, IProposalTarget {
     function totalFinalScore(address tokenAddress, uint256 actionId, uint256 round) external view returns (uint256);
     function generatedActionRewardByGroupId(address tokenAddress, uint256 actionId, uint256 round, uint256 groupId)
         external view returns (uint256);
-    function generatedActionRewardByVerifier(uint256 verifierMemberId, uint256 round)
-        external view returns (uint256);
 
     event ActionJoined(address indexed tokenAddress, uint256 indexed actionId, uint256 indexed memberId,
         uint256 round, uint256 amount, bool isExperience, uint256 providerMemberId);
@@ -106,6 +108,13 @@ interface IGroupActionExecutor is IGroupActionIndexes, IProposalTarget {
         uint256 totalAmount, bytes32 recipientType);
     event RewardBurned(address indexed tokenAddress, uint256 indexed actionId, uint256 indexed round,
         uint256 amount, bytes32 reason);
+    event ActivateGroup(address indexed tokenAddress, uint256 indexed actionId, uint256 round,
+        uint256 indexed groupId, uint256 stakeAmount);
+    event DeactivateGroup(address indexed tokenAddress, uint256 indexed actionId, uint256 round,
+        uint256 indexed groupId, uint256 stakeAmount);
+    event UpdateGroupInfo(address indexed tokenAddress, uint256 indexed actionId, uint256 round,
+        uint256 indexed groupId, string description, uint256 maxCapacity, uint256 minJoinAmount,
+        uint256 maxJoinAmount, uint256 maxAccounts);
 
     error AlreadyInitialized();
     error InvalidKVLength();
@@ -122,4 +131,35 @@ interface IGroupActionExecutor is IGroupActionIndexes, IProposalTarget {
     error VerifierAlreadyLocked(address tokenAddress, uint256 actionId, uint256 round);
     error BatchIndexMismatch(uint256 expected, uint256 actual);
     error RewardAlreadyMinted(address tokenAddress, uint256 actionId, uint256 memberId, uint256 round);
+
+    // 以下 28 个错误自旧 IGroupJoin / IGroupManager / IGroupVerify 补齐，
+    // 对应校验在新实现中仍然存在。已排除随不信任投票与 extension 工厂机制一并删除的 6 个。
+    error AlreadyInOtherGroup();
+    error NotJoinedAction();
+    error ExceedsActionMaxJoinAmount();
+    error ExceedsGroupMaxJoinAmount();
+    error GroupCapacityExceeded();
+    error GroupAccountsFull();
+    error CannotJoinInactiveGroup();
+    error InvalidGroupId();
+    error AlreadyJoined();
+    error TrialAlreadyJoined();
+    error TrialArrayLengthMismatch();
+    error TrialAccountIsProvider();
+    error TrialAccountZero();
+    error TrialAmountZero();
+    error TrialAccountAlreadyAdded();
+    error TrialAccountNotInWaitingList(uint256 memberId);
+    error TrialProviderMismatch();
+    error GroupAlreadyActivated();
+    error InvalidMinMaxJoinAmount();
+    error CannotDeactivateInActivatedRound();
+    error OnlyGroupOwner();
+    error InsufficientActivationMinGovRatio();
+    error NoGovVotes();
+    error OriginScoresEmpty();
+    error ScoreExceedsMax();
+    error AlreadyVerified();
+    error ScoresExceedAccountCount();
+    error VerifyVotesZero();
 }

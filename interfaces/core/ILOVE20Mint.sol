@@ -2,6 +2,11 @@
 pragma solidity =0.8.17;
 
 interface ILOVE20Mint {
+    // 依赖地址 getter：与 init 注入的四个业务依赖一一对应
+    function voteAddress() external view returns (address);
+    function submitAddress() external view returns (address);
+    function stakeAddress() external view returns (address);
+    function launchAddress() external view returns (address);
     function init(
         address voteAddress,
         address submitAddress,

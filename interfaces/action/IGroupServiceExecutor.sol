@@ -22,7 +22,7 @@ interface IGroupServiceExecutor is IProposalTarget {
     function serviceRewardByMember(address serviceTokenAddress, uint256 serviceProposalId, uint256 round,
         uint256 memberId) external view returns (uint256 verifierReward, uint256 ownerReward,
         uint256 ownerBurned, bool claimed);
-    function burnRewardIfNeeded(uint256 round) external;
+    function burnRewardIfNeeded(address serviceTokenAddress, uint256 serviceProposalId, uint256 round) external;
     function setRecipients(address sourceTokenAddress, uint256 sourceActionId, uint256 groupId,
         uint256[] calldata recipientIds, uint256[] calldata ratios, string[] calldata remarks) external;
     function recipients(address sourceTokenAddress, uint256 sourceActionId, uint256 groupId, uint256 round)
