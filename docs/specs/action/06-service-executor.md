@@ -33,7 +33,7 @@ theoreticalVerifierReward(m) = floor(serviceReward * verifierWeightNumerator(m) 
 theoreticalOwnerReward(m) = floor(serviceReward * ownerWeightNumerator(m) / (totalGroupActionReward * 1e18))
 ```
 
-[组织验收](../../acceptance.md#groupservice-结算) 还要求：只有本轮加入服务 Proposal 的群 owner/候选 MemberNFT 可按人结算，未加入角色份额不重分配。角色分子为零时直接返回，不执行除法；两类角色都没有分子时也不需要读取分母。`totalGroupActionReward == 0` 时，任何地址可在轮次结束后调用 `burnRewardIfNeeded(round)` 销毁整笔服务激励。首次计算后缓存分母，后续结算直接读取。
+[组织验收](../../acceptance.md#groupservice-结算) 还要求：只有本轮加入服务 Proposal 的群 owner/候选 MemberNFT 可按人结算，未加入角色份额不重分配。角色分子为零时直接返回，不执行除法；两类角色都没有分子时也不需要读取分母。`totalGroupActionReward == 0` 时，任何地址可在轮次结束后调用 `burnRewardIfNeeded(serviceTokenAddress, serviceProposalId, round)` 销毁整笔服务激励。首次计算后缓存分母，后续结算直接读取。
 
 ## 治理上限
 

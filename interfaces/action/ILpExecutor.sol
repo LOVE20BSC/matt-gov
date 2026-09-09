@@ -4,8 +4,8 @@ pragma solidity =0.8.17;
 import {IProposalTarget} from "../core/IProposalTarget.sol";
 
 interface ILpExecutor is IProposalTarget {
-    function GOV_RATIO_MULTIPLIER() external view returns (uint256);
-    function MIN_GOV_RATIO() external view returns (uint256);
+    function GOV_RATIO_MULTIPLIER(address tokenAddress, uint256 actionId) external view returns (uint256);
+    function MIN_GOV_RATIO(address tokenAddress, uint256 actionId) external view returns (uint256);
     function init(address actionTargetAddress, address memberNFTAddress, address phaseAddress,
         address stakeAddress, address mintAddress, address pairFactoryAddress) external;
     function currentVoteRound() external view returns (uint256);

@@ -192,7 +192,7 @@
 | `IndexOutOfBounds(uint256 length)` | 无 | 新增 |
 | 无 | `MinStakeZero()`、`MaxRandomAccountsZero()`、`VerificationRuleEmpty()`、`VerificationKeyLengthExceeded()` | 删除（对应字段已移出 Proposal 主体） |
 | 无 | `TitleEmpty()` | 删除（`title` 仍在主体，校验错误未声明） |
-| 无 | `CannotSubmitAction()`、`AlreadySubmitted()`、`OnlyOneSubmitPerRound()` | 删除，**已裁决需补回**，见 [已裁决 4](README.md#已裁决待补齐) |
+| 无 | `CannotSubmitAction()`、`AlreadySubmitted()`、`OnlyOneSubmitPerRound()` | 删除（推举门槛与去重行为保留，但专用 error selector 尚未冻结） |
 
 ---
 
@@ -259,10 +259,10 @@
 | `eligibleProposalVotes(tokenAddress, round)` | 无 | 新增 |
 | `launchCredit(tokenAddress, memberId)` | `numOfMintGovRewardByAccount(tokenAddress, address account)` | 语义替代（铸造次数计数 → 未消耗发射额度；整数次数移入 `ILOVE20Launch.launchCount`） |
 | `init(voteAddress, submitAddress, stakeAddress, launchAddress, memberNFTAddress, proposalRewardMinVotePerThousand, roundRewardGovPerThousand, roundRewardProposalPerThousand, maxGovBoostRewardMultiplier)` | 无 | 新增 |
-| 无 | `voteAddress()`、`verifyAddress()`、`stakeAddress()` | 删除，**已裁决需补回**（`verifyAddress` 随验证阶段取消，按新版实际依赖取用），见 [已裁决 5](README.md#已裁决待补齐) |
+| `voteAddress()`、`submitAddress()`、`stakeAddress()`、`launchAddress()` | `voteAddress()`、`verifyAddress()`、`stakeAddress()` | `verifyAddress` 随验证阶段取消改为 `submitAddress`，并按新版依赖增加 `launchAddress`；函数数 19 → 23。见 [已确认 4](README.md#已确认并落地) |
 | 无 | `ROUND_REWARD_GOV_PER_THOUSAND()`、`ROUND_REWARD_ACTION_PER_THOUSAND()`、`MAX_GOV_BOOST_REWARD_MULTIPLIER()` | 删除 getter（改为 init 入参） |
-| 无 | `govVerifyReward(tokenAddress, round)`、`govBoostReward(tokenAddress, round)` | 删除 |
-| 无 | `calculateRoundGovReward(tokenAddress)`、`calculateRoundActionReward(tokenAddress)` | 删除 |
+| 无 | `govVerifyReward(tokenAddress, round)`、`govBoostReward(tokenAddress, round)` | 删除，**已裁决不补**（激励计算查询由调用方自行计算） |
+| 无 | `calculateRoundGovReward(tokenAddress)`、`calculateRoundActionReward(tokenAddress)` | 删除，**已裁决不补**（同上） |
 | 无 | `boostRewardBurnCheckeded(tokenAddress, round)`、`actionRewardBurnChecked(tokenAddress, round)` | 删除（前者旧名含拼写错误） |
 | 无 | `govRewardMintedByAccount(tokenAddress, round, address account)` | 删除（合并进 `govRewardByAccount` 的 `minted`） |
 | 无 | `actionRewardMintedByAccount(tokenAddress, round, actionId, address account)` | 删除 |

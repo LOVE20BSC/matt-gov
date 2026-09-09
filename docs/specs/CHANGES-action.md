@@ -253,7 +253,7 @@ theoreticalVerifierReward(m) = serviceReward × verifierWeightNumerator(m) / (to
 theoreticalOwnerReward(m) = serviceReward × ownerWeightNumerator(m) / (totalGroupActionReward × 1e18)
 ```
 
-`totalGroupActionReward` 统计 `actionTokenAddress` 社区本轮全部 GroupAction 激励，首次按 `actionTokenAddress + round` 计算并缓存。各角色分子为零时直接返回，不执行除法；分母为零时由 `burnRewardIfNeeded(round)` 销毁整笔服务激励。
+`totalGroupActionReward` 统计 `actionTokenAddress` 社区本轮全部 GroupAction 激励，首次按 `actionTokenAddress + round` 计算并缓存。各角色分子为零时直接返回，不执行除法；分母为零时由 `burnRewardIfNeeded(serviceTokenAddress, serviceProposalId, round)` 销毁整笔服务激励。
 
 #### 二次分配
 **保留逻辑**：groupId 当前持有人可以按 `sourceTokenAddress + sourceActionId + groupId + round` 配置 `recipientIds[]` 和 `ratios[]`；查询轮次没有配置时沿用不晚于该轮的最近配置。

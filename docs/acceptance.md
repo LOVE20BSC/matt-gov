@@ -249,7 +249,7 @@
 ### GroupService 结算
 **覆盖要求**：覆盖服务代币与行动代币相同或为其直接父币、非直接关系拒绝；覆盖只有当轮已加入服务 Proposal 的群 owner/公共验证者候选 MemberNFT 才能按人结算、未加入角色份额不重分配、所有 GroupAction 总激励作为分母且首次计算后缓存、源行动激励查询自行处理验证条件、公共验证者按工作量直接分配，以及按确认后的 owner 治理票占比处理超额销毁；同时覆盖 `1e18` 乘数精度和 100% 二次分配不下溢。
 
-`totalGroupActionReward == 0` 时不执行除法；覆盖轮次结束后任何地址调用 `burnRewardIfNeeded(round)`，由 Executor 直接调用服务代币 `burn` 的销毁和重复调用幂等行为。
+`totalGroupActionReward == 0` 时不执行除法；覆盖轮次结束后任何地址调用 `burnRewardIfNeeded(serviceTokenAddress, serviceProposalId, round)`，由 Executor 直接调用服务代币 `burn` 的销毁和重复调用幂等行为。
 
 **测试方式**：
 - 单元测试：`action/test/GroupServiceExecutor.t.sol` 的服务结算场景
