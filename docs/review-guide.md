@@ -24,7 +24,7 @@
 
 **协议规格**
 
-- `docs/specs/core/README.md` 及 `core/00` 至 `core/08`
+- `docs/specs/core/README.md` 及 `core/00` 至 `core/09`
 - `docs/specs/action/README.md` 及 `action/00` 至 `action/08`
 - `docs/specs/group-chat/README.md` 及 `group-chat/00` 至 `group-chat/08`
 - `docs/specs/compatibility.md`
@@ -134,8 +134,8 @@ rg -n 'core\.md|action\.md|group-chat\.md|launchFirstToken|initializeGenesis|TOD
 | 身份 | `CONTEXT.md`、Core、Action、Group Chat | 业务主体是否始终是 `memberId` |
 | 时间 | `CONTEXT.md`、`core/03`、`action/02`、Group Chat Query | Phase、治理 Round、行动轮次是否可推导且不冲突 |
 | 回调 | `core/05`、`core/06`、`action/01`、CHANGES | 签名、参数顺序、KV、失败回滚是否一致 |
-| 激励 | `core/06`、`action/07`、`acceptance.md` | 预留、铸造、销毁和分配是否守恒 |
-| 发射 | `core/00`、`core/07`、`acceptance.md`、CHANGES | `Launch.init`、首币、次数和阈值是否一致 |
+| 激励 | `core/07`、`action/07`、`acceptance.md` | 预留、铸造、销毁和分配是否守恒 |
+| 发射 | `core/00`、`core/08`、`acceptance.md`、CHANGES | `Launch.init`、首币、次数和阈值是否一致 |
 | 参与 | `action/01`、`action/03`、Group Chat 类型 | 加入/退出、forceExit、资产和资格来源是否一致 |
 | 群聊身份 | `CONTEXT.md`、Group Chat 全部模块 | owner、delegate、sender、admin 是否都按 NFT 身份运行 |
 | 仓库边界 | `repositories.md`、各 README、规格依赖 | 是否存在越界 import、循环依赖或运行时依赖误标 |
