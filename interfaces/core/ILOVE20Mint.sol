@@ -1,0 +1,90 @@
+// SPDX-License-Identifier: MIT
+pragma solidity =0.8.17;
+
+interface ILOVE20Mint {
+    function init(
+        address voteAddress,
+        address submitAddress,
+        address stakeAddress,
+        address launchAddress,
+        address memberNFTAddress,
+        uint256 proposalRewardMinVotePerThousand,
+        uint256 roundRewardGovPerThousand,
+        uint256 roundRewardProposalPerThousand,
+        uint256 maxGovBoostRewardMultiplier
+    ) external;
+    function prepareRewardIfNeeded(address tokenAddress, uint256 round) external;
+    function mintProposalReward(address tokenAddress, uint256 round, uint256 proposalId)
+        external returns (uint256 amount);
+    function mintGovReward(address tokenAddress, uint256 memberId, uint256 round)
+        external returns (uint256 voteReward, uint256 boostReward, uint256 burnReward);
+    function mintGovRewards(address tokenAddress, uint256 memberId, uint256[] calldata rounds)
+        external returns (
+            uint256[] memory voteRewards,
+            uint256[] memory boostRewards,
+            uint256[] memory burnRewards
+        );
+    function rewardReserved(address tokenAddress) external view returns (uint256);
+    function rewardMinted(address tokenAddress) external view returns (uint256);
+    function rewardBurned(address tokenAddress) external view returns (uint256);
+    function isRewardPrepared(address tokenAddress, uint256 round) external view returns (bool);
+    function govReward(address tokenAddress, uint256 round) external view returns (uint256);
+    function proposalReward(address tokenAddress, uint256 round) external view returns (uint256);
+    function eligibleProposalVotes(address tokenAddress, uint256 round)
+        external view returns (uint256);
+    function proposalRewardInfo(address tokenAddress, uint256 round, uint256 proposalId)
+        external view returns (uint256 amount, bool prepared, bool minted);
+    function govRewardByAccount(address tokenAddress, uint256 round, uint256 memberId)
+        external view returns (
+            uint256 voteReward,
+            uint256 boostReward,
+            uint256 burnReward,
+            bool minted
+        );
+    function isProposalIdWithReward(address tokenAddress, uint256 round, uint256 proposalId)
+        external view returns (bool);
+    function rewardAvailable(address tokenAddress) external view returns (uint256);
+    function reservedAvailable(address tokenAddress) external view returns (uint256);
+    function launchCredit(address tokenAddress, uint256 memberId) external view returns (uint256);
+    function proposalRewardMinVotePerThousand() external view returns (uint256);
+
+    event RewardPrepared(
+        address indexed tokenAddress,
+        uint256 indexed round,
+        uint256 govReward,
+        uint256 proposalReward,
+        uint256 eligibleProposalVotes,
+        uint256 rewardReserved,
+        uint256 rewardBurned
+    );
+    event GovernanceRewardMinted(
+        address indexed tokenAddress,
+        uint256 indexed round,
+        uint256 indexed memberId,
+        uint256 voteReward,
+        uint256 boostReward,
+        uint256 burnReward
+    );
+    event ProposalRewardMinted(
+        address indexed tokenAddress,
+        uint256 indexed round,
+        uint256 indexed proposalId,
+        address target,
+        uint256 amount
+    );
+    event RewardBurned(
+        address indexed tokenAddress,
+        uint256 indexed round,
+        uint256 amount,
+        bytes32 reason
+    );
+
+    error AlreadyInitialized();
+    error NoRewardAvailable();
+    error AlreadyMinted();
+    error RoundNotReadyToMint();
+    error NotEnoughReward();
+    error NotEnoughRewardToBurn();
+    error ProposalNotFound(uint256 proposalId);
+    error NotMemberOwner(uint256 memberId);
+}

@@ -21,20 +21,7 @@
 
 以下属于 GroupAction Executor，沿用旧 `LOVE20TKM/extension-group/src/GroupJoin.sol` 的待体验名单和 Provider 授权；不强制 LP 实现体验业务。
 
-```solidity
-function trialAccountsWaitingAdd(address tokenAddress, uint256 actionId, uint256 groupId,
-    uint256 providerMemberId, uint256[] calldata memberIds, uint256[] calldata amounts) external;
-function trialAccountsWaitingRemove(address tokenAddress, uint256 actionId, uint256 groupId,
-    uint256 providerMemberId, uint256[] calldata memberIds) external;
-function trialJoin(address tokenAddress, uint256 actionId, uint256 groupId, uint256 memberId,
-    uint256 providerMemberId, string[] calldata verificationInfos) external;
-function trialWithdraw(address tokenAddress, uint256 actionId, uint256 memberId,
-    uint256 providerMemberId, uint256 amount) external;
-function trialAccountsWaiting(address tokenAddress, uint256 actionId, uint256 groupId, uint256 providerMemberId)
-    external view returns (uint256[] memory memberIds, uint256[] memory amounts, uint256[] memory blockNumbers);
-function trialAmount(address tokenAddress, uint256 actionId, uint256 round, uint256 memberId, uint256 providerMemberId)
-    external view returns (uint256);
-```
+体验参与接口见 [`IGroupActionExecutor.sol`](../../../interfaces/action/IGroupActionExecutor.sol)。
 
 待体验名单仅 Provider 当前持有人可改；名单身份须存在且不同于 Provider，两个数组等长，额度为正。批量接口没有协议固定长度上限，调用方按区块 Gas 分批操作，单笔失败整笔回滚。trialJoin 由参与成员持有人调用，使用已授权额度并从 Provider 当前持有人转入代币；ERC20 allowance 只授权转账，不替代上述名单授权。
 

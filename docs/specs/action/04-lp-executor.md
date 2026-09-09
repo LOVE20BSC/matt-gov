@@ -6,26 +6,7 @@
 
 部署依赖通过一次性 `init` 绑定；每个行动的配置由创建回调解析，不能放进共享合约的全局 init。
 
-```solidity
-function init(address actionTargetAddress, address memberNFTAddress, address phaseAddress,
-    address stakeAddress, address mintAddress, address pairFactoryAddress) external;
-function join(address tokenAddress, uint256 actionId, uint256 memberId,
-    uint256 amount, string[] calldata verificationInfos) external;
-function withdraw(address tokenAddress, uint256 actionId, uint256 memberId, uint256 amount) external;
-function exit(address tokenAddress, uint256 actionId, uint256 memberId) external;
-function joinedAmount(address tokenAddress, uint256 actionId) external view returns (uint256);
-function joinedAmountByMemberId(address tokenAddress, uint256 actionId, uint256 memberId)
-    external view returns (uint256);
-function joinedAmountByRound(address tokenAddress, uint256 actionId, uint256 round)
-    external view returns (uint256);
-function joinedAmountByMemberIdByRound(address tokenAddress, uint256 actionId, uint256 memberId, uint256 round)
-    external view returns (uint256);
-function deduction(address tokenAddress, uint256 actionId, uint256 round, uint256 memberId)
-    external view returns (uint256 amount, uint256[] memory joinBlocks, uint256[] memory joinAmounts);
-function totalDeduction(address tokenAddress, uint256 actionId, uint256 round) external view returns (uint256);
-function govRatio(address tokenAddress, uint256 actionId, uint256 round, uint256 memberId)
-    external view returns (uint256 ratio, bool claimed);
-```
+完整 ABI 见 [`ILpExecutor.sol`](../../../interfaces/action/ILpExecutor.sol)。
 
 创建 KV 的键为 `keccak256` 后的名称，值用 `abi.encode`：`joinTokenAddress(address)`、`govRatioMultiplier(uint256)`、`minGovRatio(uint256)` 必填；可选 `verificationKeys(string[])` 和 `verificationKeyGuides(string[])` 必须等长。LP 必须是已配置 Pair Factory 登记的交易对，V2 不要求交易对包含激励代币。两个治理比例使用 `1e18` 精度，`minGovRatio <= 1e18`。
 

@@ -36,21 +36,7 @@ available = maxSupply - totalSupply - reservedAvailable
 
 ## 准备一次
 
-```solidity
-function init(
-    address voteAddress,
-    address submitAddress,
-    address stakeAddress,
-    address launchAddress,
-    address memberNFTAddress,
-    uint256 proposalRewardMinVotePerThousand,
-    uint256 roundRewardGovPerThousand,
-    uint256 roundRewardProposalPerThousand,
-    uint256 maxGovBoostRewardMultiplier
-) external;
-
-function prepareRewardIfNeeded(address tokenAddress, uint256 round) external;
-```
+完整 ABI 见 [`ILOVE20Mint.sol`](../../../interfaces/core/ILOVE20Mint.sol)。
 
 `prepareRewardIfNeeded` 任何地址可调用。
 
@@ -78,14 +64,6 @@ if eligibleProposalVotes == 0:
 
 ## Proposal 结算
 
-```solidity
-function mintProposalReward(
-    address tokenAddress,
-    uint256 round,
-    uint256 proposalId
-) external returns (uint256 amount);
-```
-
 只允许该 Proposal 已记录的 Target 调用，每个 token、Round、Proposal 只能铸造一次；未准备、未结束、Proposal 不达标或 `eligibleProposalVotes == 0` 时拒绝。
 
 ```text
@@ -112,55 +90,13 @@ else:
     burnReward = theoreticalBoost - boostReward
 ```
 
-`memberVotes` 为本轮累计投出票数；`memberBoost` 和 `totalBoost` 均取 Vote 的同轮冻结快照，记账时机见 [Vote](05-submit-vote.md#投票和加速快照)。投票后仅追加质押、不再投票，不增加本轮加速权重；NFT 转移不重算快照。两池按固定 50/50 拆分，奇数余量归加速池。`totalBoost == 0` 时整份加速池已在准备时取消，本次不得再计 `burnReward`。未投票者即使有加速质押也不能领取治理激励。
+`memberVotes` 为本轮累计投出票数；`memberBoost` 和 `totalBoost` 均取 Vote 的同轮冻结快照，记账时机见 [Vote](05-vote.md#投票和加速快照)。投票后仅追加质押、不再投票，不增加本轮加速权重；NFT 转移不重算快照。两池按固定 50/50 拆分，奇数余量归加速池。`totalBoost == 0` 时整份加速池已在准备时取消，本次不得再计 `burnReward`。未投票者即使有加速质押也不能领取治理激励。
 
 例：两池各 500、成员投票占 10%、加速份额占 50%、倍数上限为 2。结果为 `voteReward = 50`、`boostReward = 100`、`burnReward = 150`；实际铸造 150。
 
 ## 单轮与批量接口
 
-```solidity
-function mintGovReward(
-    address tokenAddress,
-    uint256 memberId,
-    uint256 round
-) external returns (
-    uint256 voteReward,
-    uint256 boostReward,
-    uint256 burnReward
-);
-
-function mintGovRewards(
-    address tokenAddress,
-    uint256 memberId,
-    uint256[] calldata rounds
-) external returns (
-    uint256[] memory voteRewards,
-    uint256[] memory boostRewards,
-    uint256[] memory burnRewards
-);
-
-function rewardReserved(address tokenAddress) external view returns (uint256);
-function rewardMinted(address tokenAddress) external view returns (uint256);
-function rewardBurned(address tokenAddress) external view returns (uint256);
-function isRewardPrepared(address tokenAddress, uint256 round)
-    external view returns (bool);
-function govReward(address tokenAddress, uint256 round)
-    external view returns (uint256);
-function proposalReward(address tokenAddress, uint256 round)
-    external view returns (uint256);
-function eligibleProposalVotes(address tokenAddress, uint256 round)
-    external view returns (uint256);
-function proposalRewardInfo(address tokenAddress, uint256 round, uint256 proposalId)
-    external view returns (uint256 amount, bool prepared, bool minted);
-function govRewardByAccount(address tokenAddress, uint256 round, uint256 memberId)
-    external view returns (uint256 voteReward, uint256 boostReward, uint256 burnReward, bool minted);
-function isProposalIdWithReward(address tokenAddress, uint256 round, uint256 proposalId)
-    external view returns (bool);
-function rewardAvailable(address tokenAddress) external view returns (uint256);
-function reservedAvailable(address tokenAddress) external view returns (uint256);
-function launchCredit(address tokenAddress, uint256 memberId) external view returns (uint256);
-function proposalRewardMinVotePerThousand() external view returns (uint256);
-```
+单轮、批量、查询和激励参数接口均见 [`ILOVE20Mint.sol`](../../../interfaces/core/ILOVE20Mint.sol)。
 
 `proposalRewardInfo` 未准备时返回 `(0, false, false)`，不能把它缓存为最终零激励；准备后按冻结池、Proposal 票数和已缓存的 `eligibleProposalVotes` 计算 amount，已铸造也返回原金额。未达标返回 0。治理查询未准备或未投票时返回零金额；不存在的 Proposal/成员回滚。铸造金额为 0 时按旧逻辑拒绝 `NoRewardAvailable`，重复保护使用独立状态位，不能用金额是否大于零判断。
 
@@ -171,6 +107,8 @@ function proposalRewardMinVotePerThousand() external view returns (uint256);
 Mint 保存 `launchCredit[tokenAddress][memberId]`。只有实际铸造的治理激励可累计；上限、零阈值、计算顺序和余数规则只在 [Launch](07-launch.md#发射次数) 定义。产生正数次数时调用仅授权 Mint 的 `Launch.addLaunchCount`。
 
 ## 实现约束
+
+事件与错误定义见 [`ILOVE20Mint.sol`](../../../interfaces/core/ILOVE20Mint.sol)。
 
 - 初始化时拒绝两项激励比例之和超过 `1000`。
 - `prepareRewardIfNeeded` 只在首次准备时扫描本轮 Vote 有票 Proposal；实现和验收至少覆盖约 300 个 Proposal 的准备交易。准备成功后，`eligibleProposalVotes[tokenAddress][round]` 只读，不得再次读取 Vote 列表或改写。

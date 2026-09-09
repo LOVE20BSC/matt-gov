@@ -12,56 +12,9 @@ executor -> ActionTarget -> Mint -> ActionTarget -> executor
 
 Core 的预留、铸造和取消额度账本见 [Mint](../core/06-mint.md)，不能把 Executor 内部转账再次计作 Core 铸造。
 
-## 事件
-
-```solidity
-event ProposalLinked(address indexed tokenAddress, uint256 indexed proposalId, address indexed executor);
-event ActionJoined(address indexed tokenAddress, uint256 indexed actionId, uint256 indexed memberId,
-    uint256 round, uint256 amount, bool isExperience, uint256 providerMemberId);
-event ActionWithdrawn(address indexed tokenAddress, uint256 indexed actionId, uint256 indexed memberId,
-    uint256 round, uint256 amount, bool isExperience, uint256 providerMemberId);
-event ActionExited(address indexed tokenAddress, uint256 indexed actionId, uint256 indexed memberId,
-    uint256 round, bool isExperience, uint256 providerMemberId);
-event ForceExited(address indexed tokenAddress, uint256 indexed actionId, uint256 indexed memberId);
-event VerifierApplied(address indexed tokenAddress, uint256 indexed actionId, uint256 indexed memberId,
-    uint256 round, uint256 applicationId);
-event VerificationBatchSubmitted(address indexed tokenAddress, uint256 indexed actionId, uint256 indexed groupId,
-    uint256 round, uint256 batchIndex, uint256[] scores);
-event VerifierLocked(address indexed tokenAddress, uint256 indexed actionId, uint256 indexed round,
-    uint256 memberId);
-event ActionRewardMinted(address indexed tokenAddress, uint256 indexed actionId, uint256 indexed round,
-    uint256 totalAmount, bytes32 recipientType);
-event ServiceRewardDistributed(address indexed serviceTokenAddress, uint256 indexed serviceProposalId,
-    address indexed actionTokenAddress, uint256 memberId, uint256 verifierReward, uint256 ownerReward,
-    uint256 ownerBurned, uint256 round);
-event SecondaryDistributionConfigured(address indexed sourceTokenAddress, uint256 indexed sourceActionId,
-    uint256 indexed groupId, uint256 round, uint256[] recipientIds, uint256[] ratios);
-event RewardBurned(address indexed tokenAddress, uint256 indexed actionId, uint256 indexed round,
-    uint256 amount, bytes32 reason);
-```
+事件和错误定义分别见 [`IActionTarget.sol`](../../../interfaces/action/IActionTarget.sol)、[`ILpExecutor.sol`](../../../interfaces/action/ILpExecutor.sol)、[`IGroupActionExecutor.sol`](../../../interfaces/action/IGroupActionExecutor.sol) 和 [`IGroupServiceExecutor.sol`](../../../interfaces/action/IGroupServiceExecutor.sol)。每个接口只声明自身合约实际拥有的事件和错误。
 
 事件按 BSC 业务主体使用 `memberId`；事件中的地址仅表示代币、合约或调用审计地址。
-
-## 错误
-
-```solidity
-error AlreadyInitialized();
-error InvalidKVLength();
-error InvalidParticipationAmount();
-error InvalidCandidate();
-error InvalidSplits();
-error ApplicationNotActive();
-error InvalidExecutor();
-error UnauthorizedCallback();
-error NotMemberOwner(uint256 memberId);
-error ProposalNotVoted(address tokenAddress, uint256 proposalId);
-error InvalidRound(uint256 round);
-error InsufficientExperienceQuota(uint256 providerMemberId, uint256 required, uint256 available);
-error VerifierAlreadyLocked(address tokenAddress, uint256 actionId, uint256 round);
-error BatchIndexMismatch(uint256 expected, uint256 actual);
-error RewardAlreadyMinted(address tokenAddress, uint256 actionId, uint256 memberId, uint256 round);
-error DistributionOverflow(uint256 configured, uint256 available);
-```
 
 | 错误 | 拒绝条件 |
 | --- | --- |

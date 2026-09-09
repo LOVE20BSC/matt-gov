@@ -6,14 +6,7 @@ Phase 维护连续的无语义时间片、同步观测和动态校准，不内�
 
 `originBlocks`、初始 `phaseBlocks`、`targetDays` 为正数；`adjustThreshold` 使用 `1e18` 精度且大于零。`block.number == originBlocks` 时为 Phase 1；不存在有效 Phase 0。`targetSeconds = targetDays * 86400`，如 7 天。
 
-```solidity
-constructor(
-    uint256 originBlocks,
-    uint256 phaseBlocks,
-    uint256 targetDays,
-    uint256 adjustThreshold
-);
-```
+构造参数为 `originBlocks`、`phaseBlocks`、`targetDays` 和 `adjustThreshold`；完整运行时 ABI 见 [`IPhase.sol`](../../../interfaces/core/IPhase.sol)。
 
 | 接口 | 返回或作用 |
 | --- | --- |
@@ -23,23 +16,11 @@ constructor(
 | `syncObservationsCount()` | 同步观测数量 |
 | `syncObservation(observationId)` | 按从 1 开始的 ID 读取观测 |
 
-公开查询接口：
+## 接口、事件与错误
 
-```solidity
-function currentPhase() external view returns (uint256 phase);
-function phaseInfo(uint256 phaseNumber)
-    external view returns (uint256 startBlock, uint256 phaseBlocks);
-function phaseAtBlock(uint256 blockNumber) external view returns (uint256 phase);
-function syncObservationsCount() external view returns (uint256 count);
-function syncObservation(uint256 observationId)
-    external view returns (uint256 blockNumber, uint256 blockTimestamp);
-```
+完整 ABI 见 [`IPhase.sol`](../../../interfaces/core/IPhase.sol)。
 
-同步接口为：
-
-```solidity
-function sync() external returns (bool adjusted, uint256 newPhaseBlocks);
-```
+`Phase` 本身不提供 `init`。未开始或无效 Phase 的具体 selector 以接口文件为准。
 
 ## 同步
 

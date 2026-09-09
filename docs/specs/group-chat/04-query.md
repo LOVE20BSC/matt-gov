@@ -10,47 +10,7 @@
 
 以下接口保留旧 `LOVE20TKM/group-chat/src/interfaces/IGroupChat.sol` 的参数、返回类型和查询行为，删除地址主体参数及默认身份接口。GroupChat 列表查询支持 `offset`、`limit`、`reverse`；成员、委托、黑名单各自的分页签名沿用旧接口，不强加统一参数。
 
-```solidity
-function MAX_CONTENT_LENGTH() external view returns (uint256);
-function MAX_MENTIONED_SENDER_IDS() external view returns (uint256);
-function activateChat(uint256 groupId, address scopeSource_, address banSource_, address beforePostPlugin_, address afterPostPlugin_) external;
-function setPostingAllowed(uint256 groupId, bool postingAllowed_) external;
-function setScopeSource(uint256 groupId, address sourceAddress) external;
-function setBanSource(uint256 groupId, address sourceAddress) external;
-function setBeforePostPlugin(uint256 groupId, address pluginAddress) external;
-function setAfterPostPlugin(uint256 groupId, address pluginAddress) external;
-function post(uint256 groupId, uint256 senderId, string calldata content, uint256[] calldata mentionedSenderIds, bool mentionAll, uint256 quotedMessageId) external;
-function chatInfo(uint256 groupId) external view returns (ChatInfo memory);
-function chatInfos(uint256[] calldata groupIds) external view returns (ChatInfo[] memory);
-function postingAllowed(uint256 groupId) external view returns (bool);
-function scopeSource(uint256 groupId) external view returns (address);
-function banSource(uint256 groupId) external view returns (address);
-function beforePostPlugin(uint256 groupId) external view returns (address);
-function afterPostPlugin(uint256 groupId) external view returns (address);
-function canPost(uint256 groupId, uint256 senderId) external view returns (bool allowed, bytes4 reasonCode);
-function messagesCount(uint256 groupId) external view returns (uint256);
-function messages(uint256 groupId, uint256 offset, uint256 limit, bool reverse) external view returns (Message[] memory);
-function message(uint256 groupId, uint256 messageId) external view returns (Message memory);
-function messagesByRoundCount(uint256 groupId, uint256 round) external view returns (uint256);
-function messagesByRound(uint256 groupId, uint256 round, uint256 offset, uint256 limit, bool reverse) external view returns (Message[] memory);
-function messagesBySenderCount(uint256 groupId, uint256 senderId) external view returns (uint256);
-function messagesBySender(uint256 groupId, uint256 senderId, uint256 offset, uint256 limit, bool reverse) external view returns (Message[] memory);
-function messageIdsBySender(uint256 groupId, uint256 senderId, uint256 offset, uint256 limit, bool reverse) external view returns (uint256[] memory);
-function messagesByMentionCount(uint256 groupId, uint256 mentionedSenderId) external view returns (uint256);
-function messagesByMention(uint256 groupId, uint256 mentionedSenderId, uint256 offset, uint256 limit, bool reverse) external view returns (Message[] memory);
-function messageIdsByMention(uint256 groupId, uint256 mentionedSenderId, uint256 offset, uint256 limit, bool reverse) external view returns (uint256[] memory);
-function messagesByMentionAllCount(uint256 groupId) external view returns (uint256);
-function messagesByMentionAll(uint256 groupId, uint256 offset, uint256 limit, bool reverse) external view returns (Message[] memory);
-function messageIdsByMentionAll(uint256 groupId, uint256 offset, uint256 limit, bool reverse) external view returns (uint256[] memory);
-function senderIdsCount(uint256 groupId) external view returns (uint256);
-function senderIds(uint256 groupId, uint256 offset, uint256 limit, bool reverse) external view returns (uint256[] memory);
-function groupIdsCount() external view returns (uint256);
-function groupIds(uint256 offset, uint256 limit, bool reverse) external view returns (uint256[] memory);
-function currentRound() external view returns (uint256);
-function roundsCount(uint256 groupId) external view returns (uint256);
-function rounds(uint256 groupId, uint256 offset, uint256 limit, bool reverse) external view returns (RoundSpan[] memory);
-function roundInfo(uint256 groupId, uint256 round) external view returns (RoundSpan memory);
-```
+完整查询与写入 ABI 见 [`IGroupChat.sol`](../../../interfaces/group-chat/IGroupChat.sol)，包含 Group/管理模块地址和 Phase 查询。
 
 | 范围 | 查询 |
 | --- | --- |

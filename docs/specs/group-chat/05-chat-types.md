@@ -21,6 +21,8 @@
 
 `voteWeightOf(groupId, voterId)` 使用上表权重；两类 token Manager 和两类 action Manager 的 `totalVoteWeight(groupId)` 都取所属社区的当前总有效治理票，不取行动总票数或创建 Round。
 
+GovVotedBanSource 的接口见 [`IGovVotedBanSource.sol`](../../../interfaces/group-chat/IGovVotedBanSource.sol)，其 voter 和 target 均使用 `memberId`。
+
 支持/反对按 `groupId + targetSenderId + voterId` 保存。保留 GovVotedBanSource 的增量结算：改票先移除旧 settledWeight，再加入新权重；撤票移除旧权重；任何地址可刷新已存在的 voterId 票，权重归零时清除该票。写入/撤票需校验该 voterId 当前 owner；刷新不能改变支持/反对立场。
 
 ```text
@@ -44,24 +46,6 @@ supportWeight * 1e18 >= totalVoteWeight * 3e15
 
 成员/管理员和人工黑名单的旧批量增删、枚举、事件、owner 快照及幂等行为不变，只删除地址目标和默认身份查找。权限见 [生命周期](01-lifecycle.md#权限范围)。
 
-```solidity
-function addAdmins(uint256 groupId, uint256[] calldata adminIds) external;
-function removeAdmins(uint256 groupId, uint256[] calldata adminIds) external;
-function adminIdOf(uint256 groupId, address account) external view returns (uint256);
-function isAdminId(uint256 groupId, uint256 adminId) external view returns (bool);
-function adminIds(uint256 groupId) external view returns (uint256[] memory ids, bool[] memory isEffective);
-function addMemberIds(uint256 groupId, uint256[] calldata memberIds) external;
-function removeMemberIds(uint256 groupId, uint256[] calldata memberIds) external;
-function isMemberId(uint256 groupId, uint256 memberId) external view returns (bool);
-function isMemberIdBatch(uint256 groupId, uint256[] calldata memberIds) external view returns (bool[] memory listed);
-function memberIdsCount(uint256 groupId) external view returns (uint256);
-function memberIds(uint256 groupId, uint256 offset, uint256 limit) external view returns (uint256[] memory);
-function banBySenderIds(uint256 groupId, uint256[] calldata senderIds) external;
-function unbanBySenderIds(uint256 groupId, uint256[] calldata senderIds) external;
-function senderIdBanListCount(uint256 groupId) external view returns (uint256);
-function senderIdBanList(uint256 groupId, uint256 offset, uint256 limit)
-    external view returns (uint256[] memory senderIds, address[] memory operatorAddresses, uint256[] memory operatorIds);
-function isSenderIdBanned(uint256 groupId, uint256 senderId) external view returns (bool);
-```
+成员、管理员和人工黑名单接口见 [`IGroupAdmin.sol`](../../../interfaces/group-chat/IGroupAdmin.sol)、[`IGroupMember.sol`](../../../interfaces/group-chat/IGroupMember.sol) 与 [`IGroupChatBanList.sol`](../../../interfaces/group-chat/IGroupChatBanList.sol)。写操作显式传入操作者 `operatorId`。
 
 核对来源：旧 `LOVE20TKM/group-chat/src/managers/TokenMainManager.sol`、`LOVE20TKM/group-chat/src/managers/BaseTokenActionScopeManager.sol`、`LOVE20TKM/group-chat/src/managers/BaseTokenScopeManager.sol`、`LOVE20TKM/group-chat/src/sources/ban/GovVotedBanSource.sol`、`LOVE20TKM/group-chat/src/sources/scope/GroupJoinScopeSource.sol`，提交见 [入口](README.md#已核对来源)。

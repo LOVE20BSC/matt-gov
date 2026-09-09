@@ -19,55 +19,19 @@ values[0] = abi.encode(executorAddress)
 | `onProposalSubmitted` | 读取已保存映射，转发本次推举上下文和 KV |
 | `onProposalVoted` | 读取映射，转发 `voterId`、本次增量票数及 KV，由 Executor 记账 |
 
-完整签名统一见 [Core Target 回调](../core/05-submit-vote.md#target-回调)。Executor 只接受 ActionTarget 转发，不接受外部直接调用；同一复合键重复创建回调必须拒绝，任一回调失败均回滚对应外层操作。
+完整签名统一见 [Core Target 回调](../../../interfaces/core/IProposalTarget.sol)。Executor 只接受 ActionTarget 转发，不接受外部直接调用；同一复合键重复创建回调必须拒绝，任一回调失败均回滚对应外层操作。
 
 ## 加入与退出
 
 记录当前成员是否加入行动，供加入列表和外部资格查询；包括 GroupAction，但不保存 Executor 的资产、验证或群归属。
 
-```solidity
-function init(address memberNFTAddress, address submitAddress, address voteAddress, address mintAddress)
-    external;
-function isAccountJoined(
-    address tokenAddress,
-    uint256 actionId,
-    uint256 memberId
-) external view returns (bool);
-function actionIdsByMemberId(address tokenAddress, uint256 memberId)
-    external view returns (uint256[] memory actionIds);
-function actionIdsByMemberIdCount(address tokenAddress, uint256 memberId)
-    external view returns (uint256 count);
-function actionIdsByMemberIdAtIndex(
-    address tokenAddress,
-    uint256 memberId,
-    uint256 index
-) external view returns (uint256 actionId);
-function join(
-    address tokenAddress,
-    uint256 actionId,
-    uint256 memberId
-) external;
-function exit(
-    address tokenAddress,
-    uint256 actionId,
-    uint256 memberId
-) external;
-function executor(address tokenAddress, uint256 proposalId) external view returns (address);
-function mintProposalReward(address tokenAddress, uint256 round, uint256 proposalId)
-    external returns (uint256 amount);
-```
+完整 ABI 见 [`IActionTarget.sol`](../../../interfaces/action/IActionTarget.sol)。
 
-`init` 仅部署授权者可调用一次。join/exit/mint 仅关联 Executor 可调用；创建/推举回调仅 Submit 可调用，投票回调仅 Vote 可调用。重复加入、重复退出均不改状态；因此 `forceExit` 后，Executor 正常调用 `exit` 必须成功且不改状态。重复铸造回滚。不存在关联时 `executor` 返回零，但写操作拒绝零关联。`isAccountJoined` 无记录时返回 false。
+`init` 仅部署授权者可调用一次。join/exit/`mintProposalReward` 仅关联 Executor 可调用；Executor 通过继承 [`IProposalTarget.sol`](../../../interfaces/core/IProposalTarget.sol) 接收三类 Proposal 回调，创建/推举回调仅 Submit 可调用，投票回调仅 Vote 可调用。重复加入、重复退出均不改状态；因此 `forceExit` 后，Executor 正常调用 `exit` 必须成功且不改状态。重复铸造回滚。不存在关联时 `executor` 返回零，但写操作拒绝零关联。`isAccountJoined` 无记录时返回 false。
 
 ## forceExit
 
-```solidity
-function forceExit(
-    address tokenAddress,
-    uint256 actionId,
-    uint256 memberId
-) external;
-```
+`forceExit` 接口见 [`IActionTarget.sol`](../../../interfaces/action/IActionTarget.sol)。
 
 Executor 失效时，成员 NFT 当前持有人可清除加入状态并触发事件。该操作不调用 Executor、不转资产、不承诺返还资产；前端默认隐藏，并需说明与正常退出的区别。
 
@@ -75,18 +39,7 @@ Executor 失效时，成员 NFT 当前持有人可清除加入状态并触发事
 
 ## Round 查询
 
-```solidity
-function proposalIdsByExecutor(
-    address tokenAddress,
-    uint256 round,
-    address executor
-) external view returns (uint256[] memory proposalIds);
-function proposals(address tokenAddress, uint256 round)
-    external view returns (
-        uint256[] memory proposalIds,
-        address[] memory executors
-    );
-```
+Round 查询接口见 [`IActionTarget.sol`](../../../interfaces/action/IActionTarget.sol)。
 
 从 Vote 的 `votedProposalIdsCount` / `votedProposalIdsAtIndex` 读取本轮有票 Proposal，再按映射筛选，不维护独立反向索引，不在这里计算激励门槛；不能读成历史累计。不另设人工 Proposal 数量上限，服务结算只扫描该轮实际有票且已关联的列表。
 

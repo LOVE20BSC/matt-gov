@@ -21,37 +21,4 @@ owner、有效 delegate、有效 admin 可 `mentionAll`；admin 不因此绕过 
 
 ## 标准接口
 
-```solidity
-interface IPostScopeSource {
-    function canPost(uint256 groupId, uint256 senderId) external view returns (bool);
-}
-
-interface IPostBanSource {
-    function isBanned(uint256 groupId, uint256 senderId) external view returns (bool);
-}
-
-interface IBeforePostPlugin {
-    function beforePost(
-        uint256 groupId,
-        uint256 senderId,
-        string calldata content,
-        uint256[] calldata mentionedSenderIds,
-        bool mentionAll,
-        uint256 quotedMessageId
-    ) external;
-}
-
-interface IAfterPostPlugin {
-    function afterPost(
-        uint256 groupId,
-        uint256 senderId,
-        string calldata content,
-        uint256[] calldata mentionedSenderIds,
-        bool mentionAll,
-        uint256 quotedMessageId,
-        uint256 messageId,
-        uint256 blockNumber,
-        uint256 timestamp
-    ) external;
-}
-```
+规则槽位接口见 [`IGroupChatRules.sol`](../../../interfaces/group-chat/IGroupChatRules.sol)。

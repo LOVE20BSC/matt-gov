@@ -6,22 +6,7 @@ Launch 负责基础发射与次数账本；TokenFactory 负责创建 LOVE20Token
 
 首币参数与依赖在同一次初始化中传入；供应量在工厂初始化固定，不在 Launch 再保存一份：
 
-```solidity
-enum DistributorMode { NoCallback, Callback }
-error InvalidKVLength();
-
-function init(
-    address tokenFactory,
-    address mint,
-    address memberNFT,
-    address rootParentToken,
-    address distributor,
-    uint256 launchRatio,
-    uint256 maxLaunchCount,
-    string calldata name,
-    string calldata symbol
-) external;
-```
+完整 ABI 见 [`ILOVE20Launch.sol`](../../../interfaces/core/ILOVE20Launch.sol)。
 
 先部署全部合约取得地址，并完成 `TokenFactory.init`，再由部署授权者调用一次 `Launch.init`。本次交易写入依赖和参数，调用 `TokenFactory.createToken(rootParentToken, name, symbol, distributor)`；工厂完成首币、Pair 和父币/minter 绑定，Launch 登记首币并同步调用 `MemberNFT.init(tokenAddress)` 完成其初始化；MemberNFT 不保存 Launch 地址。Launch 不再次创建 Pair，也不重复铸造首批供应。
 
@@ -57,53 +42,19 @@ launchCredit -= count * threshold
 
 ## 次数融合
 
-```solidity
-function mergeLaunchCount(
-    address tokenAddress,
-    uint256 sourceMemberId,
-    uint256 targetMemberId,
-    uint256 count
-) external;
-```
-
 源、目标必须不同且存在，`count > 0`，源次数足够。只校验调用者持有源 NFT，不要求持有目标。成功后原子扣减源次数、增加目标次数；不转移 `launchCredit`，不改变其他质押、投票、发射历史或事件，也不减少目标既有状态。此操作可用于 NFT 场外交易。
 
 ## 普通发射
 
 当前成员 NFT 持有人可发射社区子币，消耗其一次 `launchCount`。发射流程按检查、更新、交互执行并防重入：先验证成员次数和代币参数，扣减次数，再创建子币、分发首批供应并调用 distributor。外部失败时子币创建和次数消耗全部回滚。
 
-```solidity
-function launchToken(
-    string calldata tokenSymbol,
-    address parentTokenAddress,
-    uint256 memberId,
-    address distributor,
-    DistributorMode distributorMode,
-    bytes32[] calldata keys,
-    bytes[] calldata values
-) external returns (address tokenAddress);
-
-function addLaunchCount(address tokenAddress, uint256 memberId, uint256 count) external;
-function launchCount(address tokenAddress, uint256 memberId) external view returns (uint256);
-function issuedLaunchCount(address tokenAddress) external view returns (uint256);
-function isLOVE20Token(address tokenAddress) external view returns (bool);
-```
+发射、次数和代币查询接口均见 [`ILOVE20Launch.sol`](../../../interfaces/core/ILOVE20Launch.sol)。
 
 `memberId` 必须由调用者当前持有；不用地址默认 NFT 映射。名称沿用旧 Launch 的 `tokenSymbol + "@" + parentSymbol` 生成方式。
 
 普通发射的社区必须与 `parentTokenAddress` 一致，`distributor` 非零。部署时保留符号不得本地发射或复用。分发支持 `NoCallback` 和 `Callback` 两种模式。Launch 回调使用本次发射的 `keys`/`values` 数组；两数组可以同时为空，非空时必须等长：
 
-```solidity
-interface ILaunchDistributor {
-    function onTokenLaunched(
-        address tokenAddress,
-        address parentTokenAddress,
-        uint256 launcherMemberId,
-        bytes32[] calldata keys,
-        bytes[] calldata values
-    ) external;
-}
-```
+分发回调接口见 [`ILaunchDistributor.sol`](../../../interfaces/core/ILaunchDistributor.sol)。
 
 `NoCallback` 不调用回调且要求两数组为空；`Callback` 要求 `distributor` 为合约并调用 `onTokenLaunched`，原样透传 Launch KV，回调失败则整笔发射回滚。首币使用旧 Burn `Airdrop`，固定采用 `NoCallback`；普通发射才可选择 `Callback`。
 
@@ -115,26 +66,11 @@ distributor 自行实现领取与查询逻辑，`claim(tokenAddress)` 只是建�
 
 保留旧工厂“初始化配置 + 创建代币/Pair”的职责。来源为 `LOVE20TKM/core/src/LOVE20TokenFactory.sol`（提交见[旧代码基线](../../repositories.md#旧代码基线)）；BSC 新增 `distributor`，删除 SL/ST 创建及相关依赖。LOVE20Token 的完整参数在构造函数中一次传入，不再提供 `init`。
 
-```solidity
-function init(
-    address pairFactoryAddress,
-    address launchAddress,
-    address mintAddress,
-    uint256 initialSupply,
-    uint256 maxSupply
-) external;
-```
+初始化接口见 [`ILOVE20TokenFactory.sol`](../../../interfaces/core/ILOVE20TokenFactory.sol)。
 
 工厂由部署授权者初始化一次，固定 Pair Factory、Launch、Mint、首批供应量和最大供应量；要求依赖有效、`initialSupply <= maxSupply`。不调用 Launch 业务，因此可在首币存在前初始化。Stake 通过符合 Uniswap V2 接口的 Pair Factory 查询 Pair，不要求 TokenFactory 维护 `pairOf` 映射。
 
-```solidity
-function createToken(
-    address parentTokenAddress,
-    string calldata name,
-    string calldata symbol,
-    address distributor
-) external returns (address tokenAddress);
-```
+创建接口见 [`ILOVE20TokenFactory.sol`](../../../interfaces/core/ILOVE20TokenFactory.sol)。
 
 仅已初始化工厂允许 Launch 调用。父币或 distributor 为零、名称或符号为空时拒绝。创建时原子执行：
 
@@ -146,6 +82,10 @@ function createToken(
 父币社区是否合法、发射次数和分发回调由 Launch 检查。首币使用 WBNB，普通子币使用已登记 LOVE20 父币。
 
 ## 实现约束
+
+TokenFactory 的事件和错误定义见 [`ILOVE20TokenFactory.sol`](../../../interfaces/core/ILOVE20TokenFactory.sol)；LOVE20Token 的公开 ABI 见 [`ILOVE20Token.sol`](../../../interfaces/core/ILOVE20Token.sol)。
+
+LOVE20Token 使用构造函数接收 `name`、`symbol`、`initialSupply`、`maxSupply`、`distributor`、`minter` 和 `parentTokenAddress`；构造函数不属于 Solidity `interface` ABI。其运行时函数、事件和错误以 [`ILOVE20Token.sol`](../../../interfaces/core/ILOVE20Token.sol) 为准。
 
 - LOVE20Token 不提供 `init`；构造函数直接接收 `name`、`symbol`、`initialSupply`、`maxSupply`、`distributor`、`minter` 和 `parentTokenAddress`。
 - `MemberNFT.init(firstToken)` 由 `Launch.init` 在创建首币时同步调用完成；MemberNFT 不保存 Launch 地址，费用代币地址是唯一外部地址依赖。
