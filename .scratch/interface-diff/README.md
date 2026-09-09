@@ -16,12 +16,12 @@
 
 | 侧 | 接口文件 | 接口声明 | 函数 | 事件 | 错误 |
 | --- | --- | --- | --- | --- | --- |
-| 新（`matt-gov/interfaces`） | 28 | 31 | 429 | 76 | 201 |
+| 新（`matt-gov/interfaces`） | 28 | 31 | 429 | 76 | 203 |
 | 旧（6 个 LOVE20TKM 仓库） | 52 | 115 | 655 | 100 | 274 |
 
 **统计口径**（三份分层文档的计数均可按此复现）：
 
-- 旧侧文件 = 6 个 LOVE20TKM 仓库 `src` 下 `interface`/`interfaces` 目录内的全部 `.sol`；排除 `group-chat/src/interfaces/external/`（14 个跨仓库镜像，非旧协议自有 ABI）；**包含** `group/src/interfaces/ILOVE20Token.sol`（`core` 同名接口的逐字镜像，仅 import 路径不同）。
+- 旧侧文件 = 6 个 LOVE20TKM 仓库 `LOVE20TKM/<repo>/src` 下 `interface`/`interfaces` 目录内的全部 `.sol`；排除 `LOVE20TKM/group-chat/src/interfaces/external/`（14 个跨仓库镜像，非旧协议自有 ABI）；**包含** `LOVE20TKM/group/src/interfaces/ILOVE20Token.sol`（`core` 同名接口的逐字镜像，仅 import 路径不同）。
 - 函数数按**声明条数**计，不做跨文件去重（同一函数名在不同接口各计一次）。
 - 接口声明数与文件数不同：新侧 28 文件内含 **31 个** `interface` 声明——`IGroupChatRules.sol` 一个文件含 4 个（`IPostScopeSource`、`IPostBanSource`、`IBeforePostPlugin`、`IAfterPostPlugin`），其余文件各含 1 个；旧侧 52 文件内含 **115 个** `interface` 声明（去重后 112 个，`ILOVE20Token` 及其两个子接口在 `core` 与 `group` 各声明一次），其中 63 个是 `I<Name>Errors`/`I<Name>Events` 子接口——这 63 个子接口正是「跨层结构变化」第 2 条所说的内联化对象。
 - **简写约定**（用于按名检索时的展开规则）：`X`(+`Count`/`AtIndex`) 表示 `X`、`XCount`、`XAtIndex` 三个函数；`aCount`/`AtIndex` 表示 `aCount` 与 `aAtIndex` 两个函数。旧协议大量使用「全量数组 + 长度 + 逐项读取」三件套，逐条列出会淹没差异，故按组名收敛。需要精确 ABI 时按此规则展开即可。
@@ -101,22 +101,22 @@
 
 | 旧接口 | 函数 | 事件 | 错误 |
 | --- | --- | --- | --- |
-| `core/src/interfaces/ILOVE20Verify.sol` | 16 | 1 | 4 |
-| `core/src/interfaces/ILOVE20Join.sol` | 26 | 4 | 7 |
-| `core/src/interfaces/ILOVE20Random.sol` | 4 | 1 | 3 |
-| `core/src/interfaces/ILOVE20SLToken.sol` | 11 | 3 | 6 |
-| `core/src/interfaces/ILOVE20STToken.sol` | 5 | 2 | 3 |
-| `group/src/interfaces/IGroupDefaults.sol` | 5 | 2 | 4 |
-| `group/src/interfaces/IGroupMarket.sol` | 26 | 8 | 16 |
-| `extension/src/interface/IExtensionFactory.sol` | 6 | 1 | 0 |
-| `extension/src/interface/IJoin.sol` | 3 | 2 | 2 |
-| `extension/src/interface/IReward.sol` | 6 | 2 | 1 |
-| `extension-lp/src/interface/ILpFactory.sol` | 1 | 0 | 2 |
-| `extension-group/src/interface/IGroupActionFactory.sol` | 5 | 0 | 4 |
-| `extension-group/src/interface/IGroupServiceFactory.sol` | 3 | 0 | 1 |
-| `extension-group/src/interface/IExtensionGroupActionFactory.sol` | 0 | 0 | 0 |
-| `extension-group/src/interface/IExtensionGroupServiceFactory.sol` | 0 | 0 | 0 |
-| `group-chat/src/interfaces/sources/ban/IBanVoteWeightSource.sol` | 2 | 0 | 0 |
+| `LOVE20TKM/core/src/interfaces/ILOVE20Verify.sol` | 16 | 1 | 4 |
+| `LOVE20TKM/core/src/interfaces/ILOVE20Join.sol` | 26 | 4 | 7 |
+| `LOVE20TKM/core/src/interfaces/ILOVE20Random.sol` | 4 | 1 | 3 |
+| `LOVE20TKM/core/src/interfaces/ILOVE20SLToken.sol` | 11 | 3 | 6 |
+| `LOVE20TKM/core/src/interfaces/ILOVE20STToken.sol` | 5 | 2 | 3 |
+| `LOVE20TKM/group/src/interfaces/IGroupDefaults.sol` | 5 | 2 | 4 |
+| `LOVE20TKM/group/src/interfaces/IGroupMarket.sol` | 26 | 8 | 16 |
+| `LOVE20TKM/extension/src/interface/IExtensionFactory.sol` | 6 | 1 | 0 |
+| `LOVE20TKM/extension/src/interface/IJoin.sol` | 3 | 2 | 2 |
+| `LOVE20TKM/extension/src/interface/IReward.sol` | 6 | 2 | 1 |
+| `LOVE20TKM/extension-lp/src/interface/ILpFactory.sol` | 1 | 0 | 2 |
+| `LOVE20TKM/extension-group/src/interface/IGroupActionFactory.sol` | 5 | 0 | 4 |
+| `LOVE20TKM/extension-group/src/interface/IGroupServiceFactory.sol` | 3 | 0 | 1 |
+| `LOVE20TKM/extension-group/src/interface/IExtensionGroupActionFactory.sol` | 0 | 0 | 0 |
+| `LOVE20TKM/extension-group/src/interface/IExtensionGroupServiceFactory.sol` | 0 | 0 | 0 |
+| `LOVE20TKM/group-chat/src/interfaces/sources/ban/IBanVoteWeightSource.sol` | 2 | 0 | 0 |
 | **合计** | **119** | **26** | **53** |
 
 其中三个规模较大、值得单独点名的删除块：
@@ -146,7 +146,7 @@
 
 以下五条经确认属于**新协议接口需要补齐的缺口**，不是文档缺陷。**五条均已落地到 `interfaces/` 并经 solc 0.8.17 编译通过**，各条括号中为实现结果。
 
-1. **action 层错误声明需补齐**。旧三接口（`IGroupJoin`/`IGroupManager`/`IGroupVerify`）共 **44 条错误声明、40 个不同错误名**，其中 6 个已有新语义对应，6 个随删除机制一并删除，其余 28 个保留并补入 `IGroupActionExecutor`，接口错误数为 43，逐名核对见 [action.md §3「错误」](action.md)。
+1. **action 层错误声明需补齐**。旧三接口（`IGroupJoin`/`IGroupManager`/`IGroupVerify`）共 **44 条错误声明、40 个不同错误名**，其中 6 个已有新语义对应，6 个随删除机制一并删除，其余 28 个保留并补入 `IGroupActionExecutor`；另补充阶段未开始错误，接口错误数为 44，逐名核对见 [action.md §3「错误」](action.md)。
 2. **链群配置变更事件**。`IGroupActionExecutor` 已声明 `ActivateGroup`、`DeactivateGroup`、`UpdateGroupInfo`，仅去掉 `owner`（主体改为 memberId，owner 快照不再进事件）、保留 `stakeAmount`；事件数为 11，供前端索引与通知。
 3. **group-chat scope/ban 适配接口**。已补回 `IAdminBanSource.sol`、`IGroupMemberScope.sol` 和 `IGroupJoinScopeSource.sol`。三者声明地址 getter，行为契约分别来自 `IPostBanSource.isBanned` 或 `IPostScopeSource.canPost`；`IGroupJoinScopeSource` 使用 `GROUP_ACTION_EXECUTOR_ADDRESS()` 指向 action 层单例 Executor，并保留 `GROUP_MEMBER_ADDRESS()`。
 4. **Mint 依赖地址 getter需补回，激励计算查询保持精简**。旧 `ILOVE20Mint` 提供 `voteAddress`/`verifyAddress`/`stakeAddress`，新版退化为仅 `init` 入参。确认结论：**补回依赖地址 getter**（前端与其他合约发现依赖的常用入口）；`govVerifyReward`/`govBoostReward`/`calculateRoundGovReward`/`calculateRoundActionReward` 等激励计算查询**确认不补**，由调用方自行计算。注意 `verifyAddress` 对应的验证阶段已取消，补回时按新版实际依赖（`voteAddress`/`stakeAddress`/`submitAddress`/`launchAddress`）取用。**已落地**：`ILOVE20Mint` 补回上述 4 个 getter，函数数 19 → 23；4 个激励计算查询确认不补。
@@ -158,26 +158,27 @@
 
 | 层 | 核对内容 | 结果 |
 | --- | --- | --- |
-| 1 | 规模数字：文件/接口声明/函数/事件/错误计数，README 表格与脚本输出逐位比对 | 新 28 / 31 / 429 / 76 / 201，旧 52 / 115 / 655 / 100 / 274，一致 |
+| 1 | 规模数字：文件/接口声明/函数/事件/错误计数，README 表格与脚本输出逐位比对 | 新 28 / 31 / 429 / 76 / 203，旧 52 / 115 / 655 / 100 / 274，一致 |
 | 2 | 反向：文档反引号内每个标识符，是否在新旧源码全集中 | 0 个虚构标识符（498 个候选 token 中未命中源码的 64 个均为类型名、结构体名、文件名与散文词） |
 | 3 | 正向：旧侧 1029 条声明（655 函数 / 100 事件 / 274 错误）是否都有归处 | 880 条按名直接提及 + 67 条按简写约定展开 + 82 条归入整块规模账（该表合计 198 条，其中 116 条同时被按名提及），**未归类 0** |
 | 4 | 签名级：文档中每条「函数名 + 参数序列」写法，与源码真实参数名序列逐条比对 | 见下 |
 | 5 | 状态级：标注「保留」的条目，新旧类型序列是否真一致；事件与错误的字段级差异是否被文档覆盖 | 49 条「保留」全部真一致；13 处事件字段差异 + 1 处错误字段差异全部已记录 |
-| 6 | 可编译性：改动后的 `interfaces/` 用 solc 0.8.17 全量编译 | 31 个接口、28 个文件全部编译通过，0 错误 0 警告；并生成 ABI 逐接口比对，确认改动只落在本文件列出的 8 个接口，无意外变更 |
+| 6 | 可编译性：改动后的 `interfaces/` 用 solc 0.8.17 全量编译 | 31 个接口、28 个文件全部编译通过，0 错误 0 警告；并生成 ABI 逐接口比对，确认改动只落在本文件列出的 9 个接口，无意外变更 |
 
-第 6 层的 ABI 差分（与改动前 `git HEAD` 对比）只出现 8 个接口的差异，与五条补齐项、一个语义修正及单例作用域修正对应：
+第 6 层的 ABI 差分（与改动前 `git HEAD` 对比）只出现 9 个接口的差异，与五条补齐项、阶段错误补齐、一个语义修正及单例作用域修正对应：
 
 | 接口 | fn | ev | err | 对应裁决 |
 | --- | --- | --- | --- | --- |
-| `IGroupActionExecutor` | 96 → 97 | 8 → 11 | 15 → 43 | 1、2、5、单例行动作用域 |
-| `ILpExecutor` | 19 → 19* | 5 | 9 | 单例行动作用域补到比例 getter |
-| `IGroupServiceExecutor` | 18 → 18* | 3 | 8 | 单例服务 Proposal 作用域补到销毁入口 |
+| `IGroupActionExecutor` | 96 → 97 | 8 → 11 | 15 → 44 | 1、2、5、阶段未开始错误、单例行动作用域 |
+| `ILpExecutor` | 19 → 19* | 5 | 10 | 单例行动作用域、阶段未开始错误 |
+| `IGroupServiceExecutor` | 18 → 18* | 3 | 9 | 单例服务 Proposal 作用域、阶段未开始错误 |
+| `ILOVE20Stake` | 18 | 4 | 11 → 10 | 删除误导性 `InvalidToAddress` |
 | `ILOVE20Submit` | 14 | 2 | 4 | selector 未冻结，保留行为说明 |
 | `ILOVE20Mint` | 19 → 23 | 4 | 8 | 5 |
 | `IAdminBanSource` | 0 → 2 | 0 | 0 → 1 | 3 |
 | `IGroupMemberScope` | 0 → 2 | 0 | 0 → 1 | 3 |
 | `IGroupJoinScopeSource` | 0 → 3 | 0 | 0 → 1 | 3 |
 
-其余 23 个接口 ABI 逐字节未变。带 `*` 的行函数数量未变但参数签名已改变；左列为**完整 ABI 口径**（含继承成员，例如 `IGroupActionExecutor` = 自身 43 + `IGroupActionIndexes` 51 + `IProposalTarget` 3 = 97），与第 1 层的「自有声明」口径不同，两者都对。
+其余 22 个接口 ABI 逐字节未变。带 `*` 的行函数数量未变但参数签名已改变；左列为**完整 ABI 口径**（含继承成员，例如 `IGroupActionExecutor` = 自身 43 + `IGroupActionIndexes` 51 + `IProposalTarget` 3 = 97），与第 1 层的「自有声明」口径不同，两者都对。
 
 两处有意的收敛（非遗漏）：`IGroupActionIndexes` 的 51 个 g\* 索引按 17 个组名列举；整块不迁移的旧接口只给规模与代表成员，不逐一列举——两者都在本文件中写明了展开规则或规模账。

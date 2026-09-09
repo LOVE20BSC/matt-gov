@@ -116,7 +116,6 @@ interface ILOVE20Stake {
 
     error AlreadyInitialized();
     error NotAllowedToStakeAtRoundZero();
-    error InvalidToAddress();
     error StakeAmountMustBeSet();
     error UnstakeAlreadyRequested();
     error UnstakeNotRequested();

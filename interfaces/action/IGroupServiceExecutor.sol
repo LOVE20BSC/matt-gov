@@ -42,6 +42,7 @@ interface IGroupServiceExecutor is IProposalTarget {
     error AlreadyInitialized();
     error InvalidKVLength();
     error InvalidRound(uint256 round);
+    error RoundNotStarted();
     error NotMemberOwner(uint256 memberId);
     error ProposalNotVoted(address tokenAddress, uint256 proposalId);
     error UnauthorizedCallback();

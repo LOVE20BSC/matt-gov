@@ -22,7 +22,8 @@ Core 的预留、铸造和取消额度账本见 [Mint](../core/06-mint.md)，不
 | `UnauthorizedCallback()` | 非 ActionTarget 调用 Executor 回调 |
 | `NotMemberOwner(memberId)` | 调用者非该 NFT 当前持有人 |
 | `ProposalNotVoted(tokenAddress, proposalId)` | Proposal 无票或未达门槛 |
-| `InvalidRound(round)` | 不在对应操作的有效阶段 |
+| `InvalidRound(round)` | Round 已开始但不在对应操作的有效阶段 |
+| `RoundNotStarted()` | 对应阶段的 Round 小于 1 |
 | `InsufficientExperienceQuota(providerMemberId, required, available)` | 体验额度不足 |
 | `VerifierAlreadyLocked(tokenAddress, actionId, round)` | 锁定后更换验证者 |
 | `BatchIndexMismatch(expected, actual)` | 验证批次跳跃、重复或乱序 |
