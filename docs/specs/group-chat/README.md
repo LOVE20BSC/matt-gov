@@ -23,3 +23,5 @@
 旧 ABI 的身份参数按本目录映射，其他功能和行为保留；需要的是接口对齐与回归，不是新增恢复机制或重设计业务。已确认的 BSC 时间和行动依赖适配不撤销，差异见 [迁移清单](../CHANGES-group-chat.md)。
 
 [组织约束](../../../CONTEXT.md)
+
+接口暂存于 [`interfaces/group-chat/`](../../../interfaces/group-chat/)，是 Group Chat ABI 的唯一来源。

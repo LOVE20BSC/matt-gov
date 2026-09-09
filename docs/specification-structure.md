@@ -6,7 +6,7 @@
 
 | 文档 | 职责 |
 | --- | --- |
-| 当前模块规格 | 本模块的行为、接口、公式、事件、错误和验收 |
+| 当前模块规格 | 本模块的行为、公式和验收；ABI 引用 [`interfaces/`](../interfaces/) 下的纯 Solidity 接口文件 |
 | [CONTEXT](../CONTEXT.md) | 跨仓库术语与领域关系 |
 | [仓库清单](repositories.md) | 仓库边界和依赖 |
 | [组织验收](acceptance.md) | 跨仓库场景、发布门槛和证据 |
@@ -23,7 +23,7 @@
 | group-chat | `matt-gov/docs/specs/group-chat/` | `group-chat/docs/specs/` |
 | compatibility | `matt-gov/docs/specs/compatibility.md` | `compatibility/SPEC.md` |
 
-前三组保留拆分文件、编号和目录内 `README.md`，不合并为单一 `SPEC.md`。`compatibility` 目前只有一份测试规格，迁移时仍保持单文件。
+前三组保留拆分文件、编号和目录内 `README.md`，不合并为单一 `SPEC.md`。接口声明暂存于本仓库对应的 `interfaces/<repo>/`，目标仓库创建后随规格一起迁移到 `src/interfaces/`；`compatibility` 目前只有一份测试规格，迁移时仍保持单文件。
 
 迁移步骤：
 

@@ -20,6 +20,8 @@ Core 不解释具体 Proposal 的业务字段，扩展通过 Target 接入。
 
 以下为初始化参数总览；各模块文件给出完整构造函数和 `init` ABI。部署配置中的示例值不等于固定值。除 Phase/LOVE20Token 使用构造函数、MemberNFT 费用参数在构造函数固定外，各合约一次性初始化入口使用 `init`；地址绑定与初始化安全见 [通用规则](01-common-rules.md)，首币流程见 [Launch](07-launch.md#初始化和首个代币)。
 
+可直接用于实现的 ABI 唯一来源是 [`interfaces/core/`](../../../interfaces/core/)。
+
 | 所属组件 | 参数 | 含义与单位 |
 | --- | --- | --- |
 | MemberNFT 构造参数 | `baseDivisor` | 首币未铸造量的费用除数，如 `1e8` |

@@ -28,10 +28,7 @@ after 插件在消息及通知事件之后调用。上述是业务容错要求�
 
 删除旧预检查中的 senderAddress 参数，调用方不必持有 sender NFT；写入时仍必须校验真实 msg.sender。
 
-```solidity
-function canPost(uint256 groupId, uint256 senderId)
-    external view returns (bool allowed, bytes4 reasonCode);
-```
+预检查接口见 [`IGroupChat.sol`](../../../interfaces/group-chat/IGroupChat.sol)。
 
 保留旧 reasonCode 的错误 selector 语义：成功返回 `(true, bytes4(0))`；失败返回 GroupNotExist、ChatNotActivated、PostingNotAllowed、ScopeRejected、BanRejected、ScopeSourceFailed 或 BanSourceFailed 的 selector。无内容预检查不验证正文、提及、引用或 before 插件。
 

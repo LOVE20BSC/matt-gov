@@ -6,33 +6,7 @@ GroupAction 使用 MemberNFT 身份，`groupId` 是群主体的 `memberId`，不
 
 旧 `LOVE20TKM/extension-group/src/GroupManager.sol` / `LOVE20TKM/extension-group/src/GroupJoin.sol` 的 extension 地址改为 `tokenAddress + actionId`；不为每个 Proposal 部署 Executor。部署依赖通过 init 绑定，业务配置由 Proposal 创建回调写入。
 
-```solidity
-struct GroupConfig {
-    string description;
-    uint256 maxCapacity;
-    uint256 minJoinAmount;
-    uint256 maxJoinAmount;
-    uint256 maxAccounts;
-}
-function init(address actionTargetAddress, address memberNFTAddress, address phaseAddress,
-    address stakeAddress, address mintAddress, uint256[] calldata splits) external;
-function activateGroup(address tokenAddress, uint256 actionId, uint256 groupId, GroupConfig calldata config) external;
-function deactivateGroup(address tokenAddress, uint256 actionId, uint256 groupId) external;
-function updateGroupInfo(address tokenAddress, uint256 actionId, uint256 groupId, GroupConfig calldata config) external;
-function groupInfo(address tokenAddress, uint256 actionId, uint256 groupId)
-    external view returns (GroupConfig memory config, bool active, uint256 activatedRound, uint256 deactivatedRound);
-function join(address tokenAddress, uint256 actionId, uint256 groupId, uint256 memberId,
-    uint256 amount, string[] calldata verificationInfos) external;
-function withdraw(address tokenAddress, uint256 actionId, uint256 memberId, uint256 amount) external;
-function exit(address tokenAddress, uint256 actionId, uint256 memberId) external;
-function joinInfo(address tokenAddress, uint256 actionId, uint256 round, uint256 memberId)
-    external view returns (uint256 joinedRound, uint256 amount, uint256 groupId);
-function groupIds(address tokenAddress, uint256 actionId, uint256 round) external view returns (uint256[] memory);
-function memberIdsByGroupId(address tokenAddress, uint256 actionId, uint256 round, uint256 groupId)
-    external view returns (uint256[] memory);
-function joinedAmountByMemberId(address tokenAddress, uint256 actionId, uint256 round, uint256 memberId)
-    external view returns (uint256);
-```
+参与、群配置和历史查询接口见 [`IGroupActionExecutor.sol`](../../../interfaces/action/IGroupActionExecutor.sol)。
 
 创建 KV 沿用旧行动参数：`joinTokenAddress(address)`、`activationStakeAmount(uint256)`、`maxJoinAmountRatio(uint256)`、`activationMinGovRatio(uint256)`，键取 `keccak256`、值取 `abi.encode`。验证信息键和说明沿用 LP 的可选 KV。配置和激活资格、质押退还及容量计算沿用旧 GroupManager；`maxCapacity = 0` 使用理论容量，`maxJoinAmount/maxAccounts = 0` 不另设群级上限，非零最大加入量不得低于最小加入量。
 
@@ -63,42 +37,7 @@ function joinedAmountByMemberId(address tokenAddress, uint256 actionId, uint256 
 
 候选只在投票阶段新增、撤销或修改；排序按 `candidateVotes` 降序、`applicationId` 升序，平票时较早申请优先。
 
-```solidity
-struct VerifierApplication {
-    uint256 applicationId;
-    uint256 memberId;
-    string description;
-    uint256 ratioForPublicVerifier;
-    uint256 votes;
-    bool active;
-}
-function applyForVerifier(address tokenAddress, uint256 actionId, uint256 memberId,
-    string calldata description, uint256 ratioForPublicVerifier) external returns (uint256 applicationId);
-function cancelVerifierApplication(address tokenAddress, uint256 actionId, uint256 memberId) external;
-function currentApplicationId(address tokenAddress, uint256 actionId, uint256 round, uint256 memberId)
-    external view returns (uint256);
-function verifierApplication(address tokenAddress, uint256 actionId, uint256 round, uint256 applicationId)
-    external view returns (VerifierApplication memory);
-function verifierApplicationsCount(address tokenAddress, uint256 actionId, uint256 round)
-    external view returns (uint256);
-function verifierApplicationAtIndex(address tokenAddress, uint256 actionId, uint256 round, uint256 index)
-    external view returns (VerifierApplication memory);
-function rankedApplicationIds(address tokenAddress, uint256 actionId, uint256 round)
-    external view returns (uint256[] memory);
-function submitOriginScores(address tokenAddress, uint256 actionId, uint256 round,
-    uint256 verifierMemberId, uint256 groupId, uint256 startIndex, uint256[] calldata originScores) external;
-function verifiedMemberCount(address tokenAddress, uint256 actionId, uint256 round, uint256 groupId)
-    external view returns (uint256);
-function lockedVerifierId(address tokenAddress, uint256 actionId, uint256 round) external view returns (uint256);
-function isRoundVerified(address tokenAddress, uint256 actionId, uint256 round) external view returns (bool);
-function originScore(address tokenAddress, uint256 actionId, uint256 round, uint256 memberId)
-    external view returns (uint256 score, bool verified);
-function finalScore(address tokenAddress, uint256 actionId, uint256 round, uint256 memberId)
-    external view returns (uint256);
-function totalFinalScore(address tokenAddress, uint256 actionId, uint256 round) external view returns (uint256);
-function generatedActionRewardByGroupId(address tokenAddress, uint256 actionId, uint256 round, uint256 groupId)
-    external view returns (uint256);
-```
+验证者、验证和激励查询接口见 [`IGroupActionExecutor.sol`](../../../interfaces/action/IGroupActionExecutor.sol)。
 
 申请者须持有 memberId 且有该社区有效治理票；比例范围 `0..1e18`。apply 新建或替换当前申请：旧 ID 失效但保留票数，新 ID 单调递增且从零计票。取消只移除当前关联和榜内项，不扫描榜外补位。不存在申请查询回滚；无当前申请 ID 返回 0。
 

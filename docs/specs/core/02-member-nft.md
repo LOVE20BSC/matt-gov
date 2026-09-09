@@ -35,15 +35,9 @@ UTF-8 有效性：拒绝无效起始字节 `0x80-0xC1` 与 `0xF5-0xFF`、过长�
 
 ## 铸造
 
-```solidity
-function init(address firstTokenAddress) external;
-```
+接口见 [`IMemberNFT.sol`](../../../interfaces/core/IMemberNFT.sol)。
 
 `init` 只允许第一次成功调用；合约以 `initialized` 状态拒绝后续调用并回滚 `AlreadyInitialized()`。部署验证脚本必须核对首币地址和全部费用参数。
-
-```solidity
-function mint(string memory name) external returns (uint256 id, uint256 mintCost);
-```
 
 费用使用首个 LOVE20 代币，计算如下。参数含义见 [初始化参数](00-protocol-model.md#初始化参数)，前三个费用参数均必须大于零。
 
@@ -65,41 +59,9 @@ mintCost = byteLength >= bytesThreshold
 
 ## 接口
 
-对外接口沿用旧 `LOVE20Group`，仅去除 group 字样重命名；本合约即 Member 本体，标识符不再重复 member。初始化与铸造接口见 [铸造](#铸造)。
+对外接口见 [`IMemberNFT.sol`](../../../interfaces/core/IMemberNFT.sol)。它沿用旧 `LOVE20Group`，仅去除 group 字样重命名；本合约即 Member 本体，标识符不再重复 member。初始化与铸造接口见 [铸造](#铸造)。
 
-```solidity
-function calculateMintCost(string memory name) external view returns (uint256);
-function normalizedNameOf(string memory name) external pure returns (string memory);
-function idOf(string memory name) external view returns (uint256);
-function nameOf(uint256 id) external view returns (string memory);
-function isNameUsed(string memory name) external view returns (bool);
-
-function firstTokenAddress() external view returns (address);
-function baseDivisor() external view returns (uint256);
-function bytesThreshold() external view returns (uint256);
-function multiplier() external view returns (uint256);
-function maxNameLength() external view returns (uint256);
-function totalBurnedForMint() external view returns (uint256);
-
-function holdersCount() external view returns (uint256);
-function holdersAtIndex(uint256 index) external view returns (address);
-
-event Mint(
-    uint256 indexed id,
-    address indexed owner,
-    string name,
-    string normalizedName,
-    uint256 cost
-);
-event AddHolder(address indexed holder, uint256 totalHolders);
-event RemoveHolder(address indexed holder, uint256 totalHolders);
-
-error NameEmpty();
-error NameTooLong(uint256 length, uint256 maxLength);
-error NameInvalidCharacters();
-error NameAlreadyExists(uint256 existingId);
-error HolderIndexOutOfBounds(uint256 length);
-```
+函数、事件和错误定义均见 [`IMemberNFT.sol`](../../../interfaces/core/IMemberNFT.sol)。
 
 ## 持有人枚举
 

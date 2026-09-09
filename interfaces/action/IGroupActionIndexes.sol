@@ -1,0 +1,56 @@
+// SPDX-License-Identifier: MIT
+pragma solidity =0.8.17;
+
+interface IGroupActionIndexes {
+    function gGroupIds() external view returns (uint256[] memory);
+    function gGroupIdsCount() external view returns (uint256);
+    function gGroupIdsAtIndex(uint256 index) external view returns (uint256);
+    function gGroupIdsByMemberId(uint256 memberId) external view returns (uint256[] memory);
+    function gGroupIdsByMemberIdCount(uint256 memberId) external view returns (uint256);
+    function gGroupIdsByMemberIdAtIndex(uint256 memberId, uint256 index) external view returns (uint256);
+    function gGroupIdsByTokenAddress(address tokenAddress) external view returns (uint256[] memory);
+    function gGroupIdsByTokenAddressCount(address tokenAddress) external view returns (uint256);
+    function gGroupIdsByTokenAddressAtIndex(address tokenAddress, uint256 index) external view returns (uint256);
+    function gGroupIdsByTokenAddressByMemberId(address tokenAddress, uint256 memberId) external view returns (uint256[] memory);
+    function gGroupIdsByTokenAddressByMemberIdCount(address tokenAddress, uint256 memberId) external view returns (uint256);
+    function gGroupIdsByTokenAddressByMemberIdAtIndex(address tokenAddress, uint256 memberId, uint256 index) external view returns (uint256);
+    function gGroupIdsByTokenAddressByActionId(address tokenAddress, uint256 actionId) external view returns (uint256[] memory);
+    function gGroupIdsByTokenAddressByActionIdCount(address tokenAddress, uint256 actionId) external view returns (uint256);
+    function gGroupIdsByTokenAddressByActionIdAtIndex(address tokenAddress, uint256 actionId, uint256 index) external view returns (uint256);
+    function gTokenAddresses() external view returns (address[] memory);
+    function gTokenAddressesCount() external view returns (uint256);
+    function gTokenAddressesAtIndex(uint256 index) external view returns (address);
+    function gTokenAddressesByMemberId(uint256 memberId) external view returns (address[] memory);
+    function gTokenAddressesByMemberIdCount(uint256 memberId) external view returns (uint256);
+    function gTokenAddressesByMemberIdAtIndex(uint256 memberId, uint256 index) external view returns (address);
+    function gTokenAddressesByGroupId(uint256 groupId) external view returns (address[] memory);
+    function gTokenAddressesByGroupIdCount(uint256 groupId) external view returns (uint256);
+    function gTokenAddressesByGroupIdAtIndex(uint256 groupId, uint256 index) external view returns (address);
+    function gTokenAddressesByGroupIdByMemberId(uint256 groupId, uint256 memberId) external view returns (address[] memory);
+    function gTokenAddressesByGroupIdByMemberIdCount(uint256 groupId, uint256 memberId) external view returns (uint256);
+    function gTokenAddressesByGroupIdByMemberIdAtIndex(uint256 groupId, uint256 memberId, uint256 index) external view returns (address);
+    function gActionIdsByTokenAddress(address tokenAddress) external view returns (uint256[] memory);
+    function gActionIdsByTokenAddressCount(address tokenAddress) external view returns (uint256);
+    function gActionIdsByTokenAddressAtIndex(address tokenAddress, uint256 index) external view returns (uint256);
+    function gActionIdsByTokenAddressByMemberId(address tokenAddress, uint256 memberId) external view returns (uint256[] memory);
+    function gActionIdsByTokenAddressByMemberIdCount(address tokenAddress, uint256 memberId) external view returns (uint256);
+    function gActionIdsByTokenAddressByMemberIdAtIndex(address tokenAddress, uint256 memberId, uint256 index) external view returns (uint256);
+    function gActionIdsByTokenAddressByGroupId(address tokenAddress, uint256 groupId) external view returns (uint256[] memory);
+    function gActionIdsByTokenAddressByGroupIdCount(address tokenAddress, uint256 groupId) external view returns (uint256);
+    function gActionIdsByTokenAddressByGroupIdAtIndex(address tokenAddress, uint256 groupId, uint256 index) external view returns (uint256);
+    function gActionIdsByTokenAddressByGroupIdByMemberId(address tokenAddress, uint256 groupId, uint256 memberId) external view returns (uint256[] memory);
+    function gActionIdsByTokenAddressByGroupIdByMemberIdCount(address tokenAddress, uint256 groupId, uint256 memberId) external view returns (uint256);
+    function gActionIdsByTokenAddressByGroupIdByMemberIdAtIndex(address tokenAddress, uint256 groupId, uint256 memberId, uint256 index) external view returns (uint256);
+    function gMemberIds() external view returns (uint256[] memory);
+    function gMemberIdsCount() external view returns (uint256);
+    function gMemberIdsAtIndex(uint256 index) external view returns (uint256);
+    function gMemberIdsByGroupId(uint256 groupId) external view returns (uint256[] memory);
+    function gMemberIdsByGroupIdCount(uint256 groupId) external view returns (uint256);
+    function gMemberIdsByGroupIdAtIndex(uint256 groupId, uint256 index) external view returns (uint256);
+    function gMemberIdsByTokenAddress(address tokenAddress) external view returns (uint256[] memory);
+    function gMemberIdsByTokenAddressCount(address tokenAddress) external view returns (uint256);
+    function gMemberIdsByTokenAddressAtIndex(address tokenAddress, uint256 index) external view returns (uint256);
+    function gMemberIdsByTokenAddressByGroupId(address tokenAddress, uint256 groupId) external view returns (uint256[] memory);
+    function gMemberIdsByTokenAddressByGroupIdCount(address tokenAddress, uint256 groupId) external view returns (uint256);
+    function gMemberIdsByTokenAddressByGroupIdAtIndex(address tokenAddress, uint256 groupId, uint256 index) external view returns (uint256);
+}

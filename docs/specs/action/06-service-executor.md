@@ -18,31 +18,9 @@
 
 首次为可铸币服务轮次准备、领取或销毁时，按 `actionTokenAddress + round` 计算并缓存分母。`actionTokenAddress` 是 GroupService 绑定的社区，不代表某个被聚合的源行动。分母始终统计该社区本轮全部 GroupAction 激励，不缩成单行动激励。后续结算读取缓存；查询不能写状态，未缓存时只计算返回。已计算的零值通过 `denominatorCached` 区分。
 
-```solidity
-mapping(address => mapping(uint256 => uint256))
-    _totalGroupActionReward;
-mapping(address => mapping(uint256 => bool))
-    _denominatorCached;
-```
+分母缓存是内部状态，不属于对外 ABI。
 
-```solidity
-function totalGroupActionReward(
-    address actionTokenAddress,
-    uint256 round
-) external view returns (uint256 reward, bool cached);
-
-function init(address actionTargetAddress, address memberNFTAddress, address phaseAddress,
-    address stakeAddress, address mintAddress, address groupActionExecutorAddress) external;
-function join(address serviceTokenAddress, uint256 serviceProposalId, uint256 memberId,
-    string[] calldata verificationInfos) external;
-function exit(address serviceTokenAddress, uint256 serviceProposalId, uint256 memberId) external;
-function joinInfo(address serviceTokenAddress, uint256 serviceProposalId, uint256 round, uint256 memberId)
-    external view returns (bool joined);
-function actionTokenAddress(address serviceTokenAddress, uint256 serviceProposalId) external view returns (address);
-function serviceRewardByMember(address serviceTokenAddress, uint256 serviceProposalId, uint256 round, uint256 memberId)
-    external view returns (uint256 verifierReward, uint256 ownerReward, uint256 ownerBurned, bool claimed);
-function burnRewardIfNeeded(uint256 round) external;
-```
+完整 ABI 见 [`IGroupServiceExecutor.sol`](../../../interfaces/action/IGroupServiceExecutor.sol)。
 
 创建 KV 固定为 `actionTokenAddress(address)` 和 `govRatioMultiplier(uint256)`，键取 keccak256，值取 abi.encode；代币关系在创建时校验。join/exit 校验当前 NFT 持有人，按 RoundHistory 记录服务资格。加入资格仍为有效群 owner 或有效候选，领取只计算该轮实际贡献。共同准备/领取/销毁 ABI 见 [行动铸造](07-minting.md#铸造链路)。
 
@@ -78,15 +56,7 @@ ownerOverflow(m) = theoreticalOwnerReward(m) - actualOwnerReward(m)
 
 groupId 的当前 NFT 持有人按 `sourceTokenAddress + sourceActionId + groupId + round` 配置 `recipientIds[]`、`ratios[]`；查询指定 `round` 没有配置时，回退到不晚于该轮的最近配置，不使用未来轮次；不存在更早配置时视为未配置。所有对同一源行动提供激励的服务 Proposal 复用该配置。接收者为 memberId，比例使用 `1e18` 精度。owner 部分先按各源行动权重拆分，再应用对应配置；公共验证者部分直接给锁定验证者，不参与二次分配。
 
-```solidity
-function setRecipients(address sourceTokenAddress, uint256 sourceActionId, uint256 groupId,
-    uint256[] calldata recipientIds, uint256[] calldata ratios, string[] calldata remarks) external;
-function recipients(address sourceTokenAddress, uint256 sourceActionId, uint256 groupId, uint256 round)
-    external view returns (uint256[] memory recipientIds, uint256[] memory ratios, string[] memory remarks);
-function rewardDistribution(address serviceTokenAddress, uint256 serviceProposalId, uint256 round,
-    uint256 sourceActionId, uint256 groupId) external view returns (
-        uint256[] memory recipientIds, uint256[] memory ratios, uint256[] memory amounts, uint256 ownerAmount);
-```
+二次分配接口见 [`IGroupServiceExecutor.sol`](../../../interfaces/action/IGroupServiceExecutor.sol)。
 
 setRecipients 沿用旧 GroupRecipients：只写当前验证 Round，不允许指定已结束轮次；同轮更新覆盖该轮配置。三数组等长、最多 10 项，接收 NFT 有效、不得重复或等于 groupId。全部传空表示显式清空，该轮及后续回退到空配置，不能重新找到清空前配置。没有配置时 owner 保留全部该项预算。付款使用结算时接收 NFT 当前持有人。
 

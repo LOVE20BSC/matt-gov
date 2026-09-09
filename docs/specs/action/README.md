@@ -17,3 +17,5 @@ Action 实现社群行动 Proposal 类型，包括 LP、GroupAction 和 GroupSer
 建议实现顺序：ActionTarget、LP、GroupAction、GroupService。Core 使用 `proposalId`，Executor 使用 `actionId` 业务别名，二者数值相同。
 
 [组织约束](../../../CONTEXT.md) · [迁移差异](../CHANGES-action.md)
+
+接口暂存于 [`interfaces/action/`](../../../interfaces/action/)，是 Action ABI 的唯一来源。

@@ -14,13 +14,9 @@
 
 计算结果小于 1 时，阶段尚未开始，查询和操作回滚 `RoundNotStarted`，不得返回 0。结果有效只表示阶段已开始，实际参与或铸币条件仍由 Executor 校验。获得票的 Proposal 在同 Round 的下一 Phase 开放加入。
 
-```solidity
-function currentVoteRound() external view returns (uint256);
-function currentJoinRound() external view returns (uint256);
-function currentMintRound() external view returns (uint256);
-```
+各 Executor 的 Round 查询接口见 [`ILpExecutor.sol`](../../../interfaces/action/ILpExecutor.sol) 和 [`IGroupActionExecutor.sol`](../../../interfaces/action/IGroupActionExecutor.sol)。
 
-GroupAction 和 GroupService 额外提供 `currentVerifyRound() external view returns (uint256)`；LP 不提供虚构的验证接口。加入类写操作只写当前加入 Round，验证只接受当前验证 Round，历史领取允许 `1 <= round <= currentMintRound()`。
+GroupAction 和 GroupService 额外提供 `currentVerifyRound()`；LP 不提供虚构的验证接口。各 Executor 的完整 Round ABI 见对应接口文件。加入类写操作只写当前加入 Round，验证只接受当前验证 Round，历史领取允许 `1 <= round <= currentMintRound()`。
 
 冷启动示例：
 

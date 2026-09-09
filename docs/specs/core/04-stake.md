@@ -4,26 +4,7 @@ Stake 按 `tokenAddress + memberId` 维护流动性和加速质押，不发行 S
 
 ## 状态
 
-```solidity
-mapping(address tokenAddress => mapping(uint256 memberId => StakeData)) stakes;
-struct StakeData {
-    uint256 lpShares;
-    uint256 boostShares;
-    uint256 promisedWaitingPhases;
-    uint256 unlockRequestPhase;
-}
-
-mapping(address tokenAddress => TokenStakeGlobals) globals;
-struct TokenStakeGlobals {
-    uint256 totalLpShares;
-    uint256 withdrawableLp;
-    uint256 feeLp;
-    uint256 sqrtKOfLp;
-    uint256 totalBoostShares;
-}
-
-mapping(address => mapping(uint256 => mapping(uint256 => uint256))) cumulatedBoostShares;
-```
+结构体和完整 ABI 见 [`ILOVE20Stake.sol`](../../../interfaces/core/ILOVE20Stake.sol)。
 
 | 字段 | 含义 |
 | --- | --- |
@@ -37,36 +18,6 @@ mapping(address => mapping(uint256 => mapping(uint256 => uint256))) cumulatedBoo
 | `cumulatedBoostShares[tokenAddress][round][memberId]` | 指定治理 Round 的累计加速份额 |
 
 ## 流动性质押与手续费
-
-```solidity
-function init(
-    address phaseAddress,
-    address memberNFTAddress,
-    address voteAddress,
-    address routerAddress,
-    address pairFactoryAddress,
-    uint256 promisedWaitingPhasesMin,
-    uint256 promisedWaitingPhasesMax
-) external;
-
-function stakeLiquidity(
-    address tokenAddress,
-    uint256 tokenAmount,
-    uint256 parentTokenAmount,
-    uint256 promisedWaitingPhases,
-    uint256 memberId
-) external returns (uint256 govVotesAdded, uint256 lpSharesAdded);
-
-function stakeToken(
-    address tokenAddress,
-    uint256 tokenAmount,
-    uint256 promisedWaitingPhases,
-    uint256 memberId
-) external returns (uint256 govVotesAdded);
-
-function unstake(address tokenAddress, uint256 memberId) external;
-function withdraw(address tokenAddress, uint256 memberId) external;
-```
 
 `init` 仅部署授权者可调用一次。所有成员写操作校验当前 NFT 持有人；`voteAddress` 用于融合时检查来源本轮投票。金额单位为代币最小单位，等待期为 Phase；费用计算仍按下述旧账本适配。
 
@@ -88,18 +39,6 @@ newFeeLp = totalLp - newWithdrawableLp
 
 例（整数模型）：原可提取 LP 为 120，旧/新 sqrt(k) 基准为 100/120，重分类后可提取 LP 为 100、手续费 LP 为 20。原总份额为 120 时，新存入 100 LP 得到 120 份额。
 
-```solidity
-function accountStakeStatus(address tokenAddress, uint256 memberId)
-    external view returns (StakeData memory);
-function validGovVotes(address tokenAddress, uint256 memberId)
-    external view returns (uint256);
-function govVotesNum(address tokenAddress) external view returns (uint256);
-function tokenStakeGlobals(address tokenAddress) external view returns (TokenStakeGlobals memory);
-function canWithdraw(address tokenAddress, uint256 memberId) external view returns (bool);
-function cumulatedTokenAmountByAccount(address tokenAddress, uint256 round, uint256 memberId)
-    external view returns (uint256);
-```
-
 无质押的有效成员返回零状态；`canWithdraw` 在未申请或未到期时返回 false。历史查询读取不晚于目标 Round 的最近记录，含明确归零记录。Vote 从上述历史查询取加速份额，并自行维护投票快照。
 
 ## 治理票与加速质押
@@ -110,7 +49,7 @@ govVotes = lpShares * promisedWaitingPhases
 
 Vote 每次投票通过 `Stake.validGovVotes(tokenAddress, memberId)` 读取当前有效票，不冻结治理票上限；追加质押、改变承诺等待期和申请解锁会影响票权。加速质押本身不产生票权。
 
-`cumulatedBoostShares` 在新 Round 首次操作时承接最近历史值，增减加速份额时更新本轮；无操作轮次读取最近记录，申请解锁后禁止追加，原说明要求累计值不再更新。这是 Stake 的质押历史，不是 Mint 的结算快照；Mint 只读取 [Vote 保存的投票快照](05-submit-vote.md#投票和加速快照)。
+`cumulatedBoostShares` 在新 Round 首次操作时承接最近历史值，增减加速份额时更新本轮；无操作轮次读取最近记录，申请解锁后禁止追加，原说明要求累计值不再更新。这是 Stake 的质押历史，不是 Mint 的结算快照；Mint 只读取 [Vote 保存的投票快照](05-vote.md#投票和加速快照)。
 
 例：Round 4 记录 50，Round 5 追加 30 后为 80；后续无变动轮次读取 80，不逐轮复制。
 
@@ -122,14 +61,6 @@ Vote 每次投票通过 `Stake.validGovVotes(tokenAddress, memberId)` 读取当�
 
 ## 融合
 
-```solidity
-function mergeStake(
-    address tokenAddress,
-    uint256 sourceMemberId,
-    uint256 targetMemberId
-) external;
-```
-
 用于同一社区质押的单向转移，可支持 NFT 场外交易：
 
 - 源和目标不同且已存在；调用者必须持有源，不要求持有目标。
@@ -140,6 +71,8 @@ function mergeStake(
 - 融合后按目标份额正常提取双币和加速代币；解锁中的成员需完成提取后才可再次融合。
 
 ## 实现约束
+
+事件与错误定义见 [`ILOVE20Stake.sol`](../../../interfaces/core/ILOVE20Stake.sol)。
 
 - 当前质押余额为 `0` 就表示没有质押；只有 RoundHistory 的历史查询需要区分“本轮没有记录”和“本轮明确归零”，直接沿用旧 RoundHistory 的显式记录语义，不新增额外布尔状态。
 - LP 写操作统一先校验参数和权限并锁定重入；读取 Pair 状态，在任何除法前处理 `pairTotalSupply == 0`、`currentSqrtKOfLp == 0` 和基准未增长；需要 Router、Pair 或 ERC20 调用时，以外部调用成功返回的实际数量计算并更新 `withdrawableLp`、`feeLp`、`sqrtKOfLp`、成员份额和社区总份额。任一步失败全部回滚。BSC 不使用 SL/ST 凭证，所有份额和可提取 LP 直接存入 Stake。

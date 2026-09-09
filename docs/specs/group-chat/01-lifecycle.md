@@ -15,22 +15,7 @@
 - delegate NFT 当前持有人可批量清除自己收到的委托、开关委托方白名单和维护允许的 groupId 列表。
 - 保留有效 delegate 查询、批量查询、被委托群/白名单枚举与分页、幂等行为及旧事件。
 
-```solidity
-function setDelegateId(uint256 groupId, uint256 delegateId) external;
-function clearDelegatedGroupIds(uint256 delegateId, uint256[] calldata groupIds) external;
-function setDelegatorWhitelistEnabled(uint256 delegateId, bool enabled) external;
-function setAllowedDelegatorGroupIds(uint256 delegateId, uint256[] calldata groupIds, bool allowed) external;
-function isDelegatorWhitelistEnabled(uint256 delegateId) external view returns (bool);
-function canSetDelegateTo(uint256 groupId, uint256 delegateId) external view returns (bool);
-function allowedDelegatorGroupIds(uint256 delegateId, uint256 offset, uint256 limit)
-    external view returns (uint256[] memory groupIds, uint256 total);
-function allowedDelegatorGroupIdsCount(uint256 delegateId) external view returns (uint256);
-function delegateIdOf(uint256 groupId) external view returns (uint256);
-function delegateIdsOf(uint256[] calldata groupIds) external view returns (uint256[] memory delegateIds);
-function delegatedGroupIds(uint256 delegateId, uint256 offset, uint256 limit)
-    external view returns (uint256[] memory groupIds, bool[] memory isEffective, uint256 total);
-function delegatedGroupIdsCount(uint256 delegateId) external view returns (uint256);
-```
+委托接口见 [`IGroupChatDelegate.sol`](../../../interfaces/group-chat/IGroupChatDelegate.sol)，包括有效 delegate 查询和分页枚举。
 
 ## 权限范围
 
@@ -43,7 +28,7 @@ function delegatedGroupIdsCount(uint256 delegateId) external view returns (uint2
 | 发言 | 始终校验调用者持有显式 senderId；委托不能冒充群 NFT |
 | Core 质押、投票、铸造、发射、Action 验证 | 此委托不产生任何权限 |
 
-管理员保留群 NFT 和 admin NFT 双 owner 快照、转移失效/转回恢复及旧数量上限。删除 GroupDefaults 查找，改由操作显式提供 adminId。
+管理员保留群 NFT 和 admin NFT 双 owner 快照、转移失效/转回恢复及旧数量上限。删除 GroupDefaults 查找，改由操作显式提供 `operatorId`/`adminId`。
 
 “限制在群聊内”不等于“只剩开关和槽位”：旧群内的管理员、成员及人工黑名单管理能力继续保留。Core MemberNFT 的 ERC721 转移授权与此业务委托分开。
 
