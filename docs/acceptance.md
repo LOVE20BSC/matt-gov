@@ -219,7 +219,7 @@
 - Phase 历史不可回写
 
 ### 行动轮次统一性
-**覆盖要求**：覆盖 `Phase 1..3` 对 LP 行动和 `Phase 1..4` 对 GroupAction、GroupService 的冷启动期，各 Executor 查询尚未开始阶段时回滚 `RoundNotStarted` 且不返回 `0`。覆盖 LP 行动使用 3 阶段模型（投票-加入-铸币），GroupAction 使用 4 阶段模型（投票-加入-验证-铸币），GroupService 保留 4 阶段并复用被服务 GroupAction 同轮次的验证结果，不在 GroupService 内执行验证。覆盖各 Executor 从 `Phase.currentPhase()` 正确计算自己的业务 Round，投票和加入的 Phase 映射在所有行动类型中一致（投票发生在 Phase p，同轮次加入发生在 Phase p+1）。各 Executor 提供标准查询接口，实现可参考旧代码库 `LOVE20TKM` 中的 Extension 接口。
+**覆盖要求**：覆盖 `Phase 1..3` 对 LP 行动和 `Phase 1..4` 对 GroupAction、GroupService 的冷启动期，各 Executor 查询尚未开始阶段时回滚 `RoundNotStarted` 且不返回 `0`。覆盖 LP 行动使用 3 阶段模型（投票-加入-铸币），GroupAction 使用 4 阶段模型（投票-加入-验证-铸币），GroupService 保留 4 阶段并复用被服务 GroupAction 同轮次的验证结果，不在 GroupService 内执行验证。覆盖各 Executor 从 `Phase.currentPhase()` 正确计算自己的业务 Round：全局 Phase 为 p 时，投票 Round 为 p，加入 Round 为 p-1；因此投票 Round p 在 Phase p 发生，下一全局 Phase p+1 开放同一 Round p 的加入。各 Executor 提供标准查询接口，实现可参考旧代码库 `LOVE20TKM` 中的 Extension 接口。
 
 **测试方式**：
 - 单元测试：`action/test/LPExecutor.t.sol`、`action/test/GroupActionExecutor.t.sol` 和 `action/test/GroupServiceExecutor.t.sol` 的 Phase 1-3/4 查询场景

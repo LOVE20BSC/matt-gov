@@ -18,7 +18,7 @@ Core 不解释具体 Proposal 的业务字段，扩展通过 Target 接入。
 
 ## 初始化参数
 
-以下为初始化参数总览；各模块文件给出完整构造函数和 `init` ABI。部署配置中的示例值不等于固定值。除 Phase/LOVE20Token 使用构造函数、MemberNFT 费用参数在构造函数固定外，各合约一次性初始化入口使用 `init`；地址绑定与初始化安全见 [通用规则](01-common-rules.md)，首币流程见 [Launch](07-launch.md#初始化和首个代币)。
+以下为初始化参数总览；各模块文件给出完整构造函数和 `init` ABI。部署配置中的示例值不等于固定值。除 Phase/LOVE20Token 使用构造函数、MemberNFT 费用参数在构造函数固定外，各合约一次性初始化入口使用 `init`；地址绑定与初始化安全见 [通用规则](01-common-rules.md)，首币流程见 [Launch](08-launch.md#初始化和首个代币)。
 
 可直接用于实现的 ABI 唯一来源是 [`interfaces/core/`](../../../interfaces/core/)。
 
@@ -47,7 +47,7 @@ Core 不解释具体 Proposal 的业务字段，扩展通过 Target 接入。
 | TokenFactory | `initialSupply`、`maxSupply` | 初始/最大供应量，工厂 init 固定；`initialSupply <= maxSupply` |
 | TokenFactory.createToken | `distributor` | 本次创建的首批代币接收者；非零 |
 
-MemberNFT 的首币地址由 `Launch.init` 在创建首币时同步调用 `MemberNFT.init(tokenAddress)` 绑定，不在部署时传入；MemberNFT 不保存 Launch 地址。Launch 的首币分发地址、名称和符号，以及 TokenFactory 的初始化/创建参数统一见 [Launch](07-launch.md)，不另维护供应量副本。Router 是 Stake 加减流动性的外部依赖，不参与工厂的代币/Pair 创建。
+MemberNFT 的首币地址由 `Launch.init` 在创建首币时同步调用 `MemberNFT.init(tokenAddress)` 绑定，不在部署时传入；MemberNFT 不保存 Launch 地址。Launch 的首币分发地址、名称和符号，以及 TokenFactory 的初始化/创建参数统一见 [Launch](08-launch.md)，不另维护供应量副本。Router 是 Stake 加减流动性的外部依赖，不参与工厂的代币/Pair 创建。
 
 ## 实现约束
 

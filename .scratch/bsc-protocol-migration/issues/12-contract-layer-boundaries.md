@@ -23,7 +23,7 @@ BSC 版协议采用两层主架构：
 
 `Phase` 是跨层共享的无语义时间线基础设施，不属于上述两层中的业务层；各层按自身语义使用它。
 
-`action` 层在此时间线上统一定义 `ActionRound` 的投票、加入、验证、铸币四个业务阶段。加入阶段包括加入、退出和行动参与状态变化；链群行动执行实际验证，链群服务和 LP 行动执行合约的验证阶段为空操作，但仍与其他行动使用相同轮次和铸币阶段。是否满足铸币条件仍由具体执行合约自行判断。`ActionTarget` 通过 `currentRoundVote()`、`currentRoundJoin()`、`currentRoundVerify()` 和 `currentRoundMint()` 提供四个无参数只读查询，结果直接由 `Phase` 推导，不存储 `ActionRound` 历史。
+`action` 层按 Executor 定义流水线阶段：LP 使用投票、加入、铸币三阶段；GroupAction 与 GroupService 使用投票、加入、验证、铸币四阶段。全局 Phase 为 p 时，加入 Round 为 p-1；加入阶段包括加入、退出和行动参与状态变化。链群行动执行实际验证，链群服务复用验证结果，LP 无独立验证阶段。是否满足铸币条件仍由具体执行合约自行判断。各 Executor 通过自身的 `currentVoteRound()`、`currentJoinRound()`、`currentVerifyRound()` 和 `currentMintRound()`（按需提供）查询由 `Phase` 推导的轮次，不存储 ActionRound 历史。
 
 参与资产、扩展资产及其返还和行动内分配均由提案类型内部业务自行托管和处理，`ActionTarget` 不接收或持有行动资产。
 

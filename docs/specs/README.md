@@ -4,7 +4,7 @@
 
 | 范围 | 入口 | 验收 |
 | --- | --- | --- |
-| Core 治理与发射 | [core](core/README.md) | [Core 验收](core/08-testing.md) |
+| Core 治理与发射 | [core](core/README.md) | [Core 验收](core/09-testing.md) |
 | Action 行动扩展 | [action](action/README.md) | [Action 验收](action/08-testing.md) |
 | Group Chat 群聊 | [group-chat](group-chat/README.md) | [群聊验收](group-chat/08-testing.md) |
 | 外部依赖 | [compatibility](compatibility.md) | 同文件 |

@@ -39,7 +39,7 @@ Executor 失效时，成员 NFT 当前持有人可清除加入状态并触发事
 
 ## Round 查询
 
-Round 查询接口见 [`IActionTarget.sol`](../../../interfaces/action/IActionTarget.sol)。
+行动阶段 Round 查询见 [阶段模型](02-phase-model.md) 及各 Executor 接口；`IActionTarget.sol` 仅提供按 Round 查询已关联 Proposal 的列表接口。
 
 从 Vote 的 `votedProposalIdsCount` / `votedProposalIdsAtIndex` 读取本轮有票 Proposal，再按映射筛选，不维护独立反向索引，不在这里计算激励门槛；不能读成历史累计。不另设人工 Proposal 数量上限，服务结算只扫描该轮实际有票且已关联的列表。
 
