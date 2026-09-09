@@ -234,8 +234,8 @@ group-chat 保留旧群聊全部业务行为，只作三类系统性改造：
 | 旧接口 | 去向 |
 | --- | --- |
 | `sources/ban/IBanVoteWeightSource.sol`（2 函数） | `voteWeightOf`、`totalVoteWeight` 合并进 `IActionManager`、`ITokenManager` |
-| `sources/ban/IAdminBanSource.sol`（1 函数 / 1 错误） | 无新接口文件。自身只声明 `GROUP_BAN_LIST_ADDRESS()`（行为契约来自继承的 `IPostBanSource.isBanned`），错误 `AdminBanSourceAddressHasNoCode`。作用是把人工黑名单包装成 ban source。见 [待确认 1](README.md#待确认) |
-| `sources/scope/IGroupMemberScope.sol`（1 函数 / 1 错误） | 无新接口文件。自身只声明 `GROUP_MEMBER_ADDRESS()`（行为契约来自继承的 `IPostScopeSource.canPost`），错误 `GroupMemberScopeAddressHasNoCode`。作用是把群成员名单包装成 scope source。见 [待确认 1](README.md#待确认) |
+| `sources/ban/IAdminBanSource.sol`（1 函数 / 1 错误） | 无新接口文件。自身只声明 `GROUP_BAN_LIST_ADDRESS()`（行为契约来自继承的 `IPostBanSource.isBanned`），错误 `AdminBanSourceAddressHasNoCode`。作用是把人工黑名单包装成 ban source。**已裁决需补回接口文件**，见 [已裁决 3](README.md#已裁决待补齐) |
+| `sources/scope/IGroupMemberScope.sol`（1 函数 / 1 错误） | 无新接口文件。自身只声明 `GROUP_MEMBER_ADDRESS()`（行为契约来自继承的 `IPostScopeSource.canPost`），错误 `GroupMemberScopeAddressHasNoCode`。作用是把群成员名单包装成 scope source。**已裁决需补回接口文件**，见 [已裁决 3](README.md#已裁决待补齐) |
 | `sources/scope/IGroupJoinScopeSource.sol`（2 函数 / 1 错误） | 无新接口文件。自身声明 `GROUP_MEMBER_ADDRESS()` 与 `GROUP_JOIN_ADDRESS()`（后者指向旧 core `Join`，该依赖已不存在），错误 `GroupJoinScopeSourceAddressHasNoCode`；等价能力由 `IActionManager` 承担 |
 | `interfaces/external/*.sol`（14 文件） | 外部依赖镜像（`IERC20Balance`、`IERC20Payment`、`IERC20Symbol`、`IERC721Receiver`、`IExtensionCenter`、`IGroupDefaults`、`IGroupDelegate`、`IGroupJoin`、`ILOVE20Group`、`ILOVE20Join`、`ILOVE20Launch`、`ILOVE20Stake`、`ILOVE20Submit`、`ILOVE20Vote`），新版直接引用 `core`、`action` 接口，不再复制 |
 

@@ -87,9 +87,9 @@
 | `LOVE20TKM/extension-lp/src/interface/ILpFactory.sol` | 不迁移 | 同上，取消工厂 |
 | `LOVE20TKM/extension-group/src/interface/IGroupActionFactory.sol`、`IGroupServiceFactory.sol`、`IExtensionGroupActionFactory.sol`、`IExtensionGroupServiceFactory.sol` | 不迁移 | 同上，取消工厂 |
 | `LOVE20TKM/group-chat/src/interfaces/sources/ban/IBanVoteWeightSource.sol` | 合并进 `IActionManager`、`ITokenManager` | 扁平化 |
-| `LOVE20TKM/group-chat/src/interfaces/sources/ban/IAdminBanSource.sol` | 无新接口文件 | 见待确认 1 |
-| `LOVE20TKM/group-chat/src/interfaces/sources/scope/IGroupJoinScopeSource.sol` | 无新接口文件 | 见待确认 1 |
-| `LOVE20TKM/group-chat/src/interfaces/sources/scope/IGroupMemberScope.sol` | 无新接口文件 | 见待确认 1 |
+| `LOVE20TKM/group-chat/src/interfaces/sources/ban/IAdminBanSource.sol` | 补回接口文件 | 见已裁决 3 |
+| `LOVE20TKM/group-chat/src/interfaces/sources/scope/IGroupJoinScopeSource.sol` | 补回接口文件 | 见已裁决 3 |
+| `LOVE20TKM/group-chat/src/interfaces/sources/scope/IGroupMemberScope.sol` | 补回接口文件 | 见已裁决 3 |
 | `LOVE20TKM/group/src/interfaces/ILOVE20Token.sol` | 不单独迁移：与 `core/ILOVE20Token.sol` 逐字相同（仅 import 路径不同），按 core 版对比 | 跨仓库镜像 |
 | `LOVE20TKM/group-chat/src/interfaces/external/*.sol` | 直接引用 `core`、`action` 接口 | 外部依赖镜像不再复制 |
 
@@ -145,19 +145,14 @@
 
 ## 已裁决待补齐
 
-以下两条经确认属于**新协议接口需要补齐的缺口**，不是文档缺陷，也不再属于待确认。
+以下六条经确认属于**新协议接口需要补齐的缺口**，不是文档缺陷。前两条先裁决，后四条由原「待确认」转入并已裁决。
 
 1. **action 层错误声明需补齐**。新 `IGroupActionExecutor` 只声明 15 个错误，旧三接口（`IGroupJoin`/`IGroupManager`/`IGroupVerify`）共 44 个错误中仅 5 个有对应。确认结论：这些校验在实现中仍然存在，**需要补回对应的自定义错误声明**，而不是用 `require` 或通用错误替代。待补齐清单见 [action.md §3「错误」](action.md)。
 2. **链群配置变更事件需补回**。旧 `IGroupManager` 的 `ActivateGroup`、`DeactivateGroup`、`UpdateGroupInfo` 三个事件在新 `IGroupActionExecutor` 无对应。确认结论：**需要补回**，前端依赖这些事件做索引与通知。
-
-## 待确认
-
-只列影响实施的缺口。
-
-1. **group-chat 的 scope/ban source 适配接口无新定义**。旧 `IAdminBanSource`（人工黑名单作为 ban source）、`IGroupMemberScope`（成员名单作为 scope source）、`IGroupJoinScopeSource`（行动参与作为 scope source）三个适配层接口在新 `interfaces/group-chat/` 没有对应文件。新 `IGroupChat.setScopeSource`/`setBanSource` 仍接受任意实现 `IPostScopeSource`/`IPostBanSource` 的地址，`IGroupChatBanList` 和 `IGroupMember` 也仍然存在，因此业务能力未删除；缺的是这三个适配合约的 ABI 声明。需要确认：是有意省略（实现时按 `IGroupChatRules` 的两个基接口直接实现），还是漏写。
-2. **Submit 推举去重与门槛错误无对应声明**。`docs/specs/CHANGES-core.md` 记录 Submit「保留推举门槛、去重逻辑」，但旧 `ILOVE20Submit` 的 `CannotSubmitAction`、`AlreadySubmitted`、`OnlyOneSubmitPerRound` 在新 `ILOVE20Submit` 的 4 个错误中没有对应项。需要确认这三种失败在新版用什么错误表达。
-3. **Mint 依赖地址与部分激励查询 getter 缺失**。旧 `ILOVE20Mint` 提供 `voteAddress`/`verifyAddress`/`stakeAddress` 和 `govVerifyReward`/`govBoostReward`/`calculateRoundGovReward`/`calculateRoundActionReward` 等查询，新接口只有 `init` 入参而无 getter。需要确认前端和 `interface-test` 是否依赖这些查询。
-4. **GroupActionExecutor 的链群维度汇总查询缺失**。旧 `IGroupJoin.totalJoinedAmountByGroupId`、`joinedAmount`、`totalJoinedAmountByGroupOwner` 在新接口没有对应函数，新接口只提供 `joinedAmountByMemberId` 和 `memberIdsByGroupId`。需要确认链群总额是否由前端遍历成员自行累加。
+3. **group-chat 的三个 scope/ban 适配接口需补回接口文件**。旧 `IAdminBanSource`（人工黑名单作 ban source）、`IGroupMemberScope`（成员名单作 scope source）、`IGroupJoinScopeSource`（行动参与作 scope source）在新 `interfaces/group-chat/` 没有对应文件。业务能力未删除（新 `IGroupChat.setScopeSource`/`setBanSource` 仍接受任意实现 `IPostScopeSource`/`IPostBanSource` 的地址，`IGroupChatBanList` 与 `IGroupMember` 也仍在），缺的是三个适配合约的 ABI 声明。确认结论：**补回三个接口文件**。三者各自只声明地址 getter，行为契约来自继承的 `IPostBanSource.isBanned` / `IPostScopeSource.canPost`，详见 [group-chat.md §10](group-chat.md)。
+4. **Submit 推举去重错误需补回**。`docs/specs/CHANGES-core.md` 记录 Submit「保留推举门槛、去重逻辑」，但旧 `ILOVE20Submit` 的 `CannotSubmitAction`、`AlreadySubmitted`、`OnlyOneSubmitPerRound` 在新接口的 4 个错误中没有对应项。确认结论：**补回这三个错误**，与规格的「保留去重」一致。
+5. **Mint 依赖地址 getter 需补回，激励计算查询保持精简**。旧 `ILOVE20Mint` 提供 `voteAddress`/`verifyAddress`/`stakeAddress`，新版退化为仅 `init` 入参。确认结论：**补回依赖地址 getter**（前端与其他合约发现依赖的常用入口）；`govVerifyReward`/`govBoostReward`/`calculateRoundGovReward`/`calculateRoundActionReward` 等激励计算查询**确认不补**，由调用方自行计算。注意 `verifyAddress` 对应的验证阶段已取消，补回时按新版实际依赖（`voteAddress`/`stakeAddress`/`submitAddress`/`launchAddress`）取用。
+6. **链群维度汇总查询需补回**。旧 `IGroupJoin.totalJoinedAmountByGroupId`、`joinedAmount`、`totalJoinedAmountByGroupOwner` 在新接口没有对应，新版只有 `joinedAmountByMemberId` 与 `memberIdsByGroupId`，只能遍历成员累加。确认结论：**补回汇总查询**，遍历累加在成员规模大时不可用。
 
 ## 核对方法与覆盖度
 
