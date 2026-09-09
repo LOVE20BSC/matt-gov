@@ -127,6 +127,7 @@ interface IGroupActionExecutor is IGroupActionIndexes, IProposalTarget {
     error NotMemberOwner(uint256 memberId);
     error ProposalNotVoted(address tokenAddress, uint256 proposalId);
     error InvalidRound(uint256 round);
+    error RoundNotStarted();
     error InsufficientExperienceQuota(uint256 providerMemberId, uint256 required, uint256 available);
     error VerifierAlreadyLocked(address tokenAddress, uint256 actionId, uint256 round);
     error BatchIndexMismatch(uint256 expected, uint256 actual);

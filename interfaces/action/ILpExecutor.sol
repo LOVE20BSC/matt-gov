@@ -45,6 +45,7 @@ interface ILpExecutor is IProposalTarget {
     error UnauthorizedCallback();
     error InvalidParticipationAmount();
     error InvalidRound(uint256 round);
+    error RoundNotStarted();
     error NotMemberOwner(uint256 memberId);
     error ProposalNotVoted(address tokenAddress, uint256 proposalId);
     error InsufficientGovRatio();

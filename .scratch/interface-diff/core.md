@@ -71,7 +71,7 @@
 | `syncObservation(uint256 observationId) returns (uint256 blockNumber, uint256 blockTimestamp)` | 无 | 新增 |
 | 事件 `PhaseSynchronized`、`PhaseAdjusted` | 无 | 新增 |
 | 错误 `InvalidPhase(uint256)`、`ObservationNotFound(uint256)` | 无 | 新增 |
-| 无 | 错误 `RoundNotStarted()` | 删除（仍存在于 `IGroupChat`） |
+| 无 | 错误 `RoundNotStarted()` | Core 不声明；由 Action Executor 与 Group Chat 各自声明 |
 
 旧 `IPhase` 被 6 个 core 接口继承并因此隐式暴露 `currentRound()`；新 `IPhase` 是独立合约接口，不被继承。
 
@@ -126,9 +126,7 @@
 
 ### 错误
 
-11 个全部保留，无增删：`AlreadyInitialized`、`NotAllowedToStakeAtRoundZero`、`InvalidToAddress`、`StakeAmountMustBeSet`、`UnstakeAlreadyRequested`、`UnstakeNotRequested`、`PromisedWaitingPhasesOutOfRange`、`PromisedWaitingPhasesMustBeGreaterOrEqualThanBefore`、`NoStakedLiquidity`、`NotEnoughWaitingBlocks`、`RoundHasNotStartedYet`。
-
-`InvalidToAddress` 保留但语义待核对：新接口已无 `to` 地址参数。
+保留 10 个错误；删除旧的 `InvalidToAddress()`（新接口不再接收 `to` 地址）：`AlreadyInitialized`、`NotAllowedToStakeAtRoundZero`、`StakeAmountMustBeSet`、`UnstakeAlreadyRequested`、`UnstakeNotRequested`、`PromisedWaitingPhasesOutOfRange`、`PromisedWaitingPhasesMustBeGreaterOrEqualThanBefore`、`NoStakedLiquidity`、`NotEnoughWaitingBlocks`、`RoundHasNotStartedYet`。
 
 ---
 

@@ -79,7 +79,7 @@
 
 ### 错误
 
-新 9 个：`AlreadyInitialized`、`InvalidKVLength`、`InvalidExecutor`、`UnauthorizedCallback`、`NotMemberOwner(memberId)`、`ProposalNotVoted(tokenAddress, proposalId)`、`InvalidRound(round)`、`RewardAlreadyMinted(tokenAddress, actionId, memberId, round)`、`IndexOutOfBounds(length)`。
+新 9 个：`AlreadyInitialized`、`InvalidKVLength`、`InvalidExecutor`、`UnauthorizedCallback`、`NotMemberOwner(memberId)`、`ProposalNotVoted(tokenAddress, proposalId)`、`InvalidRound(round)`、`RewardAlreadyMinted(tokenAddress, actionId, memberId, round)`、`IndexOutOfBounds(length)`。阶段型 Executor 另声明 `RoundNotStarted()`。
 
 旧 `IExtensionCenter` 13 个错误全部删除，其中三项有语义继承：`InvalidExtensionAddress`/`InvalidExtensionFactory` → `InvalidExecutor`、`ActionNotVotedInCurrentRound` → `ProposalNotVoted`、`OnlyExtensionOrDelegate`/`OnlyAccountOrExtensionOrDelegate` → `UnauthorizedCallback`。`AccountAlreadyJoined`、`VerificationInfoLengthMismatch`、`RoundExceedsJoinRound`、`ExtensionCreatorMismatch`、`ExtensionTokenAddressMismatch`、`ExtensionActionIdMismatch`、`ActionAlreadyRegisteredToOtherAction`、`InvalidAccountAddress` 无对应声明。
 
@@ -123,7 +123,7 @@
 | `ActionRewardMinted(tokenAddress, actionId, round, totalAmount, bytes32 recipientType)` | `IReward.ClaimReward(tokenAddress, round, actionId, address account, mintAmount, burnAmount)` | 改名+改参 |
 | `RewardBurned(tokenAddress, actionId, round, amount, bytes32 reason)` | `IReward.BurnReward(tokenAddress, round, actionId, amount)` | 改名+改参 |
 | 错误 `InsufficientGovRatio()` | `ILp.InsufficientGovRatio()` | 保留 |
-| 错误 `AlreadyInitialized`、`InvalidKVLength`、`UnauthorizedCallback`、`InvalidParticipationAmount`、`InvalidRound`、`NotMemberOwner`、`ProposalNotVoted`、`RewardAlreadyMinted` | 无 | 新增 |
+| 错误 `AlreadyInitialized`、`InvalidKVLength`、`UnauthorizedCallback`、`InvalidParticipationAmount`、`InvalidRound`、`RoundNotStarted`、`NotMemberOwner`、`ProposalNotVoted`、`RewardAlreadyMinted` | 无 | 新增 |
 | 无 | `ITokenJoin.InvalidJoinTokenAddress`、`JoinAmountZero`、`NotJoined`、`NotEnoughWaitingBlocks`；`IReward.AlreadyClaimed` | 删除（`JoinAmountZero` 语义并入 `InvalidParticipationAmount`） |
 
 ---
@@ -221,7 +221,7 @@
 
 ### 错误
 
-新 **43 个**错误：原有 15 个 + 本轮补齐 28 个。原有 15 个的完整清单：`AlreadyInitialized`、`InvalidKVLength`、`InvalidParticipationAmount`、`InvalidCandidate`、`InvalidSplits`、`ApplicationNotActive`、`InvalidExecutor`、`UnauthorizedCallback`、`NotMemberOwner`、`ProposalNotVoted`、`InvalidRound`、`InsufficientExperienceQuota`、`VerifierAlreadyLocked`、`BatchIndexMismatch`、`RewardAlreadyMinted`；补齐的 28 个见本节末表。
+新 **44 个**错误：原有 16 个 + 本轮补齐 28 个。原有 16 个的完整清单：`AlreadyInitialized`、`InvalidKVLength`、`InvalidParticipationAmount`、`InvalidCandidate`、`InvalidSplits`、`ApplicationNotActive`、`InvalidExecutor`、`UnauthorizedCallback`、`NotMemberOwner`、`ProposalNotVoted`、`InvalidRound`、`RoundNotStarted`、`InsufficientExperienceQuota`、`VerifierAlreadyLocked`、`BatchIndexMismatch`、`RewardAlreadyMinted`；补齐的 28 个见本节末表。
 
 其中 5 个有旧对应：`InvalidParticipationAmount` ← `JoinAmountZero`/`AmountBelowMinimum`、`InvalidCandidate` ← `NotVerifier`、`ApplicationNotActive` ← `GroupNotActive`（语义近似）、`AlreadyInitialized` 保留、`BatchIndexMismatch` ← `InvalidStartIndex`。
 
@@ -235,7 +235,7 @@
 | **已补回** | 28 | 见 `IGroupActionExecutor.sol` 末尾「自旧 `IGroupJoin`/`IGroupManager`/`IGroupVerify` 补齐」一段，全部按原名补回 |
 | 裁决不补 | 6 | `DistrustVoteExceedsVerifyVotes`、`DistrustVoteZeroAmount`、`InvalidReason`（不信任投票机制整块不迁移）；`NotRegisteredExtensionInFactory`、`ExtensionNotInitialized`、`InvalidFactoryAddress`（extension 工厂体系取消） |
 
-这 28 个错误对应新实现仍需暴露的校验，不能用 `require` 或通用错误替代；接口错误数为 43。见 [README「已确认并落地」](README.md#已确认并落地)。
+这 28 个错误对应新实现仍需暴露的校验，不能用 `require` 或通用错误替代；加上阶段未开始错误后，接口错误数为 44。见 [README「已确认并落地」](README.md#已确认并落地)。
 
 其中 `TrialAccountNotInWaitingList(address account)` 按主体统一规则改为 `TrialAccountNotInWaitingList(uint256 memberId)`；其余补回错误没有参数。
 
@@ -322,5 +322,5 @@
 | `RewardBurned` | 无 | 新增 |
 | 无 | `IGroupService.DistributeRecipient` | 删除（逐笔分配明细无事件） |
 | 错误 `DistributionOverflow(configured, available)` | `IGroupRecipients.InvalidRatio()` | 改名+改参（语义近似） |
-| 错误 `AlreadyInitialized`、`InvalidKVLength`、`InvalidRound`、`NotMemberOwner`、`ProposalNotVoted`、`UnauthorizedCallback`、`RewardAlreadyMinted` | 无 | 新增 |
+| 错误 `AlreadyInitialized`、`InvalidKVLength`、`InvalidRound`、`RoundNotStarted`、`NotMemberOwner`、`ProposalNotVoted`、`UnauthorizedCallback`、`RewardAlreadyMinted` | 无 | 新增 |
 | 无 | `IGroupService.NoActiveGroups`、`InvalidExtension`；`IGroupRecipients.TooManyRecipients`、`ZeroAddress`、`ZeroRatio`、`ArrayLengthMismatch`、`DuplicateAddress`、`RecipientCannotBeSelf`、`OnlyGroupOwner` | 删除 9 项 |
