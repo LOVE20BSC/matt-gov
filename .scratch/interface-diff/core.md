@@ -190,7 +190,7 @@
 | `IndexOutOfBounds(uint256 length)` | 无 | 新增 |
 | 无 | `MinStakeZero()`、`MaxRandomAccountsZero()`、`VerificationRuleEmpty()`、`VerificationKeyLengthExceeded()` | 删除（对应字段已移出 Proposal 主体） |
 | 无 | `TitleEmpty()` | 删除（`title` 仍在主体，校验错误未声明） |
-| 无 | `CannotSubmitAction()`、`AlreadySubmitted()`、`OnlyOneSubmitPerRound()` | 删除（推举门槛与去重行为保留，但专用 error selector 尚未冻结） |
+| `CannotSubmitAction()`、`AlreadySubmitted()`、`OnlyOneSubmitPerRound()` | 同名 | 保留（沿用旧 Submit 的门槛与去重 selector） |
 
 ---
 
