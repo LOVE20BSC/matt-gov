@@ -2,7 +2,7 @@
 
 状态列取值：`保留`（签名完全一致）、`改名`（仅标识符变）、`改参`（参数或返回值变）、`改名+改参`、`新增`、`删除`。
 
-跨层共性变化（memberId 主体化、错误/事件子接口内联、不再继承 `IPhase`、常量 getter 改 init 参数）见 [README](README.md#跨层结构变化)，本文不重复解释理由。
+跨层共性变化（memberId 主体化、错误/事件子接口内联、不再继承 `IPhase`、常量 getter 改 init 参数）见 [README](README.md#跨层结构变化)，本文不重复解释理由。Core 新接口统一使用 `Proposal`；`Action*` 仅出现在旧接口名称或 Action 层语境中。
 
 ---
 
