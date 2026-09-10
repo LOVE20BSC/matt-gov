@@ -42,7 +42,7 @@ Proposal 以 `tokenAddress + proposalId` 定位，ID 单调分配。
 
 事件与错误定义见 [`ILOVE20Submit.sol`](../../../interfaces/core/ILOVE20Submit.sol)。
 
-`ProposalNotFound` 用于不存在的 Proposal；`IndexOutOfBounds` 用于枚举越界。零 Target、非法模式、非成员持有人、重复推举和门槛不足必须回滚；这些拒绝条件的专用 error selector 尚未在 BSC 规格中冻结，不能把说明文字当作 ABI 定义。
+`ProposalNotFound` 用于不存在的 Proposal；`IndexOutOfBounds` 用于枚举越界。沿用旧 Submit 的三个专用 selector：门槛或资格不足回滚 `CannotSubmitAction`，同一 Proposal 同轮重复推举回滚 `AlreadySubmitted`，同一成员同轮再次推举回滚 `OnlyOneSubmitPerRound`。零 Target、非法模式、非成员持有人也必须回滚；其专用 selector 仍以接口文件为准。
 
 ## Target 回调
 

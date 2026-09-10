@@ -79,4 +79,7 @@ interface ILOVE20Submit {
     error InvalidKVLength();
     error ProposalNotFound(uint256 proposalId);
     error IndexOutOfBounds(uint256 length);
+    error CannotSubmitAction();
+    error AlreadySubmitted();
+    error OnlyOneSubmitPerRound();
 }

@@ -132,7 +132,7 @@
 
 旧：`LOVE20TKM/extension-group/src/interface/IGroupAction.sol`、`LOVE20TKM/extension-group/src/interface/IGroupManager.sol`、`LOVE20TKM/extension-group/src/interface/IGroupJoin.sol`、`LOVE20TKM/extension-group/src/interface/IGroupVerify.sol`。四个旧接口合并为一个 Executor。
 
-**继承**：`IGroupActionExecutor is IGroupActionIndexes, IProposalTarget`。因此其完整 ABI = 自身声明的 43 个函数 + 继承的 51 个 `g*` 索引函数（见第 4 节）+ 3 个 `IProposalTarget` 回调，共 97 个。下文表格只列自身声明的部分，`g*` 索引按第 4 节的组名收敛。
+**继承**：`IGroupActionExecutor is IGroupActionIndexes, IProposalTarget`。因此其完整 ABI = 自身声明的 44 个函数 + 继承的 51 个 `g*` 索引函数（见第 4 节）+ 3 个 `IProposalTarget` 回调，共 98 个。下文表格只列自身声明的部分，`g*` 索引按第 4 节的组名收敛。
 
 四阶段轮次（投票、加入、验证、铸币）。
 
