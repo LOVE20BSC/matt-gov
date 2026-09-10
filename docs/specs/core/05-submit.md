@@ -30,7 +30,7 @@ Proposal 以 `tokenAddress + proposalId` 定位，ID 单调分配。
 
 ## 接口
 
-完整 ABI 见 [`ILOVE20Submit.sol`](../../../interfaces/core/ILOVE20Submit.sol)。它沿用旧 `LOVE20TKM/core/src/interfaces/ILOVE20Submit.sol` 的 Proposal 创建、推举、枚举和查询职责；旧 Action 字段已按 BSC 规则替换为 Proposal，业务主体由地址改为 `memberId`。
+完整 ABI 见 [`ILOVE20Submit.sol`](../../../interfaces/core/ILOVE20Submit.sol)。它沿用旧 `LOVE20TKM/core/src/interfaces/ILOVE20Submit.sol` 的 Proposal 创建、推举、枚举和查询职责；旧接口中的行动专属字段已按 BSC 规则移出，统一由 Proposal 与 Target/KV 表达，业务主体由地址改为 `memberId`。
 
 ## 推举
 

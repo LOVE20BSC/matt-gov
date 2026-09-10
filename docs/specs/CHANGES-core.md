@@ -47,7 +47,7 @@
 ### 核心设计
 - **无业务语义**：Phase 只维护连续时间片，不命名具体阶段
 - **动态校准**：根据实际区块时间自动调整 `phaseBlocks`，使每个 Phase 接近目标自然天数
-- **固定映射**：Core 治理和各 Action Executor 按各自规格把 Phase 映射为业务轮次
+- **固定映射**：Core 治理和 Action 层各 Executor 按各自规格把 Phase 映射为业务轮次
 
 ### 关键特性
 - 第一个 Phase 编号为 `1`
