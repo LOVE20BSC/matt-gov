@@ -68,7 +68,7 @@ distributor 自行实现领取与查询逻辑，`claim(tokenAddress)` 只是建�
 
 初始化接口见 [`ILOVE20TokenFactory.sol`](../../../interfaces/core/ILOVE20TokenFactory.sol)。
 
-工厂初始化一次，固定 Launch、Mint、首批供应量和最大供应量；`init` 可由任意地址提交，不保存部署者地址，也不授予部署者特权，发布前由检查脚本核验参数。对应常量 getter 保留旧命名 `LAUNCH_AMOUNT()`、`MAX_SUPPLY()`，初始化参数满足 `initialSupply <= maxSupply`。Stake 自行依赖符合 Uniswap V2 接口的 Pair Factory，并在首次 LP 质押时查询或创建 Pair。
+工厂初始化一次，固定 Launch、Mint、首批供应量和最大供应量；`init` 可由任意地址提交，不保存部署者地址，也不授予部署者特权，发布前由检查脚本核验参数。零地址使用 `ZeroAddress(parameter)`，空名称或符号使用 `EmptyString(parameter)`，供应量关系错误使用 `InvalidAmount()`。对应常量 getter 保留旧命名 `LAUNCH_AMOUNT()`、`MAX_SUPPLY()`，初始化参数 `launchAmount <= maxSupply`。Stake 自行依赖符合 Uniswap V2 接口的 Pair Factory，并在首次 LP 质押时查询或创建 Pair。
 
 创建接口见 [`ILOVE20TokenFactory.sol`](../../../interfaces/core/ILOVE20TokenFactory.sol)。
 
