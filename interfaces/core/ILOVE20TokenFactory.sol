@@ -32,6 +32,6 @@ interface ILOVE20TokenFactory {
     function pairFactoryAddress() external view returns (address);
     function launchAddress() external view returns (address);
     function mintAddress() external view returns (address);
-    function initialSupply() external view returns (uint256);
-    function maxSupply() external view returns (uint256);
+    function LAUNCH_AMOUNT() external view returns (uint256);
+    function MAX_SUPPLY() external view returns (uint256);
 }
