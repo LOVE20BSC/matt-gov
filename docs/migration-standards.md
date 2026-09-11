@@ -38,6 +38,7 @@
 - 先删除已裁决移出的业务和依赖，再补入 BSC 必需内容；不复制不会使用的旧合约、库或外部接口。
 - Core 统一使用 `Proposal`；只有 Action 层使用 `actionId` 作为 Proposal 的业务别名。
 - 接口以 `matt-gov/interfaces/` 为唯一 ABI 来源；目标仓库的 `src/interfaces/` 必须与之同步。
+- 初始化是否需要权限按协议目标决定；去中心化模块可采用一次性无权限 `init`，但必须由发布前 check 脚本核验依赖和参数。
 
 ## 每一步的审查证据
 
