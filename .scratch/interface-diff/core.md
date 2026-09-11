@@ -351,11 +351,11 @@
 | 新 | 旧 | 状态 |
 | --- | --- | --- |
 | `createToken(parentTokenAddress, string calldata name, string calldata symbol, address distributor)` | `createToken(parentTokenAddress, string memory name, string memory symbol)` | 改参（新增 `distributor`，`memory` → `calldata`） |
-| `pairFactoryAddress()` | `uniswapV2Factory()` | 改名 |
+| 无 | `uniswapV2Factory()` | 删除（Pair 创建移入 Stake） |
 | `LAUNCH_AMOUNT()` | 同名 | 保留（常量 getter 保持旧大写命名） |
 | `MAX_SUPPLY()` | 同名 | 保留（常量 getter 保持旧大写命名） |
 | `launchAddress()`、`mintAddress()` | 同名 | 保留 |
-| `init(pairFactoryAddress, launchAddress, mintAddress, initialSupply, maxSupply)` | 无 | 新增 |
+| `init(launchAddress, mintAddress, initialSupply, maxSupply)` | 无 | 新增 |
 | 无 | `stakeAddress()` | 删除（去 SL/ST 依赖） |
 | 无 | `MAX_WITHDRAWABLE_TO_FEE_RATIO()` | 删除（手续费结算移入 `Stake`） |
 | 事件 `TokenCreated(tokenAddress, parentTokenAddress, name, symbol, address distributor)` | `TokenCreate(tokenAddress, parentTokenAddress, name, symbol)` | 改名+改参 |

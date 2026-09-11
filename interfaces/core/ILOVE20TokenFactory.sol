@@ -17,7 +17,6 @@ interface ILOVE20TokenFactory {
     );
 
     function init(
-        address pairFactoryAddress,
         address launchAddress,
         address mintAddress,
         uint256 initialSupply,
@@ -29,7 +28,6 @@ interface ILOVE20TokenFactory {
         string calldata symbol,
         address distributor
     ) external returns (address tokenAddress);
-    function pairFactoryAddress() external view returns (address);
     function launchAddress() external view returns (address);
     function mintAddress() external view returns (address);
     function LAUNCH_AMOUNT() external view returns (uint256);
