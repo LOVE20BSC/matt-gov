@@ -8,7 +8,7 @@ Launch 负责基础发射与次数账本；TokenFactory 负责创建 LOVE20Token
 
 完整 ABI 见 [`ILOVE20Launch.sol`](../../../interfaces/core/ILOVE20Launch.sol)。
 
-先部署全部合约取得地址，并完成 `TokenFactory.init`，再由部署授权者调用一次 `Launch.init`。本次交易写入依赖和参数，调用 `TokenFactory.createToken(rootParentToken, name, symbol, distributor)`；工厂完成首币、Pair 和父币/minter 绑定，Launch 登记首币并同步调用 `MemberNFT.init(tokenAddress)` 完成其初始化；MemberNFT 不保存 Launch 地址。Launch 不再次创建 Pair，也不重复铸造首批供应。
+先部署全部合约取得地址，并完成 `TokenFactory.init`，再由部署授权者调用一次 `Launch.init`。本次交易写入依赖和参数，调用 `TokenFactory.createToken(rootParentToken, name, symbol, distributor)`；工厂完成首币和父币/minter 绑定，Launch 登记首币并同步调用 `MemberNFT.init(tokenAddress)` 完成其初始化；MemberNFT 不保存 Launch 地址。Pair 在首次 LP 质押时由 `Stake` 按需查询或创建，Launch 不创建 Pair，也不重复铸造首批供应。
 
 首币不消耗成员发射次数，也不接收或处理 Launch KV 数组。本次初始化交易任一步失败回滚全部效果；成功后不得重初始化、替换依赖或改写首币。部署参数的含义见 [参数表](00-protocol-model.md#初始化参数)。
 
@@ -58,26 +58,25 @@ launchCredit -= count * threshold
 
 `NoCallback` 不调用回调且要求两数组为空；`Callback` 要求 `distributor` 为合约并调用 `onTokenLaunched`，原样透传 Launch KV，回调失败则整笔发射回滚。首币使用旧 Burn `Airdrop`，固定采用 `NoCallback`；普通发射才可选择 `Callback`。
 
-回调仅由 Launch 调用，发生于代币/Pair 创建、首批供应到账、代币登记与次数扣减之后；`launcherMemberId` 取本次 `memberId`。distributor 校验调用方并防止同一 token 重复处理；Launch 不开放额外的补触发回调入口。两种模式均允许非零合约接收，EOA 仅允许 NoCallback。
+回调仅由 Launch 调用，发生于代币创建、首批供应到账、代币登记与次数扣减之后；`launcherMemberId` 取本次 `memberId`。distributor 校验调用方并防止同一 token 重复处理；Launch 不开放额外的补触发回调入口。两种模式均允许非零合约接收，EOA 仅允许 NoCallback。
 
 distributor 自行实现领取与查询逻辑，`claim(tokenAddress)` 只是建议接口，不是协议必需 ABI。发射者负责选择分发目标，承担其失败和 Gas 耗尽风险。
 
 ## TokenFactory
 
-保留旧工厂“初始化配置 + 创建代币/Pair”的职责。来源为 `LOVE20TKM/core/src/LOVE20TokenFactory.sol`（提交见[旧代码基线](../../repositories.md#旧代码基线)）；BSC 新增 `distributor`，删除 SL/ST 创建及相关依赖。LOVE20Token 的完整参数在构造函数中一次传入，不再提供 `init`。
+保留旧工厂“初始化配置 + 创建代币”的职责。来源为 `LOVE20TKM/core/src/LOVE20TokenFactory.sol`（提交见[旧代码基线](../../repositories.md#旧代码基线)）；BSC 新增 `distributor`，删除 Pair、SL/ST 创建及相关依赖，Pair 生命周期移入 `Stake`。LOVE20Token 的完整参数在构造函数中一次传入，不再提供 `init`。
 
 初始化接口见 [`ILOVE20TokenFactory.sol`](../../../interfaces/core/ILOVE20TokenFactory.sol)。
 
-工厂由部署授权者初始化一次，固定 Pair Factory、Launch、Mint、首批供应量和最大供应量；对应常量 getter 保留旧命名 `LAUNCH_AMOUNT()`、`MAX_SUPPLY()`，初始化参数满足 `initialSupply <= maxSupply`。不调用 Launch 业务，因此可在首币存在前初始化。Stake 通过符合 Uniswap V2 接口的 Pair Factory 查询 Pair，不要求 TokenFactory 维护 `pairOf` 映射。
+工厂由部署授权者初始化一次，固定 Launch、Mint、首批供应量和最大供应量；对应常量 getter 保留旧命名 `LAUNCH_AMOUNT()`、`MAX_SUPPLY()`，初始化参数满足 `initialSupply <= maxSupply`。不调用 Launch 业务，因此可在首币存在前初始化。Stake 自行依赖符合 Uniswap V2 接口的 Pair Factory，并在首次 LP 质押时查询或创建 Pair。
 
 创建接口见 [`ILOVE20TokenFactory.sol`](../../../interfaces/core/ILOVE20TokenFactory.sol)。
 
 仅已初始化工厂允许 Launch 调用。父币或 distributor 为零、名称或符号为空时拒绝。创建时原子执行：
 
 1. 创建 LOVE20Token，使用工厂固定的供应参数，将 `initialSupply` 直接铸给 distributor，不先交给 Launch。
-2. 通过 Pair Factory 创建该代币与 parentTokenAddress 的 Pair。
-3. LOVE20Token 构造函数直接写入父币和 Mint 权限；不创建 SL/ST，质押账本仍在 Stake。
-4. 发出代币创建事件并返回 tokenAddress；任一步失败全部回滚。
+2. LOVE20Token 构造函数直接写入父币和 Mint 权限；不创建 Pair 或 SL/ST，质押账本仍在 Stake。
+3. 发出代币创建事件并返回 tokenAddress；任一步失败全部回滚。
 
 父币社区是否合法、发射次数和分发回调由 Launch 检查。首币使用 WBNB，普通子币使用已登记 LOVE20 父币。
 
