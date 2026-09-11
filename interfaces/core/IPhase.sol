@@ -6,7 +6,7 @@ interface IPhase {
     function originPhaseBlocks() external view returns (uint256);
     function targetSeconds() external view returns (uint256);
     function adjustThreshold() external view returns (uint256);
-    function phaseBlocks() external view returns (uint256);
+    function currentPhaseBlocks() external view returns (uint256);
     function currentPhase() external view returns (uint256);
     function phaseInfo(uint256 phaseNumber)
         external view returns (uint256 startBlock, uint256 phaseBlocks_);
