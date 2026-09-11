@@ -4,7 +4,6 @@ pragma solidity =0.8.17;
 interface IPhase {
     function originBlocks() external view returns (uint256);
     function initialPhaseBlocks() external view returns (uint256);
-    function targetDays() external view returns (uint256);
     function targetSeconds() external view returns (uint256);
     function adjustThreshold() external view returns (uint256);
     function phaseBlocks() external view returns (uint256);
