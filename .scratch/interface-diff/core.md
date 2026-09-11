@@ -352,8 +352,8 @@
 | --- | --- | --- |
 | `createToken(parentTokenAddress, string calldata name, string calldata symbol, address distributor)` | `createToken(parentTokenAddress, string memory name, string memory symbol)` | 改参（新增 `distributor`，`memory` → `calldata`） |
 | `pairFactoryAddress()` | `uniswapV2Factory()` | 改名 |
-| `initialSupply()` | `LAUNCH_AMOUNT()` | 改名 |
-| `maxSupply()` | `MAX_SUPPLY()` | 改名 |
+| `LAUNCH_AMOUNT()` | 同名 | 保留（常量 getter 保持旧大写命名） |
+| `MAX_SUPPLY()` | 同名 | 保留（常量 getter 保持旧大写命名） |
 | `launchAddress()`、`mintAddress()` | 同名 | 保留 |
 | `init(pairFactoryAddress, launchAddress, mintAddress, initialSupply, maxSupply)` | 无 | 新增 |
 | 无 | `stakeAddress()` | 删除（去 SL/ST 依赖） |

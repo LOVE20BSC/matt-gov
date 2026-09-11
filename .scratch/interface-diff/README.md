@@ -142,7 +142,7 @@
 1. **主体从地址改为 memberId**。旧 `address account` / `address voter` / `address verifier` 等业务主体参数统一改为 `uint256 memberId` 及其派生名（`voterId`、`submitterId`、`verifierMemberId`、`providerMemberId`、`senderId`）。仅 ERC20/ERC721 标准接口、`distributor`、`target`、`executor`、事件中的 owner 快照和审计地址保留 `address`。
 2. **错误与事件不再拆分子接口**。旧代码普遍使用 `I<Name>Errors` / `I<Name>Events` 子接口再继承（如 `ILOVE20Stake is ILOVE20StakeErrors, ILOVE20StakeEvents, IPhase`）；新接口把事件和错误直接内联在主接口内，不生成额外接口名。
 3. **不再继承 IPhase**。旧 `ILOVE20Stake`、`ILOVE20Submit`、`ILOVE20Vote`、`ILOVE20Verify`、`ILOVE20Join`、`ILOVE20Random` 都 `is IPhase`，因此隐式暴露 `currentRound()`、`roundByBlockNumber()`。新接口改为 `init(phaseAddress, ...)` 依赖注入，各接口只按需自行声明 `currentRound()`（`ILOVE20Submit`、`ILOVE20Vote`、`IGroupChat`）或分阶段轮次（`currentVoteRound`/`currentJoinRound`/`currentVerifyRound`/`currentMintRound`）。
-4. **常量 getter 改为按作用域查询或 init 参数**。旧代码把部署参数暴露为全大写 getter（`ROUND_REWARD_GOV_PER_THOUSAND`、`MAX_SUPPLY`、`LAUNCH_AMOUNT` 等）。新接口部分改为小驼峰 getter（`maxSupply`、`initialSupply`、`launchRatio`、`proposalRewardMinVotePerThousand`），行动 Executor 的 Proposal KV 配置则保留 getter 名并补 `tokenAddress + actionId` 作用域；其余参数只作为 `init` 入参而不再提供 getter。后者是可查询能力的净减少，逐项列在各分层文档。
+4. **常量 getter 改为按作用域查询或 init 参数**。旧代码把部署参数暴露为全大写 getter（`ROUND_REWARD_GOV_PER_THOUSAND`、`MAX_SUPPLY`、`LAUNCH_AMOUNT` 等）。新接口通常改为小驼峰 getter；TokenFactory 的 `LAUNCH_AMOUNT()`、`MAX_SUPPLY()` 保留旧大写命名，行动 Executor 的 Proposal KV 配置则保留 getter 名并补 `tokenAddress + actionId` 作用域；其余参数只作为 `init` 入参而不再提供 getter。后者是可查询能力的净减少，逐项列在各分层文档。
 
 ## 已确认并落地
 
