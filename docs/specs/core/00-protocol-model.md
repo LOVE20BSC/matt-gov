@@ -44,7 +44,7 @@ Core 不解释具体 Proposal 的业务字段，扩展通过 Target 接入。
 | Launch | `launchRatio` | 发射阈值比例，`1e18` 精度，如 `1e16 = 1%` |
 | Launch | `maxLaunchCount` | 每社区累计次数上限，如 `100` |
 | TokenFactory | `launchAddress`、`mintAddress` | 唯一创建调用方和代币 minter |
-| TokenFactory | `initialSupply`、`maxSupply` | 初始/最大供应量，工厂 init 固定；`initialSupply <= maxSupply` |
+| TokenFactory | `LAUNCH_AMOUNT`、`MAX_SUPPLY` | 首批/最大供应量，工厂 init 固定；`launchAmount <= maxSupply` |
 | TokenFactory.createToken | `distributor` | 本次创建的首批代币接收者；非零 |
 
 MemberNFT 的首币地址由 `Launch.init` 在创建首币时同步调用 `MemberNFT.init(tokenAddress)` 绑定，不在部署时传入；MemberNFT 不保存 Launch 地址。Launch 的首币分发地址、名称和符号，以及 TokenFactory 的初始化/创建参数统一见 [Launch](08-launch.md)，不另维护供应量副本。Pair Factory 和 Router 都是 Stake 的外部依赖，不参与 TokenFactory 的代币创建。

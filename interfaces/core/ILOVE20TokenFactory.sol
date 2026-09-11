@@ -3,9 +3,9 @@ pragma solidity =0.8.17;
 
 interface ILOVE20TokenFactory {
     error AlreadyInitialized();
-    error InvalidAddress();
-    error EmptyString();
-    error InvalidSupply();
+    error ZeroAddress(string parameter);
+    error EmptyString(string parameter);
+    error InvalidAmount();
     error UnauthorizedCaller();
 
     event TokenCreated(
@@ -16,10 +16,15 @@ interface ILOVE20TokenFactory {
         address distributor
     );
 
+    function launchAddress() external view returns (address);
+    function mintAddress() external view returns (address);
+    function initialized() external view returns (bool);
+    function LAUNCH_AMOUNT() external view returns (uint256);
+    function MAX_SUPPLY() external view returns (uint256);
     function init(
         address launchAddress,
         address mintAddress,
-        uint256 initialSupply,
+        uint256 launchAmount,
         uint256 maxSupply
     ) external;
     function createToken(
@@ -28,9 +33,4 @@ interface ILOVE20TokenFactory {
         string calldata symbol,
         address distributor
     ) external returns (address tokenAddress);
-    function launchAddress() external view returns (address);
-    function mintAddress() external view returns (address);
-    function initialized() external view returns (bool);
-    function LAUNCH_AMOUNT() external view returns (uint256);
-    function MAX_SUPPLY() external view returns (uint256);
 }
