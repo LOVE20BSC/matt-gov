@@ -1,6 +1,6 @@
 # LOVE20BSC 规格文档结构
 
-本文件规定文档归属和迁移方式；具体写法见 [撰写指南](spec-writing-guide.md)，审查方法见 [审查指南](review-guide.md)。
+本文件规定文档归属和迁移方式；具体写法见 [撰写指南](spec-writing-guide.md)，审查方法见 [审查指南](review-guide.md)，代码迁移步骤见 [代码迁移规范](migration-standards.md)。
 
 ## 单一来源
 
