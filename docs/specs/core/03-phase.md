@@ -6,7 +6,7 @@ Phase 维护连续的无语义时间片、同步观测和动态校准，不内�
 
 `originBlocks`、初始 `phaseBlocks`、`targetDays` 为正数；`adjustThreshold` 使用 `1e18` 精度且大于零。`block.number == originBlocks` 时为 Phase 1；不存在有效 Phase 0。`targetSeconds = targetDays * 86400`，如 7 天。
 
-构造参数为 `originBlocks`、`phaseBlocks`、`targetDays` 和 `adjustThreshold`；完整运行时 ABI 见 [`IPhase.sol`](../../../interfaces/core/IPhase.sol)。
+构造参数为 `originBlocks`、`originPhaseBlocks`、`targetDays`、`adjustThreshold` 和 `syncObservationLimit`；完整运行时 ABI 见 [`IPhase.sol`](../../../interfaces/core/IPhase.sol)。`syncObservationLimit` 为正数，用于初始化每轮同步前的快速回溯条数。
 
 | 接口 | 返回或作用 |
 | --- | --- |
@@ -34,7 +34,7 @@ Phase 维护连续的无语义时间片、同步观测和动态校准，不内�
 
 ## 校准
 
-1. 先从最近观测向前检查最多 10 条；仍未找到合格观测时，用二分查找最近的合格观测。
+1. 先从最近观测向前检查最多 `syncObservationLimit` 条；仍未找到合格观测时，用二分查找最近的合格观测。
 2. 对满足条件的记录计算以下公式，除法向下取整。
 3. `deviation > adjustThreshold` 才调整，等于阈值时不调整。
 4. 新长度至少为 1，只用于尚未生成的 Phase，已生成阶段不回写。
@@ -57,7 +57,7 @@ Submit 和 Vote 的 `currentRound()` 等于 `Phase.currentPhase()`。创建、�
 
 ## 校准边界
 
-- 默认从最近观测向前检查最多 10 条；仍未找到合格观测时，用二分查找最近的合格观测。
+- 默认从最近观测向前检查最多 `syncObservationLimit` 条；仍未找到合格观测时，用二分查找最近的合格观测。
 - 没有合格观测、`elapsedBlocks == 0` 或 `elapsedSeconds == 0` 时只记录观测，不调整参数。
 - 偏差阈值由初始化参数 `adjustThreshold` 提供，按 `1e18` 精度；超过阈值才调整。
 - 新长度为 `max(1, floor(elapsedBlocks * targetSeconds / elapsedSeconds))`；已生成 Phase 不回写。
