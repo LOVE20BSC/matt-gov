@@ -331,7 +331,7 @@
 
 ## 8. ILOVE20Token vs ILOVE20Token
 
-旧：`LOVE20TKM/core/src/interfaces/ILOVE20Token.sol`。业务能力不变，仅去 SL/ST 依赖并显式展开 ERC20。
+旧：`LOVE20TKM/core/src/interfaces/ILOVE20Token.sol`。业务能力不变，仅去 SL/ST 依赖；ERC20 标准能力继续通过 `IERC20`、`IERC20Metadata` 继承。
 
 | 新 | 旧 | 状态 |
 | --- | --- | --- |
