@@ -355,7 +355,8 @@
 | `LAUNCH_AMOUNT()` | 同名 | 保留（常量 getter 保持旧大写命名） |
 | `MAX_SUPPLY()` | 同名 | 保留（常量 getter 保持旧大写命名） |
 | `launchAddress()`、`mintAddress()` | 同名 | 保留 |
-| `init(launchAddress, mintAddress, initialSupply, maxSupply)` | 无 | 新增 |
+| `initialized()` | 无 | 新增（公开初始化状态） |
+| `init(launchAddress, mintAddress, initialSupply, maxSupply)` | 无 | 新增（一次性无权限初始化，发布前由 check 脚本核验） |
 | 无 | `stakeAddress()` | 删除（去 SL/ST 依赖） |
 | 无 | `MAX_WITHDRAWABLE_TO_FEE_RATIO()` | 删除（手续费结算移入 `Stake`） |
 | 事件 `TokenCreated(tokenAddress, parentTokenAddress, name, symbol, address distributor)` | `TokenCreate(tokenAddress, parentTokenAddress, name, symbol)` | 改名+改参 |

@@ -30,6 +30,7 @@ interface ILOVE20TokenFactory {
     ) external returns (address tokenAddress);
     function launchAddress() external view returns (address);
     function mintAddress() external view returns (address);
+    function initialized() external view returns (bool);
     function LAUNCH_AMOUNT() external view returns (uint256);
     function MAX_SUPPLY() external view returns (uint256);
 }
