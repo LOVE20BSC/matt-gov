@@ -2,11 +2,11 @@
 pragma solidity =0.8.17;
 
 interface IPhase {
-    function originBlocks() external view returns (uint256);
-    function originPhaseBlocks() external view returns (uint256);
-    function targetSeconds() external view returns (uint256);
-    function adjustThreshold() external view returns (uint256);
-    function syncObservationLimit() external view returns (uint256);
+    function ORIGIN_BLOCKS() external view returns (uint256);
+    function ORIGIN_PHASE_BLOCKS() external view returns (uint256);
+    function TARGET_SECONDS() external view returns (uint256);
+    function ADJUST_THRESHOLD() external view returns (uint256);
+    function SYNC_OBSERVATION_LIMIT() external view returns (uint256);
     function currentPhaseBlocks() external view returns (uint256);
     function currentPhase() external view returns (uint256);
     function phaseInfo(uint256 phaseNumber)
@@ -32,4 +32,5 @@ interface IPhase {
 
     error InvalidPhase(uint256 phaseNumber);
     error ObservationNotFound(uint256 observationId);
+    error InvalidKeyOrder();
 }
