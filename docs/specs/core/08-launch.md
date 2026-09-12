@@ -52,6 +52,8 @@ launchCredit -= count * threshold
 
 `memberId` 必须由调用者当前持有；不用地址默认 NFT 映射。名称沿用旧 Launch 的 `tokenSymbol + "@" + parentSymbol` 生成方式。
 
+`tokenSymbol` 的合法性沿用旧实现：长度必须等于部署配置的符号长度；首字符必须为 ASCII `A-Z`；其余字符必须为 ASCII `A-Z` 或 `0-9`。不满足时回滚 `InvalidTokenSymbol()`。
+
 普通发射的社区必须与 `parentTokenAddress` 一致，`distributor` 非零。部署时保留符号不得本地发射或复用。分发支持 `NoCallback` 和 `Callback` 两种模式。Launch 回调使用本次发射的 `keys`/`values` 数组；两数组可以同时为空，非空时必须等长：
 
 分发回调接口见 [`ILaunchDistributor.sol`](../../../interfaces/core/ILaunchDistributor.sol)。
