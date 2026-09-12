@@ -202,7 +202,7 @@
 - **达到上限后**：治理激励仍可铸造，但不再增加发射次数
 
 #### 首个代币部署
-- `Launch.init(...)` 在写入依赖和发射参数的同一笔初始化交易中，通过 `TokenFactory` 创建首个代币、设置 `minter`、发送首批代币到 Airdrop、创建首个代币/WBNB Pair，并同步调用 `MemberNFT.init(firstToken)` 完成其初始化
+- `Launch.init(...)` 在写入依赖和发射参数的同一笔初始化交易中，通过 `TokenFactory` 创建首个代币、设置 `minter`、发送首批代币到 Airdrop，并同步调用 `MemberNFT.init(firstToken)` 完成其初始化；Pair 由 `Stake` 在首次 LP 质押时按需创建
 - `Launch` 的分发参数与 Proposal 的 `target + targetMode` 对齐：首币固定使用 Airdrop 和 `NoCallback`；普通发射可使用 `NoCallback` 或 `Callback`
 - `Launch.init` 任一步失败则整笔回滚；成功后不得再次初始化或创建第二个首个代币
 - Airdrop 来源和 Burn 追溯证据按部署记录保存
@@ -227,7 +227,7 @@
 
 ### 🔄 BSC 调整
 - `TokenFactory.createToken` 新增非零 `distributor`，首批供应量直接铸给该地址
-- 删除 SL/ST 实例创建及其 Stake 依赖；Pair 仍由工厂创建
+- 删除 SL/ST 实例创建及其 Stake 依赖；Pair 生命周期移入 `Stake`，由其在首次 LP 质押时按需创建
 - 首个代币依赖 Airdrop 合约分发（来源：LOVE20TKM/burn）
 
 ### 📍 实现参考

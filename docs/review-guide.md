@@ -149,7 +149,7 @@ rg -n 'core\.md|action\.md|group-chat\.md|launchFirstToken|initializeGenesis|TOD
 
 1. `MemberNFT.mint` → 费用计算 → NFT 铸造；
 2. `Vote` → `prepareRewardIfNeeded` → 治理/Proposal 激励铸造；
-3. `Launch.init` → 首个代币 → Pair → Airdrop；
+3. `Launch.init` → 首个代币 → Airdrop；Pair 由 `Stake` 在首次 LP 质押时按需创建；
 4. 一条 Action 加入/退出/验证/铸造流程；
 5. 一条 Group Chat 发言和黑名单流程。
 
