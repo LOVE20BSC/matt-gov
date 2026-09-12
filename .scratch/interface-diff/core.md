@@ -19,17 +19,19 @@
 | `BYTES_THRESHOLD()` | `BYTES_THRESHOLD()` | 保留 |
 | `MULTIPLIER()` | `MULTIPLIER()` | 保留 |
 | `MAX_NAME_LENGTH()` | `MAX_GROUP_NAME_LENGTH()` | 改名（去掉 `GROUP`；值 64 → 32 bytes） |
-| `mint(string name) returns (uint256 id, uint256 mintCost)` | `mint(string groupName) returns (uint256 tokenId, uint256 mintCost)` | 改名（仅参数/返回名） |
-| `calculateMintCost(string calldata name)` | `calculateMintCost(string memory groupName)` | 改名+改参（`memory` → `calldata`） |
+| `initialized()` | 无 | 新增（公开初始化状态） |
+| `init(address firstTokenAddress)` | 无（旧为构造函数入参） | 新增 |
+| `mint(string calldata name) returns (uint256 id, uint256 mintCost)` | `mint(string calldata groupName) returns (uint256 tokenId, uint256 mintCost)` | 改名（接口仅参数/返回名变化；实现入参由 `memory` 改为 `calldata`，selector 不变） |
+| `calculateMintCost(string calldata name)` | `calculateMintCost(string memory groupName)` | 改名+改参（接口数据位置变化，selector 不变；实现保留 `public` + `memory` 供内部复用） |
 | `nameOf(uint256 id)` | `groupNameOf(uint256 tokenId)` | 改名 |
-| `idOf(string calldata name)` | `tokenIdOf(string calldata groupName)` | 改名 |
 | `isNameUsed(string calldata name)` | `isGroupNameUsed(string calldata groupName)` | 改名 |
+| `idOf(string calldata name)` | `tokenIdOf(string calldata groupName)` | 改名 |
 | `normalizedNameOf(string calldata name)` | `normalizedNameOf(string calldata groupName)` | 保留 |
 | `totalBurnedForMint()` | 同名 | 保留 |
 | `holdersCount()` | 同名 | 保留（语义变，见下） |
 | `holdersAtIndex(uint256 index)` | 同名 | 保留（语义变，见下） |
-| `init(address firstTokenAddress)` | 无（旧为构造函数入参） | 新增 |
-| `balanceOf`、`ownerOf`、`safeTransferFrom`×2、`transferFrom`、`approve`、`setApprovalForAll`、`getApproved`、`isApprovedForAll`、`totalSupply`、`tokenByIndex`、`tokenOfOwnerByIndex` | 旧接口未声明（实现继承 ERC721Enumerable） | 新增（显式声明 12 个标准函数） |
+| `balanceOf`、`ownerOf`、`safeTransferFrom`×2、`transferFrom`、`approve`、`setApprovalForAll`、`getApproved`、`isApprovedForAll`、`totalSupply`、`tokenByIndex`、`tokenOfOwnerByIndex` | 旧接口未声明（实现继承 ERC721Enumerable） | 保留（通过 OZ 继承，Core 接口继承 `IERC721Enumerable`，准备接口不重复声明） |
+| `supportsInterface`、`name`、`symbol`、`tokenURI` | 旧实现继承 ERC165/ERC721 | 保留（通过 OZ 继承，元数据 API 在实现 ABI 中） |
 
 `holdersCount`/`holdersAtIndex` 签名不变但语义反转：旧接口注释标为 Deprecated、non-authoritative（自转账后可能失准）；新版规格要求精确维护去重持有人集合，自转账不加入也不移除。见 [`core/02-member-nft.md`](../../docs/specs/core/02-member-nft.md)。
 
@@ -40,18 +42,22 @@
 | `Mint(uint256 id, address owner, string name, string normalizedName, uint256 cost)` | `Mint(uint256 tokenId, address owner, string groupName, string normalizedName, uint256 cost)` | 改名（仅字段名） |
 | `AddHolder(address holder, uint256 totalHolders)` | 同 | 保留 |
 | `RemoveHolder(address holder, uint256 totalHolders)` | 同 | 保留 |
-| `Transfer`、`Approval`、`ApprovalForAll` | 旧接口未声明 | 新增（ERC721 显式声明） |
+| `Transfer`、`Approval`、`ApprovalForAll` | 旧接口未声明 | 保留（通过 OZ 继承，不在准备接口重复声明） |
 
 ### 错误
 
 | 新 | 旧 | 状态 |
 | --- | --- | --- |
+| `NameAlreadyExists(uint256 existingId)` | `GroupNameAlreadyExists(uint256 existingTokenId)` | 改名 |
 | `NameEmpty()` | `GroupNameEmpty()` | 改名 |
 | `NameTooLong(uint256 length, uint256 maxLength)` | `GroupNameTooLong(uint256 length, uint256 maxLength)` | 改名 |
 | `NameInvalidCharacters()` | `GroupNameInvalidCharacters()` | 改名 |
-| `NameAlreadyExists(uint256 existingId)` | `GroupNameAlreadyExists(uint256 existingTokenId)` | 改名 |
 | `HolderIndexOutOfBounds(uint256 length)` | 同 | 保留 |
 | `AlreadyInitialized()` | 无 | 新增（配合 `init`） |
+
+OZ 5 的标准回滚由固定依赖提供：`IERC721Errors`、`ERC721OutOfBoundsIndex`、`ERC721EnumerableForbiddenBatchMint`、`SafeERC20FailedOperation` 进入实现的编译 ABI，替代相关 OZ 4 字符串回滚；不在准备接口重复声明。两侧均无 MemberNFT 自有结构体或枚举。
+
+除改名和初始化外，迁移修复自转账的持有人集合维护，使用 OZ 5 `_update` 更新后的余额判断地址加入/移除；`Transfer` 先于持有人变更事件。费用公式、UTF-8 校验和 Test 前缀/报价的旧行为保留，详见模块规格。四个构造参数和首币地址新增零值拒绝，不新增专用 selector。
 
 ---
 
@@ -333,12 +339,12 @@
 
 ## 8. ILOVE20Token vs ILOVE20Token
 
-旧：`LOVE20TKM/core/src/interfaces/ILOVE20Token.sol`。业务能力不变，仅去 SL/ST 依赖；ERC20 标准能力继续通过 `IERC20`、`IERC20Metadata` 继承。
+旧：`LOVE20TKM/core/src/interfaces/ILOVE20Token.sol`。业务能力不变，仅去 SL/ST 依赖；ERC20 标准能力由实现的 `ERC20` 提供，Core 接口继承 `IERC20`、`IERC20Metadata`，准备接口仅声明自有能力。
 
 | 新 | 旧 | 状态 |
 | --- | --- | --- |
 | `maxSupply`、`minter`、`parentTokenAddress`、`parentPool`、`mint`、`burn`、`burnForParentToken` | 同名 | 保留 |
-| `name`、`symbol`、`decimals`、`totalSupply`、`balanceOf`、`transfer`、`allowance`、`approve`、`transferFrom` + 事件 `Transfer`、`Approval` | 旧由 `is IERC20, IERC20Metadata` 继承 | 显式声明（能力不变） |
+| `name`、`symbol`、`decimals`、`totalSupply`、`balanceOf`、`transfer`、`allowance`、`approve`、`transferFrom` + 事件 `Transfer`、`Approval` | 旧由 `is IERC20, IERC20Metadata` 继承 | 保留（通过 OZ 继承，不在准备接口重复声明） |
 | 事件 `TokenMint`、`TokenBurn`、`BurnForParentToken` | 同名 | 保留 |
 | 无 | `slAddress()`、`stAddress()` | 删除（去凭证化） |
 | 错误 `InvalidAddress`、`NotMinter`、`ExceedsMaxSupply`、`InsufficientBalance`、`InvalidSupply` | 同 | 保留 |

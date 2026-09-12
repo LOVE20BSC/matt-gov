@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity =0.8.17;
+pragma solidity =0.8.37;
 
 import {IGroupActionIndexes} from "./IGroupActionIndexes.sol";
 import {IProposalTarget} from "../core/IProposalTarget.sol";

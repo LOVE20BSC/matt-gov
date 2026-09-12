@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: MIT
-pragma solidity =0.8.17;
+pragma solidity =0.8.37;
 
-import {IERC20} from "../../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
-import {IERC20Metadata} from "../../lib/openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+/// @dev The target contract inherits OpenZeppelin's ERC20.
 
 interface ILOVE20TokenEvents {
     event TokenMint(address indexed to, uint256 amount);
@@ -23,8 +22,6 @@ interface ILOVE20TokenErrors {
 }
 
 interface ILOVE20Token is
-    IERC20,
-    IERC20Metadata,
     ILOVE20TokenEvents,
     ILOVE20TokenErrors
 {
