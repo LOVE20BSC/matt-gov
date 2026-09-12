@@ -35,6 +35,17 @@
 
 不要用额外的样式提交、临时修复提交或 revert 提交污染历史；发现问题时，在对应提交完成前 amend。已纳入 Git 的文件需要保留路径连续性；路径变化使用 `git mv`，不要删除后重建。
 
+## 工具链与依赖基线
+
+LOVE20BSC 当前统一使用以下编译和依赖基线：
+
+- Solidity `0.8.37`；LOVE20BSC 自有合约、接口和测试使用精确 pragma `=0.8.37`。
+- Foundry `1.8.1` 或更高版本，并在 `foundry.toml` 显式设置 `evm_version = "osaka"`。显式锁定 EVM 目标，避免未来编译器默认目标变化；部署前仍需在目标 BSC 网络和测试环境验证该目标。
+- OpenZeppelin Contracts `v5.6.1`，通过 Git submodule 引入并固定 commit `5fd1781b1454fd1ef8e722282f86f9293cacf256`；不得与同路径的 vendored OpenZeppelin 源码并存。
+- `LOVE20BSC/libs` 通过 Git submodule 引入；当前 Core 使用 commit `83711c7d649e8f77fe19906565ed0b4fd916177e`，其 Solidity 基线与 Core 对齐。
+
+依赖升级必须单独提交，不得混入业务合约实现。升级后至少运行一次完整 `forge build` 和现有测试；若 OpenZeppelin 主版本变化导致内部 API、错误或事件行为变化，必须在对应实现或测试提交中明确记录，不得只用“编译通过”作为兼容性证明。
+
 ## 修改原则
 
 - 保持旧代码的声明顺序、状态变量顺序、函数顺序和格式，除非 BSC 规格明确要求改变。
