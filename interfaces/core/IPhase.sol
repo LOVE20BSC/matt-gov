@@ -1,7 +1,28 @@
 // SPDX-License-Identifier: MIT
 pragma solidity =0.8.37;
 
-interface IPhase {
+interface IPhaseErrors {
+    error InvalidPhase(uint256 phaseNumber);
+    error ObservationNotFound(uint256 observationId);
+    error InvalidKeyOrder();
+}
+
+interface IPhaseEvents {
+    event PhaseSynchronized(
+        uint256 indexed phase,
+        uint256 blockNumber,
+        uint256 timestamp,
+        bool adjusted,
+        uint256 phaseBlocks
+    );
+    event PhaseAdjusted(
+        uint256 indexed effectivePhase,
+        uint256 oldPhaseBlocks,
+        uint256 newPhaseBlocks
+    );
+}
+
+interface IPhase is IPhaseErrors, IPhaseEvents {
     function ORIGIN_BLOCKS() external view returns (uint256);
     function ORIGIN_PHASE_BLOCKS() external view returns (uint256);
     function TARGET_SECONDS() external view returns (uint256);
@@ -16,21 +37,4 @@ interface IPhase {
     function syncObservation(uint256 observationId)
         external view returns (uint256 blockNumber, uint256 blockTimestamp);
     function sync() external returns (bool adjusted, uint256 newPhaseBlocks);
-
-    event PhaseSynchronized(
-        uint256 indexed phase,
-        uint256 blockNumber,
-        uint256 timestamp,
-        bool adjusted,
-        uint256 phaseBlocks
-    );
-    event PhaseAdjusted(
-        uint256 indexed effectivePhase,
-        uint256 oldPhaseBlocks,
-        uint256 newPhaseBlocks
-    );
-
-    error InvalidPhase(uint256 phaseNumber);
-    error ObservationNotFound(uint256 observationId);
-    error InvalidKeyOrder();
 }

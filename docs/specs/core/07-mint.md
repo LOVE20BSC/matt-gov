@@ -14,6 +14,7 @@ Mint 准备并结算治理和 Proposal 激励，不读取行动验证结果。�
 | `memberBoost` | Vote 的 `stakedAmountOfVotersByMemberId(tokenAddress, round, memberId)` |
 | `totalBoost` | Vote 的 `stakedAmountOfVoters[tokenAddress][round]` |
 | `eligibleProposalVotes` | Mint 准备时按 Vote 冻结结果计算并缓存的本轮所有达标 Proposal 票数之和 |
+| `launchCredit` | 每个 token、成员尚未转换为发射次数的治理激励额度，见[发射额度的生成](#发射额度的生成) |
 
 Proposal 达标条件：
 
@@ -102,9 +103,28 @@ else:
 
 批量按输入顺序执行，结果数组与输入等长；任一 Round 未结束、未准备、没有投票记录或已铸造，则整笔回滚。治理激励和发射额度/次数更新也必须原子完成。
 
-## 发射额度
+## 发射额度的生成
 
-Mint 保存 `launchCredit[tokenAddress][memberId]`。只有实际铸造的治理激励可累计；上限、零阈值、计算顺序和余数规则只在 [Launch](08-launch.md#发射次数) 定义。产生正数次数时调用仅授权 Mint 的 `Launch.addLaunchCount`。
+Mint 保存 `launchCredit[tokenAddress][memberId]`：尚未转换成整数发射次数的治理激励额度，任意 token、memberId 可查询。只有正数实际铸造的治理激励参与累计；整数次数的保存、消耗与融合见 [Launch 的发射次数账本](08-launch.md#发射次数账本)。
+
+每次治理激励实际铸造后，按以下顺序处理；只有正数实际铸造金额参与累计：
+
+1. 先判断 `Launch.issuedLaunchCount(tokenAddress) >= Launch.MAX_LAUNCH_COUNT()`；成立则停止，不累计新额度，已有额度保留。
+2. 否则用本次铸造前该社区代币的 `totalSupply` 计算 `threshold`；为 `0` 时停止，不累计、不转换，也不执行除法。
+3. 加入本次实际治理激励，计算完整次数并受剩余社区次数约束，扣除已转换额度；剩余额度保留到下次。
+4. 正数新增次数由 Mint 调用 `Launch.addLaunchCount(tokenAddress, memberId, count)` 增加；Launch 只接受 Mint 调用并在越限时回滚。次数增加与治理激励铸造整体回滚。
+
+```text
+threshold = ceil((maxSupply - totalSupplyBeforeMint) * Launch.LAUNCH_RATIO() / 1e18)
+count = min(floor(launchCredit / threshold), Launch.MAX_LAUNCH_COUNT() - issuedLaunchCount)
+launchCredit -= count * threshold
+```
+
+`maxSupply` 和 `totalSupplyBeforeMint` 都取自该社区代币；`LAUNCH_RATIO` 使用 `1e18` 精度。`LAUNCH_RATIO` 和 `MAX_LAUNCH_COUNT` 由 `Launch.init` 校验为非零（`ZeroAmount`），Mint 不重复校验。
+
+次数消耗或融合不释放累计上限；达到 `MAX_LAUNCH_COUNT` 后不再产生新次数或累计新额度，已有整数次数仍可使用。
+
+例（最小单位）：当前阈值为 100、原额度为 80、本次铸造 50、剩余次数足够，则得到 1 次，余数 30。下次按新的铸造前供应量重新计算阈值，不沿用 100。
 
 ## 实现约束
 
