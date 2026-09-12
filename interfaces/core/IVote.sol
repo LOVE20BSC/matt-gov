@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity =0.8.17;
 
-interface ILOVE20Vote {
+interface IVote {
     function stakeAddress() external view returns (address);
     function submitAddress() external view returns (address);
     function init(

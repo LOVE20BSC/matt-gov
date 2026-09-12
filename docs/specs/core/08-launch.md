@@ -8,7 +8,7 @@ Launch 负责基础发射与次数账本；TokenFactory 负责创建 LOVE20Token
 
 由 `init` 固定的 Launch 配置状态变量使用大写 `public` 命名并直接提供同名 getter：`LAUNCH_RATIO`、`MAX_LAUNCH_COUNT` 和 `TOKEN_SYMBOL_LENGTH`。
 
-完整 ABI 见 [`ILOVE20Launch.sol`](../../../interfaces/core/ILOVE20Launch.sol)。
+完整 ABI 见 [`ILaunch.sol`](../../../interfaces/core/ILaunch.sol)。
 
 先部署全部合约取得地址，再提交一次 `TokenFactory.init` 完成初始化；`init` 不保存或校验部署者地址，只允许成功一次。检查脚本随后读取 `initialized()`、依赖地址和参数核对结果；参数错误则该部署版本不对外发布。本次交易写入依赖和参数，调用 `TokenFactory.createToken(rootParentToken, name, symbol, distributor)`；工厂完成首币和父币/minter 绑定，Launch 登记首币并同步调用 `MemberNFT.init(tokenAddress)` 完成其初始化；MemberNFT 不保存 Launch 地址。Pair 在首次 LP 质押时由 `Stake` 按需查询或创建，Launch 不创建 Pair，也不重复铸造首批供应。
 
@@ -50,7 +50,7 @@ launchCredit -= count * threshold
 
 当前成员 NFT 持有人可发射社区子币，消耗其一次 `launchCount`。发射流程按检查、更新、交互执行并防重入：先验证成员次数和代币参数，扣减次数，再创建子币、分发首批供应并调用 distributor。外部失败时子币创建和次数消耗全部回滚。
 
-发射、次数和代币查询接口均见 [`ILOVE20Launch.sol`](../../../interfaces/core/ILOVE20Launch.sol)。
+发射、次数和代币查询接口均见 [`ILaunch.sol`](../../../interfaces/core/ILaunch.sol)。
 
 `memberId` 必须由调用者当前持有；不用地址默认 NFT 映射。名称沿用旧 Launch 的 `tokenSymbol + "@" + parentSymbol` 生成方式。
 
@@ -70,11 +70,11 @@ distributor 自行实现领取与查询逻辑，`claim(tokenAddress)` 只是建�
 
 保留旧工厂“初始化配置 + 创建代币”的职责。来源为 `LOVE20TKM/core/src/LOVE20TokenFactory.sol`（提交见[旧代码基线](../../repositories.md#旧代码基线)）；BSC 新增 `distributor`，删除 Pair、SL/ST 创建及相关依赖，Pair 生命周期移入 `Stake`。LOVE20Token 的完整参数在构造函数中一次传入，不再提供 `init`。
 
-初始化接口见 [`ILOVE20TokenFactory.sol`](../../../interfaces/core/ILOVE20TokenFactory.sol)。
+初始化接口见 [`ITokenFactory.sol`](../../../interfaces/core/ITokenFactory.sol)。
 
 工厂初始化一次，固定 Launch、Mint、首批供应量和最大供应量；`init` 可由任意地址提交，不保存部署者地址，也不授予部署者特权，发布前由检查脚本核验参数。零地址使用 `ZeroAddress(parameter)`，空名称或符号使用 `EmptyString(parameter)`，供应量关系错误使用 `InvalidAmount()`。对应常量 getter 保留旧命名 `LAUNCH_AMOUNT()`、`MAX_SUPPLY()`，初始化参数 `launchAmount <= maxSupply`。Stake 自行依赖符合 Uniswap V2 接口的 Pair Factory，并在首次 LP 质押时查询或创建 Pair。
 
-创建接口见 [`ILOVE20TokenFactory.sol`](../../../interfaces/core/ILOVE20TokenFactory.sol)。
+创建接口见 [`ITokenFactory.sol`](../../../interfaces/core/ITokenFactory.sol)。
 
 仅已初始化工厂允许 Launch 调用。父币或 distributor 为零、名称或符号为空时拒绝。创建时原子执行：
 
@@ -86,7 +86,7 @@ distributor 自行实现领取与查询逻辑，`claim(tokenAddress)` 只是建�
 
 ## 实现约束
 
-TokenFactory 的事件和错误定义见 [`ILOVE20TokenFactory.sol`](../../../interfaces/core/ILOVE20TokenFactory.sol)；LOVE20Token 的公开 ABI 见 [`ILOVE20Token.sol`](../../../interfaces/core/ILOVE20Token.sol)。
+TokenFactory 的事件和错误定义见 [`ITokenFactory.sol`](../../../interfaces/core/ITokenFactory.sol)；LOVE20Token 的公开 ABI 见 [`ILOVE20Token.sol`](../../../interfaces/core/ILOVE20Token.sol)。
 
 LOVE20Token 使用构造函数接收 `name`、`symbol`、`initialSupply`、`maxSupply`、`distributor`、`minter` 和 `parentTokenAddress`；构造函数不属于 Solidity `interface` ABI。其运行时函数、事件和错误以 [`ILOVE20Token.sol`](../../../interfaces/core/ILOVE20Token.sol) 为准。
 

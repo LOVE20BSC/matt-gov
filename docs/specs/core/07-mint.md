@@ -36,7 +36,7 @@ available = maxSupply - totalSupply - reservedAvailable
 
 ## 准备一次
 
-完整 ABI 见 [`ILOVE20Mint.sol`](../../../interfaces/core/ILOVE20Mint.sol)。
+完整 ABI 见 [`IMint.sol`](../../../interfaces/core/IMint.sol)。
 
 `prepareRewardIfNeeded` 任何地址可调用。
 
@@ -96,7 +96,7 @@ else:
 
 ## 单轮与批量接口
 
-单轮、批量、查询和激励参数接口均见 [`ILOVE20Mint.sol`](../../../interfaces/core/ILOVE20Mint.sol)。
+单轮、批量、查询和激励参数接口均见 [`IMint.sol`](../../../interfaces/core/IMint.sol)。
 
 `proposalRewardInfo` 未准备时返回 `(0, false, false)`，不能把它缓存为最终零激励；准备后按冻结池、Proposal 票数和已缓存的 `eligibleProposalVotes` 计算 amount，已铸造也返回原金额。未达标返回 0。治理查询未准备或未投票时返回零金额；不存在的 Proposal/成员回滚。铸造金额为 0 时按旧逻辑拒绝 `NoRewardAvailable`，重复保护使用独立状态位，不能用金额是否大于零判断。
 
@@ -108,7 +108,7 @@ Mint 保存 `launchCredit[tokenAddress][memberId]`。只有实际铸造的治理
 
 ## 实现约束
 
-事件与错误定义见 [`ILOVE20Mint.sol`](../../../interfaces/core/ILOVE20Mint.sol)。
+事件与错误定义见 [`IMint.sol`](../../../interfaces/core/IMint.sol)。
 
 - 初始化时拒绝两项激励比例之和超过 `1000`。
 - `prepareRewardIfNeeded` 只在首次准备时扫描本轮 Vote 有票 Proposal；实现和验收至少覆盖约 300 个 Proposal 的准备交易。准备成功后，`eligibleProposalVotes[tokenAddress][round]` 只读，不得再次读取 Vote 列表或改写。

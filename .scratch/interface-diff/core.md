@@ -77,7 +77,7 @@
 
 ---
 
-## 3. ILOVE20Stake vs ILOVE20Stake
+## 3. IStake vs ILOVE20Stake
 
 旧：`LOVE20TKM/core/src/interfaces/ILOVE20Stake.sol`。去 SL/ST 凭证 + 按 memberId 归属 + 新增融合。
 
@@ -130,7 +130,7 @@
 
 ---
 
-## 4. ILOVE20Submit vs ILOVE20Submit
+## 4. ISubmit vs ILOVE20Submit
 
 旧：`LOVE20TKM/core/src/interfaces/ILOVE20Submit.sol`。从「行动提案」抽象为「通用 Proposal + Target + KV」，行动特有字段全部移出。
 
@@ -194,7 +194,7 @@
 
 ---
 
-## 5. ILOVE20Vote vs ILOVE20Vote
+## 5. IVote vs ILOVE20Vote
 
 旧：`LOVE20TKM/core/src/interfaces/ILOVE20Vote.sol`。全量保留，`actionId` → `proposalId`、`account` → `memberId`，新增 KV 与投票者质押量查询。
 
@@ -236,7 +236,7 @@
 
 ---
 
-## 6. ILOVE20Mint vs ILOVE20Mint
+## 6. IMint vs ILOVE20Mint
 
 旧：`LOVE20TKM/core/src/interfaces/ILOVE20Mint.sol`。`action*` → `proposal*`、`verifyReward` → `voteReward`、新增批量铸造，同时大幅收缩查询面。
 
@@ -280,7 +280,7 @@
 
 ---
 
-## 7. ILOVE20Launch vs ILOVE20Launch
+## 7. ILaunch vs ILOVE20Launch
 
 旧：`LOVE20TKM/core/src/interfaces/ILOVE20Launch.sol`。变化最大的接口：旧版是「公平发射募资 + 认购 + 领取」，新版是「子币创建 + 发射次数账本」。整块募资分配业务不迁移（`launch` 代码库本阶段不创建）。
 
@@ -346,7 +346,7 @@
 
 ---
 
-## 9. ILOVE20TokenFactory vs ILOVE20TokenFactory
+## 9. ITokenFactory vs ILOVE20TokenFactory
 
 旧：`LOVE20TKM/core/src/interfaces/ILOVE20TokenFactory.sol`。
 
@@ -396,7 +396,7 @@
 | 旧 | 去向 |
 | --- | --- |
 | `verify(tokenAddress, actionId, abstentionScore, scores[])` | `action` 层 `IGroupActionExecutor.submitOriginScores(...)` |
-| `stakedAmountOfVerifiers(tokenAddress, round)` | `ILOVE20Vote.stakedAmountOfVoters(tokenAddress, round)` |
+| `stakedAmountOfVerifiers(tokenAddress, round)` | `IVote.stakedAmountOfVoters(tokenAddress, round)` |
 | `score`、`scoreWithReward`、`abstentionScoreWithReward`、`scoreByActionId`、`scoreByActionIdByAccount`、`scoreByVerifier`、`scoreByVerifierByActionId`、`scoreByVerifierByActionIdByAccount` | `action` 层 `originScore`/`finalScore`/`totalFinalScore`（维度重构，非一一对应） |
 | `firstTokenAddress`、`randomAddress`、`stakeAddress`、`voteAddress`、`joinAddress`、`RANDOM_SEED_UPDATE_MIN_PER_TEN_THOUSAND` | 删除 |
 | 事件 `Verify` | `action` 层 `VerificationBatchSubmitted` |
@@ -421,4 +421,4 @@
 
 ### ILOVE20Random、ILOVE20SLToken、ILOVE20STToken
 
-三者整体删除，无对应新接口。`ILOVE20SLToken` 的 `tokenAmounts`、`uniswapV2PairReserves`、`MAX_WITHDRAWABLE_TO_FEE_RATIO` 等 LP 份额与手续费查询能力，部分由 `ILOVE20Stake.tokenStakeGlobals` 的 `withdrawableLp`/`feeLp`/`sqrtKOfLp` 承接。
+三者整体删除，无对应新接口。`ILOVE20SLToken` 的 `tokenAmounts`、`uniswapV2PairReserves`、`MAX_WITHDRAWABLE_TO_FEE_RATIO` 等 LP 份额与手续费查询能力，部分由 `IStake.tokenStakeGlobals` 的 `withdrawableLp`/`feeLp`/`sqrtKOfLp` 承接。

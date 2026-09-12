@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity =0.8.17;
 
-interface ILOVE20Mint {
+interface IMint {
     // 4 个常用依赖 getter；memberNFTAddress 仅通过 init 注入，不单独暴露 getter
     function voteAddress() external view returns (address);
     function submitAddress() external view returns (address);

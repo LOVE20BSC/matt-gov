@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity =0.8.17;
 
-interface ILOVE20TokenFactory {
+interface ITokenFactory {
     error AlreadyInitialized();
     error ZeroAddress(string parameter);
     error EmptyString(string parameter);

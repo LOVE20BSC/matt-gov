@@ -22,7 +22,7 @@ Proposal 以 `tokenAddress + proposalId` 定位，ID 单调分配。
 
 显式销毁可由专用 Target 合约接收后执行，不能用零 Target 隐式销毁。
 
-结构体见 [`ILOVE20Submit.sol`](../../../interfaces/core/ILOVE20Submit.sol)。
+结构体见 [`ISubmit.sol`](../../../interfaces/core/ISubmit.sol)。
 
 创建只保存 Proposal 并触发创建回调，不自动推举；调用者须持有 `memberId` 且满足 `canSubmit`。创建后内容和 Target 不变，重名标题不等于重复 Proposal。
 
@@ -30,7 +30,7 @@ Proposal 以 `tokenAddress + proposalId` 定位，ID 单调分配。
 
 ## 接口
 
-完整 ABI 见 [`ILOVE20Submit.sol`](../../../interfaces/core/ILOVE20Submit.sol)。它沿用旧 `LOVE20TKM/core/src/interfaces/ILOVE20Submit.sol` 的 Proposal 创建、推举、枚举和查询职责；旧接口中的行动专属字段已按 BSC 规则移出，统一由 Proposal 与 Target/KV 表达，业务主体由地址改为 `memberId`。
+完整 ABI 见 [`ISubmit.sol`](../../../interfaces/core/ISubmit.sol)。它沿用旧 `LOVE20TKM/core/src/interfaces/ILOVE20Submit.sol` 的 Proposal 创建、推举、枚举和查询职责；旧接口中的行动专属字段已按 BSC 规则移出，统一由 Proposal 与 Target/KV 表达，业务主体由地址改为 `memberId`。
 
 ## 推举
 
@@ -40,7 +40,7 @@ Proposal 以 `tokenAddress + proposalId` 定位，ID 单调分配。
 
 ## 事件与错误
 
-事件与错误定义见 [`ILOVE20Submit.sol`](../../../interfaces/core/ILOVE20Submit.sol)。
+事件与错误定义见 [`ISubmit.sol`](../../../interfaces/core/ISubmit.sol)。
 
 `ProposalNotFound` 用于不存在的 Proposal；`IndexOutOfBounds` 用于枚举越界。沿用旧 Submit 的三个专用 selector：门槛或资格不足回滚 `CannotSubmitAction`，同一 Proposal 同轮重复推举回滚 `AlreadySubmitted`，同一成员同轮再次推举回滚 `OnlyOneSubmitPerRound`。零 Target、非法模式、非成员持有人也必须回滚；其专用 selector 仍以接口文件为准。
 
