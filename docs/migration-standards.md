@@ -37,7 +37,7 @@
 
 当文件同时发生较大内容改动，导致 Git 客户端无法按默认相似度识别重命名时，先单独提交只包含 `git mv` 的重命名，再在下一提交修改内容。这样保留清晰的文件历史；该拆分只适用于确有重命名识别需要的文件，不用于制造样式提交。
 
-旧接口若按 `Events`、`Errors` 和主接口拆分声明，新接口默认保留相同的拆分结构、声明顺序和文件布局；除非规格明确要求合并或拆分，不得在迁移时同时改变接口组织方式。标准依赖接口属于独立的继承边界，不为提高相似度重复复制其声明。
+旧接口若按 `Events`、`Errors` 和主接口拆分声明，新接口默认保留相同的拆分结构、声明顺序和文件布局；除非规格明确要求合并或拆分，不得在迁移时同时改变接口组织方式。在此基础上：**事件统一声明在 `I<Name>Events` 子接口**，即使旧文件没有该子接口（如 `IPhase`）也要拆出；`I<Name>Errors` 子接口的有无、以及两个子接口的相对顺序，按旧文件确定。标准依赖接口属于独立的继承边界，不为提高相似度重复复制其声明。
 
 ## 工具链与依赖基线
 
@@ -45,8 +45,10 @@ LOVE20BSC 当前统一使用以下编译和依赖基线：
 
 - Solidity `0.8.37`；LOVE20BSC 自有合约、接口和测试使用精确 pragma `=0.8.37`。
 - Foundry `1.8.1` 或更高版本，并在 `foundry.toml` 显式设置 `evm_version = "osaka"`。显式锁定 EVM 目标，避免未来编译器默认目标变化；部署前仍需在目标 BSC 网络和测试环境验证该目标。
-- OpenZeppelin Contracts `v5.6.1`，通过 Git submodule 引入并固定 commit `5fd1781b1454fd1ef8e722282f86f9293cacf256`；不得与同路径的 vendored OpenZeppelin 源码并存。
-- `LOVE20BSC/libs` 通过 Git submodule 引入；当前 Core 使用 commit `281c6502e72baf07eaf952039f3b4d4ed93e3dd5`，其 Solidity 与 EVM 基线与 Core 对齐。
+- OpenZeppelin Contracts 通过 Git submodule 引入并固定 ref；不得与同路径的 vendored OpenZeppelin 源码并存。
+- `LOVE20BSC/libs` 通过 Git submodule 引入，其 Solidity 与 EVM 基线与 Core 对齐。
+
+依赖的固定版本不在本文件登记，避免文档与仓库两处记录漂移。唯一可核验来源是目标仓库的索引 gitlink 与 `foundry.lock`：前者记录指向的子模块提交，后者记录 ref 语义与解析结果，`forge` 在 install/update/build 时据此校验；两者都必须提交进 git。核对依赖版本时读这两处，本文件只规定版本策略与升级流程。
 
 依赖升级必须单独提交，不得混入业务合约实现。升级后至少运行一次完整 `forge build` 和现有测试；若 OpenZeppelin 主版本变化导致内部 API、错误或事件行为变化，必须在对应实现或测试提交中明确记录，不得只用“编译通过”作为兼容性证明。
 

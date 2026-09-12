@@ -1,13 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity =0.8.37;
 
-interface ITokenFactory {
+interface ITokenFactoryErrors {
     error AlreadyInitialized();
     error ZeroAddress(string parameter);
     error EmptyString(string parameter);
     error InvalidAmount();
     error UnauthorizedCaller();
+}
 
+interface ITokenFactoryEvents {
     event TokenCreated(
         address indexed tokenAddress,
         address indexed parentTokenAddress,
@@ -15,7 +17,9 @@ interface ITokenFactory {
         string symbol,
         address distributor
     );
+}
 
+interface ITokenFactory is ITokenFactoryErrors, ITokenFactoryEvents {
     function launchAddress() external view returns (address);
     function mintAddress() external view returns (address);
     function initialized() external view returns (bool);

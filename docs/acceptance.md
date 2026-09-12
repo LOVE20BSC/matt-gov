@@ -88,8 +88,8 @@
 **覆盖要求**：覆盖本次铸造前剩余供应量的阈值向上取整、只有正数实际治理激励进入 `launchCredit`、剩余供应量为零时不计算阈值、一次治理激励跨过多个完整阈值、整数除法余数继续累计、每个社区达到 `maxLaunchCount` 后停止新增次数和额度、调用者只控制来源 MemberNFT 时向他人持有的目标 MemberNFT 部分融合整数次数但不转移 `launchCredit`、源次数扣减/目标次数增加的原子性，以及次数消耗后不能再次发射。
 
 **测试方式**：
-- 单元测试：`core/test/Launch.t.sol` 的阈值计算、跨阈值、余数累计、上限场景
-- 单元测试：`core/test/Launch.t.sol` 的次数融合、消耗场景
+- 单元测试：`core/test/Mint.t.sol` 的阈值计算、跨阈值、余数累计场景
+- 单元测试：`core/test/Launch.t.sol` 的账本上限、次数融合、消耗场景
 - 验收证据：边界值测试日志
 
 **判定标准**：
@@ -99,7 +99,7 @@
 - 次数融合不携带 `launchCredit`
 
 ### 子币发射分发边界
-**覆盖要求**：覆盖只有 `Launch` 可调用 `TokenFactory`、首个代币通过一次性启动路径使用 WBNB 且不接收 Launch KV、不消耗发射次数、启动后不能重复创建首个代币、普通发射社区与 `parentTokenAddress` 一致、非零 `distributor`、普通发射的 `NoCallback`/`Callback` 两种分发模式、普通发射的 Launch 专属 KV 可空且原样透传、Callback 回调失败回滚、首币固定使用 Airdrop 与 `NoCallback`，以及部署时登记的保留符号不能本地发射或复用。
+**覆盖要求**：覆盖只有 `Launch` 可调用 `TokenFactory`、首个代币通过一次性启动路径使用 WBNB 且不接收 Launch KV、不消耗发射次数、启动后不能重复创建首个代币、普通发射社区与 `parentTokenAddress` 一致、非零 `distributor`、普通发射的 `NoCallback`/`Callback` 两种分发模式、普通发射的 Launch 专属 KV 可空且原样透传、Callback 回调失败回滚、首币固定使用 Airdrop 与 `NoCallback`，以及两个 `init` 的固定顺序与未初始化时写入口拒绝。
 
 **测试方式**：
 - 单元测试：`core/test/Launch.t.sol` 的首个代币启动、普通发射场景
@@ -110,7 +110,7 @@
 - 只有 Launch 能调用 TokenFactory
 - 首个代币启动只能成功一次
 - NoCallback 不回调，Callback 成功调用且失败回滚
-- 保留符号拒绝创建
+- 未初始化时 `launchToken`、`mergeLaunchCount`、`addLaunchCount` 回滚
 
 ### MemberNFT 转移归属
 **覆盖要求**：覆盖转移前后质押、解锁倒计时、治理激励和行动内部未铸造激励均由当前持有人继续操作；旧持有人不能代铸，历史投票、按 Round 参与历史、已结算激励和事件不回写。

@@ -3,7 +3,49 @@ pragma solidity =0.8.37;
 
 enum DistributorMode { NoCallback, Callback }
 
-interface ILaunch {
+interface ILaunchErrors {
+    error AlreadyInitialized();
+    error InvalidTokenSymbol();
+    error InvalidAddress();
+    error InvalidTokenAddress();
+    error InvalidParentToken();
+    error InvalidKVLength();
+    error InvalidDistributorMode();
+    error ZeroAmount(string parameter);
+    error UnauthorizedCaller();
+    error NotMemberOwner(uint256 memberId);
+    error CountMustBeGreaterThanZero();
+    error SourceAndTargetMustBeDifferent();
+    error NotEnoughLaunchCount();
+    error LaunchCountLimitReached();
+}
+
+interface ILaunchEvents {
+    event LaunchToken(
+        address indexed tokenAddress,
+        address indexed parentTokenAddress,
+        uint256 indexed launcherMemberId,
+        address distributor
+    );
+    event LaunchCountAdded(address indexed tokenAddress, uint256 indexed memberId, uint256 count);
+    event LaunchCountMerged(
+        address indexed tokenAddress,
+        uint256 indexed sourceMemberId,
+        uint256 indexed targetMemberId,
+        uint256 count
+    );
+    event LaunchCountConsumed(address indexed tokenAddress, uint256 indexed memberId, uint256 count);
+}
+
+interface ILaunch is ILaunchErrors, ILaunchEvents {
+    function tokenFactoryAddress() external view returns (address);
+    function mintAddress() external view returns (address);
+    function memberNFTAddress() external view returns (address);
+    function rootParentTokenAddress() external view returns (address);
+    function TOKEN_SYMBOL_LENGTH() external view returns (uint256);
+    function LAUNCH_RATIO() external view returns (uint256);
+    function MAX_LAUNCH_COUNT() external view returns (uint256);
+    function initialized() external view returns (bool);
     function init(
         address tokenFactory,
         address mint,
@@ -16,13 +58,7 @@ interface ILaunch {
         string calldata name,
         string calldata symbol
     ) external;
-    function tokenFactoryAddress() external view returns (address);
-    function mintAddress() external view returns (address);
-    function memberNFTAddress() external view returns (address);
-    function rootParentTokenAddress() external view returns (address);
-    function LAUNCH_RATIO() external view returns (uint256);
-    function MAX_LAUNCH_COUNT() external view returns (uint256);
-    function TOKEN_SYMBOL_LENGTH() external view returns (uint256);
+    function isLOVE20Token(address tokenAddress) external view returns (bool);
     function launchToken(
         string calldata tokenSymbol,
         address parentTokenAddress,
@@ -41,30 +77,4 @@ interface ILaunch {
     function addLaunchCount(address tokenAddress, uint256 memberId, uint256 count) external;
     function launchCount(address tokenAddress, uint256 memberId) external view returns (uint256);
     function issuedLaunchCount(address tokenAddress) external view returns (uint256);
-    function isLOVE20Token(address tokenAddress) external view returns (bool);
-
-    event LaunchToken(
-        address indexed tokenAddress,
-        address indexed parentTokenAddress,
-        uint256 indexed launcherMemberId,
-        address distributor
-    );
-    event LaunchCountAdded(address indexed tokenAddress, uint256 indexed memberId, uint256 count);
-    event LaunchCountMerged(
-        address indexed tokenAddress,
-        uint256 indexed sourceMemberId,
-        uint256 indexed targetMemberId,
-        uint256 count
-    );
-    event LaunchCountConsumed(address indexed tokenAddress, uint256 indexed memberId, uint256 count);
-
-    error AlreadyInitialized();
-    error InvalidAddress();
-    error InvalidKVLength();
-    error InvalidTokenSymbol();
-    error InvalidDistributorMode();
-    error UnauthorizedCaller();
-    error NotMemberOwner(uint256 memberId);
-    error NotEnoughLaunchCount();
-    error LaunchCountLimitReached();
 }

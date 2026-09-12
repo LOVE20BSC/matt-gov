@@ -181,10 +181,21 @@
 
 ## 7. Launch（修改）
 
-### ✅ 保留逻辑
-- 发射次数阈值向上取整：参考 `LOVE20TKM/core/src/LOVE20Launch.sol`
-- 次数累计和余额结转逻辑
-- 子币创建和首批分发流程
+### ✅ 保留的旧行为
+
+旧 `LOVE20TKM/core/src/LOVE20Launch.sol` 中真正被完整保留的只有四项：
+
+- `isLOVE20Token` 的登记判定
+- `tokenSymbol` 的长度与字符集校验
+- `tokenSymbol + "@" + parentSymbol` 名称拼法，以及父币符号前 4 字节为 `Test` 时施加的测试网前缀（校验之后施加，实际符号可超出配置长度）
+- `launchToken` 的“检查—创建—登记”外部调用骨架
+
+### 🆕 新增设计（旧实现中不存在）
+
+- **发射次数阈值换算与额度结转**：旧 `LOVE20Mint` 只在每次治理激励铸造时对账户计数 `+1`，旧 `LOVE20Launch` 用整数除法反推剩余次数，既没有阈值、也没有额度累计与余数结转。阈值向上取整、余数保留、跨多次阈值属新设计，见 [Mint 的发射额度](core/07-mint.md#发射额度的生成)
+- **社区次数上限**：每个社区最多产生 `MAX_LAUNCH_COUNT` 次发射
+- **次数融合**：`mergeLaunchCount(tokenAddress, sourceMemberId, targetMemberId, count)`
+- **分发模式与回调**：`distributor`、`DistributorMode` 与 Launch KV
 
 ### 🔄 关键变化
 
@@ -192,26 +203,34 @@
 - **旧**：`launchCount[tokenAddress][address]`
 - **新**：`launchCount[tokenAddress][memberId]`
 
+#### 发射资格
+- **旧**：`remainingLaunchCount` 叠加 `Submit.canSubmit` 与 Mint 的铸造计数整除，发射需要推举资格
+- **新**：只看 `launchCount` 账本与 NFT 当前所有权；`submitAddress` 依赖与 `canSubmit` 门槛删除
+
 #### 次数融合
 - **新增**：`mergeLaunchCount(tokenAddress, sourceMemberId, targetMemberId, count)`
 - **部分转移**：支持转移指定数量的发射次数
 - **单向转移**：调用者只需控制来源 MemberNFT
 
 #### 社区次数上限
-- **新增**：每个社区最多产生 `maxLaunchCount` 次发射
+- **新增**：每个社区最多产生 `MAX_LAUNCH_COUNT` 次发射
 - **达到上限后**：治理激励仍可铸造，但不再增加发射次数
 
 #### 首个代币部署
-- `Launch.init(...)` 在写入依赖和发射参数的同一笔初始化交易中，通过 `TokenFactory` 创建首个代币、设置 `minter`、发送首批代币到 Airdrop，并同步调用 `MemberNFT.init(firstToken)` 完成其初始化；Pair 由 `Stake` 在首次 LP 质押时按需创建
+- 部署顺序固定为 `TokenFactory.init` → `Launch.init`；`Launch.init` 在写入依赖和发射参数的同一笔初始化交易中，通过 `TokenFactory` 创建首个代币、设置 `minter`、发送首批代币到 Airdrop，并同步调用 `MemberNFT.init(firstToken)` 完成其初始化；Pair 由 `Stake` 在首次 LP 质押时按需创建
 - `Launch` 的分发参数与 Proposal 的 `target + targetMode` 对齐：首币固定使用 Airdrop 和 `NoCallback`；普通发射可使用 `NoCallback` 或 `Callback`
 - `Launch.init` 任一步失败则整笔回滚；成功后不得再次初始化或创建第二个首个代币
 - Airdrop 来源和 Burn 追溯证据按部署记录保存
 
+#### 不迁移的业务
+公平发射募资与认购领取整块不迁移：`contribute`、`withdraw`、`claim`、`claimInfo`、`LaunchInfo`、`CLAIM_DELAY_BLOCKS`、代币枚举接口全部删除。旧 `tokenAddressBySymbol` 账本不迁移，子币符号不要求全局唯一。
+
 ### 📍 实现参考
 ```
 旧代码：LOVE20TKM/core/src/LOVE20Launch.sol
-保留：阈值公式（向上取整）、累计逻辑
-修改：地址 → memberId，新增融合接口
+保留：isLOVE20Token、符号校验、名称拼法与 Test 前缀、launchToken 骨架
+新增：阈值换算与额度结转（见 07-mint）、社区上限、次数融合、分发模式
+修改：地址 → memberId，删除 submitAddress 与 canSubmit 门槛
 ```
 
 ---
