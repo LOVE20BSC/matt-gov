@@ -27,7 +27,7 @@ Core 不解释具体 Proposal 的业务字段，扩展通过 Target 接入。
 | MemberNFT 构造参数 | `baseDivisor` | 首币未铸造量的费用除数；公开 getter 保持 `BASE_DIVISOR()`，如 `1e8` |
 | MemberNFT 构造参数 | `bytesThreshold` | 短名称字节阈值；公开 getter 保持 `BYTES_THRESHOLD()`，如 `7` |
 | MemberNFT 构造参数 | `multiplier` | 每缩短一字节的费用倍数；公开 getter 保持 `MULTIPLIER()`，如 `10` |
-| MemberNFT 构造参数 | `maxNameLength` | 最大字节数，如 `32` |
+| MemberNFT 构造参数 | `maxNameLength` | 最大字节数；公开 getter 为 `MAX_NAME_LENGTH()`，如 `32` |
 | Phase 构造参数 | `originBlocks`、`phaseBlocks`、`targetDays`、`adjustThreshold` | 启动区块、初始区块数、目标天数、偏差阈值；前三者大于零，阈值使用 `1e18` 精度 |
 | Stake | `phaseAddress`、`memberNFTAddress`、`voteAddress`、`routerAddress`、`pairFactoryAddress` | 时间、身份、融合投票检查、路由和 Pair Factory 依赖 |
 | Stake | `promisedWaitingPhasesMin`、`promisedWaitingPhasesMax` | 承诺解锁期的最小、最大 Phase 数 |
@@ -43,12 +43,12 @@ Core 不解释具体 Proposal 的业务字段，扩展通过 Target 接入。
 | Launch | `distributor`、`name`、`symbol` | 首币分发目标、名称和符号；首币固定使用 `NoCallback`，`distributor` 非零 |
 | Launch | `launchRatio` | 发射阈值比例，`1e18` 精度，如 `1e16 = 1%` |
 | Launch | `maxLaunchCount` | 每社区累计次数上限，如 `100` |
-| Launch | `tokenSymbolLength` | 子币符号固定字节长度，沿用旧 Launch 校验 |
+| Launch | `tokenSymbolLength` | 子币符号固定字节长度；公开 getter 保持 `TOKEN_SYMBOL_LENGTH()`，沿用旧 Launch 校验 |
 | TokenFactory | `launchAddress`、`mintAddress` | 唯一创建调用方和代币 minter |
 | TokenFactory | `LAUNCH_AMOUNT`、`MAX_SUPPLY` | 首批/最大供应量，工厂 init 固定；`launchAmount <= maxSupply` |
 | TokenFactory.createToken | `distributor` | 本次创建的首批代币接收者；非零 |
 
-MemberNFT 的首币地址由 `Launch.init` 在创建首币时同步调用 `MemberNFT.init(tokenAddress)` 绑定，不在部署时传入；MemberNFT 不保存 Launch 地址。Launch 的首币分发地址、名称和符号，以及 TokenFactory 的初始化/创建参数统一见 [Launch](08-launch.md)，不另维护供应量副本。Pair Factory 和 Router 都是 Stake 的外部依赖，不参与 TokenFactory 的代币创建。
+MemberNFT 的首币地址由 `Launch.init` 在创建首币时同步调用 `MemberNFT.init(tokenAddress)` 绑定，不在部署时传入；公开 getter 保持旧名 `LOVE20_TOKEN_ADDRESS()`。MemberNFT 不保存 Launch 地址。Launch 的首币分发地址、名称和符号，以及 TokenFactory 的初始化/创建参数统一见 [Launch](08-launch.md)，不另维护供应量副本。Pair Factory 和 Router 都是 Stake 的外部依赖，不参与 TokenFactory 的代币创建。
 
 ## 实现约束
 
