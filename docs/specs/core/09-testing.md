@@ -2,7 +2,7 @@
 
 本文件规定验收范围，行为以对应模块为准；证据与发布要求见 [组织验收](../../acceptance.md)。这是待实现的场景清单，不是已通过的测试报告。
 
-事件和错误定义分别位于 [`IMemberNFT.sol`](../../../interfaces/core/IMemberNFT.sol)、[`IPhase.sol`](../../../interfaces/core/IPhase.sol)、[`ILOVE20Stake.sol`](../../../interfaces/core/ILOVE20Stake.sol)、[`ILOVE20Submit.sol`](../../../interfaces/core/ILOVE20Submit.sol)、[`ILOVE20Vote.sol`](../../../interfaces/core/ILOVE20Vote.sol)、[`ILOVE20Mint.sol`](../../../interfaces/core/ILOVE20Mint.sol)、[`ILOVE20Launch.sol`](../../../interfaces/core/ILOVE20Launch.sol) 和 [`ILOVE20Token.sol`](../../../interfaces/core/ILOVE20Token.sol)。
+事件和错误定义分别位于 [`IMemberNFT.sol`](../../../interfaces/core/IMemberNFT.sol)、[`IPhase.sol`](../../../interfaces/core/IPhase.sol)、[`IStake.sol`](../../../interfaces/core/IStake.sol)、[`ISubmit.sol`](../../../interfaces/core/ISubmit.sol)、[`IVote.sol`](../../../interfaces/core/IVote.sol)、[`IMint.sol`](../../../interfaces/core/IMint.sol)、[`ILaunch.sol`](../../../interfaces/core/ILaunch.sol) 和 [`ILOVE20Token.sol`](../../../interfaces/core/ILOVE20Token.sol)。
 
 必须拒绝无效成员或非来源控制者、零 Target/Distributor、非法模式、KV 长度不等、重复 Proposal/推举、投票超额、Round 未结束或未准备、重复铸造/销毁、待解锁时追加或融合、解锁期不足、跨社区次数操作、次数不足或超上限。未冻结专用 selector 的拒绝条件不能冒充已确定 ABI。
 

@@ -16,7 +16,7 @@ struct TokenStakeGlobals {
     uint256 totalBoostShares;
 }
 
-interface ILOVE20Stake {
+interface IStake {
     function init(
         address phaseAddress,
         address memberNFTAddress,

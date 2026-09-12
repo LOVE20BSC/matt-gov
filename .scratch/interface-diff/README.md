@@ -38,13 +38,13 @@
 | --- | --- | --- |
 | `core/IMemberNFT.sol` | `LOVE20TKM/group/src/interfaces/ILOVE20Group.sol` | 改名迁移 |
 | `core/IPhase.sol` | `LOVE20TKM/core/src/interfaces/IPhase.sol` | 重构 |
-| `core/ILOVE20Stake.sol` | `LOVE20TKM/core/src/interfaces/ILOVE20Stake.sol` | 重构 |
-| `core/ILOVE20Submit.sol` | `LOVE20TKM/core/src/interfaces/ILOVE20Submit.sol` | 重构 |
-| `core/ILOVE20Vote.sol` | `LOVE20TKM/core/src/interfaces/ILOVE20Vote.sol` | 改名迁移 |
-| `core/ILOVE20Mint.sol` | `LOVE20TKM/core/src/interfaces/ILOVE20Mint.sol` | 重构 |
-| `core/ILOVE20Launch.sol` | `LOVE20TKM/core/src/interfaces/ILOVE20Launch.sol` | 重写 |
+| `core/IStake.sol` | `LOVE20TKM/core/src/interfaces/ILOVE20Stake.sol` | 重构 |
+| `core/ISubmit.sol` | `LOVE20TKM/core/src/interfaces/ILOVE20Submit.sol` | 重构 |
+| `core/IVote.sol` | `LOVE20TKM/core/src/interfaces/ILOVE20Vote.sol` | 改名迁移 |
+| `core/IMint.sol` | `LOVE20TKM/core/src/interfaces/ILOVE20Mint.sol` | 重构 |
+| `core/ILaunch.sol` | `LOVE20TKM/core/src/interfaces/ILOVE20Launch.sol` | 重写 |
 | `core/ILOVE20Token.sol` | `LOVE20TKM/core/src/interfaces/ILOVE20Token.sol` | 微调 |
-| `core/ILOVE20TokenFactory.sol` | `LOVE20TKM/core/src/interfaces/ILOVE20TokenFactory.sol` | 微调 |
+| `core/ITokenFactory.sol` | `LOVE20TKM/core/src/interfaces/ILOVE20TokenFactory.sol` | 微调 |
 | `core/IProposalTarget.sol` | 无 | 全新 |
 | `core/ILaunchDistributor.sol` | 无 | 全新 |
 
@@ -125,7 +125,7 @@
 
 - **`IGroupMarket`（26/8/16）**：`LOVE20MemberMarket` 的挂单/报价/成交体系（`createListing`、`makeOffer`、`acceptOffer`、`buyListing`、`calculateFee`、`calculateSellerProceeds`、`highestOffer` 等）。Out of scope 已裁决（见 `.scratch/bsc-protocol-migration/map.md`），新协议无任何对应。
 - **`ILOVE20Join`（26/4/7）**：核心参与业务，下移 action 层；随机抽样支撑结构（`numOfAccounts`/`indexToAccount`/`accountToIndex`/`prefixSum`、`randomAccounts*`）与按轮可回溯的 `verificationInfo*` 系列一并删除。
-- **`ILOVE20Verify`（16/1/4）**：核心验证阶段取消；`stakedAmountOfVerifiers` 单点迁至 `ILOVE20Vote.stakedAmountOfVoters`，评分维度在 action 层重构为 `originScore`/`finalScore`/`totalFinalScore`（非一一对应）。
+- **`ILOVE20Verify`（16/1/4）**：核心验证阶段取消；`stakedAmountOfVerifiers` 单点迁至 `IVote.stakedAmountOfVoters`，评分维度在 action 层重构为 `originScore`/`finalScore`/`totalFinalScore`（非一一对应）。
 
 ## 全新增加的接口
 
@@ -141,7 +141,7 @@
 
 1. **主体从地址改为 memberId**。旧 `address account` / `address voter` / `address verifier` 等业务主体参数统一改为 `uint256 memberId` 及其派生名（`voterId`、`submitterId`、`verifierMemberId`、`providerMemberId`、`senderId`）。仅 ERC20/ERC721 标准接口、`distributor`、`target`、`executor`、事件中的 owner 快照和审计地址保留 `address`。
 2. **错误与事件不再拆分子接口**。旧代码普遍使用 `I<Name>Errors` / `I<Name>Events` 子接口再继承（如 `ILOVE20Stake is ILOVE20StakeErrors, ILOVE20StakeEvents, IPhase`）；新接口把事件和错误直接内联在主接口内，不生成额外接口名。
-3. **不再继承 IPhase**。旧 `ILOVE20Stake`、`ILOVE20Submit`、`ILOVE20Vote`、`ILOVE20Verify`、`ILOVE20Join`、`ILOVE20Random` 都 `is IPhase`，因此隐式暴露 `currentRound()`、`roundByBlockNumber()`。新接口改为 `init(phaseAddress, ...)` 依赖注入，各接口只按需自行声明 `currentRound()`（`ILOVE20Submit`、`ILOVE20Vote`、`IGroupChat`）或分阶段轮次（`currentVoteRound`/`currentJoinRound`/`currentVerifyRound`/`currentMintRound`）。
+3. **不再继承 IPhase**。旧 `ILOVE20Stake`、`ILOVE20Submit`、`ILOVE20Vote`、`ILOVE20Verify`、`ILOVE20Join`、`ILOVE20Random` 都 `is IPhase`，因此隐式暴露 `currentRound()`、`roundByBlockNumber()`。新接口改为 `init(phaseAddress, ...)` 依赖注入，各接口只按需自行声明 `currentRound()`（`ISubmit`、`IVote`、`IGroupChat`）或分阶段轮次（`currentVoteRound`/`currentJoinRound`/`currentVerifyRound`/`currentMintRound`）。
 4. **配置常量逐项审查**。迁移规范要求固定配置直接使用大写 `public` 状态变量及其自动 getter；只有协议语义改变时才改名，或明确删除 getter 并仅保留 `init` 参数。TokenFactory 的 `LAUNCH_AMOUNT`、`MAX_SUPPLY`、MemberNFT 的 `BASE_DIVISOR` 等保留旧命名；部分参数因作用域/语义变化改名，部分参数按决议删除 getter，逐项列在各分层文档。
 
 ## 已确认并落地
@@ -151,7 +151,7 @@
 1. **action 层错误声明需补齐**。旧三接口（`IGroupJoin`/`IGroupManager`/`IGroupVerify`）共 **44 条错误声明、40 个不同错误名**，其中 6 个已有新语义对应，6 个随删除机制一并删除，其余 28 个保留并补入 `IGroupActionExecutor`；另补充阶段未开始错误，接口错误数为 44，逐名核对见 [action.md §3「错误」](action.md)。
 2. **链群配置变更事件**。`IGroupActionExecutor` 已声明 `ActivateGroup`、`DeactivateGroup`、`UpdateGroupInfo`，仅去掉 `owner`（主体改为 memberId，owner 快照不再进事件）、保留 `stakeAmount`；事件数为 11，供前端索引与通知。
 3. **group-chat scope/ban 适配接口**。已补回 `IAdminBanSource.sol`、`IGroupMemberScope.sol` 和 `IGroupJoinScopeSource.sol`。三者声明地址 getter，行为契约分别来自 `IPostBanSource.isBanned` 或 `IPostScopeSource.canPost`；`IGroupJoinScopeSource` 使用 `GROUP_ACTION_EXECUTOR_ADDRESS()` 指向 action 层单例 Executor，并保留 `GROUP_MEMBER_ADDRESS()`。
-4. **Mint 依赖地址 getter需补回，激励计算查询保持精简**。旧 `ILOVE20Mint` 提供 `voteAddress`/`verifyAddress`/`stakeAddress`，新版退化为仅 `init` 入参。确认结论：**补回 4 个常用依赖 getter**（前端与其他合约发现依赖的常用入口）；`memberNFTAddress` 仅通过 `init` 注入，不单独暴露 getter。`govVerifyReward`/`govBoostReward`/`calculateRoundGovReward`/`calculateRoundActionReward` 等激励计算查询**确认不补**，由调用方自行计算。注意 `verifyAddress` 对应的验证阶段已取消，补回时按新版实际依赖（`voteAddress`/`stakeAddress`/`submitAddress`/`launchAddress`）取用。**已落地**：`ILOVE20Mint` 补回上述 4 个 getter，函数数 19 → 23；4 个激励计算查询确认不补。
+4. **Mint 依赖地址 getter需补回，激励计算查询保持精简**。旧 `ILOVE20Mint` 提供 `voteAddress`/`verifyAddress`/`stakeAddress`，新版退化为仅 `init` 入参。确认结论：**补回 4 个常用依赖 getter**（前端与其他合约发现依赖的常用入口）；`memberNFTAddress` 仅通过 `init` 注入，不单独暴露 getter。`govVerifyReward`/`govBoostReward`/`calculateRoundGovReward`/`calculateRoundActionReward` 等激励计算查询**确认不补**，由调用方自行计算。注意 `verifyAddress` 对应的验证阶段已取消，补回时按新版实际依赖（`voteAddress`/`stakeAddress`/`submitAddress`/`launchAddress`）取用。**已落地**：`IMint` 补回上述 4 个 getter，函数数 19 → 23；4 个激励计算查询确认不补。
 5. **链群维度汇总查询需补回**。旧 `IGroupJoin.totalJoinedAmountByGroupId`、`joinedAmount`、`totalJoinedAmountByGroupOwner` 在新接口没有对应，新版只有 `joinedAmountByMemberId` 与 `memberIdsByGroupId`，只能遍历成员累加。确认结论：**补回汇总查询**，遍历累加在成员规模大时不可用。**已落地**：补回 `totalJoinedAmountByGroupId(tokenAddress, actionId, round, groupId)` 与 `joinedAmount(tokenAddress, actionId, round)`（相对旧版新增 `actionId` 参数，单例多行动模型）；`totalJoinedAmountByGroupOwner` 按裁决不补（群归属改为链群维度，不再按 owner 地址聚合）。
 
 ## 核对方法与覆盖度
@@ -174,9 +174,9 @@
 | `IGroupActionExecutor` | 96 → 97 | 8 → 11 | 15 → 44 | 1、2、5、阶段未开始错误、单例行动作用域 |
 | `ILpExecutor` | 19 → 19* | 5 | 10 | 单例行动作用域、阶段未开始错误 |
 | `IGroupServiceExecutor` | 18 → 18* | 3 | 9 | 单例服务 Proposal 作用域、阶段未开始错误 |
-| `ILOVE20Stake` | 18 | 4 | 11 → 10 | 删除误导性 `InvalidToAddress` |
-| `ILOVE20Submit` | 14 | 2 | 7 | 保留旧 Submit 的三个专用 selector |
-| `ILOVE20Mint` | 19 → 23 | 4 | 8 | 5 |
+| `IStake` | 18 | 4 | 11 → 10 | 删除误导性 `InvalidToAddress` |
+| `ISubmit` | 14 | 2 | 7 | 保留旧 Submit 的三个专用 selector |
+| `IMint` | 19 → 23 | 4 | 8 | 5 |
 | `IAdminBanSource` | 0 → 2 | 0 | 0 → 1 | 3 |
 | `IGroupMemberScope` | 0 → 2 | 0 | 0 → 1 | 3 |
 | `IGroupJoinScopeSource` | 0 → 3 | 0 | 0 → 1 | 3 |

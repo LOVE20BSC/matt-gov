@@ -3,7 +3,7 @@ pragma solidity =0.8.17;
 
 enum DistributorMode { NoCallback, Callback }
 
-interface ILOVE20Launch {
+interface ILaunch {
     function init(
         address tokenFactory,
         address mint,

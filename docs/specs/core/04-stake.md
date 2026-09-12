@@ -4,7 +4,7 @@ Stake 按 `tokenAddress + memberId` 维护流动性和加速质押，不发行 S
 
 ## 状态
 
-结构体和完整 ABI 见 [`ILOVE20Stake.sol`](../../../interfaces/core/ILOVE20Stake.sol)。
+结构体和完整 ABI 见 [`IStake.sol`](../../../interfaces/core/IStake.sol)。
 
 | 字段 | 含义 |
 | --- | --- |
@@ -72,7 +72,7 @@ Vote 每次投票通过 `Stake.validGovVotes(tokenAddress, memberId)` 读取当�
 
 ## 实现约束
 
-事件与错误定义见 [`ILOVE20Stake.sol`](../../../interfaces/core/ILOVE20Stake.sol)。
+事件与错误定义见 [`IStake.sol`](../../../interfaces/core/IStake.sol)。
 
 - 当前质押余额为 `0` 就表示没有质押；只有 RoundHistory 的历史查询需要区分“本轮没有记录”和“本轮明确归零”，直接沿用旧 RoundHistory 的显式记录语义，不新增额外布尔状态。
 - LP 写操作统一先校验参数和权限并锁定重入；读取 Pair 状态，在任何除法前处理 `pairTotalSupply == 0`、`currentSqrtKOfLp == 0` 和基准未增长；需要 Router、Pair 或 ERC20 调用时，以外部调用成功返回的实际数量计算并更新 `withdrawableLp`、`feeLp`、`sqrtKOfLp`、成员份额和社区总份额。任一步失败全部回滚。BSC 不使用 SL/ST 凭证，所有份额和可提取 LP 直接存入 Stake。

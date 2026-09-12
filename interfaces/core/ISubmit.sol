@@ -23,7 +23,7 @@ struct ProposalParams {
     bytes[] values;
 }
 
-interface ILOVE20Submit {
+interface ISubmit {
     function stakeAddress() external view returns (address);
     function SUBMIT_MIN_PER_THOUSAND() external view returns (uint256);
     function MAX_VERIFICATION_KEY_LENGTH() external view returns (uint256);
