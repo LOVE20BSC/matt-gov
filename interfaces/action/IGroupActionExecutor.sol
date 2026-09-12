@@ -21,7 +21,33 @@ struct VerifierApplication {
     bool active;
 }
 
-interface IGroupActionExecutor is IGroupActionIndexes, IProposalTarget {
+interface IGroupActionExecutorEvents {
+    event ActionJoined(address indexed tokenAddress, uint256 indexed actionId, uint256 indexed memberId,
+        uint256 round, uint256 amount, bool isExperience, uint256 providerMemberId);
+    event ActionWithdrawn(address indexed tokenAddress, uint256 indexed actionId, uint256 indexed memberId,
+        uint256 round, uint256 amount, bool isExperience, uint256 providerMemberId);
+    event ActionExited(address indexed tokenAddress, uint256 indexed actionId, uint256 indexed memberId,
+        uint256 round, bool isExperience, uint256 providerMemberId);
+    event VerifierApplied(address indexed tokenAddress, uint256 indexed actionId, uint256 indexed memberId,
+        uint256 round, uint256 applicationId);
+    event VerificationBatchSubmitted(address indexed tokenAddress, uint256 indexed actionId, uint256 indexed groupId,
+        uint256 round, uint256 batchIndex, uint256[] scores);
+    event VerifierLocked(address indexed tokenAddress, uint256 indexed actionId, uint256 indexed round,
+        uint256 memberId);
+    event ActionRewardMinted(address indexed tokenAddress, uint256 indexed actionId, uint256 indexed round,
+        uint256 totalAmount, bytes32 recipientType);
+    event RewardBurned(address indexed tokenAddress, uint256 indexed actionId, uint256 indexed round,
+        uint256 amount, bytes32 reason);
+    event ActivateGroup(address indexed tokenAddress, uint256 indexed actionId, uint256 round,
+        uint256 indexed groupId, uint256 stakeAmount);
+    event DeactivateGroup(address indexed tokenAddress, uint256 indexed actionId, uint256 round,
+        uint256 indexed groupId, uint256 stakeAmount);
+    event UpdateGroupInfo(address indexed tokenAddress, uint256 indexed actionId, uint256 round,
+        uint256 indexed groupId, string description, uint256 maxCapacity, uint256 minJoinAmount,
+        uint256 maxJoinAmount, uint256 maxAccounts);
+}
+
+interface IGroupActionExecutor is IGroupActionIndexes, IProposalTarget, IGroupActionExecutorEvents {
     function JOIN_TOKEN_ADDRESS(address tokenAddress, uint256 actionId) external view returns (address);
     function ACTIVATION_STAKE_AMOUNT(address tokenAddress, uint256 actionId) external view returns (uint256);
     function MAX_JOIN_AMOUNT_RATIO(address tokenAddress, uint256 actionId) external view returns (uint256);
@@ -91,30 +117,6 @@ interface IGroupActionExecutor is IGroupActionIndexes, IProposalTarget {
     function totalFinalScore(address tokenAddress, uint256 actionId, uint256 round) external view returns (uint256);
     function generatedActionRewardByGroupId(address tokenAddress, uint256 actionId, uint256 round, uint256 groupId)
         external view returns (uint256);
-
-    event ActionJoined(address indexed tokenAddress, uint256 indexed actionId, uint256 indexed memberId,
-        uint256 round, uint256 amount, bool isExperience, uint256 providerMemberId);
-    event ActionWithdrawn(address indexed tokenAddress, uint256 indexed actionId, uint256 indexed memberId,
-        uint256 round, uint256 amount, bool isExperience, uint256 providerMemberId);
-    event ActionExited(address indexed tokenAddress, uint256 indexed actionId, uint256 indexed memberId,
-        uint256 round, bool isExperience, uint256 providerMemberId);
-    event VerifierApplied(address indexed tokenAddress, uint256 indexed actionId, uint256 indexed memberId,
-        uint256 round, uint256 applicationId);
-    event VerificationBatchSubmitted(address indexed tokenAddress, uint256 indexed actionId, uint256 indexed groupId,
-        uint256 round, uint256 batchIndex, uint256[] scores);
-    event VerifierLocked(address indexed tokenAddress, uint256 indexed actionId, uint256 indexed round,
-        uint256 memberId);
-    event ActionRewardMinted(address indexed tokenAddress, uint256 indexed actionId, uint256 indexed round,
-        uint256 totalAmount, bytes32 recipientType);
-    event RewardBurned(address indexed tokenAddress, uint256 indexed actionId, uint256 indexed round,
-        uint256 amount, bytes32 reason);
-    event ActivateGroup(address indexed tokenAddress, uint256 indexed actionId, uint256 round,
-        uint256 indexed groupId, uint256 stakeAmount);
-    event DeactivateGroup(address indexed tokenAddress, uint256 indexed actionId, uint256 round,
-        uint256 indexed groupId, uint256 stakeAmount);
-    event UpdateGroupInfo(address indexed tokenAddress, uint256 indexed actionId, uint256 round,
-        uint256 indexed groupId, string description, uint256 maxCapacity, uint256 minJoinAmount,
-        uint256 maxJoinAmount, uint256 maxAccounts);
 
     error AlreadyInitialized();
     error InvalidKVLength();

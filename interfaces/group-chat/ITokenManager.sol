@@ -1,7 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity =0.8.37;
 
-interface ITokenManager {
+interface ITokenManagerEvents {
+    event Activate(address indexed token, uint256 indexed groupId, address indexed operator);
+}
+
+interface ITokenManager is ITokenManagerEvents {
     function GROUP_CHAT_ADDRESS() external view returns (address);
     function GROUP_ADDRESS() external view returns (address);
     function BAN_SOURCE_ADDRESS() external view returns (address);
@@ -19,8 +23,6 @@ interface ITokenManager {
     function tokensCount() external view returns (uint256);
     function tokens(uint256 offset, uint256 limit, bool reverse)
         external view returns (address[] memory tokenList, uint256[] memory groupIds);
-
-    event Activate(address indexed token, uint256 indexed groupId, address indexed operator);
 
     error ManagerAddressHasNoCode();
     error AlreadyManaged();

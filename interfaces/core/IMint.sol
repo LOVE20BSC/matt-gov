@@ -1,7 +1,40 @@
 // SPDX-License-Identifier: MIT
 pragma solidity =0.8.37;
 
-interface IMint {
+interface IMintEvents {
+    event RewardPrepared(
+        address indexed tokenAddress,
+        uint256 indexed round,
+        uint256 govReward,
+        uint256 proposalReward,
+        uint256 eligibleProposalVotes,
+        uint256 rewardReserved,
+        uint256 rewardBurned
+    );
+    event GovernanceRewardMinted(
+        address indexed tokenAddress,
+        uint256 indexed round,
+        uint256 indexed memberId,
+        uint256 voteReward,
+        uint256 boostReward,
+        uint256 burnReward
+    );
+    event ProposalRewardMinted(
+        address indexed tokenAddress,
+        uint256 indexed round,
+        uint256 indexed proposalId,
+        address target,
+        uint256 amount
+    );
+    event RewardBurned(
+        address indexed tokenAddress,
+        uint256 indexed round,
+        uint256 amount,
+        bytes32 reason
+    );
+}
+
+interface IMint is IMintEvents {
     // 4 个常用依赖 getter；memberNFTAddress 仅通过 init 注入，不单独暴露 getter
     function voteAddress() external view returns (address);
     function submitAddress() external view returns (address);
@@ -52,37 +85,6 @@ interface IMint {
     function reservedAvailable(address tokenAddress) external view returns (uint256);
     function launchCredit(address tokenAddress, uint256 memberId) external view returns (uint256);
     function PROPOSAL_REWARD_MIN_VOTE_PER_THOUSAND() external view returns (uint256);
-
-    event RewardPrepared(
-        address indexed tokenAddress,
-        uint256 indexed round,
-        uint256 govReward,
-        uint256 proposalReward,
-        uint256 eligibleProposalVotes,
-        uint256 rewardReserved,
-        uint256 rewardBurned
-    );
-    event GovernanceRewardMinted(
-        address indexed tokenAddress,
-        uint256 indexed round,
-        uint256 indexed memberId,
-        uint256 voteReward,
-        uint256 boostReward,
-        uint256 burnReward
-    );
-    event ProposalRewardMinted(
-        address indexed tokenAddress,
-        uint256 indexed round,
-        uint256 indexed proposalId,
-        address target,
-        uint256 amount
-    );
-    event RewardBurned(
-        address indexed tokenAddress,
-        uint256 indexed round,
-        uint256 amount,
-        bytes32 reason
-    );
 
     error AlreadyInitialized();
     error NoRewardAvailable();

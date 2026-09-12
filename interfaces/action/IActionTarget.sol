@@ -3,7 +3,18 @@ pragma solidity =0.8.37;
 
 import {IProposalTarget} from "../core/IProposalTarget.sol";
 
-interface IActionTarget is IProposalTarget {
+interface IActionTargetEvents {
+    event ProposalLinked(address indexed tokenAddress, uint256 indexed proposalId, address indexed executor);
+    event ActionJoined(address indexed tokenAddress, uint256 indexed actionId, uint256 indexed memberId,
+        uint256 round, uint256 amount, bool isExperience, uint256 providerMemberId);
+    event ActionWithdrawn(address indexed tokenAddress, uint256 indexed actionId, uint256 indexed memberId,
+        uint256 round, uint256 amount, bool isExperience, uint256 providerMemberId);
+    event ActionExited(address indexed tokenAddress, uint256 indexed actionId, uint256 indexed memberId,
+        uint256 round, bool isExperience, uint256 providerMemberId);
+    event ForceExited(address indexed tokenAddress, uint256 indexed actionId, uint256 indexed memberId);
+}
+
+interface IActionTarget is IProposalTarget, IActionTargetEvents {
     function init(address memberNFTAddress, address submitAddress, address voteAddress, address mintAddress) external;
     function isAccountJoined(address tokenAddress, uint256 actionId, uint256 memberId) external view returns (bool);
     function actionIdsByMemberId(address tokenAddress, uint256 memberId)
@@ -21,15 +32,6 @@ interface IActionTarget is IProposalTarget {
         external view returns (uint256[] memory proposalIds);
     function proposals(address tokenAddress, uint256 round)
         external view returns (uint256[] memory proposalIds, address[] memory executors);
-
-    event ProposalLinked(address indexed tokenAddress, uint256 indexed proposalId, address indexed executor);
-    event ActionJoined(address indexed tokenAddress, uint256 indexed actionId, uint256 indexed memberId,
-        uint256 round, uint256 amount, bool isExperience, uint256 providerMemberId);
-    event ActionWithdrawn(address indexed tokenAddress, uint256 indexed actionId, uint256 indexed memberId,
-        uint256 round, uint256 amount, bool isExperience, uint256 providerMemberId);
-    event ActionExited(address indexed tokenAddress, uint256 indexed actionId, uint256 indexed memberId,
-        uint256 round, bool isExperience, uint256 providerMemberId);
-    event ForceExited(address indexed tokenAddress, uint256 indexed actionId, uint256 indexed memberId);
 
     error AlreadyInitialized();
     error InvalidKVLength();

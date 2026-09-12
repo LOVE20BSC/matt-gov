@@ -1,7 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity =0.8.37;
 
-interface IVote {
+interface IVoteEvents {
+    event VoteCast(
+        address indexed tokenAddress,
+        uint256 round,
+        uint256 indexed voterId,
+        uint256 indexed proposalId,
+        uint256 votes
+    );
+}
+
+interface IVote is IVoteEvents {
     function stakeAddress() external view returns (address);
     function submitAddress() external view returns (address);
     function init(
@@ -60,13 +70,6 @@ interface IVote {
         external view returns (uint256);
     function votedProposalIdsAtIndex(address tokenAddress, uint256 round, uint256 index)
         external view returns (uint256 proposalId);
-    event VoteCast(
-        address indexed tokenAddress,
-        uint256 round,
-        uint256 indexed voterId,
-        uint256 indexed proposalId,
-        uint256 votes
-    );
 
     error AlreadyInitialized();
     error InvalidKVLength();
