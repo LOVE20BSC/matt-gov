@@ -43,6 +43,7 @@ Core 不解释具体 Proposal 的业务字段，扩展通过 Target 接入。
 | Launch | `distributor`、`name`、`symbol` | 首币分发目标、名称和符号；首币固定使用 `NoCallback`，`distributor` 非零 |
 | Launch | `launchRatio` | 发射阈值比例，`1e18` 精度，如 `1e16 = 1%` |
 | Launch | `maxLaunchCount` | 每社区累计次数上限，如 `100` |
+| Launch | `tokenSymbolLength` | 子币符号固定字节长度，沿用旧 Launch 校验 |
 | TokenFactory | `launchAddress`、`mintAddress` | 唯一创建调用方和代币 minter |
 | TokenFactory | `LAUNCH_AMOUNT`、`MAX_SUPPLY` | 首批/最大供应量，工厂 init 固定；`launchAmount <= maxSupply` |
 | TokenFactory.createToken | `distributor` | 本次创建的首批代币接收者；非零 |
