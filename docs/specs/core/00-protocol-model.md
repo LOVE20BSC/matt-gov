@@ -35,14 +35,14 @@ Core 不解释具体 Proposal 的业务字段，扩展通过 Target 接入。
 | Submit | `submitMinPerThousand` | 推举门槛，千分比，如 `10 = 1%` |
 | Vote | `phaseAddress`、`stakeAddress`、`submitAddress`、`memberNFTAddress`、`mintAddress` | 时间、票权、提案、身份和激励门槛依赖 |
 | Mint | `voteAddress`、`submitAddress`、`stakeAddress`、`launchAddress`、`memberNFTAddress` | 投票、提案、质押、发射和铸造权限依赖 |
-| Mint | `proposalRewardMinVotePerThousand` | 提案激励门槛，千分比，如 `50 = 5%` |
+| Mint | `proposalRewardMinVotePerThousand` | 提案激励门槛；公开 getter 为 `PROPOSAL_REWARD_MIN_VOTE_PER_THOUSAND()`，千分比，如 `50 = 5%` |
 | Mint | `roundRewardGovPerThousand`、`roundRewardProposalPerThousand` | 治理池、提案池占可用供应的千分比，如 `30`、`10` |
 | Mint | `maxGovBoostRewardMultiplier` | 加速激励相对投票激励的倍数上限，如 `2` |
 | Launch | `tokenFactoryAddress`、`mintAddress`、`memberNFTAddress` | 代币工厂、铸造和身份依赖 |
 | Launch | `rootParentTokenAddress` | 根父币 WBNB |
 | Launch | `distributor`、`name`、`symbol` | 首币分发目标、名称和符号；首币固定使用 `NoCallback`，`distributor` 非零 |
-| Launch | `launchRatio` | 发射阈值比例，`1e18` 精度，如 `1e16 = 1%` |
-| Launch | `maxLaunchCount` | 每社区累计次数上限，如 `100` |
+| Launch | `launchRatio` | 发射阈值比例；公开 getter 为 `LAUNCH_RATIO()`，`1e18` 精度，如 `1e16 = 1%` |
+| Launch | `maxLaunchCount` | 每社区累计次数上限；公开 getter 为 `MAX_LAUNCH_COUNT()`，如 `100` |
 | Launch | `tokenSymbolLength` | 子币符号固定字节长度；公开 getter 保持 `TOKEN_SYMBOL_LENGTH()`，沿用旧 Launch 校验 |
 | TokenFactory | `launchAddress`、`mintAddress` | 唯一创建调用方和代币 minter |
 | TokenFactory | `LAUNCH_AMOUNT`、`MAX_SUPPLY` | 首批/最大供应量，工厂 init 固定；`launchAmount <= maxSupply` |

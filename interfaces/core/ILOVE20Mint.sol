@@ -51,7 +51,7 @@ interface ILOVE20Mint {
     function rewardAvailable(address tokenAddress) external view returns (uint256);
     function reservedAvailable(address tokenAddress) external view returns (uint256);
     function launchCredit(address tokenAddress, uint256 memberId) external view returns (uint256);
-    function proposalRewardMinVotePerThousand() external view returns (uint256);
+    function PROPOSAL_REWARD_MIN_VOTE_PER_THOUSAND() external view returns (uint256);
 
     event RewardPrepared(
         address indexed tokenAddress,
