@@ -6,6 +6,8 @@ Launch 负责基础发射与次数账本；TokenFactory 负责创建 LOVE20Token
 
 首币参数与依赖在同一次初始化中传入；供应量在工厂初始化固定，不在 Launch 再保存一份：
 
+由 `init` 固定的 Launch 配置状态变量使用大写 `public` 命名并直接提供同名 getter：`LAUNCH_RATIO`、`MAX_LAUNCH_COUNT` 和 `TOKEN_SYMBOL_LENGTH`。
+
 完整 ABI 见 [`ILOVE20Launch.sol`](../../../interfaces/core/ILOVE20Launch.sol)。
 
 先部署全部合约取得地址，再提交一次 `TokenFactory.init` 完成初始化；`init` 不保存或校验部署者地址，只允许成功一次。检查脚本随后读取 `initialized()`、依赖地址和参数核对结果；参数错误则该部署版本不对外发布。本次交易写入依赖和参数，调用 `TokenFactory.createToken(rootParentToken, name, symbol, distributor)`；工厂完成首币和父币/minter 绑定，Launch 登记首币并同步调用 `MemberNFT.init(tokenAddress)` 完成其初始化；MemberNFT 不保存 Launch 地址。Pair 在首次 LP 质押时由 `Stake` 按需查询或创建，Launch 不创建 Pair，也不重复铸造首批供应。
