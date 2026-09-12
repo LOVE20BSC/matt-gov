@@ -23,7 +23,25 @@ struct ProposalParams {
     bytes[] values;
 }
 
-interface ISubmit {
+interface ISubmitEvents {
+    event ProposalCreated(
+        address indexed tokenAddress,
+        uint256 indexed proposalId,
+        uint256 indexed author,
+        string title,
+        string details,
+        address target,
+        TargetMode targetMode
+    );
+    event ProposalSubmitted(
+        address indexed tokenAddress,
+        uint256 round,
+        uint256 indexed submitterId,
+        uint256 indexed proposalId
+    );
+}
+
+interface ISubmit is ISubmitEvents {
     function stakeAddress() external view returns (address);
     function SUBMIT_MIN_PER_THOUSAND() external view returns (uint256);
     function MAX_VERIFICATION_KEY_LENGTH() external view returns (uint256);
@@ -58,22 +76,6 @@ interface ISubmit {
     function submissionsCount(address tokenAddress, uint256 round) external view returns (uint256);
     function submissionAtIndex(address tokenAddress, uint256 round, uint256 index)
         external view returns (uint256 proposalId, uint256 submitterId);
-
-    event ProposalCreated(
-        address indexed tokenAddress,
-        uint256 indexed proposalId,
-        uint256 indexed author,
-        string title,
-        string details,
-        address target,
-        TargetMode targetMode
-    );
-    event ProposalSubmitted(
-        address indexed tokenAddress,
-        uint256 round,
-        uint256 indexed submitterId,
-        uint256 indexed proposalId
-    );
 
     error AlreadyInitialized();
     error InvalidKVLength();

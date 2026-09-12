@@ -18,14 +18,14 @@
 
 | 侧 | 接口文件 | 接口声明 | 函数 | 事件 | 错误 |
 | --- | --- | --- | --- | --- | --- |
-| 新（`matt-gov/interfaces`） | 28 | 41 | 415 | 71 | 212 |
+| 新（`matt-gov/interfaces`） | 28 | 57 | 415 | 71 | 212 |
 | 旧（6 个 LOVE20TKM 仓库） | 52 | 115 | 655 | 100 | 274 |
 
 **统计口径**（三份分层文档的计数均可按此复现）：
 
 - 旧侧文件 = 6 个 LOVE20TKM 仓库 `LOVE20TKM/<repo>/src` 下 `interface`/`interfaces` 目录内的全部 `.sol`；排除 `LOVE20TKM/group-chat/src/interfaces/external/`（14 个跨仓库镜像，非旧协议自有 ABI）；**包含** `LOVE20TKM/group/src/interfaces/ILOVE20Token.sol`（`core` 同名接口的逐字镜像，仅 import 路径不同）。
 - 函数数按**声明条数**计，不做跨文件去重（同一函数名在不同接口各计一次）。
-- 接口声明数与文件数不同：新侧 28 文件内含 **41 个** `interface` 声明——`IGroupChatRules.sol` 一个文件含 4 个，`core/ILOVE20Token.sol`、`core/IMemberNFT.sol`、`core/ILaunch.sol`、`core/IPhase.sol`、`core/ITokenFactory.sol` 各含 3 个（`Events`、`Errors` 子接口与主接口），其余文件各含 1 个；旧侧 52 文件内含 **115 个** `interface` 声明（去重后 112 个，`ILOVE20Token` 及其两个子接口在 `core` 与 `group` 各声明一次），其中 63 个是 `I<Name>Errors`/`I<Name>Events` 子接口。
+- 接口声明数与文件数不同：新侧 28 文件内含 **57 个** `interface` 声明——`group-chat/IGroupChatRules.sol` 含 4 个；`core/ILOVE20Token.sol`、`core/IMemberNFT.sol`、`core/ILaunch.sol`、`core/IPhase.sol`、`core/ITokenFactory.sol` 各含 3 个；16 个文件各含 2 个（`Events` 子接口与主接口）；6 个文件各含 1 个；旧侧 52 文件内含 **115 个** `interface` 声明（去重后 112 个，`ILOVE20Token` 及其两个子接口在 `core` 与 `group` 各声明一次），其中 63 个是 `I<Name>Errors`/`I<Name>Events` 子接口。
 - **简写约定**（用于按名检索时的展开规则）：`X`(+`Count`/`AtIndex`) 表示 `X`、`XCount`、`XAtIndex` 三个函数；`aCount`/`AtIndex` 表示 `aCount` 与 `aAtIndex` 两个函数。旧协议大量使用「全量数组 + 长度 + 逐项读取」三件套，逐条列出会淹没差异，故按组名收敛。需要精确 ABI 时按此规则展开即可。
 
 旧侧统计含 `IGroupMarket`、`ILOVE20SLToken`、`ILOVE20STToken` 等已裁决不迁移的接口。函数数下降主要来自三处：地址/ID 双路径合并、`extension` 实例模型改为单例多社区模型、公平发射募资与不信任投票等整块业务不迁移。
@@ -156,13 +156,13 @@
 
 ## 接口组织偏差登记
 
-`docs/migration-standards.md` 要求新接口保留旧接口的三段拆分（`Events`、`Errors`、主接口）。当前状态与处理计划：
+`docs/migration-standards.md` 要求新接口保留旧文件的拆分结构，并把事件统一声明在 `I<Name>Events`。子接口拆分进度与待补清单：
 
-| 层 | 已按三段拆分 | 仍为内联（偏差） | 处理计划 |
+| 层 | `Events` 子接口 | `Errors` 子接口 | 待各自迁移时补齐 |
 | --- | --- | --- | --- |
-| core | `IMemberNFT`、`ILOVE20Token`、`ILaunch`、`IPhase`、`ITokenFactory` | `IMint`、`IStake`、`ISubmit`、`IVote`（未实现） | 未实现的 4 个在各自合约的迁移提交内拆分，事件一律进 `I<Name>Events` |
-| action | 无 | 5 个接口 | 各自迁移时按同一口径处理 |
-| group-chat | 无 | 12 个接口 | 各自迁移时按同一口径处理 |
+| core | 9 个：`IMemberNFT`、`ILOVE20Token`、`ILaunch`、`IPhase`、`ITokenFactory`、`IMint`、`IStake`、`ISubmit`、`IVote` | 5 个：`IMemberNFT`、`ILOVE20Token`、`ILaunch`、`IPhase`、`ITokenFactory` | `IMint`、`IStake`、`ISubmit`、`IVote` 的 `Errors` 子接口 |
+| action | 4 个：`IActionTarget`、`IGroupActionExecutor`、`IGroupServiceExecutor`、`ILpExecutor` | 无 | 各接口的 `Errors` 子接口 |
+| group-chat | 8 个：`IActionManager`、`IGovVotedBanSource`、`IGroupAdmin`、`IGroupChat`、`IGroupChatBanList`、`IGroupChatDelegate`、`IGroupMember`、`ITokenManager` | 无 | 各接口的 `Errors` 子接口 |
 
 计数影响：每新增一个子接口声明，`接口声明` 计数 `+1`；函数、事件、错误数不变。
 
@@ -172,12 +172,12 @@
 
 | 层 | 核对内容 | 结果 |
 | --- | --- | --- |
-| 1 | 规模数字：文件/接口声明/函数/事件/错误计数，README 表格与脚本输出逐位比对 | 新 28 / 41 / 415 / 71 / 212，旧 52 / 115 / 655 / 100 / 274；新侧按自有声明统计，标准继承成员另计 |
+| 1 | 规模数字：文件/接口声明/函数/事件/错误计数，README 表格与脚本输出逐位比对 | 新 28 / 57 / 415 / 71 / 212，旧 52 / 115 / 655 / 100 / 274；新侧按自有声明统计，标准继承成员另计 |
 | 2 | 反向：文档反引号内每个标识符，是否在新旧源码全集中 | 0 个虚构标识符（498 个候选 token 中未命中源码的 64 个均为类型名、结构体名、文件名与散文词） |
 | 3 | 正向：旧侧 1029 条声明（655 函数 / 100 事件 / 274 错误）是否都有归处 | 880 条按名直接提及 + 67 条按简写约定展开 + 82 条归入整块规模账（该表合计 198 条，其中 116 条同时被按名提及），**未归类 0** |
 | 4 | 签名级：文档中每条「函数名 + 参数序列」写法，与源码真实参数名序列逐条比对 | 见下 |
 | 5 | 状态级：标注「保留」的条目，新旧类型序列是否真一致；事件与错误的字段级差异是否被文档覆盖 | 49 条「保留」全部真一致；13 处事件字段差异 + 1 处错误字段差异全部已记录 |
-| 6 | 可编译性：改动后的 `interfaces/` 用统一的 Solidity 0.8.37 全量编译 | 41 个接口、28 个文件使用统一 pragma；标准依赖继承成员按完整 ABI 口径另行展开 |
+| 6 | 可编译性：改动后的 `interfaces/` 用统一的 Solidity 0.8.37 全量编译 | 57 个接口、28 个文件使用统一 pragma；标准依赖继承成员按完整 ABI 口径另行展开 |
 
 第 6 层的 ABI 差分（与改动前 `git HEAD` 对比）只出现 9 个接口的差异，与五条补齐项、阶段错误补齐、一个语义修正及单例作用域修正对应：
 

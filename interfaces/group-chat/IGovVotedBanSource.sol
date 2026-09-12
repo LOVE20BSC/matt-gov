@@ -3,7 +3,15 @@ pragma solidity =0.8.37;
 
 import {IPostBanSource} from "./IGroupChatRules.sol";
 
-interface IGovVotedBanSource is IPostBanSource {
+interface IGovVotedBanSourceEvents {
+    event SetSenderIdBanVote(uint256 indexed groupId, uint256 indexed targetSenderId, uint256 indexed voterId,
+        bool supportBan, uint256 settledWeight, uint256 supportWeight, uint256 opposeWeight, uint256 stateVersion);
+    event SetSenderIdBan(uint256 indexed groupId, uint256 indexed targetSenderId,
+        bool listed, uint256 stateVersion);
+    event ChangeStateVersion(uint256 indexed groupId, uint256 stateVersion);
+}
+
+interface IGovVotedBanSource is IPostBanSource, IGovVotedBanSourceEvents {
     function GROUP_ADDRESS() external view returns (address);
     function PRECISION() external view returns (uint256);
     function MIN_SUPPORT_TO_OPPOSE_RATIO() external view returns (uint256);
@@ -30,12 +38,6 @@ interface IGovVotedBanSource is IPostBanSource {
         external view returns (uint256[] memory voters, uint256[] memory supportWeights,
             uint256[] memory opposeWeights);
     function stateVersion(uint256 groupId) external view returns (uint256);
-
-    event SetSenderIdBanVote(uint256 indexed groupId, uint256 indexed targetSenderId, uint256 indexed voterId,
-        bool supportBan, uint256 settledWeight, uint256 supportWeight, uint256 opposeWeight, uint256 stateVersion);
-    event SetSenderIdBan(uint256 indexed groupId, uint256 indexed targetSenderId,
-        bool listed, uint256 stateVersion);
-    event ChangeStateVersion(uint256 indexed groupId, uint256 stateVersion);
 
     error GovVotedBanSourceAddressHasNoCode();
     error BanVoteWeightSourceUnavailable();

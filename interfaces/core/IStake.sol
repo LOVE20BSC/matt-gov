@@ -16,7 +16,52 @@ struct TokenStakeGlobals {
     uint256 totalBoostShares;
 }
 
-interface IStake {
+interface IStakeEvents {
+    event StakeLiquidity(
+        address indexed tokenAddress,
+        uint256 indexed round,
+        uint256 indexed memberId,
+        uint256 tokenAmountForLP,
+        uint256 parentTokenAmountForLP,
+        uint256 promisedWaitingPhases,
+        uint256 govVotesAdded,
+        uint256 govVotes,
+        uint256 lpSharesAdded,
+        uint256 lpShares
+    );
+    event StakeToken(
+        address indexed tokenAddress,
+        uint256 indexed round,
+        uint256 indexed memberId,
+        uint256 tokenAmount,
+        uint256 promisedWaitingPhases,
+        uint256 govVotesAdded,
+        uint256 govVotes,
+        uint256 boostSharesAdded,
+        uint256 boostShares
+    );
+    event Unstake(
+        address indexed tokenAddress,
+        uint256 indexed round,
+        uint256 indexed memberId,
+        uint256 promisedWaitingPhases,
+        uint256 govVotes,
+        uint256 lpShares,
+        uint256 boostShares
+    );
+    event Withdraw(
+        address indexed tokenAddress,
+        uint256 indexed round,
+        uint256 indexed memberId,
+        uint256 promisedWaitingPhases,
+        uint256 lpShares,
+        uint256 tokenAmountForLP,
+        uint256 parentTokenAmountForLP,
+        uint256 boostShares
+    );
+}
+
+interface IStake is IStakeEvents {
     function init(
         address phaseAddress,
         address memberNFTAddress,
@@ -70,49 +115,6 @@ interface IStake {
         uint256 memberId,
         uint256 index
     ) external view returns (uint256);
-
-    event StakeLiquidity(
-        address indexed tokenAddress,
-        uint256 indexed round,
-        uint256 indexed memberId,
-        uint256 tokenAmountForLP,
-        uint256 parentTokenAmountForLP,
-        uint256 promisedWaitingPhases,
-        uint256 govVotesAdded,
-        uint256 govVotes,
-        uint256 lpSharesAdded,
-        uint256 lpShares
-    );
-    event StakeToken(
-        address indexed tokenAddress,
-        uint256 indexed round,
-        uint256 indexed memberId,
-        uint256 tokenAmount,
-        uint256 promisedWaitingPhases,
-        uint256 govVotesAdded,
-        uint256 govVotes,
-        uint256 boostSharesAdded,
-        uint256 boostShares
-    );
-    event Unstake(
-        address indexed tokenAddress,
-        uint256 indexed round,
-        uint256 indexed memberId,
-        uint256 promisedWaitingPhases,
-        uint256 govVotes,
-        uint256 lpShares,
-        uint256 boostShares
-    );
-    event Withdraw(
-        address indexed tokenAddress,
-        uint256 indexed round,
-        uint256 indexed memberId,
-        uint256 promisedWaitingPhases,
-        uint256 lpShares,
-        uint256 tokenAmountForLP,
-        uint256 parentTokenAmountForLP,
-        uint256 boostShares
-    );
 
     error AlreadyInitialized();
     error NotAllowedToStakeAtRoundZero();

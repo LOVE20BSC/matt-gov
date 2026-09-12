@@ -1,7 +1,20 @@
 // SPDX-License-Identifier: MIT
 pragma solidity =0.8.37;
 
-interface IGroupChat {
+interface IGroupChatEvents {
+    event Activate(uint256 indexed groupId, uint256 indexed ownerId, address indexed owner);
+    event SetPostingAllowed(uint256 indexed groupId, uint256 indexed operatorId, address indexed operator, bool postingAllowed);
+    event SetScopeSource(uint256 indexed groupId, address indexed sourceAddress, uint256 indexed operatorId, address operator, address prevSourceAddress);
+    event SetBanSource(uint256 indexed groupId, address indexed sourceAddress, uint256 indexed operatorId, address operator, address prevSourceAddress);
+    event SetBeforePostPlugin(uint256 indexed groupId, address indexed pluginAddress, uint256 indexed operatorId, address operator, address prevPluginAddress);
+    event SetAfterPostPlugin(uint256 indexed groupId, address indexed pluginAddress, uint256 indexed operatorId, address operator, address prevPluginAddress);
+    event PostMessage(uint256 indexed groupId, uint256 indexed senderId, address indexed senderAddress, uint256 round, uint256 messageId);
+    event MentionSenderId(uint256 indexed groupId, uint256 indexed mentionedSenderId, uint256 messageId);
+    event MentionAll(uint256 indexed groupId, uint256 messageId);
+    event FailAfterPostPlugin(uint256 indexed groupId, uint256 indexed messageId, address indexed pluginAddress, uint256 round, bytes errorData);
+}
+
+interface IGroupChat is IGroupChatEvents {
     struct ChatInfo {
         uint256 groupId;
         address owner;
@@ -94,17 +107,6 @@ interface IGroupChat {
     function roundInfo(uint256 groupId, uint256 round) external view returns (RoundSpan memory);
     function roundInfos(uint256 groupId, uint256[] calldata rounds)
         external view returns (RoundSpan[] memory);
-
-    event Activate(uint256 indexed groupId, uint256 indexed ownerId, address indexed owner);
-    event SetPostingAllowed(uint256 indexed groupId, uint256 indexed operatorId, address indexed operator, bool postingAllowed);
-    event SetScopeSource(uint256 indexed groupId, address indexed sourceAddress, uint256 indexed operatorId, address operator, address prevSourceAddress);
-    event SetBanSource(uint256 indexed groupId, address indexed sourceAddress, uint256 indexed operatorId, address operator, address prevSourceAddress);
-    event SetBeforePostPlugin(uint256 indexed groupId, address indexed pluginAddress, uint256 indexed operatorId, address operator, address prevPluginAddress);
-    event SetAfterPostPlugin(uint256 indexed groupId, address indexed pluginAddress, uint256 indexed operatorId, address operator, address prevPluginAddress);
-    event PostMessage(uint256 indexed groupId, uint256 indexed senderId, address indexed senderAddress, uint256 round, uint256 messageId);
-    event MentionSenderId(uint256 indexed groupId, uint256 indexed mentionedSenderId, uint256 messageId);
-    event MentionAll(uint256 indexed groupId, uint256 messageId);
-    event FailAfterPostPlugin(uint256 indexed groupId, uint256 indexed messageId, address indexed pluginAddress, uint256 round, bytes errorData);
 
     error AlreadyInitialized();
     error GroupNotExist();

@@ -1,7 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity =0.8.37;
 
-interface IGroupMember {
+interface IGroupMemberEvents {
+    event SetMemberId(uint256 indexed groupId, address indexed operator, uint256 indexed memberId,
+        uint256 operatorId, bool listed);
+}
+
+interface IGroupMember is IGroupMemberEvents {
     function GROUP_ADDRESS() external view returns (address);
     function GROUP_ADMIN_ADDRESS() external view returns (address);
     function addMemberIds(uint256 groupId, uint256 operatorId, uint256[] calldata memberIds) external;
@@ -12,9 +17,6 @@ interface IGroupMember {
     function memberIdsCount(uint256 groupId) external view returns (uint256);
     function memberIds(uint256 groupId, uint256 offset, uint256 limit)
         external view returns (uint256[] memory);
-
-    event SetMemberId(uint256 indexed groupId, address indexed operator, uint256 indexed memberId,
-        uint256 operatorId, bool listed);
 
     error TargetMemberIdZero();
     error GroupMemberAddressHasNoCode();

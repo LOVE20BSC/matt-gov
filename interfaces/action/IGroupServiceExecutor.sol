@@ -3,7 +3,17 @@ pragma solidity =0.8.37;
 
 import {IProposalTarget} from "../core/IProposalTarget.sol";
 
-interface IGroupServiceExecutor is IProposalTarget {
+interface IGroupServiceExecutorEvents {
+    event ServiceRewardDistributed(address indexed serviceTokenAddress, uint256 indexed serviceProposalId,
+        address indexed actionTokenAddress, uint256 memberId, uint256 verifierReward, uint256 ownerReward,
+        uint256 ownerBurned, uint256 round);
+    event SecondaryDistributionConfigured(address indexed sourceTokenAddress, uint256 indexed sourceActionId,
+        uint256 indexed groupId, uint256 round, uint256[] recipientIds, uint256[] ratios);
+    event RewardBurned(address indexed tokenAddress, uint256 indexed actionId, uint256 indexed round,
+        uint256 amount, bytes32 reason);
+}
+
+interface IGroupServiceExecutor is IProposalTarget, IGroupServiceExecutorEvents {
     function init(address actionTargetAddress, address memberNFTAddress, address phaseAddress,
         address stakeAddress, address mintAddress, address groupActionExecutorAddress) external;
     function currentVoteRound() external view returns (uint256);
@@ -30,14 +40,6 @@ interface IGroupServiceExecutor is IProposalTarget {
     function rewardDistribution(address serviceTokenAddress, uint256 serviceProposalId, uint256 round,
         uint256 sourceActionId, uint256 groupId) external view returns (uint256[] memory recipientIds,
         uint256[] memory ratios, uint256[] memory amounts, uint256 ownerAmount);
-
-    event ServiceRewardDistributed(address indexed serviceTokenAddress, uint256 indexed serviceProposalId,
-        address indexed actionTokenAddress, uint256 memberId, uint256 verifierReward, uint256 ownerReward,
-        uint256 ownerBurned, uint256 round);
-    event SecondaryDistributionConfigured(address indexed sourceTokenAddress, uint256 indexed sourceActionId,
-        uint256 indexed groupId, uint256 round, uint256[] recipientIds, uint256[] ratios);
-    event RewardBurned(address indexed tokenAddress, uint256 indexed actionId, uint256 indexed round,
-        uint256 amount, bytes32 reason);
 
     error AlreadyInitialized();
     error InvalidKVLength();
