@@ -24,9 +24,9 @@ Core 不解释具体 Proposal 的业务字段，扩展通过 Target 接入。
 
 | 所属组件 | 参数 | 含义与单位 |
 | --- | --- | --- |
-| MemberNFT 构造参数 | `baseDivisor` | 首币未铸造量的费用除数，如 `1e8` |
-| MemberNFT 构造参数 | `bytesThreshold` | 短名称字节阈值，如 `7` |
-| MemberNFT 构造参数 | `multiplier` | 每缩短一字节的费用倍数，如 `10` |
+| MemberNFT 构造参数 | `baseDivisor` | 首币未铸造量的费用除数；公开 getter 保持 `BASE_DIVISOR()`，如 `1e8` |
+| MemberNFT 构造参数 | `bytesThreshold` | 短名称字节阈值；公开 getter 保持 `BYTES_THRESHOLD()`，如 `7` |
+| MemberNFT 构造参数 | `multiplier` | 每缩短一字节的费用倍数；公开 getter 保持 `MULTIPLIER()`，如 `10` |
 | MemberNFT 构造参数 | `maxNameLength` | 最大字节数，如 `32` |
 | Phase 构造参数 | `originBlocks`、`phaseBlocks`、`targetDays`、`adjustThreshold` | 启动区块、初始区块数、目标天数、偏差阈值；前三者大于零，阈值使用 `1e18` 精度 |
 | Stake | `phaseAddress`、`memberNFTAddress`、`voteAddress`、`routerAddress`、`pairFactoryAddress` | 时间、身份、融合投票检查、路由和 Pair Factory 依赖 |

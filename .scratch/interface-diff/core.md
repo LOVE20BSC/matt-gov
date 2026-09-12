@@ -2,7 +2,7 @@
 
 状态列取值：`保留`（签名完全一致）、`改名`（仅标识符变）、`改参`（参数或返回值变）、`改名+改参`、`新增`、`删除`。
 
-跨层共性变化（memberId 主体化、错误/事件子接口内联、不再继承 `IPhase`、常量 getter 改 init 参数）见 [README](README.md#跨层结构变化)，本文不重复解释理由。Core 新接口统一使用 `Proposal`；`Action*` 仅出现在旧接口名称或 Action 层语境中。
+跨层共性变化（memberId 主体化、错误/事件子接口内联、不再继承 `IPhase`、部分配置 getter 按决议删除并改为 init 参数）见 [README](README.md#跨层结构变化)，本文不重复解释理由。Core 新接口统一使用 `Proposal`；`Action*` 仅出现在旧接口名称或 Action 层语境中。
 
 ---
 
@@ -15,9 +15,9 @@
 | 新 | 旧 | 状态 |
 | --- | --- | --- |
 | `firstTokenAddress()` | `LOVE20_TOKEN_ADDRESS()` | 改名 |
-| `baseDivisor()` | `BASE_DIVISOR()` | 改名 |
-| `bytesThreshold()` | `BYTES_THRESHOLD()` | 改名 |
-| `multiplier()` | `MULTIPLIER()` | 改名 |
+| `BASE_DIVISOR()` | `BASE_DIVISOR()` | 保留 |
+| `BYTES_THRESHOLD()` | `BYTES_THRESHOLD()` | 保留 |
+| `MULTIPLIER()` | `MULTIPLIER()` | 保留 |
 | `maxNameLength()` | `MAX_GROUP_NAME_LENGTH()` | 改名（值 64 → 32 bytes） |
 | `mint(string name) returns (uint256 id, uint256 mintCost)` | `mint(string groupName) returns (uint256 tokenId, uint256 mintCost)` | 改名（仅参数/返回名） |
 | `calculateMintCost(string calldata name)` | `calculateMintCost(string memory groupName)` | 改名+改参（`memory` → `calldata`） |
@@ -294,7 +294,7 @@
 | `launchCount(tokenAddress, uint256 memberId)` | `remainingLaunchCount(parentTokenAddress, address account)` | 改名+改参（剩余次数 → 累计次数账本） |
 | `enum DistributorMode { NoCallback, Callback }` | 无 | 新增 |
 | `init(tokenFactory, mint, memberNFT, rootParentToken, distributor, launchRatio, maxLaunchCount, tokenSymbolLength, name, symbol)` | 无 | 新增 |
-| `memberNFTAddress()`、`rootParentTokenAddress()`、`launchRatio()`、`maxLaunchCount()`、`tokenSymbolLength()` | 无 | 新增 |
+| `memberNFTAddress()`、`rootParentTokenAddress()`、`launchRatio()`、`maxLaunchCount()`、`TOKEN_SYMBOL_LENGTH()` | 无 | 新增 |
 | `mergeLaunchCount(tokenAddress, sourceMemberId, targetMemberId, count)` | 无 | 新增 |
 | `addLaunchCount(tokenAddress, memberId, count)` | 无 | 新增 |
 | `issuedLaunchCount(tokenAddress)` | 无 | 新增 |
@@ -309,7 +309,7 @@
 | 代币枚举 | `tokensCount`/`tokensAtIndex`、`childTokensCount`/`AtIndex`、`childTokensByLauncherCount`/`AtIndex`、`launchingTokensCount`/`AtIndex`、`launchedTokensCount`/`AtIndex`、`launchingChildTokensCount`/`AtIndex`、`launchedChildTokensCount`/`AtIndex`、`participatedTokensCount`/`AtIndex`、`tokenAddressBySymbol` |
 | 依赖地址 | `submitAddress()` |
 
-`TOKEN_SYMBOL_LENGTH` 不再作为旧式大写状态变量迁移；其配置语义保留为 `tokenSymbolLength()` getter 和 `init` 参数。
+`TOKEN_SYMBOL_LENGTH()` 的配置语义保留，`init` 新增对应的 `tokenSymbolLength` 参数。
 
 `struct LaunchInfo`（11 字段）与常量 `CLAIM_DELAY_BLOCKS` 同步删除。
 

@@ -22,7 +22,7 @@ interface ILOVE20Launch {
     function rootParentTokenAddress() external view returns (address);
     function launchRatio() external view returns (uint256);
     function maxLaunchCount() external view returns (uint256);
-    function tokenSymbolLength() external view returns (uint256);
+    function TOKEN_SYMBOL_LENGTH() external view returns (uint256);
     function launchToken(
         string calldata tokenSymbol,
         address parentTokenAddress,
