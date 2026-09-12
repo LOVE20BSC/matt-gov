@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity =0.8.17;
+pragma solidity =0.8.37;
 
 interface ITokenManager {
     function GROUP_CHAT_ADDRESS() external view returns (address);

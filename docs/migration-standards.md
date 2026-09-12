@@ -42,7 +42,7 @@ LOVE20BSC 当前统一使用以下编译和依赖基线：
 - Solidity `0.8.37`；LOVE20BSC 自有合约、接口和测试使用精确 pragma `=0.8.37`。
 - Foundry `1.8.1` 或更高版本，并在 `foundry.toml` 显式设置 `evm_version = "osaka"`。显式锁定 EVM 目标，避免未来编译器默认目标变化；部署前仍需在目标 BSC 网络和测试环境验证该目标。
 - OpenZeppelin Contracts `v5.6.1`，通过 Git submodule 引入并固定 commit `5fd1781b1454fd1ef8e722282f86f9293cacf256`；不得与同路径的 vendored OpenZeppelin 源码并存。
-- `LOVE20BSC/libs` 通过 Git submodule 引入；当前 Core 使用 commit `83711c7d649e8f77fe19906565ed0b4fd916177e`，其 Solidity 基线与 Core 对齐。
+- `LOVE20BSC/libs` 通过 Git submodule 引入；当前 Core 使用 commit `281c6502e72baf07eaf952039f3b4d4ed93e3dd5`，其 Solidity 与 EVM 基线与 Core 对齐。
 
 依赖升级必须单独提交，不得混入业务合约实现。升级后至少运行一次完整 `forge build` 和现有测试；若 OpenZeppelin 主版本变化导致内部 API、错误或事件行为变化，必须在对应实现或测试提交中明确记录，不得只用“编译通过”作为兼容性证明。
 
@@ -55,7 +55,7 @@ LOVE20BSC 当前统一使用以下编译和依赖基线：
 - 保持旧接口中错误、事件、状态变量和函数的相对顺序；新增成员放在最接近其语义的位置，避免把参数变化误读为新增接口。
 - 先删除已裁决移出的业务和依赖，再补入 BSC 必需内容；不复制不会使用的旧合约、库或外部接口。
 - Core 统一使用 `Proposal`；只有 Action 层使用 `actionId` 作为 Proposal 的业务别名。
-- 接口以 `matt-gov/interfaces/` 为唯一 ABI 来源；目标仓库的 `src/interfaces/` 必须与之同步。
+- `matt-gov/interfaces/` 是 LOVE20 自有函数、事件和错误的 ABI 唯一来源；标准继承 API 由目标依赖（如 OpenZeppelin）提供，不在准备仓库重复声明。目标仓库的 `src/interfaces/` 必须同步自有声明，并可通过 `is` 继承同一标准依赖接口补齐标准 API；该依赖继承不视为自有接口差异。涉及继承的接口必须在对账文档中分别标记“自有声明”和“完整 ABI（含继承成员）”两种口径。
 - 复用优先：迁移前先检查目标仓库已固定的依赖和 LOVE20BSC 共享库；已有实现满足语义时直接复用并固定版本，不得重复复制。确需新增实现时，说明现有库不适用的原因，并同步依赖或共享库对账。
 - 初始化是否需要权限按协议目标决定；去中心化模块可采用一次性无权限 `init`，但必须由发布前 check 脚本核验依赖和参数。
 

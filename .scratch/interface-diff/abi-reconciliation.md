@@ -4,14 +4,14 @@
 
 ## 机器统计
 
-统计对象是接口声明条数；旧侧排除 `LOVE20TKM/group-chat/src/interfaces/external/` 和 `LOVE20TKM/core/src/uniswap-v2-core/interfaces/`，新侧包含继承文件中的直接声明，不对同名声明去重。
+统计对象分为两种口径：分层接口表统计各文件的自有声明，不展开标准依赖继承；完整 ABI 校验另行展开继承成员。旧侧排除 `LOVE20TKM/group-chat/src/interfaces/external/` 和 `LOVE20TKM/core/src/uniswap-v2-core/interfaces/`。
 
 | 层 | 新文件/接口 | 新函数 | 新事件 | 新错误 |
 | --- | ---: | ---: | ---: | ---: |
-| Core | 11 / 13 | 144 | 27 | 58 |
+| Core | 11 / 13 | 138 | 24 | 59 |
 | Action | 5 / 5 | 137 | 24 | 72 |
 | Group Chat | 12 / 15 | 139 | 23 | 76 |
-| **合计** | **28 / 33** | **420** | **74** | **206** |
+| **合计** | **28 / 33** | **414** | **71** | **207** |
 
 旧侧按仓库原始接口目录统计如下（去除 `group-chat` 的 external 镜像和 `core` 的 Uniswap V2 外部接口）：
 
@@ -31,7 +31,7 @@
 
 | 层 | 函数 | 事件 | 错误 | 结构体/枚举 | 状态 |
 | --- | --- | --- | --- | --- | --- |
-| Core | 每个旧声明均有保留、改名、改参、删除或新增去向 | 字段级差异已列 | 三个 Submit selector 已保留，其余已列 | `Action*` → `Proposal*`、Stake 账本重构 | **已完成** |
+| Core | 每个旧声明均有保留、改名、改参、删除或新增去向；分层统计仅计自有声明，完整 ABI 另展开标准继承成员 | 字段级差异已列 | 三个 Submit selector 已保留，其余已列 | `Action*` → `Proposal*`、Stake 账本重构 | **已完成** |
 | Action | 单例作用域、`memberId` 化和 17 组索引已列 | Executor 事件已列 | 旧 GroupJoin/Manager/Verify 错误已列 | GroupConfig、VerifierApplication 已列 | 已完成 |
 | Group Chat | 地址主体删除、管理器合并和索引保留已列 | 审计地址与 memberId 差异已列 | 三个 scope/ban 适配接口已补回 | ChatInfo、Message、RoundSpan 已列 | 已完成 |
 
@@ -50,8 +50,8 @@
 ## 开工判定
 
 - [x] 旧提交已固定，旧仓库未修改。
-- [x] 新接口可用 `solc 0.8.17` 全量编译。
+- [ ] 新接口使用统一的 BSC Solidity 版本全量编译（接口目录的 pragma 迁移尚未完成）。
 - [x] 三层函数、事件、错误均有差异文档和删除理由。
 - [x] Submit 三个错误 selector 完成裁决并同步 ABI、规格和差异文档。
 
-三层 ABI 对账已冻结；随后可创建 `core`、`action`、`group-chat` 三个代码库骨架。
+三层 ABI 对账内容已完成；因本次统一编译基线和继承统计口径发生变化，重新冻结前需由审查者确认上述数字与例外条款。

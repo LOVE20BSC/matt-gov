@@ -11,7 +11,7 @@
 | 名称长度 | `1` ~ `MAX_NAME_LENGTH` 字节，按 UTF-8 字节数计算，不是字符数；参数示例为 `32` |
 | 名称校验 | 见 [名称校验](#名称校验) |
 | 名称查询 | `mapping(string => uint256)` 保存规范化名称到 `memberId` 的映射；查询接口见 [接口](#接口) |
-| 枚举 | 使用标准 `ERC721Enumerable` 查询供应量和持有人名下 NFT |
+| 继承与枚举 | `ERC721Enumerable`；提供标准 ERC721、元数据和供应量/持有人名下 NFT 枚举能力 |
 
 ## 名称校验
 
@@ -37,9 +37,11 @@ UTF-8 有效性：拒绝无效起始字节 `0x80-0xC1` 与 `0xF5-0xFF`、过长�
 
 接口见 [`IMemberNFT.sol`](../../../interfaces/core/IMemberNFT.sol)。
 
-`init` 只允许第一次成功调用；合约以 `initialized` 状态拒绝后续调用并回滚 `AlreadyInitialized()`。部署验证脚本必须核对首币地址和全部费用参数。
+`init` 只允许第一次成功调用；公开 `initialized()` 初始为 `false`，成功后为 `true`，后续调用回滚 `AlreadyInitialized()`。首币地址不得为零。未初始化时，`mint` 和 `calculateMintCost` 因无法从首币读取数据而回滚。
 
-费用使用首个 LOVE20 代币，计算如下。参数含义见 [初始化参数](00-protocol-model.md#初始化参数)，前三个费用参数均必须大于零。
+`init` 无调用者限制，部署与初始化分开的交易存在被抢先绑定错误地址的窗口；对外开放前调用并不能防止抢跑。发布前必须核对初始化状态、首币地址和全部费用参数，错误版本不得发布，需重新部署并核对受影响的依赖；初始化后没有修复或改绑入口。
+
+费用使用首个 LOVE20 代币，计算如下。参数含义见 [初始化参数](00-protocol-model.md#初始化参数)，构造时四个参数均必须大于零；最大名称长度通过构造参数固定，BSC 部署配置使用 `32`。非法构造参数和零首币地址直接回滚，不新增专用错误。
 
 ```text
 unmintedSupply = maxSupply - totalSupply
@@ -53,6 +55,8 @@ mintCost = byteLength >= bytesThreshold
 
 首币符号前 4 个字节为 `Test` 时，若名称长度不足 4 字节或前 4 个字节不是 `Test`，铸造前自动加 `Test` 前缀；前缀计入 `byteLength`、参与名称校验与费用计算，并作为存储名称。
 
+沿用旧查询行为：`calculateMintCost` 只按传入名称的字节数计费，不补 `Test` 前缀，也不校验名称合法性或唯一性。测试币场景中，调用方应先按上述规则补前缀再询价；例如铸造 `abc` 的对应报价应查询 `Testabc`。`idOf`、`isNameUsed` 仅做 ASCII 小写规范化，也需传入最终存储名称。
+
 例：`baseCost = 100`、`bytesThreshold = 7`、`multiplier = 10`；6 字节名花费 `1000`，7 字节及以上花费 `100`。金额均以代币最小单位计。
 
 费用使用 ERC20，入口为 `nonpayable`，不接受原生代币。费用参数在部署时固定；`MemberNFT.init(firstToken)` 由 `Launch.init` 在创建首币时同步调用一次。依赖后部署的合约按“先部署、后 `init`”顺序绑定。
@@ -61,7 +65,7 @@ mintCost = byteLength >= bytesThreshold
 
 对外接口见 [`IMemberNFT.sol`](../../../interfaces/core/IMemberNFT.sol)。它沿用旧 `LOVE20Group`，仅去除 group 字样重命名；本合约即 Member 本体，标识符不再重复 member。初始化与铸造接口见 [铸造](#铸造)。
 
-函数、事件和错误定义均见 [`IMemberNFT.sol`](../../../interfaces/core/IMemberNFT.sol)。
+独有函数、事件和错误见 [`IMemberNFT.sol`](../../../interfaces/core/IMemberNFT.sol)；Core 接口继承 `IERC721Enumerable`，实现合约同时继承 `ERC721Enumerable` 和 `IMemberNFT`，由编译器核验接口实现。完整调用 ABI 使用目标合约编译产物，包含 OZ 提供的标准函数、事件和错误。
 
 ## 持有人枚举
 
@@ -74,6 +78,6 @@ mintCost = byteLength >= bytesThreshold
 - 转账：发送方此前余额为 `1` 时移除，接收方此前余额为 `0` 时加入
 - 自转账（`from == to`）：既不加入也不移除
 
-移除采用 swap-and-pop，因此 `holdersAtIndex` 的索引在移除后会重排，不能作为稳定标识。
+移除采用 swap-and-pop，因此 `holdersAtIndex` 的索引在移除后会重排，不能作为稳定标识；自转账不触发集合变更，索引保持不变。
 
 验收见 [Core 验收](09-testing.md)。
