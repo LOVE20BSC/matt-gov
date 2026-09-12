@@ -20,8 +20,8 @@ interface ILOVE20Launch {
     function mintAddress() external view returns (address);
     function memberNFTAddress() external view returns (address);
     function rootParentTokenAddress() external view returns (address);
-    function launchRatio() external view returns (uint256);
-    function maxLaunchCount() external view returns (uint256);
+    function LAUNCH_RATIO() external view returns (uint256);
+    function MAX_LAUNCH_COUNT() external view returns (uint256);
     function TOKEN_SYMBOL_LENGTH() external view returns (uint256);
     function launchToken(
         string calldata tokenSymbol,

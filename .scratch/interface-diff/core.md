@@ -250,7 +250,7 @@
 | `mintProposalReward(tokenAddress, round, proposalId) returns (uint256 amount)` | `mintActionReward(tokenAddress, round, actionId) returns (uint256)` | 改名 |
 | `isProposalIdWithReward(tokenAddress, round, proposalId)` | `isActionIdWithReward(tokenAddress, round, actionId)` | 改名 |
 | `proposalReward(tokenAddress, round)` | `actionReward(tokenAddress, round)` | 改名 |
-| `proposalRewardMinVotePerThousand()` | `ACTION_REWARD_MIN_VOTE_PER_THOUSAND()` | 改名 |
+| `PROPOSAL_REWARD_MIN_VOTE_PER_THOUSAND()` | `ACTION_REWARD_MIN_VOTE_PER_THOUSAND()` | 改名（保留大写配置 getter） |
 | `govRewardByAccount(tokenAddress, round, memberId) returns (voteReward, boostReward, burnReward, minted)` | `govRewardByAccount(tokenAddress, round, address account) returns (verifyReward, boostReward, burnReward, isMinted)` | 改参 |
 | `proposalRewardInfo(tokenAddress, round, proposalId) returns (amount, prepared, minted)` | `actionRewardByActionIdByAccount(tokenAddress, round, actionId, address account) returns (reward, isMinted)` | 改名+改参（去 account 维度，新增 prepared） |
 | `rewardReserved`、`rewardMinted`、`rewardBurned`、`isRewardPrepared`、`govReward`、`rewardAvailable`、`reservedAvailable` | 同名 | 保留 |
@@ -294,7 +294,7 @@
 | `launchCount(tokenAddress, uint256 memberId)` | `remainingLaunchCount(parentTokenAddress, address account)` | 改名+改参（剩余次数 → 累计次数账本） |
 | `enum DistributorMode { NoCallback, Callback }` | 无 | 新增 |
 | `init(tokenFactory, mint, memberNFT, rootParentToken, distributor, launchRatio, maxLaunchCount, tokenSymbolLength, name, symbol)` | 无 | 新增 |
-| `memberNFTAddress()`、`rootParentTokenAddress()`、`launchRatio()`、`maxLaunchCount()`、`TOKEN_SYMBOL_LENGTH()` | 无 | 新增 |
+| `memberNFTAddress()`、`rootParentTokenAddress()`、`LAUNCH_RATIO()`、`MAX_LAUNCH_COUNT()`、`TOKEN_SYMBOL_LENGTH()` | 无 | 新增 |
 | `mergeLaunchCount(tokenAddress, sourceMemberId, targetMemberId, count)` | 无 | 新增 |
 | `addLaunchCount(tokenAddress, memberId, count)` | 无 | 新增 |
 | `issuedLaunchCount(tokenAddress)` | 无 | 新增 |
