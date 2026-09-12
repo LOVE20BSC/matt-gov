@@ -14,11 +14,11 @@
 
 | 新 | 旧 | 状态 |
 | --- | --- | --- |
-| `firstTokenAddress()` | `LOVE20_TOKEN_ADDRESS()` | 改名 |
+| `LOVE20_TOKEN_ADDRESS()` | `LOVE20_TOKEN_ADDRESS()` | 保留 |
 | `BASE_DIVISOR()` | `BASE_DIVISOR()` | 保留 |
 | `BYTES_THRESHOLD()` | `BYTES_THRESHOLD()` | 保留 |
 | `MULTIPLIER()` | `MULTIPLIER()` | 保留 |
-| `maxNameLength()` | `MAX_GROUP_NAME_LENGTH()` | 改名（值 64 → 32 bytes） |
+| `MAX_NAME_LENGTH()` | `MAX_GROUP_NAME_LENGTH()` | 改名（去掉 `GROUP`；值 64 → 32 bytes） |
 | `mint(string name) returns (uint256 id, uint256 mintCost)` | `mint(string groupName) returns (uint256 tokenId, uint256 mintCost)` | 改名（仅参数/返回名） |
 | `calculateMintCost(string calldata name)` | `calculateMintCost(string memory groupName)` | 改名+改参（`memory` → `calldata`） |
 | `nameOf(uint256 id)` | `groupNameOf(uint256 tokenId)` | 改名 |
@@ -309,7 +309,7 @@
 | 代币枚举 | `tokensCount`/`tokensAtIndex`、`childTokensCount`/`AtIndex`、`childTokensByLauncherCount`/`AtIndex`、`launchingTokensCount`/`AtIndex`、`launchedTokensCount`/`AtIndex`、`launchingChildTokensCount`/`AtIndex`、`launchedChildTokensCount`/`AtIndex`、`participatedTokensCount`/`AtIndex`、`tokenAddressBySymbol` |
 | 依赖地址 | `submitAddress()` |
 
-`TOKEN_SYMBOL_LENGTH()` 的配置语义保留，`init` 新增对应的 `tokenSymbolLength` 参数。
+`TOKEN_SYMBOL_LENGTH()` 的配置语义保留，`init` 新增对应的 `tokenSymbolLength` 参数。MemberNFT 的配置 getter 同样遵循大写命名；`MAX_NAME_LENGTH()` 仅去掉旧名中的 `GROUP`，其余配置 getter 保持旧名。
 
 `struct LaunchInfo`（11 字段）与常量 `CLAIM_DELAY_BLOCKS` 同步删除。
 

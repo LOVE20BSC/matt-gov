@@ -21,11 +21,11 @@ interface IMemberNFT {
     function idOf(string calldata name) external view returns (uint256);
     function nameOf(uint256 id) external view returns (string memory);
     function isNameUsed(string calldata name) external view returns (bool);
-    function firstTokenAddress() external view returns (address);
+    function LOVE20_TOKEN_ADDRESS() external view returns (address);
     function BASE_DIVISOR() external view returns (uint256);
     function BYTES_THRESHOLD() external view returns (uint256);
     function MULTIPLIER() external view returns (uint256);
-    function maxNameLength() external view returns (uint256);
+    function MAX_NAME_LENGTH() external view returns (uint256);
     function totalBurnedForMint() external view returns (uint256);
     function holdersCount() external view returns (uint256);
     function holdersAtIndex(uint256 index) external view returns (address);
