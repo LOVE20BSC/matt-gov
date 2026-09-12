@@ -24,10 +24,10 @@ Core 不解释具体 Proposal 的业务字段，扩展通过 Target 接入。
 
 | 所属组件 | 参数 | 含义与单位 |
 | --- | --- | --- |
-| MemberNFT 构造参数 | `baseDivisor` | 首币未铸造量的费用除数；公开 getter 保持 `BASE_DIVISOR()`，如 `1e8` |
-| MemberNFT 构造参数 | `bytesThreshold` | 短名称字节阈值；公开 getter 保持 `BYTES_THRESHOLD()`，如 `7` |
-| MemberNFT 构造参数 | `multiplier` | 每缩短一字节的费用倍数；公开 getter 保持 `MULTIPLIER()`，如 `10` |
-| MemberNFT 构造参数 | `maxNameLength` | 最大字节数；公开 getter 为 `MAX_NAME_LENGTH()`，如 `32` |
+| MemberNFT 构造参数 | `baseDivisor` | 首币未铸造量的费用除数；状态变量和公开 getter 为 `BASE_DIVISOR`，如 `1e8` |
+| MemberNFT 构造参数 | `bytesThreshold` | 短名称字节阈值；状态变量和公开 getter 为 `BYTES_THRESHOLD`，如 `7` |
+| MemberNFT 构造参数 | `multiplier` | 每缩短一字节的费用倍数；状态变量和公开 getter 为 `MULTIPLIER`，如 `10` |
+| MemberNFT 构造参数 | `maxNameLength` | 最大字节数；状态变量和公开 getter 为 `MAX_NAME_LENGTH`，如 `32` |
 | Phase 构造参数 | `originBlocks`、`phaseBlocks`、`targetDays`、`adjustThreshold` | 启动区块、初始区块数、目标天数、偏差阈值；前三者大于零，阈值使用 `1e18` 精度 |
 | Stake | `phaseAddress`、`memberNFTAddress`、`voteAddress`、`routerAddress`、`pairFactoryAddress` | 时间、身份、融合投票检查、路由和 Pair Factory 依赖 |
 | Stake | `promisedWaitingPhasesMin`、`promisedWaitingPhasesMax` | 承诺解锁期的最小、最大 Phase 数 |
@@ -35,15 +35,15 @@ Core 不解释具体 Proposal 的业务字段，扩展通过 Target 接入。
 | Submit | `submitMinPerThousand` | 推举门槛，千分比，如 `10 = 1%` |
 | Vote | `phaseAddress`、`stakeAddress`、`submitAddress`、`memberNFTAddress`、`mintAddress` | 时间、票权、提案、身份和激励门槛依赖 |
 | Mint | `voteAddress`、`submitAddress`、`stakeAddress`、`launchAddress`、`memberNFTAddress` | 投票、提案、质押、发射和铸造权限依赖 |
-| Mint | `proposalRewardMinVotePerThousand` | 提案激励门槛；公开 getter 为 `PROPOSAL_REWARD_MIN_VOTE_PER_THOUSAND()`，千分比，如 `50 = 5%` |
+| Mint | `proposalRewardMinVotePerThousand` | 提案激励门槛；状态变量和公开 getter 为 `PROPOSAL_REWARD_MIN_VOTE_PER_THOUSAND`，千分比，如 `50 = 5%` |
 | Mint | `roundRewardGovPerThousand`、`roundRewardProposalPerThousand` | 治理池、提案池占可用供应的千分比，如 `30`、`10` |
 | Mint | `maxGovBoostRewardMultiplier` | 加速激励相对投票激励的倍数上限，如 `2` |
 | Launch | `tokenFactoryAddress`、`mintAddress`、`memberNFTAddress` | 代币工厂、铸造和身份依赖 |
 | Launch | `rootParentTokenAddress` | 根父币 WBNB |
 | Launch | `distributor`、`name`、`symbol` | 首币分发目标、名称和符号；首币固定使用 `NoCallback`，`distributor` 非零 |
-| Launch | `launchRatio` | 发射阈值比例；公开 getter 为 `LAUNCH_RATIO()`，`1e18` 精度，如 `1e16 = 1%` |
-| Launch | `maxLaunchCount` | 每社区累计次数上限；公开 getter 为 `MAX_LAUNCH_COUNT()`，如 `100` |
-| Launch | `tokenSymbolLength` | 子币符号固定字节长度；公开 getter 保持 `TOKEN_SYMBOL_LENGTH()`，沿用旧 Launch 校验 |
+| Launch | `launchRatio` | 发射阈值比例；状态变量和公开 getter 为 `LAUNCH_RATIO`，`1e18` 精度，如 `1e16 = 1%` |
+| Launch | `maxLaunchCount` | 每社区累计次数上限；状态变量和公开 getter 为 `MAX_LAUNCH_COUNT`，如 `100` |
+| Launch | `tokenSymbolLength` | 子币符号固定字节长度；状态变量和公开 getter 为 `TOKEN_SYMBOL_LENGTH`，沿用旧 Launch 校验 |
 | TokenFactory | `launchAddress`、`mintAddress` | 唯一创建调用方和代币 minter |
 | TokenFactory | `LAUNCH_AMOUNT`、`MAX_SUPPLY` | 首批/最大供应量，工厂 init 固定；`launchAmount <= maxSupply` |
 | TokenFactory.createToken | `distributor` | 本次创建的首批代币接收者；非零 |
