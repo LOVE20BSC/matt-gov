@@ -293,8 +293,8 @@
 | `launchToken(tokenSymbol, parentTokenAddress, memberId, distributor, distributorMode, keys[], values[]) returns (tokenAddress)` | `launchToken(tokenSymbol, parentTokenAddress) returns (tokenAddress)` | 改参（2 → 7 参数） |
 | `launchCount(tokenAddress, uint256 memberId)` | `remainingLaunchCount(parentTokenAddress, address account)` | 改名+改参（剩余次数 → 累计次数账本） |
 | `enum DistributorMode { NoCallback, Callback }` | 无 | 新增 |
-| `init(tokenFactory, mint, memberNFT, rootParentToken, distributor, launchRatio, maxLaunchCount, name, symbol)` | 无 | 新增 |
-| `memberNFTAddress()`、`rootParentTokenAddress()`、`launchRatio()`、`maxLaunchCount()` | 无 | 新增 |
+| `init(tokenFactory, mint, memberNFT, rootParentToken, distributor, launchRatio, maxLaunchCount, tokenSymbolLength, name, symbol)` | 无 | 新增 |
+| `memberNFTAddress()`、`rootParentTokenAddress()`、`launchRatio()`、`maxLaunchCount()`、`tokenSymbolLength()` | 无 | 新增 |
 | `mergeLaunchCount(tokenAddress, sourceMemberId, targetMemberId, count)` | 无 | 新增 |
 | `addLaunchCount(tokenAddress, memberId, count)` | 无 | 新增 |
 | `issuedLaunchCount(tokenAddress)` | 无 | 新增 |
@@ -304,10 +304,12 @@
 | 分组 | 旧函数 |
 | --- | --- |
 | 募资认购生命周期 | `contribute`、`withdraw`、`claim`、`claimInfo`、`contributed`、`lastContributedBlock`、`launchInfo` |
-| 募资参数常量 | `FIRST_PARENT_TOKEN_FUNDRAISING_GOAL`、`PARENT_TOKEN_FUNDRAISING_GOAL`、`SECOND_HALF_MIN_BLOCKS`、`WITHDRAW_WAITING_BLOCKS`、`TOKEN_SYMBOL_LENGTH` |
+| 募资参数常量 | `FIRST_PARENT_TOKEN_FUNDRAISING_GOAL`、`PARENT_TOKEN_FUNDRAISING_GOAL`、`SECOND_HALF_MIN_BLOCKS`、`WITHDRAW_WAITING_BLOCKS` |
 | 发射资格门槛 | `MIN_GOV_REWARD_MINTS_TO_LAUNCH`（改为 `launchCount` 账本 + `maxLaunchCount` 上限） |
 | 代币枚举 | `tokensCount`/`tokensAtIndex`、`childTokensCount`/`AtIndex`、`childTokensByLauncherCount`/`AtIndex`、`launchingTokensCount`/`AtIndex`、`launchedTokensCount`/`AtIndex`、`launchingChildTokensCount`/`AtIndex`、`launchedChildTokensCount`/`AtIndex`、`participatedTokensCount`/`AtIndex`、`tokenAddressBySymbol` |
 | 依赖地址 | `submitAddress()` |
+
+`TOKEN_SYMBOL_LENGTH` 不再作为旧式大写状态变量迁移；其配置语义保留为 `tokenSymbolLength()` getter 和 `init` 参数。
 
 `struct LaunchInfo`（11 字段）与常量 `CLAIM_DELAY_BLOCKS` 同步删除。
 
