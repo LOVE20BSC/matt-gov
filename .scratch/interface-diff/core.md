@@ -301,14 +301,18 @@ OZ 5 的标准回滚由固定依赖提供：`IERC721Errors`、`ERC721OutOfBounds
 | `launchToken(tokenSymbol, parentTokenAddress, memberId, distributor, distributorMode, keys[], values[]) returns (tokenAddress)` | `launchToken(tokenSymbol, parentTokenAddress) returns (tokenAddress)` | 改参（2 → 7 参数） |
 | `launchCount(tokenAddress, uint256 memberId)` | `remainingLaunchCount(parentTokenAddress, address account)` | 改名+改参（剩余次数 → 累计次数账本） |
 | `enum DistributorMode { NoCallback, Callback }` | 无 | 新增 |
-| `init(tokenFactoryAddress, mintAddress, memberNFTAddress, rootParentTokenAddress, distributor, launchRatio, maxLaunchCount, tokenSymbolLength, name, symbol)` | 无 | 新增（地址参数名与同名 getter 一致，与 `ITokenFactory.init(launchAddress, mintAddress, ...)` 同风格） |
+| `init(tokenFactoryAddress, mintAddress, memberNFTAddress, rootParentTokenAddress, distributor, launchRatio, maxLaunchCount, tokenSymbolLength, name, symbol)` | 无 | 新增（地址参数名与同名 getter 一致，与 `ITokenFactory.init(launchAddress, mintAddress, ...)` 同风格；实现产物里同名参数带 `_` 后缀避状态变量遮蔽，见 `migration-standards.md`） |
 | `memberNFTAddress()`、`rootParentTokenAddress()`、`LAUNCH_RATIO()`、`MAX_LAUNCH_COUNT()` | 无 | 新增 |
 | `initialized()` | 旧实现有 `bool public initialized`（自动 getter 进入合约 ABI，未写进旧接口） | 新增（公开初始化状态，与 `ITokenFactory`/`IMemberNFT` 对齐，供发布前检查脚本核对） |
 | `mergeLaunchCount(tokenAddress, sourceMemberId, targetMemberId, count)` | 无 | 新增 |
 | `addLaunchCount(tokenAddress, memberId, count)` | 无 | 新增 |
 | `issuedLaunchCount(tokenAddress)` | 无 | 新增 |
+| `tokens(uint256 offset, uint256 limit, bool reverse) returns (address[] tokenList, uint256 totalCount)` | `tokensCount()`/`tokensAtIndex(uint256)` | 改名+改参（数量 + 逐项读取 → 分页查询，新增 `totalCount` 与 `reverse`） |
+| `childTokens(address parentTokenAddress, uint256 offset, uint256 limit, bool reverse) returns (address[] tokenList, uint256 totalCount)` | `childTokensCount(address)`/`childTokensAtIndex(address, uint256)` | 改名+改参（同上） |
+| `tokenAddressBySymbol(string calldata symbol)` | `tokenAddressBySymbol(string memory symbol)` | 保留（`memory` → `calldata`，selector 不变） |
+| `parentTokenOf(address tokenAddress)` | 无（旧 `launchInfo(address)` 返回的 `LaunchInfo.parentTokenAddress` 字段） | 新增（登记状态与父币地址的读取入口，`isLOVE20Token` 复用同一账本） |
 
-函数顺序：保留的旧函数相对顺序不变（`tokenFactoryAddress` → `mintAddress` → `TOKEN_SYMBOL_LENGTH` → `isLOVE20Token` → `launchToken` → 原 `remainingLaunchCount` 位置）；新增的依赖 getter 紧跟依赖 getter 组，`LAUNCH_RATIO`、`MAX_LAUNCH_COUNT` 紧跟 `TOKEN_SYMBOL_LENGTH`，`initialized`、`init` 置于配置 getter 之后（`IMemberNFT` 为同样顺序，`ITokenFactory` 的 `init` 也在配置 getter 之后）。
+函数顺序：保留的旧函数相对顺序不变（`tokenFactoryAddress` → `mintAddress` → `TOKEN_SYMBOL_LENGTH` → `isLOVE20Token` → `launchToken` → 原 `remainingLaunchCount` 位置 → 原 `tokensCount`/`childTokensCount`/`tokenAddressBySymbol` 位置）；新增的依赖 getter 紧跟依赖 getter 组，`LAUNCH_RATIO`、`MAX_LAUNCH_COUNT` 紧跟 `TOKEN_SYMBOL_LENGTH`，`initialized`、`init` 置于配置 getter 之后（`IMemberNFT` 为同样顺序，`ITokenFactory` 的 `init` 也在配置 getter 之后）。
 
 ### 删除的旧函数
 
@@ -317,7 +321,7 @@ OZ 5 的标准回滚由固定依赖提供：`IERC721Errors`、`ERC721OutOfBounds
 | 募资认购生命周期 | `contribute`、`withdraw`、`claim`、`claimInfo`、`contributed`、`lastContributedBlock`、`launchInfo` |
 | 募资参数常量 | `FIRST_PARENT_TOKEN_FUNDRAISING_GOAL`、`PARENT_TOKEN_FUNDRAISING_GOAL`、`SECOND_HALF_MIN_BLOCKS`、`WITHDRAW_WAITING_BLOCKS` |
 | 发射资格门槛 | `MIN_GOV_REWARD_MINTS_TO_LAUNCH`（改为 `launchCount` 账本 + `maxLaunchCount` 上限） |
-| 代币枚举 | `tokensCount`/`tokensAtIndex`、`childTokensCount`/`AtIndex`、`childTokensByLauncherCount`/`AtIndex`、`launchingTokensCount`/`AtIndex`、`launchedTokensCount`/`AtIndex`、`launchingChildTokensCount`/`AtIndex`、`launchedChildTokensCount`/`AtIndex`、`participatedTokensCount`/`AtIndex`、`tokenAddressBySymbol`（替代路径：`TokenLaunched` 的 `tokenAddress`/`parentTokenAddress`/`launcherMemberId` 均 `indexed`，链下重建子币列表与发射历史；单点校验用 `isLOVE20Token`，不做链上枚举） |
+| 代币枚举（按发射者或募资状态） | `childTokensByLauncherCount`/`AtIndex`、`launchingTokensCount`/`AtIndex`、`launchedTokensCount`/`AtIndex`、`launchingChildTokensCount`/`AtIndex`、`launchedChildTokensCount`/`AtIndex`、`participatedTokensCount`/`AtIndex`（代币列表、某社区子币列表和符号账本保留为分页查询与 `tokenAddressBySymbol`，见上表；按成员聚合的发射历史由 `TokenLaunched` 的 `launcherMemberId` 链下索引） |
 | 依赖地址 | `submitAddress()` |
 
 MemberNFT 的配置 getter 同样遵循大写命名；`MAX_NAME_LENGTH()` 仅去掉旧名中的 `GROUP`，其余配置 getter 保持旧名。
@@ -329,20 +333,22 @@ MemberNFT 的配置 getter 同样遵循大写命名；`MAX_NAME_LENGTH()` 仅去
 | 新 | 旧 | 状态 |
 | --- | --- | --- |
 | `TokenLaunched(tokenAddress, parentTokenAddress, uint256 launcherMemberId, address distributor)` | `LaunchToken(tokenAddress, string tokenSymbol, parentTokenAddress, address account)` | 改名+改参（统一为完成时，与 `TokenCreated`、`ProposalCreated`、`VoteCast` 同风格；去 `tokenSymbol`，`account` → `launcherMemberId`，新增 `distributor`） |
-| `LaunchCountAdded`、`LaunchCountMerged`、`LaunchCountConsumed` | 无 | 新增 |
+| `LaunchCountAdded`、`LaunchCountMerged` | 无 | 新增 |
 | 无 | `Contribute`、`Withdraw`、`Claim`、`SecondHalfStart`、`LaunchEnd` | 删除 |
 
-首币由 `init` 创建、没有发起成员，因此 `TokenLaunched` 的 `launcherMemberId` 取 `0`，且不发 `LaunchCountConsumed`；四个事件的触发入口与字段取值见 [`core/08-launch.md`](../../docs/specs/core/08-launch.md)。
+次数消耗不单独声明事件：`launchToken` 已发 `TokenLaunched`（含 `launcherMemberId`），每次发射恰消耗一次次数，消耗历史可由它重建，余量用 `launchCount` 查询。
+
+首币由 `init` 创建、没有发起成员，因此 `TokenLaunched` 的 `launcherMemberId` 取 `0`；三个事件的触发入口与字段取值见 [`core/08-launch.md`](../../docs/specs/core/08-launch.md)。
 
 ### 错误
 
-保留 4 个：`AlreadyInitialized`、`InvalidTokenSymbol`、`InvalidTokenAddress()`（触发条件 `!isLOVE20Token(tokenAddress)`，与旧 `contribute` 相同）、`InvalidParentToken()`（触发条件 `!isLOVE20Token(parentTokenAddress)`，与旧 `launchToken` 相同）。
+保留 5 个：`AlreadyInitialized`、`InvalidTokenSymbol`、`TokenSymbolExists()`（触发条件 `tokenAddressBySymbol[最终符号] != address(0)`，与旧 `_launchToken` 相同）、`InvalidTokenAddress()`（触发条件 `!isLOVE20Token(tokenAddress)`，与旧 `contribute` 相同）、`InvalidParentToken()`（触发条件 `!isLOVE20Token(parentTokenAddress)`，与旧 `launchToken` 相同）。
 
 新增 10 个：`InvalidAddress`、`InvalidKVLength`、`InvalidDistributorMode`、`ZeroAmount(string parameter)`、`UnauthorizedCaller`、`NotMemberOwner(uint256 memberId)`、`CountMustBeGreaterThanZero()`、`SourceAndTargetMustBeDifferent()`、`NotEnoughLaunchCount`、`LaunchCountLimitReached`。
 
-删除 12 个：`TokenSymbolExists`、`NotEligibleToLaunchToken`、`LaunchAlreadyEnded`、`LaunchNotEnded`、`ClaimDelayNotPassed`、`NoContribution`、`NotEnoughWaitingBlocks`、`TokensAlreadyClaimed`、`LaunchAlreadyExists`、`ParentTokenNotSet`、`ZeroContribution`、`InvalidToAddress`。
+删除 11 个：`NotEligibleToLaunchToken`、`LaunchAlreadyEnded`、`LaunchNotEnded`、`ClaimDelayNotPassed`、`NoContribution`、`NotEnoughWaitingBlocks`、`TokensAlreadyClaimed`、`LaunchAlreadyExists`、`ParentTokenNotSet`、`ZeroContribution`、`InvalidToAddress`。
 
-错误顺序：保留 4 项的旧相对顺序不变（`AlreadyInitialized` → `InvalidTokenSymbol` → `InvalidTokenAddress` → `InvalidParentToken`），10 个新增项插在其后。
+错误顺序：保留 5 项的旧相对顺序不变（`AlreadyInitialized` → `InvalidTokenSymbol` → `TokenSymbolExists` → `InvalidTokenAddress` → `InvalidParentToken`），10 个新增项插在其后。
 
 逐条件的错误映射与初始化交易顺序见 [`core/08-launch.md`](../../docs/specs/core/08-launch.md)。
 

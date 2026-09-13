@@ -223,7 +223,7 @@
 - Airdrop 来源和 Burn 追溯证据按部署记录保存
 
 #### 不迁移的业务
-公平发射募资与认购领取整块不迁移：`contribute`、`withdraw`、`claim`、`claimInfo`、`LaunchInfo`、`CLAIM_DELAY_BLOCKS`、代币枚举接口全部删除。旧 `tokenAddressBySymbol` 账本不迁移，子币符号不要求全局唯一。
+公平发射募资与认购领取整块不迁移：`contribute`、`withdraw`、`claim`、`claimInfo`、`LaunchInfo` 的其余 10 个字段、`CLAIM_DELAY_BLOCKS` 全部删除。按发射者或募资状态划分的枚举（`childTokensByLauncher*`、`launching*`、`launched*`、`participatedTokens*`）也删除；代币列表与某社区子币列表保留为分页查询（`tokens`、`childTokens`），符号到地址账本保留为 `tokenAddressBySymbol`（子币符号全局唯一，`TokenSymbolExists`），代币地址到父币地址保留为 `parentTokenOf`。
 
 ### 📍 实现参考
 ```

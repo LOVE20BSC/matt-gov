@@ -6,6 +6,7 @@ enum DistributorMode { NoCallback, Callback }
 interface ILaunchErrors {
     error AlreadyInitialized();
     error InvalidTokenSymbol();
+    error TokenSymbolExists();
     error InvalidTokenAddress();
     error InvalidParentToken();
     error InvalidAddress();
@@ -34,7 +35,6 @@ interface ILaunchEvents {
         uint256 indexed targetMemberId,
         uint256 count
     );
-    event LaunchCountConsumed(address indexed tokenAddress, uint256 indexed memberId, uint256 count);
 }
 
 interface ILaunch is ILaunchErrors, ILaunchEvents {
@@ -77,4 +77,17 @@ interface ILaunch is ILaunchErrors, ILaunchEvents {
     function addLaunchCount(address tokenAddress, uint256 memberId, uint256 count) external;
     function launchCount(address tokenAddress, uint256 memberId) external view returns (uint256);
     function issuedLaunchCount(address tokenAddress) external view returns (uint256);
+    function tokens(
+        uint256 offset,
+        uint256 limit,
+        bool reverse
+    ) external view returns (address[] memory tokenList, uint256 totalCount);
+    function childTokens(
+        address parentTokenAddress,
+        uint256 offset,
+        uint256 limit,
+        bool reverse
+    ) external view returns (address[] memory tokenList, uint256 totalCount);
+    function tokenAddressBySymbol(string calldata symbol) external view returns (address);
+    function parentTokenOf(address tokenAddress) external view returns (address);
 }
