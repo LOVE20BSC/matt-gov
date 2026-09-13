@@ -3,7 +3,6 @@ pragma solidity =0.8.37;
 
 interface IPhaseErrors {
     error InvalidPhase(uint256 phaseNumber);
-    error ObservationNotFound(uint256 observationId);
     error InvalidKeyOrder();
 }
 

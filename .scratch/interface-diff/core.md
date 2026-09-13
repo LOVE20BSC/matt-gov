@@ -73,10 +73,9 @@ OZ 5 的标准回滚由固定依赖提供：`IERC721Errors`、`ERC721OutOfBounds
 | `phaseAtBlock(uint256 blockNumber)` | `roundByBlockNumber(uint256 blockNumber)` | 改名 |
 | `phaseInfo(uint256 phaseNumber) returns (uint256 startBlock, uint256 phaseBlocks_)` | 无 | 新增 |
 | `sync() returns (bool adjusted, uint256 newPhaseBlocks)` | 无 | 新增 |
-| `syncObservationsCount()` | 无 | 新增 |
-| `syncObservation(uint256 observationId) returns (uint256 blockNumber, uint256 blockTimestamp)` | 无 | 新增 |
+| `syncObservations(uint256 offset, uint256 limit, bool reverse) returns (uint256[] blockNumbers, uint256[] blockTimestamps, uint256 totalCount)` | 无 | 新增（分页读取观测，替代逐条 ID 读取） |
 | 事件 `PhaseSynchronized`、`PhaseAdjusted` | 无 | 新增 |
-| 错误 `InvalidPhase(uint256)`、`ObservationNotFound(uint256)` | 无 | 新增 |
+| 错误 `InvalidPhase(uint256)`、`InvalidKeyOrder()` | 无 | 新增 |
 | 无 | 错误 `RoundNotStarted()` | Core 不声明；由 Action Executor 与 Group Chat 各自声明 |
 
 旧 `IPhase` 被 6 个 core 接口继承并因此隐式暴露 `currentRound()`；新 `IPhase` 是独立合约接口，不被继承。
