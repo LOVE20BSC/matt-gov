@@ -44,7 +44,7 @@ Blocked by:
 
 用户确认：旧网络虽已部署，但被 BSC 新协议明确删除或替代的 `SL/ST`、核心 `LOVE20Verify`、`Random`、旧 `Join` 等合约不迁移；`core` 只保留并重写新的 `Stake`、`Submit`、`Vote`、`Mint`、发射、`MemberNFT` 和 `Phase`。`GroupVerify` 属于 `action` 内部的链群验证组件，是否独立仅由字节码限制决定。
 
-用户补充确认：`TokenFactory` 保留在 `core`，作为子币部署的技术拆分，可能用于规避组合后的合约体积或部署限制；这不改变删除旧扩展业务工厂的决定。
+用户补充确认：`TokenFactory` 曾被确认保留在 `core` 作为子币部署的技术拆分，可能用于规避组合后的合约体积或部署限制；该决定后经合约体积实测和合并决策记录推翻，当前职责已并入 `Launch`，不再部署独立 `TokenFactory`。
 
 ## Answer
 
@@ -54,7 +54,7 @@ Blocked by:
 - `group-chat` 的委托逻辑保留，但统一命名为 **Group Chat Delegate**，只在 `group-chat` 代码库内生效。它可以被 `GroupChat`、`GroupAdmin`、`GroupMember`、`GroupBanList` 等 Chat 组件使用，用于 Chat 内部管理和运营权限。
 - **Group Chat Delegate** 不进入 `core` 的通用身份或权限模型，不被 `action`、未来的 `launch` 或其他业务代码库使用，也不影响 `MemberNFT` 所有权、行动参与或公共验证者资格。
 - 旧 `group/src/GroupDelegate.sol` 不作为全局权限合约迁入 `core`；BSC 版在 `group-chat` 内只重写或迁入 Chat 所需的委托逻辑，实现和文档统一使用 **Group Chat Delegate**。
-- `TokenFactory` 是 `core` 的技术工厂例外：保留用于子币部署拆分，不创建 `ActionExecutor` 或其他业务扩展实例；旧 `Extension*Factory`、群行动工厂和 LP 扩展工厂仍不迁移，外部 DEX Factory 只保留接口调用。
+- `TokenFactory` 曾是 `core` 的技术工厂例外，现已并入 `Launch`；不创建 `ActionExecutor` 或其他业务扩展实例。旧 `Extension*Factory`、群行动工厂和 LP 扩展工厂仍不迁移，外部 DEX Factory 只保留接口调用。
 - 旧 `extension-lp` 的 V2 LP 业务迁移到 `action`，作为 LP 行动执行合约按 BSC 版 `ActionTarget`、`MemberNFT`、Proposal 激励和 PancakeSwap 兼容接口重写；V1 LP 实现及 V1/V2 旧工厂部署方式均不迁移。
 - `core` 对 PancakeSwap 只依赖外部 `Factory`、`Pair`、`Router` 接口。接入门槛不是仅检查 ABI 编译通过：必须在目标链和 Anvil 夹具中逐项核对 `getPair/createPair`、Pair 的 `token0/token1/getReserves/totalSupply/mint/burn/swap` 返回值与状态更新、Router 的 `getAmountsOut/swapExactTokensForTokens` 路径和 `amountOutMin` 语义、手续费口径以及失败回滚行为，并证明 `Stake` 的功能和数值结果正确；若差异影响这些结果，才不得直接接入 `Stake`，改为适配层或停止集成。
 - 外部依赖兼容性单独维护在 `compatibility` 代码库：对 `anvil`、`bsc97_dev`、`bsc56_public_test` 和 `bsc56_public` 分别保存 WBNB/WETH9、PancakeSwap Factory/Pair/Router 与本地 Uniswap V2 参考实现的接口、行为、数值和 `Stake` 场景证据。该仓库不提供生产合约，也不得成为 `core` 或 `action` 的运行时依赖；未通过兼容性验收的外部地址不得进入部署配置。

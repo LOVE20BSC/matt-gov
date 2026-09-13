@@ -99,15 +99,15 @@
 - 次数融合不携带 `launchCredit`
 
 ### 子币发射分发边界
-**覆盖要求**：覆盖只有 `Launch` 可调用 `TokenFactory`、首个代币通过一次性启动路径使用 WBNB 且不接收 Launch KV、不消耗发射次数、启动后不能重复创建首个代币、普通发射社区与 `parentTokenAddress` 一致、非零 `distributor`、普通发射的 `NoCallback`/`Callback` 两种分发模式、普通发射的 Launch 专属 KV 可空且原样透传、Callback 回调失败回滚、首币固定使用 Airdrop 与 `NoCallback`、两个 `init` 的固定顺序、首币的 `TokenLaunched` 事件口径，以及代币列表与子币列表分页查询和符号唯一性。
+**覆盖要求**：覆盖首个代币通过 `Launch.init(LaunchInitParams)` 一次性启动、使用 WBNB 且不接收 Launch KV、不消耗发射次数、启动后不能重复创建首个代币、普通发射社区与 `parentTokenAddress` 一致、非零 `distributor`、普通发射的 `NoCallback`/`Callback` 两种分发模式、普通发射的 Launch 专属 KV 可空且原样透传、Callback 回调失败回滚、首币固定使用 Airdrop 与 `NoCallback`、首币含名称和符号的 `TokenLaunched` 事件，以及代币列表与子币列表分页查询和符号唯一性。
 
 **测试方式**：
 - 单元测试：`core/test/Launch.t.sol` 的首个代币启动、普通发射场景
-- 单元测试：`core/test/TokenFactory.t.sol` 的权限、重复创建拒绝场景
+- 单元测试：`core/test/Launch.t.sol` 的初始化、首币创建和事件场景
 - 验收证据：首个代币部署与 Airdrop 集成日志
 
 **判定标准**：
-- 只有 Launch 能调用 TokenFactory
+- `core` 只部署 Launch 一条代币创建路径；`ILaunch` 不暴露独立创建入口，LOVE20Token 仅由 Launch 内部部署
 - 首个代币启动只能成功一次
 - NoCallback 不回调，Callback 成功调用且失败回滚
 - 首币发 `TokenLaunched` 且 `launcherMemberId = 0`；一次成功发射只发一个 `TokenLaunched`，不另发消耗事件

@@ -22,8 +22,8 @@
 | Vote | 保留 | `LOVE20TKM/core/src/LOVE20Vote.sol` | core/Vote.sol | 主体改为 memberId |
 | Mint | 修改 | `LOVE20TKM/core/src/LOVE20Mint.sol` | core/Mint.sol | 治理激励公式调整 |
 | LOVE20Token | 重构 | `LOVE20TKM/core/src/LOVE20Token.sol` | core/LOVE20Token.sol | ERC20、父币、maxSupply 和 minter 保留；移除 SL/ST 依赖 |
-| TokenFactory | 微调 | `LOVE20TKM/core/src/LOVE20TokenFactory.sol` | core/TokenFactory.sol | 旧创建职责保留；新增 distributor，移除 SL/ST 创建 |
-| Launch | 修改 | `LOVE20TKM/core/src/LOVE20Launch.sol` | core/Launch.sol | 发射次数按 memberId 记录 |
+| Launch | 修改 | `LOVE20TKM/core/src/LOVE20Launch.sol` | core/Launch.sol | 合并代币创建职责，发射次数按 memberId 记录 |
+| TokenFactory | 删除 | `LOVE20TKM/core/src/LOVE20TokenFactory.sol` | 无（职责并入 core/Launch.sol） | 代币创建入口并入 Launch，不再部署独立合约 |
 
 ---
 
@@ -217,7 +217,7 @@
 - **达到上限后**：治理激励仍可铸造，但不再增加发射次数
 
 #### 首个代币部署
-- 部署顺序固定为 `TokenFactory.init` → `Launch.init`；`Launch.init` 在写入依赖和发射参数的同一笔初始化交易中，通过 `TokenFactory` 创建首个代币、设置 `minter`、发送首批代币到 Airdrop，并同步调用 `MemberNFT.init(firstToken)` 完成其初始化；Pair 由 `Stake` 在首次 LP 质押时按需创建
+- `Launch.init(LaunchInitParams)` 在同一笔初始化交易中写入依赖、发射和供应量参数，直接创建首个代币、设置 `minter`、发送首批代币到 Airdrop，并同步调用 `MemberNFT.init(firstToken)` 完成其初始化；Pair 由 `Stake` 在首次 LP 质押时按需创建
 - `Launch` 的分发参数与 Proposal 的 `target + targetMode` 对齐：首币固定使用 Airdrop 和 `NoCallback`；普通发射可使用 `NoCallback` 或 `Callback`
 - `Launch.init` 任一步失败则整笔回滚；成功后不得再次初始化或创建第二个首个代币
 - Airdrop 来源和 Burn 追溯证据按部署记录保存
@@ -235,17 +235,17 @@
 
 ---
 
-## 8. LOVE20Token & TokenFactory（职责保留、依赖调整）
+## 8. LOVE20Token & Launch（代币创建职责合并）
 
 ### ✅ 保留
 - ERC20 标准实现
 - 代币树结构（parentTokenAddress）
 - maxSupply 限制
 - minter 权限控制
-- TokenFactory 创建流程
+- Launch 内部代币创建流程
 
 ### 🔄 BSC 调整
-- `TokenFactory.createToken` 新增非零 `distributor`，首批供应量直接铸给该地址
+- Launch 内部创建逻辑接收非零 `distributor`，首批供应量直接铸给该地址
 - 删除 SL/ST 实例创建及其 Stake 依赖；Pair 生命周期移入 `Stake`，由其在首次 LP 质押时按需创建
 - 首个代币依赖 Airdrop 合约分发（来源：LOVE20TKM/burn）
 
@@ -253,7 +253,7 @@
 ```
 旧代码：
   LOVE20TKM/core/src/LOVE20Token.sol
-  LOVE20TKM/core/src/LOVE20TokenFactory.sol
+  LOVE20TKM/core/src/LOVE20TokenFactory.sol（创建职责已并入 Launch）
 保留：完整 ERC20 逻辑、代币树结构
 ```
 

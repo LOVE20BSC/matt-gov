@@ -295,15 +295,15 @@ OZ 5 的标准回滚由固定依赖提供：`IERC721Errors`、`ERC721OutOfBounds
 
 | 新 | 旧 | 状态 |
 | --- | --- | --- |
-| `tokenFactoryAddress()`、`mintAddress()` | 同名 | 保留 |
+| `mintAddress()` | 同名 | 保留 |
 | `TOKEN_SYMBOL_LENGTH()` | 同名 | 保留（配置语义不变，`init` 新增对应的 `tokenSymbolLength` 参数） |
 | `isLOVE20Token(tokenAddress)` | 同名 | 保留 |
 | `launchToken(tokenSymbol, parentTokenAddress, memberId, distributor, distributorMode, keys[], values[]) returns (tokenAddress)` | `launchToken(tokenSymbol, parentTokenAddress) returns (tokenAddress)` | 改参（2 → 7 参数） |
 | `launchCount(tokenAddress, uint256 memberId)` | `remainingLaunchCount(parentTokenAddress, address account)` | 改名+改参（剩余次数 → 累计次数账本） |
 | `enum DistributorMode { NoCallback, Callback }` | 无 | 新增 |
-| `init(tokenFactoryAddress, mintAddress, memberNFTAddress, rootParentTokenAddress, distributor, launchRatio, maxLaunchCount, tokenSymbolLength, name, symbol)` | 无 | 新增（地址参数名与同名 getter 一致，与 `ITokenFactory.init(launchAddress, mintAddress, ...)` 同风格；实现产物里同名参数带 `_` 后缀避状态变量遮蔽，见 `migration-standards.md`） |
-| `memberNFTAddress()`、`rootParentTokenAddress()`、`LAUNCH_RATIO()`、`MAX_LAUNCH_COUNT()` | 无 | 新增 |
-| `initialized()` | 旧实现有 `bool public initialized`（自动 getter 进入合约 ABI，未写进旧接口） | 新增（公开初始化状态，与 `ITokenFactory`/`IMemberNFT` 对齐，供发布前检查脚本核对） |
+| `init(LaunchInitParams)` | 无 | 新增（一次完成依赖、发射参数、供应量配置和首币元数据初始化） |
+| `memberNFTAddress()`、`rootParentTokenAddress()`、`LAUNCH_RATIO()`、`MAX_LAUNCH_COUNT()`、`LAUNCH_AMOUNT()`、`MAX_SUPPLY()` | 无 | 新增 |
+| `initialized()` | 旧实现有 `bool public initialized`（自动 getter 进入合约 ABI，未写进旧接口） | 新增（公开初始化状态，与 `IMemberNFT` 对齐，供发布前检查脚本核对） |
 | `mergeLaunchCount(tokenAddress, sourceMemberId, targetMemberId, count)` | 无 | 新增 |
 | `addLaunchCount(tokenAddress, memberId, count)` | 无 | 新增 |
 | `issuedLaunchCount(tokenAddress)` | 无 | 新增 |
@@ -312,7 +312,7 @@ OZ 5 的标准回滚由固定依赖提供：`IERC721Errors`、`ERC721OutOfBounds
 | `tokenAddressBySymbol(string calldata symbol)` | `tokenAddressBySymbol(string memory symbol)` | 保留（`memory` → `calldata`，selector 不变） |
 | `parentTokenOf(address tokenAddress)` | 无（旧 `launchInfo(address)` 返回的 `LaunchInfo.parentTokenAddress` 字段） | 新增（登记状态与父币地址的读取入口，`isLOVE20Token` 复用同一账本） |
 
-函数顺序：保留的旧函数相对顺序不变（`tokenFactoryAddress` → `mintAddress` → `TOKEN_SYMBOL_LENGTH` → `isLOVE20Token` → `launchToken` → 原 `remainingLaunchCount` 位置 → 原 `tokensCount`/`childTokensCount`/`tokenAddressBySymbol` 位置）；新增的依赖 getter 紧跟依赖 getter 组，`LAUNCH_RATIO`、`MAX_LAUNCH_COUNT` 紧跟 `TOKEN_SYMBOL_LENGTH`，`initialized`、`init` 置于配置 getter 之后（`IMemberNFT` 为同样顺序，`ITokenFactory` 的 `init` 也在配置 getter 之后）。
+函数顺序：保留的旧函数相对顺序不变（`mintAddress` → `TOKEN_SYMBOL_LENGTH` → `isLOVE20Token` → `launchToken` → 原 `remainingLaunchCount` 位置 → 原 `tokensCount`/`childTokensCount`/`tokenAddressBySymbol` 位置）；新增的依赖 getter 紧跟依赖 getter 组，供应量 getter 紧跟其他配置 getter，`initialized`、`init` 置于配置 getter 之后。
 
 ### 删除的旧函数
 
@@ -332,7 +332,7 @@ MemberNFT 的配置 getter 同样遵循大写命名；`MAX_NAME_LENGTH()` 仅去
 
 | 新 | 旧 | 状态 |
 | --- | --- | --- |
-| `TokenLaunched(tokenAddress, parentTokenAddress, uint256 launcherMemberId, address distributor)` | `LaunchToken(tokenAddress, string tokenSymbol, parentTokenAddress, address account)` | 改名+改参（统一为完成时，与 `TokenCreated`、`ProposalCreated`、`VoteCast` 同风格；去 `tokenSymbol`，`account` → `launcherMemberId`，新增 `distributor`） |
+| `TokenLaunched(tokenAddress, parentTokenAddress, uint256 launcherMemberId, address distributor, string name, string symbol)` | `LaunchToken(tokenAddress, string tokenSymbol, parentTokenAddress, address account)`、`TokenCreated(...)` | 合并创建与发射事件；增加与最终 LOVE20Token 一致的 `name`/`symbol` |
 | `LaunchCountAdded`、`LaunchCountMerged` | 无 | 新增 |
 | 无 | `Contribute`、`Withdraw`、`Claim`、`SecondHalfStart`、`LaunchEnd` | 删除 |
 
@@ -344,11 +344,11 @@ MemberNFT 的配置 getter 同样遵循大写命名；`MAX_NAME_LENGTH()` 仅去
 
 保留 5 个：`AlreadyInitialized`、`InvalidTokenSymbol`、`TokenSymbolExists()`（触发条件 `tokenAddressBySymbol[最终符号] != address(0)`，与旧 `_launchToken` 相同）、`InvalidTokenAddress()`（触发条件 `!isLOVE20Token(tokenAddress)`，与旧 `contribute` 相同）、`InvalidParentToken()`（触发条件 `!isLOVE20Token(parentTokenAddress)`，与旧 `launchToken` 相同）。
 
-新增 10 个：`InvalidAddress`、`InvalidKVLength`、`InvalidDistributorMode`、`ZeroAmount(string parameter)`、`UnauthorizedCaller`、`NotMemberOwner(uint256 memberId)`、`CountMustBeGreaterThanZero()`、`SourceAndTargetMustBeDifferent()`、`NotEnoughLaunchCount`、`LaunchCountLimitReached`。
+新增 12 个：`InvalidAddress`、`InvalidKVLength`、`InvalidDistributorMode`、`ZeroAmount(string parameter)`、`UnauthorizedCaller`、`NotMemberOwner(uint256 memberId)`、`CountMustBeGreaterThanZero()`、`SourceAndTargetMustBeDifferent()`、`NotEnoughLaunchCount`、`LaunchCountLimitReached`、`InvalidAmount()`、`EmptyString(string parameter)`。
 
 删除 11 个：`NotEligibleToLaunchToken`、`LaunchAlreadyEnded`、`LaunchNotEnded`、`ClaimDelayNotPassed`、`NoContribution`、`NotEnoughWaitingBlocks`、`TokensAlreadyClaimed`、`LaunchAlreadyExists`、`ParentTokenNotSet`、`ZeroContribution`、`InvalidToAddress`。
 
-错误顺序：保留 5 项的旧相对顺序不变（`AlreadyInitialized` → `InvalidTokenSymbol` → `TokenSymbolExists` → `InvalidTokenAddress` → `InvalidParentToken`），10 个新增项插在其后。
+错误顺序：保留 5 项的旧相对顺序不变（`AlreadyInitialized` → `InvalidTokenSymbol` → `TokenSymbolExists` → `InvalidTokenAddress` → `InvalidParentToken`），12 个新增项插在其后。
 
 逐条件的错误映射与初始化交易顺序见 [`core/08-launch.md`](../../docs/specs/core/08-launch.md)。
 
@@ -369,30 +369,7 @@ MemberNFT 的配置 getter 同样遵循大写命名；`MAX_NAME_LENGTH()` 仅去
 
 ---
 
-## 9. ITokenFactory vs ILOVE20TokenFactory
-
-旧：`LOVE20TKM/core/src/interfaces/ILOVE20TokenFactory.sol`。
-
-| 新 | 旧 | 状态 |
-| --- | --- | --- |
-| `createToken(parentTokenAddress, string calldata name, string calldata symbol, address distributor)` | `createToken(parentTokenAddress, string memory name, string memory symbol)` | 改参（新增 `distributor`，`memory` → `calldata`） |
-| 无 | `uniswapV2Factory()` | 删除（Pair 创建移入 Stake） |
-| `LAUNCH_AMOUNT()` | 同名 | 保留（常量 getter 保持旧大写命名） |
-| `MAX_SUPPLY()` | 同名 | 保留（常量 getter 保持旧大写命名） |
-| `launchAddress()`、`mintAddress()` | 同名 | 保留 |
-| `initialized()` | 无 | 新增（公开初始化状态） |
-| `init(launchAddress, mintAddress, launchAmount, maxSupply)` | 无 | 新增（一次性无权限初始化，发布前由 check 脚本核验） |
-| 无 | `stakeAddress()` | 删除（去 SL/ST 依赖） |
-| 无 | `MAX_WITHDRAWABLE_TO_FEE_RATIO()` | 删除（手续费结算移入 `Stake`） |
-| 事件 `TokenCreated(tokenAddress, parentTokenAddress, name, symbol, address distributor)` | `TokenCreate(tokenAddress, parentTokenAddress, name, symbol)` | 改名+改参 |
-| 错误 `ZeroAddress(string parameter)` | 同名 | 保留（按参数标识具体地址） |
-| 错误 `EmptyString(string parameter)` | 同名 | 保留（按参数标识 `name` 或 `symbol`） |
-| 错误 `InvalidAmount()` | 同名 | 保留（供应量关系校验） |
-| 错误 `AlreadyInitialized()`、`UnauthorizedCaller()` | 同 | 保留 |
-
----
-
-## 10. 全新接口
+## 9. 全新接口
 
 ### IProposalTarget
 
@@ -410,7 +387,7 @@ MemberNFT 的配置 getter 同样遵循大写命名；`MAX_NAME_LENGTH()` 仅去
 
 ---
 
-## 11. 旧 core 接口整体删除明细
+## 10. 旧 core 接口整体删除明细
 
 ### ILOVE20Verify（16 函数 / 1 事件 / 4 错误）
 

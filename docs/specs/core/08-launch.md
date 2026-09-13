@@ -1,21 +1,20 @@
-# Launch 与 TokenFactory
+# Launch
 
-Launch 负责基础发射与次数账本；TokenFactory 负责创建 LOVE20Token。首币启动不另设合约或外部入口，也不创建独立 `launch` 仓库。
+Launch 负责首币部署、LOVE20Token 创建、基础发射与次数账本。Token 创建逻辑与 Launch 合并，不再部署独立的 `TokenFactory` 合约。
 
 ## 初始化和首个代币
 
-首币参数与依赖在同一次 `Launch.init` 中传入；供应量在工厂初始化固定，不在 Launch 再保存一份：
+首币参数、依赖和供应量配置在同一次 `Launch.init(LaunchInitParams)` 中传入并固定：
 
-由 `init` 固定的 Launch 配置状态变量使用大写 `public` 命名并直接提供同名 getter：`LAUNCH_RATIO`、`MAX_LAUNCH_COUNT` 和 `TOKEN_SYMBOL_LENGTH`。
+由 `init` 固定的 Launch 配置状态变量使用大写 `public` 命名并直接提供同名 getter：`LAUNCH_RATIO`、`MAX_LAUNCH_COUNT`、`TOKEN_SYMBOL_LENGTH`、`LAUNCH_AMOUNT` 和 `MAX_SUPPLY`。
 
 完整 ABI 见 [`ILaunch.sol`](../../../interfaces/core/ILaunch.sol)。
 
-初始化分两笔交易，顺序固定：
+初始化为一笔交易：
 
-1. 先部署全部合约取得地址，`TokenFactory.init(launchAddress, mintAddress, launchAmount, maxSupply)` 固定工厂的创建调用方、minter 和供应量参数。
-2. 再提交 `Launch.init(...)`。同一笔交易内完成：写入依赖和发射参数、调用 `TokenFactory.createToken(rootParentTokenAddress, name, symbol, distributor)` 创建首币、登记首币，并同步调用 `MemberNFT.init(tokenAddress)` 完成其初始化；MemberNFT 不保存 Launch 地址。
+1. 部署全部合约取得地址，提交 `Launch.init(LaunchInitParams)`。同一笔交易内完成：写入依赖、发射参数和供应量配置，创建首币、登记首币，并同步调用 `MemberNFT.init(tokenAddress)` 完成其初始化；MemberNFT 不保存 Launch 地址。
 
-两个 `init` 都不保存或校验部署者地址，各自只允许成功一次；成功后 `initialized()` 为 `true`，Launch 与 TokenFactory、MemberNFT 一致地公开该状态供检查脚本核对。三笔初始化（`TokenFactory.init` → `Launch.init` → `MemberNFT.init`）都无调用者限制，部署与初始化分开的交易存在被抢先绑定的窗口：被抢跑的版本不得发布，必须重新部署并核对受影响的依赖，不把“部署后立即初始化”当作防抢跑保证。部署是否成功由发布前检查脚本判定——逐项核对两个 `init` 的 `initialized()`、依赖地址、首币名称与符号、首币分发地址、`LAUNCH_RATIO`、`MAX_LAUNCH_COUNT` 和 `TOKEN_SYMBOL_LENGTH`，任何不一致即重新部署。
+`Launch.init` 不保存或校验部署者地址，只允许成功一次；成功后 `initialized()` 为 `true`。该初始化仍存在被抢先绑定的窗口：被抢跑的版本不得发布，必须重新部署并核对受影响的依赖，不把“部署后立即初始化”当作防抢跑保证。部署是否成功由发布前检查脚本判定——逐项核对 `initialized()`、依赖地址、首币名称与符号、首币分发地址、发射参数和供应量配置，任何不一致即重新部署。
 
 首币不消耗成员发射次数，也不接收或处理 Launch KV 数组，固定采用 `NoCallback`。`Launch.init` 任一步失败回滚全部效果；成功后不得重初始化、替换依赖或改写首币。Pair 在首次 LP 质押时由 `Stake` 按需查询或创建，Launch 不创建 Pair，也不重复铸造首批供应。部署参数的含义见 [参数表](00-protocol-model.md#初始化参数)。
 
@@ -23,10 +22,13 @@ Launch 负责基础发射与次数账本；TokenFactory 负责创建 LOVE20Token
 
 | 条件 | 回滚错误 |
 | --- | --- |
+| 重复初始化 | `AlreadyInitialized()` |
 | 任一地址参数（含首币 `distributor`）为零 | `InvalidAddress()` |
 | `launchRatio == 0`、`maxLaunchCount == 0` 或 `tokenSymbolLength == 0` | `ZeroAmount("launchRatio")` / `ZeroAmount("maxLaunchCount")` / `ZeroAmount("tokenSymbolLength")` |
-| 首币名称或符号为空 | `EmptyString("name")` / `EmptyString("symbol")`，由 `TokenFactory.createToken` 回滚 |
-| 重复初始化 | `AlreadyInitialized()` |
+| `launchAmount > maxSupply` | `InvalidAmount()` |
+| 首币名称或符号为空 | `EmptyString("name")` / `EmptyString("symbol")`，属于 `init` 参数校验 |
+
+`launchAmount` 和 `maxSupply` 可以为零；初始化只要求 `launchAmount <= maxSupply`，不额外拒绝零值。
 
 首币符号不套用 `TOKEN_SYMBOL_LENGTH` 校验：旧实现的第一个代币走 `tokensCount() == 0` 分支，跳过符号校验与测试网 `Test` 前缀（名称仍按 `tokenSymbol + "@" + parentSymbol` 拼接）；BSC 版由 `init` 参数直接给定首币名称和符号，因此首币符号长度可以与配置的子币符号长度不同。
 
@@ -123,41 +125,27 @@ distributor 自行实现领取与查询逻辑，`claim(tokenAddress)` 只是建�
 
 ## 事件
 
-事件契约如下；除 `TokenLaunched` 的 `distributor` 外，用于链下重建的字段都带 `indexed`。
+事件契约如下；`TokenLaunched` 的 `tokenAddress`、`parentTokenAddress` 和 `launcherMemberId` 带 `indexed`，其余字段用于链下重建。
 
 | 事件 | 触发入口 | 字段取值 |
 | --- | --- | --- |
-| `TokenLaunched(tokenAddress, parentTokenAddress, launcherMemberId, distributor)` | `init` 创建首币；`launchToken` 每次成功发射 | `tokenAddress` 为新创建的代币地址；`parentTokenAddress` 首币为 `rootParentTokenAddress`、普通发射为本次 `parentTokenAddress`；`launcherMemberId` 首币为 `0`（没有发起成员），普通发射为本次 `memberId`；`distributor` 为首批供应接收者。发出时机在代币创建、首批供应到账、代币登记与次数扣减之后 |
+| `TokenLaunched(tokenAddress, parentTokenAddress, launcherMemberId, distributor, name, symbol)` | `init` 创建首币；`launchToken` 每次成功发射 | `tokenAddress` 为新创建的代币地址；`parentTokenAddress` 首币为 `rootParentTokenAddress`、普通发射为本次 `parentTokenAddress`；`launcherMemberId` 首币为 `0`（没有发起成员），普通发射为本次 `memberId`；`distributor` 为首批供应接收者；`name` 和 `symbol` 与最终部署的 LOVE20Token 完全一致，子币为加 `Test` 前缀后的最终值，首币为 `init` 参数原值。发出时机在代币创建、首批供应到账、代币登记与次数扣减之后 |
 | `LaunchCountAdded(tokenAddress, memberId, count)` | `addLaunchCount` | `tokenAddress` 为社区代币（次数账本的父币维度），`count` 为本次新增次数 |
 | `LaunchCountMerged(tokenAddress, sourceMemberId, targetMemberId, count)` | `mergeLaunchCount` | `count` 为本次融合转移的次数 |
 
 次数消耗不单独发事件：`launchToken` 每次成功都发 `TokenLaunched`，且每次发射恰消耗一次次数，因此消耗历史可由 `TokenLaunched` 重建，余量可用 `launchCount` 直接查询；再发一个消耗事件只会重复同一笔交易的同一事实。
 
 - 首币由 `init` 发出 `TokenLaunched`（`launcherMemberId = 0`）；`init`、`launchToken`、`addLaunchCount`、`mergeLaunchCount` 之外的入口不产生上述事件。
-- `TokenFactory.createToken` 的 `TokenCreated` 由工厂发出，与 `TokenLaunched` 成对出现。
+- `TokenLaunched` 同时记录创建和发射所需的代币元数据；不再另发 `TokenCreated`。
 - 链上查询覆盖全部已发射代币、某社区的子币列表和符号到地址（见 [代币登记与查询](#代币登记与查询)）；按成员聚合的发射历史仍由 `TokenLaunched` 的 `launcherMemberId` 链下索引。
 
-## TokenFactory
+## LOVE20Token 创建
 
-保留旧工厂“初始化配置 + 创建代币”的职责。来源为 `LOVE20TKM/core/src/LOVE20TokenFactory.sol`（提交见[旧代码基线](../../repositories.md#旧代码基线)）；BSC 新增 `distributor`，删除 Pair、SL/ST 创建及相关依赖，Pair 生命周期移入 `Stake`。LOVE20Token 的完整参数在构造函数中一次传入，不再提供 `init`。
-
-初始化接口见 [`ITokenFactory.sol`](../../../interfaces/core/ITokenFactory.sol)。
-
-工厂初始化一次，固定 Launch、Mint、首批供应量和最大供应量；`init` 可由任意地址提交，不保存部署者地址，也不授予部署者特权，发布前由检查脚本核验参数。零地址使用 `ZeroAddress(parameter)`，空名称或符号使用 `EmptyString(parameter)`，供应量关系错误使用 `InvalidAmount()`。对应常量 getter 保留旧命名 `LAUNCH_AMOUNT()`、`MAX_SUPPLY()`，初始化参数 `launchAmount <= maxSupply`。Stake 自行依赖符合 Uniswap V2 接口的 Pair Factory，并在首次 LP 质押时查询或创建 Pair。
-
-创建接口见 [`ITokenFactory.sol`](../../../interfaces/core/ITokenFactory.sol)。
-
-仅已初始化工厂允许 Launch 调用。父币或 distributor 为零、名称或符号为空时拒绝。创建时原子执行：
-
-1. 创建 LOVE20Token，使用工厂固定的供应参数，将 `initialSupply` 直接铸给 distributor，不先交给 Launch。
-2. LOVE20Token 构造函数直接写入父币和 Mint 权限；不创建 Pair 或 SL/ST，质押账本仍在 Stake。
-3. 发出代币创建事件并返回 tokenAddress；任一步失败全部回滚。
-
-父币是否已登记 LOVE20 代币、发射次数和分发回调由 Launch 检查。首币使用 WBNB，普通子币使用已登记 LOVE20 父币。
+`Launch` 直接保存 `LAUNCH_AMOUNT`、`MAX_SUPPLY`，并在内部创建 LOVE20Token。创建时把 `mintAddress` 作为 `minter` 写入 LOVE20Token，把首批供应直接铸给 `distributor`，不创建 Pair 或 SL/ST；Pair 生命周期仍由 `Stake` 管理。父币是否已登记、发射次数和分发回调由 Launch 检查。
 
 ## 实现约束
 
-TokenFactory 的事件和错误定义见 [`ITokenFactory.sol`](../../../interfaces/core/ITokenFactory.sol)；LOVE20Token 的公开 ABI 见 [`ILOVE20Token.sol`](../../../interfaces/core/ILOVE20Token.sol)。
+Launch 的事件和错误定义见 [`ILaunch.sol`](../../../interfaces/core/ILaunch.sol)；LOVE20Token 的公开 ABI 见 [`ILOVE20Token.sol`](../../../interfaces/core/ILOVE20Token.sol)。
 
 LOVE20Token 使用构造函数接收 `name`、`symbol`、`initialSupply`、`maxSupply`、`distributor`、`minter` 和 `parentTokenAddress`；构造函数不属于 Solidity `interface` ABI。其运行时函数、事件和错误以 [`ILOVE20Token.sol`](../../../interfaces/core/ILOVE20Token.sol) 为准。
 

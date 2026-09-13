@@ -42,6 +42,8 @@
 
 追溯文件用于解释决策，不得成为实现规则的唯一来源。若追溯票据与当前拆分规格冲突，以当前拆分规格为准，并记录冲突。
 
+架构决策记录位于 `docs/adr/`，用于记录跨仓库取舍和已取代的历史结论。
+
 ## 三、审查前准备
 
 在报告开头记录：
@@ -179,7 +181,7 @@ rg -n 'core\.md|action\.md|group-chat\.md|launchFirstToken|initializeGenesis|TOD
 - [ ] Proposal 激励分母只包含达标 Proposal
 - [ ] Launch 上限优先于阈值判断，`threshold == 0` 不除零
 - [ ] `Launch.init` 同时完成依赖绑定和首个代币部署
-- [ ] TokenFactory 只能由 Launch 调用
+- [ ] 代币创建只能通过 Launch 的内部路径完成
 
 ### Action
 
@@ -253,7 +255,7 @@ LOVE20TKM/<repo>/<path>[#<function-or-symbol>]
 
 - [ ] 每个写接口只有一个明确权限来源
 - [ ] NFT 转移后权限实时读取 owner，不缓存旧地址
-- [ ] 回调、TokenFactory、Launch、Executor 的调用链不能被旁路
+- [ ] 回调、Launch、Executor 的调用链不能被旁路
 - [ ] 外部合约地址检查非零、代码存在和初始化完成
 
 ### 资金与供应

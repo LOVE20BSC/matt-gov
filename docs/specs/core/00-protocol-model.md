@@ -11,8 +11,8 @@
 | Submit / Vote | Proposal 创建、推举、投票和 Target 回调 |
 | Mint | 轮次激励准备、治理激励及 Proposal 激励结算 |
 | Phase | 无业务语义的时间片 |
-| LOVE20Token / TokenFactory | 代币实例与代币树 |
-| Launch | 首币部署、发射额度、次数融合及子币发射 |
+| LOVE20Token | 代币实例与代币树 |
+| Launch | 首币部署、LOVE20Token 创建、发射额度、次数融合及子币发射 |
 
 Core 不解释具体 Proposal 的业务字段，扩展通过 Target 接入。
 
@@ -38,17 +38,17 @@ Core 不解释具体 Proposal 的业务字段，扩展通过 Target 接入。
 | Mint | `proposalRewardMinVotePerThousand` | 提案激励门槛；状态变量和公开 getter 为 `PROPOSAL_REWARD_MIN_VOTE_PER_THOUSAND`，千分比，如 `50 = 5%` |
 | Mint | `roundRewardGovPerThousand`、`roundRewardProposalPerThousand` | 治理池、提案池占可用供应的千分比，如 `30`、`10` |
 | Mint | `maxGovBoostRewardMultiplier` | 加速激励相对投票激励的倍数上限，如 `2` |
-| Launch | `tokenFactoryAddress`、`mintAddress`、`memberNFTAddress` | 代币工厂、铸造和身份依赖 |
+| Launch | `mintAddress`、`memberNFTAddress` | 铸造和身份依赖 |
 | Launch | `rootParentTokenAddress` | 根父币 WBNB |
 | Launch | `distributor`、`name`、`symbol` | 首币分发目标、名称和符号；首币固定使用 `NoCallback`，`distributor` 非零 |
 | Launch | `launchRatio` | 发射阈值比例；状态变量和公开 getter 为 `LAUNCH_RATIO`，`1e18` 精度，如 `1e16 = 1%` |
 | Launch | `maxLaunchCount` | 每社区累计次数上限；状态变量和公开 getter 为 `MAX_LAUNCH_COUNT`，如 `100` |
 | Launch | `tokenSymbolLength` | 子币符号固定字节长度；状态变量和公开 getter 为 `TOKEN_SYMBOL_LENGTH`，沿用旧 Launch 校验 |
-| TokenFactory | `launchAddress`、`mintAddress` | 唯一创建调用方和代币 minter |
-| TokenFactory | `LAUNCH_AMOUNT`、`MAX_SUPPLY` | 首批/最大供应量，工厂 init 固定；`launchAmount <= maxSupply` |
-| TokenFactory.createToken | `distributor` | 本次创建的首批代币接收者；非零 |
+| Launch | `LAUNCH_AMOUNT`、`MAX_SUPPLY` | 首批/最大供应量，Launch.init 固定；`launchAmount <= maxSupply` |
 
-MemberNFT 的首币地址由 `Launch.init` 在创建首币时同步调用 `MemberNFT.init(tokenAddress)` 绑定，不在部署时传入；公开 getter 保持旧名 `LOVE20_TOKEN_ADDRESS()`。MemberNFT 不保存 Launch 地址。Launch 的首币分发地址、名称和符号，以及 TokenFactory 的初始化/创建参数统一见 [Launch](08-launch.md)，不另维护供应量副本。Pair Factory 和 Router 都是 Stake 的外部依赖，不参与 TokenFactory 的代币创建。
+上述 Launch 参数按 `LaunchInitParams` 的字段顺序传入，字段名与参数名一致；结构体定义见 [`ILaunch.sol`](../../../interfaces/core/ILaunch.sol)。
+
+MemberNFT 的首币地址由 `Launch.init` 在创建首币时同步调用 `MemberNFT.init(tokenAddress)` 绑定，不在部署时传入；公开 getter 保持旧名 `LOVE20_TOKEN_ADDRESS()`。MemberNFT 不保存 Launch 地址。Launch 的首币分发地址、名称、符号和供应量配置统一见 [Launch](08-launch.md)。Pair Factory 和 Router 都是 Stake 的外部依赖，不参与代币创建。
 
 ## 实现约束
 
