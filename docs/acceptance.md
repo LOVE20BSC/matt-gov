@@ -99,7 +99,7 @@
 - 次数融合不携带 `launchCredit`
 
 ### 子币发射分发边界
-**覆盖要求**：覆盖只有 `Launch` 可调用 `TokenFactory`、首个代币通过一次性启动路径使用 WBNB 且不接收 Launch KV、不消耗发射次数、启动后不能重复创建首个代币、普通发射社区与 `parentTokenAddress` 一致、非零 `distributor`、普通发射的 `NoCallback`/`Callback` 两种分发模式、普通发射的 Launch 专属 KV 可空且原样透传、Callback 回调失败回滚、首币固定使用 Airdrop 与 `NoCallback`，以及两个 `init` 的固定顺序与未初始化时写入口拒绝。
+**覆盖要求**：覆盖只有 `Launch` 可调用 `TokenFactory`、首个代币通过一次性启动路径使用 WBNB 且不接收 Launch KV、不消耗发射次数、启动后不能重复创建首个代币、普通发射社区与 `parentTokenAddress` 一致、非零 `distributor`、普通发射的 `NoCallback`/`Callback` 两种分发模式、普通发射的 Launch 专属 KV 可空且原样透传、Callback 回调失败回滚、首币固定使用 Airdrop 与 `NoCallback`，以及两个 `init` 的固定顺序与首币的 `TokenLaunched` 事件口径。
 
 **测试方式**：
 - 单元测试：`core/test/Launch.t.sol` 的首个代币启动、普通发射场景
@@ -110,7 +110,8 @@
 - 只有 Launch 能调用 TokenFactory
 - 首个代币启动只能成功一次
 - NoCallback 不回调，Callback 成功调用且失败回滚
-- 未初始化时 `launchToken`、`mergeLaunchCount`、`addLaunchCount` 回滚
+- 首币发 `TokenLaunched` 且 `launcherMemberId = 0`，不发 `LaunchCountConsumed`
+- 只有 `init` 校验初始化状态，`launchToken`、`mergeLaunchCount`、`addLaunchCount` 不重复校验
 
 ### MemberNFT 转移归属
 **覆盖要求**：覆盖转移前后质押、解锁倒计时、治理激励和行动内部未铸造激励均由当前持有人继续操作；旧持有人不能代铸，历史投票、按 Round 参与历史、已结算激励和事件不回写。

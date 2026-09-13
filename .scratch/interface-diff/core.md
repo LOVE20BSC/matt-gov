@@ -302,7 +302,7 @@ OZ 5 的标准回滚由固定依赖提供：`IERC721Errors`、`ERC721OutOfBounds
 | `launchToken(tokenSymbol, parentTokenAddress, memberId, distributor, distributorMode, keys[], values[]) returns (tokenAddress)` | `launchToken(tokenSymbol, parentTokenAddress) returns (tokenAddress)` | 改参（2 → 7 参数） |
 | `launchCount(tokenAddress, uint256 memberId)` | `remainingLaunchCount(parentTokenAddress, address account)` | 改名+改参（剩余次数 → 累计次数账本） |
 | `enum DistributorMode { NoCallback, Callback }` | 无 | 新增 |
-| `init(tokenFactory, mint, memberNFT, rootParentToken, distributor, launchRatio, maxLaunchCount, tokenSymbolLength, name, symbol)` | 无 | 新增 |
+| `init(tokenFactoryAddress, mintAddress, memberNFTAddress, rootParentTokenAddress, distributor, launchRatio, maxLaunchCount, tokenSymbolLength, name, symbol)` | 无 | 新增（地址参数名与同名 getter 一致，与 `ITokenFactory.init(launchAddress, mintAddress, ...)` 同风格） |
 | `memberNFTAddress()`、`rootParentTokenAddress()`、`LAUNCH_RATIO()`、`MAX_LAUNCH_COUNT()` | 无 | 新增 |
 | `initialized()` | 旧实现有 `bool public initialized`（自动 getter 进入合约 ABI，未写进旧接口） | 新增（公开初始化状态，与 `ITokenFactory`/`IMemberNFT` 对齐，供发布前检查脚本核对） |
 | `mergeLaunchCount(tokenAddress, sourceMemberId, targetMemberId, count)` | 无 | 新增 |
@@ -318,7 +318,7 @@ OZ 5 的标准回滚由固定依赖提供：`IERC721Errors`、`ERC721OutOfBounds
 | 募资认购生命周期 | `contribute`、`withdraw`、`claim`、`claimInfo`、`contributed`、`lastContributedBlock`、`launchInfo` |
 | 募资参数常量 | `FIRST_PARENT_TOKEN_FUNDRAISING_GOAL`、`PARENT_TOKEN_FUNDRAISING_GOAL`、`SECOND_HALF_MIN_BLOCKS`、`WITHDRAW_WAITING_BLOCKS` |
 | 发射资格门槛 | `MIN_GOV_REWARD_MINTS_TO_LAUNCH`（改为 `launchCount` 账本 + `maxLaunchCount` 上限） |
-| 代币枚举 | `tokensCount`/`tokensAtIndex`、`childTokensCount`/`AtIndex`、`childTokensByLauncherCount`/`AtIndex`、`launchingTokensCount`/`AtIndex`、`launchedTokensCount`/`AtIndex`、`launchingChildTokensCount`/`AtIndex`、`launchedChildTokensCount`/`AtIndex`、`participatedTokensCount`/`AtIndex`、`tokenAddressBySymbol` |
+| 代币枚举 | `tokensCount`/`tokensAtIndex`、`childTokensCount`/`AtIndex`、`childTokensByLauncherCount`/`AtIndex`、`launchingTokensCount`/`AtIndex`、`launchedTokensCount`/`AtIndex`、`launchingChildTokensCount`/`AtIndex`、`launchedChildTokensCount`/`AtIndex`、`participatedTokensCount`/`AtIndex`、`tokenAddressBySymbol`（替代路径：`TokenLaunched` 的 `tokenAddress`/`parentTokenAddress`/`launcherMemberId` 均 `indexed`，链下重建子币列表与发射历史；单点校验用 `isLOVE20Token`，不做链上枚举） |
 | 依赖地址 | `submitAddress()` |
 
 MemberNFT 的配置 getter 同样遵循大写命名；`MAX_NAME_LENGTH()` 仅去掉旧名中的 `GROUP`，其余配置 getter 保持旧名。
@@ -329,9 +329,11 @@ MemberNFT 的配置 getter 同样遵循大写命名；`MAX_NAME_LENGTH()` 仅去
 
 | 新 | 旧 | 状态 |
 | --- | --- | --- |
-| `LaunchToken(tokenAddress, parentTokenAddress, uint256 launcherMemberId, address distributor)` | `LaunchToken(tokenAddress, string tokenSymbol, parentTokenAddress, address account)` | 改参（去 `tokenSymbol`，`account` → `launcherMemberId`，新增 `distributor`） |
+| `TokenLaunched(tokenAddress, parentTokenAddress, uint256 launcherMemberId, address distributor)` | `LaunchToken(tokenAddress, string tokenSymbol, parentTokenAddress, address account)` | 改名+改参（统一为完成时，与 `TokenCreated`、`ProposalCreated`、`VoteCast` 同风格；去 `tokenSymbol`，`account` → `launcherMemberId`，新增 `distributor`） |
 | `LaunchCountAdded`、`LaunchCountMerged`、`LaunchCountConsumed` | 无 | 新增 |
 | 无 | `Contribute`、`Withdraw`、`Claim`、`SecondHalfStart`、`LaunchEnd` | 删除 |
+
+首币由 `init` 创建、没有发起成员，因此 `TokenLaunched` 的 `launcherMemberId` 取 `0`，且不发 `LaunchCountConsumed`；四个事件的触发入口与字段取值见 [`core/08-launch.md`](../../docs/specs/core/08-launch.md)。
 
 ### 错误
 
@@ -341,7 +343,7 @@ MemberNFT 的配置 getter 同样遵循大写命名；`MAX_NAME_LENGTH()` 仅去
 
 删除 12 个：`TokenSymbolExists`、`NotEligibleToLaunchToken`、`LaunchAlreadyEnded`、`LaunchNotEnded`、`ClaimDelayNotPassed`、`NoContribution`、`NotEnoughWaitingBlocks`、`TokensAlreadyClaimed`、`LaunchAlreadyExists`、`ParentTokenNotSet`、`ZeroContribution`、`InvalidToAddress`。
 
-错误顺序：`AlreadyInitialized` → `InvalidTokenSymbol` → `InvalidTokenAddress` → `InvalidParentToken` 的旧相对顺序不变，新增项插在其后。
+错误顺序：保留 4 项的旧相对顺序不变（`AlreadyInitialized` → `InvalidTokenSymbol` → `InvalidTokenAddress` → `InvalidParentToken`），10 个新增项插在其后。
 
 逐条件的错误映射与初始化交易顺序见 [`core/08-launch.md`](../../docs/specs/core/08-launch.md)。
 

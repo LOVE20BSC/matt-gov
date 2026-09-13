@@ -6,9 +6,9 @@ enum DistributorMode { NoCallback, Callback }
 interface ILaunchErrors {
     error AlreadyInitialized();
     error InvalidTokenSymbol();
-    error InvalidAddress();
     error InvalidTokenAddress();
     error InvalidParentToken();
+    error InvalidAddress();
     error InvalidKVLength();
     error InvalidDistributorMode();
     error ZeroAmount(string parameter);
@@ -21,7 +21,7 @@ interface ILaunchErrors {
 }
 
 interface ILaunchEvents {
-    event LaunchToken(
+    event TokenLaunched(
         address indexed tokenAddress,
         address indexed parentTokenAddress,
         uint256 indexed launcherMemberId,
@@ -47,10 +47,10 @@ interface ILaunch is ILaunchErrors, ILaunchEvents {
     function MAX_LAUNCH_COUNT() external view returns (uint256);
     function initialized() external view returns (bool);
     function init(
-        address tokenFactory,
-        address mint,
-        address memberNFT,
-        address rootParentToken,
+        address tokenFactoryAddress,
+        address mintAddress,
+        address memberNFTAddress,
+        address rootParentTokenAddress,
         address distributor,
         uint256 launchRatio,
         uint256 maxLaunchCount,
