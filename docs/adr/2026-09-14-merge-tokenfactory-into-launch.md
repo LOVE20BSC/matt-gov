@@ -27,4 +27,4 @@
 - `core/src/interfaces/ILaunch.sol`
 - `.scratch/bsc-protocol-migration/issues/09-repository-migration-matrix.md`：记录了原先保留 TokenFactory 的历史确认及本次推翻原因。
 - `.scratch/bsc-protocol-migration/issues/16-migration-order-and-archive.md`：创建清单已标注 TokenFactory 职责并入 Launch。
-- `LOVE20BSC/review-2026-09-13-launch-step1-spec-review.md` 中关于保留 TokenFactory 的结论由本决策取代。
+- 第 1 步「规格与接口 Review」中关于保留 TokenFactory 的结论由本决策取代；该审查记录随其它过程报告归档在 `LOVE20BSC/.scratch/archive/`。
