@@ -111,11 +111,48 @@
 - **主体身份**：`submitterAddress` → `submitterId (memberId)`
 - **权限校验**：`msg.sender` → `MemberNFT.ownerOf(submitterId) == msg.sender`
 
+### 🆕 接口新增（2026-09-15）
+- **错误声明拆出子接口**：`ISubmitErrors` 独立声明（含新增 9 个错误）
+- **删除无用常量**：移除 `MAX_VERIFICATION_KEY_LENGTH()`（无消费者）
+- **补全 getter**：新增 `initialized()`, `phaseAddress()`, `memberNFTAddress()`
+- **修复接口遗漏**：
+  - `IndexOutOfBounds` 参数名 `length` → `index`（与旧代码一致）
+  - `submissionAtIndex` 返回值补充 `submitterId`
+  - 新增 `submitInfo()` - 查询某 Proposal 在某轮的推举者（对应旧代码 `submitInfo` mapping）
+  - 新增 `submitInfoBySubmitter()` - 查询某成员在某轮推举的 Proposal（对应旧代码 `submitInfoBySubmitter` mapping）
+- **删除 minStake 字段**：
+  - 从 `ProposalBody`、`ProposalParams` 删除 `minStake`
+  - 删除 `createProposal` 中的 `minStake > 0` 校验（`ZeroAmount("minStake")` 不再用于此处）
+  - `ProposalCreated` 事件不含 `minStake`
+  - **原因**：BSC 架构删除统一 Join 模块，旧代码中 `minStake` 用于首次加入门槛的逻辑已移至 Action 层各 Executor 独立配置
+- **枚举改用分页**：
+  - 删除 4 个函数：`proposalsCount()`、`proposalsAtIndex()`、`proposalsByAuthorCount()`、`proposalsByAuthorAtIndex()`
+  - 新增 2 个分页函数：
+    - `proposals(address, uint256 offset, uint256 limit)` 返回 `(uint256[] proposalIds, uint256 totalCount)`
+    - `proposalsByAuthor(address, uint256 author, uint256 offset, uint256 limit)` 返回 `(uint256[] proposalIds, uint256 totalCount)`
+  - **原因**：与 Phase 的 `syncObservations` 分页模式保持一致，单次调用获取数据 + 总数，Gas 效率更高
+
+#### 新增错误（用于精准 revert）
+| 错误名 | 触发条件 | Selector |
+|--------|----------|----------|
+| `EmptyString(string field)` | 标题为空 | `0x62a65aec` |
+| `ZeroAmount(string field)` | `submitMinPerThousand == 0` | `0x3b3e6350` |
+| `InvalidAmount()` | `submitMinPerThousand > 1000` | `0x2c5211c6` |
+| `InvalidAddress()` | `init` 参数或 `target` 为零 | `0xe6c4247b` |
+| `InvalidTargetMode()` | targetMode 枚举越界或 Callback 且 target 无代码 | `0x2589e3a0` |
+| `RoundNotStarted()` | `currentRound() == 0`（业务可选校验） | `0x8e9c6e1c` |
+| `NotMemberOwner(uint256 memberId)` | 调用者不持有该 memberId | `0x33393244` |
+| `ProposalNotFound(uint256 proposalId)` | proposalId 不存在 | `0x428d06a9` |
+| `IndexOutOfBounds(uint256 index)` | 枚举索引越界 | `0x44945fcc` |
+
 ### 📍 实现参考
 ```
 旧代码：LOVE20TKM/core/src/LOVE20Submit.sol
-保留：推举门槛、去重逻辑
+保留：推举门槛、去重逻辑、核心 selector
 修改：所有 address 参数改为 uint256 memberId
+新增：精准错误、缺失 getter、ISubmitErrors 子接口
+删除：MAX_VERIFICATION_KEY_LENGTH()、minStake 字段及其校验、4 个枚举函数
+新增：2 个分页函数（proposals、proposalsByAuthor）
 ```
 
 ---
