@@ -12,12 +12,12 @@ Proposal 以 `tokenAddress + proposalId` 定位，ID 单调分配。
 | `ProposalBody` | 非空 `title`、可空 `details` |
 | `target` | 非零激励接收地址 |
 | `targetMode` | `NoCallback` 或 `Callback` |
-| `keys` / `values` | 可选的不透明 KV；长度相等，可以同时为空 |
+| `targetData` | 可选的不透明 Target Data 数组，可以为空 |
 
 | target | NoCallback | Callback |
 | --- | --- | --- |
 | 非零 EOA | 合法，不回调 | 拒绝 |
-| 非零合约 | 合法，不回调 | 创建、推举、投票都回调，空 KV 也回调 |
+| 非零合约 | 合法，不回调 | 创建、推举、投票都回调，空 Target Data 也回调 |
 | 零地址 | 拒绝 | 拒绝 |
 
 显式销毁可由专用 Target 合约接收后执行，不能用零 Target 隐式销毁。
@@ -26,11 +26,11 @@ Proposal 以 `tokenAddress + proposalId` 定位，ID 单调分配。
 
 创建只保存 Proposal 并触发创建回调，不自动推举；调用者须持有 `memberId` 且满足 `canSubmit`。创建后内容和 Target 不变，重名标题不等于重复 Proposal。
 
-`NoCallback` 必须同时传入空 `keys` 和空 `values`；`Callback` 允许两者同时为空。任何不等长 KV 或 NoCallback 携带业务数据的调用都回滚。
+`NoCallback` 忽略 `targetData`，不要求为空；`Callback` 允许 `targetData` 为空，并在回调时原样透传。Target Data 的业务编码由 Target 自行定义。
 
 ## 接口
 
-完整 ABI 见 [`ISubmit.sol`](../../../interfaces/core/ISubmit.sol)。它沿用旧 `LOVE20TKM/core/src/interfaces/ILOVE20Submit.sol` 的 Proposal 创建、推举、枚举和查询职责；旧接口中的行动专属字段已按 BSC 规则移出，统一由 Proposal 与 Target/KV 表达，业务主体由地址改为 `memberId`。
+完整 ABI 见 [`ISubmit.sol`](../../../interfaces/core/ISubmit.sol)。它沿用旧 `LOVE20TKM/core/src/interfaces/ILOVE20Submit.sol` 的 Proposal 创建、推举、枚举和查询职责；旧接口中的行动专属字段已按 BSC 规则移出，统一由 Proposal 与 Target/Target Data 表达，业务主体由地址改为 `memberId`。
 
 ## 推举
 
@@ -48,6 +48,6 @@ Proposal 以 `tokenAddress + proposalId` 定位，ID 单调分配。
 
 回调接口见 [`IProposalTarget.sol`](../../../interfaces/core/IProposalTarget.sol)。
 
-创建和推举分别触发对应回调。回调不要求 KV 非空；空 `keys`/`values` 仍必须调用回调并传递空数组。创建回调仅接受 Submit；Executor 仅接受 ActionTarget 转发。回调前先写入对应 Proposal 或推举状态，失败则一并回滚。
+创建和推举分别触发对应回调。回调不要求 Target Data 非空；空 `targetData` 仍必须调用回调并传递空数组。创建回调仅接受 Submit；Executor 仅接受 ActionTarget 转发。回调前先写入对应 Proposal 或推举状态，失败则一并回滚。
 
 验收见 [Core 验收](09-testing.md)。

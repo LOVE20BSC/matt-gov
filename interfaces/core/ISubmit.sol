@@ -19,8 +19,7 @@ struct ProposalParams {
     string details;
     address target;
     TargetMode targetMode;
-    bytes32[] keys;
-    bytes[] values;
+    bytes[] targetData;
 }
 
 interface ISubmitEvents {
@@ -62,8 +61,7 @@ interface ISubmit is ISubmitEvents {
             ProposalBody memory body,
             address target,
             TargetMode targetMode,
-            bytes32[] memory keys,
-            bytes[] memory values
+            bytes[] memory targetData
         );
     function proposalsCount(address tokenAddress) external view returns (uint256);
     function proposalsAtIndex(address tokenAddress, uint256 index)
@@ -78,7 +76,6 @@ interface ISubmit is ISubmitEvents {
         external view returns (uint256 proposalId, uint256 submitterId);
 
     error AlreadyInitialized();
-    error InvalidKVLength();
     error ProposalNotFound(uint256 proposalId);
     error IndexOutOfBounds(uint256 length);
     error CannotSubmitAction();

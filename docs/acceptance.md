@@ -158,7 +158,7 @@
 - Executor 归属判断使用正确的索引查询
 
 ### Target 组合与幂等性
-**覆盖要求**：覆盖 `NoCallback`/`Callback` 与 EOA/合约的合法组合、Callback + EOA 拒绝、缺少 executor 保留项的行动创建 KV 拒绝、仅 executor 项可创建，以及同一 `tokenAddress + proposalId` 重复创建回调回滚。
+**覆盖要求**：覆盖 `NoCallback`/`Callback` 与 EOA/合约的合法组合、Callback + EOA 拒绝、缺少 executor 保留项的行动创建 Target Data 拒绝、仅 executor 项可创建，以及同一 `tokenAddress + proposalId` 重复创建回调回滚。
 
 **测试方式**：
 - 单元测试：`action/test/ActionTarget.t.sol` 的 Target 模式组合场景
@@ -184,7 +184,7 @@
 - Executor 后续正常调用 exit 成功
 
 ### Proposal Target 回调
-**覆盖要求**：覆盖 Proposal 创建、提案推举、提案投票三类回调；覆盖创建回调只发生一次、推举已有 Proposal 不重复创建回调、`submitterId`、`voterId`、增量票和 KV 透传；空 KV 也必须触发回调；回调失败时对应外层交易整体回滚。
+**覆盖要求**：覆盖 Proposal 创建、提案推举、提案投票三类回调；覆盖创建回调只发生一次、推举已有 Proposal 不重复创建回调、`submitterId`、`voterId`、增量票和 Target Data 透传；空 Target Data 也必须触发回调；回调失败时对应外层交易整体回滚。
 
 **测试方式**：
 - 单元测试：`core/test/Submit.t.sol`、`core/test/Vote.t.sol` 的回调场景

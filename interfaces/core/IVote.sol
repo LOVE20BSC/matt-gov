@@ -26,8 +26,7 @@ interface IVote is IVoteEvents {
         uint256 memberId,
         uint256[] calldata proposalIds,
         uint256[] calldata votes,
-        bytes32[][] calldata keys,
-        bytes[][] calldata values
+        bytes[][] calldata targetData
     ) external;
     function currentRound() external view returns (uint256);
     function isRoundEnded(uint256 round) external view returns (bool);
@@ -72,7 +71,7 @@ interface IVote is IVoteEvents {
         external view returns (uint256 proposalId);
 
     error AlreadyInitialized();
-    error InvalidKVLength();
+    error InvalidTargetDataLength();
     error ProposalNotSubmitted();
     error CannotVote();
     error NotEnoughVotesLeft();

@@ -4,20 +4,19 @@ ActionTarget 是社群行动 Proposal 的统一 Target。Core 和回调使用 `p
 
 ## 创建与回调
 
-创建行动时指定 `tokenAddress`、`title`、`details`，并固定 `target = ActionTarget`、`targetMode = Callback`。Proposal 回调本身不要求 KV 非空；ActionTarget 创建行动另有一个必须的 `executor` 保留项，使用 Core 的平行 `keys` / `values` 数组：
+创建行动时指定 `tokenAddress`、`title`、`details`，并固定 `target = ActionTarget`、`targetMode = Callback`。Proposal 回调本身不要求 Target Data 非空；ActionTarget 创建行动另有一个必须的 `executor` 保留项，使用 Core 的 `targetData` 数组：
 
 ```text
-keys[0] = keccak256("executor")
-values[0] = abi.encode(executorAddress)
+targetData[0] = abi.encode(executorAddress)
 ```
 
-第 0 项必须存在且键正确，解码后的 Executor 非零且有代码；其余项可为空，由 Executor 定义。校验失败回滚整个创建操作。
+第 0 项必须存在，解码后的 Executor 非零且有代码；其余项可为空，由 Executor 定义。校验失败回滚整个创建操作。
 
 | Core 调用时点 | ActionTarget 行为 |
 | --- | --- |
-| `onProposalCreated` | 校验保留项，保存 Executor 映射，原样转发完整创建 KV |
-| `onProposalSubmitted` | 读取已保存映射，转发本次推举上下文和 KV |
-| `onProposalVoted` | 读取映射，转发 `voterId`、本次增量票数及 KV，由 Executor 记账 |
+| `onProposalCreated` | 校验保留项，保存 Executor 映射，原样转发完整创建 Target Data |
+| `onProposalSubmitted` | 读取已保存映射，转发本次推举上下文和 Target Data |
+| `onProposalVoted` | 读取映射，转发 `voterId`、本次增量票数及 Target Data，由 Executor 记账 |
 
 完整签名统一见 [Core Target 回调](../../../interfaces/core/IProposalTarget.sol)。Executor 只接受 ActionTarget 转发，不接受外部直接调用；同一复合键重复创建回调必须拒绝，任一回调失败均回滚对应外层操作。
 
