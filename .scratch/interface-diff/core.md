@@ -28,12 +28,11 @@
 | `idOf(string calldata name)` | `tokenIdOf(string calldata groupName)` | 改名 |
 | `normalizedNameOf(string calldata name)` | `normalizedNameOf(string calldata groupName)` | 保留 |
 | `totalBurnedForMint()` | 同名 | 保留 |
-| `holdersCount()` | 同名 | 保留（语义变，见下） |
-| `holdersAtIndex(uint256 index)` | 同名 | 保留（语义变，见下） |
+| `holders(uint256 offset, uint256 limit, bool reverse) returns (address[] memory holderList, uint256 totalCount)` | `holdersCount()`、`holdersAtIndex(uint256 index)` | 改名+改参（两个单点查询合并为一个分页查询，语义变，见下） |
 | `balanceOf`、`ownerOf`、`safeTransferFrom`×2、`transferFrom`、`approve`、`setApprovalForAll`、`getApproved`、`isApprovedForAll`、`totalSupply`、`tokenByIndex`、`tokenOfOwnerByIndex` | 旧接口未声明（实现继承 ERC721Enumerable） | 保留（通过 OZ 继承，Core 接口继承 `IERC721Enumerable`，准备接口不重复声明） |
 | `supportsInterface`、`name`、`symbol`、`tokenURI` | 旧实现继承 ERC165/ERC721 | 保留（通过 OZ 继承，元数据 API 在实现 ABI 中） |
 
-`holdersCount`/`holdersAtIndex` 签名不变但语义反转：旧接口注释标为 Deprecated、non-authoritative（自转账后可能失准）；新版规格要求精确维护去重持有人集合，自转账不加入也不移除。见 [`core/02-member-nft.md`](../../docs/specs/core/02-member-nft.md)。
+`holdersCount`/`holdersAtIndex` 合并为分页 `holders`：旧接口注释标为 Deprecated、non-authoritative（自转账后可能失准）；新版规格要求精确维护去重持有人集合，自转账不加入也不移除，并按页返回，`offset` 越界返回空数组与真实总数而不再回滚，因此 `HolderIndexOutOfBounds` 一并删除。分页语义与 `Phase.syncObservations` 一致。见 [`core/02-member-nft.md`](../../docs/specs/core/02-member-nft.md)。
 
 ### 事件
 
@@ -52,7 +51,7 @@
 | `NameEmpty()` | `GroupNameEmpty()` | 改名 |
 | `NameTooLong(uint256 length, uint256 maxLength)` | `GroupNameTooLong(uint256 length, uint256 maxLength)` | 改名 |
 | `NameInvalidCharacters()` | `GroupNameInvalidCharacters()` | 改名 |
-| `HolderIndexOutOfBounds(uint256 length)` | 同 | 保留 |
+| 无 | `HolderIndexOutOfBounds(uint256 length)` | 删除（分页 `offset` 越界返回空数组与真实总数，不回滚） |
 | `AlreadyInitialized()` | 无 | 新增（配合 `init`） |
 
 OZ 5 的标准回滚由固定依赖提供：`IERC721Errors`、`ERC721OutOfBoundsIndex`、`ERC721EnumerableForbiddenBatchMint`、`SafeERC20FailedOperation` 进入实现的编译 ABI，替代相关 OZ 4 字符串回滚；不在准备接口重复声明。两侧均无 MemberNFT 自有结构体或枚举。

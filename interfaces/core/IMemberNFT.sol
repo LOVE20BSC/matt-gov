@@ -20,7 +20,6 @@ interface IMemberNFTErrors {
     error NameEmpty();
     error NameTooLong(uint256 length, uint256 maxLength);
     error NameInvalidCharacters();
-    error HolderIndexOutOfBounds(uint256 length);
     error AlreadyInitialized();
 }
 
@@ -65,7 +64,6 @@ interface IMemberNFT is IMemberNFTEvents, IMemberNFTErrors {
 
     function totalBurnedForMint() external view returns (uint256);
 
-    function holdersCount() external view returns (uint256);
-
-    function holdersAtIndex(uint256 index) external view returns (address);
+    function holders(uint256 offset, uint256 limit, bool reverse)
+        external view returns (address[] memory holderList, uint256 totalCount);
 }

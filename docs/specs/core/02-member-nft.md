@@ -69,7 +69,9 @@ mintCost = byteLength >= bytesThreshold
 
 ## 持有人枚举
 
-`holdersCount()` 返回唯一持有人地址数，`holdersAtIndex(index)` 返回第 `index` 个持有人地址（从 `0` 开始，越界回滚 `HolderIndexOutOfBounds(length)`）。它与 `ERC721Enumerable` 枚举的对象不同：后者按代币枚举（`totalSupply`、`tokenByIndex`、`tokenOfOwnerByIndex`），持有人集合按地址去重，同一地址持有多枚也只出现一次。
+`holders(offset, limit, reverse)` 按页返回唯一持有人地址，并同时返回集合总数 `totalCount`。它与 `ERC721Enumerable` 枚举的对象不同：后者按代币枚举（`totalSupply`、`tokenByIndex`、`tokenOfOwnerByIndex`），持有人集合按地址去重，同一地址持有多枚也只出现一次。
+
+分页语义与 `Phase.syncObservations` 一致：`offset` 大于或等于总数时返回空数组与真实 `totalCount`，不校验也不回滚；`limit` 大于剩余条数时按剩余条数返回；`reverse` 为 `true` 时按从新到旧返回。链上不提供全量遍历，只按页读取。
 
 集合在每次余额变动时精确维护，不需要用事件重建：
 
@@ -78,6 +80,6 @@ mintCost = byteLength >= bytesThreshold
 - 转账：发送方此前余额为 `1` 时移除，接收方此前余额为 `0` 时加入
 - 自转账（`from == to`）：既不加入也不移除
 
-移除采用 swap-and-pop，因此 `holdersAtIndex` 的索引在移除后会重排，不能作为稳定标识；自转账不触发集合变更，索引保持不变。
+移除采用 swap-and-pop，因此集合内位置在移除后会重排；分页只承诺单次调用内的一致快照，位置不能作为稳定标识。自转账不触发集合变更。
 
 验收见 [Core 验收](09-testing.md)。

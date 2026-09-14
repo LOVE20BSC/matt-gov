@@ -31,11 +31,12 @@
 
 旧 `LOVE20TKM/group/src/LOVE20Group.sol` 整体复制为 `core/MemberNFT.sol`，业务逻辑不改；行为规范见 [MemberNFT 规格](core/02-member-nft.md)。"协议唯一身份"仅指各业务合约以 `memberId` 为键使用它（见 Stake、Submit、Vote、Mint、Launch 各节），本合约不新增承载或转移规则。
 
-差异仅三项：
+差异四项：
 
-- **合约名与接口标识符**：`LOVE20Group` → `MemberNFT`，ERC721 名称 `LOVE20 Member NFT`、符号 `Member`；对外接口全部保留，仅去除 group 字样且不重复 member（如 `groupNameOf` → `nameOf`、`GroupNameEmpty` → `NameEmpty`）——旧 Group 是成员身份 NFT，不是“群”的 NFT
+- **合约名与接口标识符**：`LOVE20Group` → `MemberNFT`，ERC721 名称 `LOVE20 Member NFT`、符号 `Member`；对外接口仅去除 group 字样且不重复 member（如 `groupNameOf` → `nameOf`、`GroupNameEmpty` → `NameEmpty`），持有人枚举另行改为分页（见下）——旧 Group 是成员身份 NFT，不是“群”的 NFT
 - **名称长度上限**：`64 bytes` → `32 bytes`（避免与钱包地址混淆）
 - **铸造费用代币地址**：由旧构造函数传入改为 `init(firstTokenAddress)`，由 `Launch.init` 在创建首币时同步调用一次
+- **持有人枚举改分页**：`holdersCount()` 与 `holdersAtIndex(uint256 index)` 合并为 `holders(uint256 offset, uint256 limit, bool reverse) returns (address[] memory holderList, uint256 totalCount)`；`offset` 大于或等于总数时返回空数组与真实总数、不回滚，配套删除错误 `HolderIndexOutOfBounds(uint256 length)`。分页语义与 `Phase.syncObservations` 一致。持有人集合的精确去重语义不变（地址去重、自转账既不加入也不移除、移除采用 swap-and-pop）
 
 ---
 
