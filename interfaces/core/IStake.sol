@@ -129,7 +129,7 @@ interface IStake is IStakeErrors, IStakeEvents {
     function MAX_WITHDRAWABLE_TO_FEE_RATIO() external view returns (uint256);
     function pairAddress(address tokenAddress) external view returns (address);
     function totalBurnedToken(address tokenAddress) external view returns (uint256);
-    function totalBurnedParentToken(address tokenAddress) external view returns (uint256);
+    function totalParentTokenBurned(address tokenAddress) external view returns (uint256);
     function globalGovVotes(address tokenAddress) external view returns (uint256);
     function stakeData(address tokenAddress, uint256 memberId)
         external view returns (
