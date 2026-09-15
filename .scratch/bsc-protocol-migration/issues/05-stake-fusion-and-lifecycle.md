@@ -18,7 +18,7 @@ Blocked by:
 
 用户修正：流动性质押和加速质押不独立解锁，必须像旧代码一样由同一个解锁申请统一处理，并在同一个等待条件满足后一起提取。
 
-用户确认：融合不会改写已经发生的投票；当前投票轮内，源 NFT 或目标 NFT 任一发生过非零投票都禁止融合。进入下一轮后，上一轮投票不再阻止融合，历史投票仍归原 NFT。
+用户确认：融合不会改写已经发生的投票；当前投票轮内，只有源 NFT 发生过非零投票才禁止融合，目标 NFT 已投票不阻止融合——融合只增加目标的流动性份额，表现为治理票增量，与该成员自己追加质押的增量等价，可以继续用这部分增量投票；源已投票则禁止，否则同一份质押资产会在本轮产生两次投票。进入下一轮后，上一轮投票不再阻止融合，历史投票仍归原 NFT。
 
 用户补充确认：融合前已经产生的投票、快照、已结算激励和历史事件继续归原 NFT；融合只处理尚未使用的当前质押状态。
 
@@ -52,7 +52,7 @@ Blocked by:
 - **LP 份额**：不部署 SL 凭证。`Stake` 直接维护标准化 `lpShares` 和实际可赎回 `withdrawableLp`；治理票使用 `lpShares × promisedWaitingPhases`，退出按份额比例赎回当前 LP。按 `sqrt(k)` 识别手续费时只把对应 LP 从 `withdrawableLp` 重分类到 `feeLp`，不改变份额总账；实际结算 `feeLp` 时不得再次扣减 `withdrawableLp`。
 - **手续费结算**：`Stake` 部署时固定非零的 PancakeSwap `Factory` 和 `Router` 地址；每个代币社区登记时通过 `Factory.getPair(tokenAddress, parentTokenAddress)` 校验并保存唯一 Pair。退出本金前，或任何人单独调用 `settleFees(tokenAddress)` 时，按规格定义的 `sqrt(k)` 基线公式刷新 `feeLp` 和 `withdrawableLp`，并使用 `feeLp × MAX_WITHDRAWABLE_TO_FEE_RATIO >= withdrawableLp` 作为结算阈值。低于阈值时保留待结算；达到阈值后先从 Pair 取回 `feeLp`，社区代币直接销毁，父币只按固定直连路径 `[parentTokenAddress, tokenAddress]` 经 Router 换成社区代币后销毁，再更新全局及社区累计销毁量。兑换的最小输出量由同一笔交易按当前 Pair 储备计算，不接受调用方传入任意路径；Pair、Router、销毁或统计更新任一步失败，整笔结算/退出回滚。每次只处理一个代币社区，不做跨社区无界批量扫描。
 - **统一解锁**：流动性质押和加速质押共享同一个解锁申请、等待条件和提取操作。申请时立即清零治理票并禁止追加质押；等待目标 `promisedWaitingPhases` 个连续底层 `Phase` 时间片后，由当前 NFT 持有人一起提取。申请时的 Phase 编号和倒计时绑定 `memberId`，NFT 转移不重置或延长；不使用上层 `Round` 计算等待期。
-- **融合权限与范围**：融合函数显式接收 `tokenAddress`，每个代币社区分别处理；调用者只需控制源 MemberNFT，不要求控制目标 MemberNFT。源或目标存在待处理解锁申请，或当前投票轮任一已发生非零投票时，均禁止融合。
+- **融合权限与范围**：融合函数显式接收 `tokenAddress`，每个代币社区分别处理；调用者只需控制源 MemberNFT，不要求控制目标 MemberNFT。源或目标存在待处理解锁申请，或当前投票轮源已发生非零投票时，禁止融合；目标已投票不阻止融合，融合后的治理票增量可由目标继续投出。
 - **融合结果**：源 NFT 当前未使用的质押状态并入目标 NFT，目标使用自己的 `promisedWaitingPhases`（必须大于等于源 NFT）；源 NFT 保留身份但质押清零。融合前已发生的投票、快照、激励和事件仍归源 NFT，不回写历史。任何质押入口提高等待期时，都按新的 `lpShares × promisedWaitingPhases` 重算该成员治理票并同步更新社区总治理票。
 - **多轮铸造**：治理激励按核心治理层定义的 `tokenAddress + round + memberId` 隔离，Proposal 激励按核心治理层定义的 `tokenAddress + round + proposalId` 隔离；每个轮次独立记录轮次级准备、预留、已铸造和已销毁状态，Proposal 的单项激励在铸造时计算并记录已铸造状态。准备后的轮次总额度冻结，不同轮次可以并行、任意顺序铸造。
 - **激励铸造控制者**：治理激励及行动内部按 `memberId` 记录的未铸造激励，必须由 `MemberNFT.ownerOf(memberId)` 对应的当前持有人触发；转移后权益随 NFT 转移，旧持有人不能代铸。历史投票、快照、已结算激励和事件仍归原 `memberId`，不回写；普通 `Proposal` 由其 `target` 接收 Mint 铸造，行动类 Proposal 则由关联 `executor` 发起调用 `ActionTarget` 完成铸造。

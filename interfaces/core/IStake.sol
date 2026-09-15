@@ -31,7 +31,7 @@ interface IStakeErrors {
     error InvalidMemberId();
     error NotMemberOwner(uint256 memberId);
     error SourceAndTargetMustBeDifferent();
-    error MemberHasVotedInCurrentRound();
+    error SourceHasVotedInCurrentRound();
     error TargetPromisedWaitingPhasesTooShort();
 }
 

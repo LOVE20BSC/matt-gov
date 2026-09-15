@@ -89,10 +89,11 @@ Vote 每次投票通过 `Stake.validGovVotes(tokenAddress, memberId)` 读取当�
 用于同一社区质押的单向转移，可支持 NFT 场外交易：
 
 - 源和目标不同且已存在；调用者必须持有源，不要求持有目标。
-- 任一方待解锁时拒绝；源或目标任一在当前治理 Round 已有非零投票时拒绝。
+- 任一方待解锁时拒绝；源在当前治理 Round 已有非零投票时拒绝，目标已投票不阻止融合。
 - 空目标（`promisedWaitingPhases = 0`）继承源等待期；非空目标等待期短于源则拒绝，否则保持目标等待期。
 - 源全部流动性份额和加速份额并入目标，源当前质押清零。目标原资产不得减少，历史投票和激励不回写。
-- 目标本轮已投票仍可接收，后续按增加后的票权上限补投增量；源已投票禁止融合，防止同一份资产重复投票。
+- 目标本轮已投票仍可接收：融合只增加目标的流动性份额，按 `liquidityShares × promisedWaitingPhases` 重算后表现为治理票增量，与该成员自己追加质押产生的增量等价，可继续用这部分增量投票。
+- 源本轮已投票则禁止融合：源的票权已经计入本轮投票，融合会让同一份质押资产在本轮产生两次投票。
 - 融合后按目标份额正常提取双币和加速代币；解锁中的成员需完成提取后才可再次融合。
 
 ## 拒绝条件与错误
@@ -114,8 +115,7 @@ Vote 每次投票通过 `Stake.validGovVotes(tokenAddress, memberId)` 读取当�
 | `memberId` 不存在或为 `0` | `InvalidMemberId()` |
 | 调用者不持有指定 `memberId` 的 NFT | `NotMemberOwner(memberId)` |
 | `mergeStake` 时源与目标相同 | `SourceAndTargetMustBeDifferent()` |
-| `mergeStake` 时源在当前治理 Round 已有非零投票 | `MemberHasVotedInCurrentRound()` |
-| `mergeStake` 时目标在当前治理 Round 已有非零投票 | `MemberHasVotedInCurrentRound()` |
+| `mergeStake` 时源在当前治理 Round 已有非零投票 | `SourceHasVotedInCurrentRound()` |
 | `mergeStake` 时目标非空且等待期短于源 | `TargetPromisedWaitingPhasesTooShort()` |
 
 ## 实现约束
