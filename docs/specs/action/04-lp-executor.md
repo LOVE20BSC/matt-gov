@@ -43,7 +43,7 @@ totalDeduction -= deductionReduction
 
 ## 治理上限与分配
 
-成员与社区治理票均在领取时读取 `Stake.validGovVotes(tokenAddress, memberId)` 和 `Stake.govVotesNum(tokenAddress)`。已领取轮次的 `govRatio` 返回当时记录，不受后续质押变化影响。
+成员与社区治理票均在领取时读取 `Stake.validGovVotes(tokenAddress, memberId)` 和 `Stake.globalGovVotes(tokenAddress)`。已领取轮次的 `govRatio` 返回当时记录，不受后续质押变化影响。
 
 ```text
 theoreticalReward = floor(proposalReward * effectiveLpRatio / 1e18)

@@ -17,6 +17,24 @@ struct GlobalStake {
     uint256 totalBoostShares;
 }
 
+interface IStakeErrors {
+    error AlreadyInitialized();
+    error NotAllowedToStakeAtRoundZero();
+    error StakeAmountMustBeSet();
+    error UnstakeAlreadyRequested();
+    error UnstakeNotRequested();
+    error PromisedWaitingPhasesOutOfRange();
+    error PromisedWaitingPhasesMustBeGreaterOrEqualThanBefore();
+    error NoStakedLiquidity();
+    error NotEnoughWaitingPhases();
+    error InvalidTokenAddress();
+    error InvalidMemberId();
+    error NotMemberOwner(uint256 memberId);
+    error SourceAndTargetMustBeDifferent();
+    error MemberHasVotedInCurrentRound();
+    error TargetPromisedWaitingPhasesTooShort();
+}
+
 interface IStakeEvents {
     event StakeLiquidity(
         address indexed tokenAddress,
@@ -77,25 +95,13 @@ interface IStakeEvents {
     );
 }
 
-interface IStakeErrors {
-    error AlreadyInitialized();
-    error NotAllowedToStakeAtRoundZero();
-    error StakeAmountMustBeSet();
-    error UnstakeAlreadyRequested();
-    error UnstakeNotRequested();
-    error PromisedWaitingPhasesOutOfRange();
-    error PromisedWaitingPhasesMustBeGreaterOrEqualThanBefore();
-    error NoStakedLiquidity();
-    error NotEnoughWaitingPhases();
-    error InvalidTokenAddress();
-    error InvalidMemberId();
-    error NotMemberOwner(uint256 memberId);
-    error SourceAndTargetMustBeDifferent();
-    error MemberHasVotedInCurrentRound();
-    error TargetPromisedWaitingPhasesTooShort();
-}
-
 interface IStake is IStakeErrors, IStakeEvents {
+    function initialized() external view returns (bool);
+    function phaseAddress() external view returns (address);
+    function memberNFTAddress() external view returns (address);
+    function voteAddress() external view returns (address);
+    function routerAddress() external view returns (address);
+    function pairFactoryAddress() external view returns (address);
     function init(
         address phaseAddress,
         address memberNFTAddress,
@@ -157,12 +163,13 @@ interface IStake is IStakeErrors, IStakeEvents {
         uint256 round,
         uint256 memberId
     ) external view returns (uint256);
-    function globalBoostUpdatedRounds(address tokenAddress, uint256 limit, uint256 offset)
-        external view returns (uint256[] memory);
+    function globalBoostUpdatedRounds(address tokenAddress, uint256 offset, uint256 limit, bool reverse)
+        external view returns (uint256[] memory rounds, uint256 totalCount);
     function boostUpdatedRounds(
         address tokenAddress,
         uint256 memberId,
+        uint256 offset,
         uint256 limit,
-        uint256 offset
-    ) external view returns (uint256[] memory);
+        bool reverse
+    ) external view returns (uint256[] memory rounds, uint256 totalCount);
 }

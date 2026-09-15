@@ -36,9 +36,9 @@ Submit 不校验 `tokenAddress` 是否登记为 LOVE20 代币；推举门槛由 
 
 ## 推举
 
-推举门槛沿用旧 Submit：从 Stake 读取当前成员 `validGovVotes(tokenAddress, memberId)` 与社区 `govVotesNum(tokenAddress)`；成员和社区票数均为正，且 `floor(validGovVotes * 1000 / govVotesNum) >= SUBMIT_MIN_PER_THOUSAND`。初始化门槛范围为 `1..1000`。
+推举门槛沿用旧 Submit：从 Stake 读取当前成员 `validGovVotes(tokenAddress, memberId)` 与社区 `globalGovVotes(tokenAddress)`；成员和社区票数均为正，且 `floor(validGovVotes * 1000 / globalGovVotes) >= SUBMIT_MIN_PER_THOUSAND`。初始化门槛范围为 `1..1000`。
 
-`canSubmit` 实现：先判 `govVotesNum(tokenAddress) == 0` 返回 `false`，再判 `validGovVotes(tokenAddress, memberId) == 0` 返回 `false`，最后计算千分比，避免除零 panic。
+`canSubmit` 实现：先判 `globalGovVotes(tokenAddress) == 0` 返回 `false`，再判 `validGovVotes(tokenAddress, memberId) == 0` 返回 `false`，最后计算千分比，避免除零 panic。
 
 调用者必须持有 `memberId`。每个成员每社区每 Round 最多推举一个 Proposal，同一 Proposal 同轮只能被推举一次；创建不消耗推举次数。每社区每轮首个成功推举自动调用 `Phase.sync()`；`sync` 已同步时无操作返回、不会回滚，但若失败则按外部调用失败处理，整笔推举回滚。推举已有 Proposal 不重复触发创建回调。
 

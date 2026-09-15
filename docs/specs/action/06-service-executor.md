@@ -48,7 +48,7 @@ actualOwnerReward(m) = floor(serviceReward * actualOwnerRatio(m) / 1e18)
 ownerOverflow(m) = theoreticalOwnerReward(m) - actualOwnerReward(m)
 ```
 
-其中 `theoreticalOwnerReward(m)` 使用上节权重公式；治理票读取 `Stake.validGovVotes(actionTokenAddress, m)` 和 `Stake.govVotesNum(actionTokenAddress)`。每个角色先检查自己的分子，为零只跳过该角色，不影响同一 memberId 的另一角色；两个分子都为零则直接返回。上限启用且总治理票为零时只销毁 owner 理论激励；乘数为零直接关闭上限。结算使用服务铸造时 `actionTokenAddress` 社区最新的有效治理票；已结算的查询返回记录结果，不重新套用后续票权。
+其中 `theoreticalOwnerReward(m)` 使用上节权重公式；治理票读取 `Stake.validGovVotes(actionTokenAddress, m)` 和 `Stake.globalGovVotes(actionTokenAddress)`。每个角色先检查自己的分子，为零只跳过该角色，不影响同一 memberId 的另一角色；两个分子都为零则直接返回。上限启用且总治理票为零时只销毁 owner 理论激励；乘数为零直接关闭上限。结算使用服务铸造时 `actionTokenAddress` 社区最新的有效治理票；已结算的查询返回记录结果，不重新套用后续票权。
 
 `govRatioMultiplier` 来自服务 Proposal 创建时的 KV；owner 超额按每个 owner 单独记入 `ownerBurned`。服务代币已经由 Mint 铸造并转入 Executor 后，销毁直接调用该代币的 `burn(amount)`；不重复修改 Core Mint 的 `rewardBurned`。服务 Proposal 本轮没有激励时由 `Mint.prepareRewardIfNeeded` 处理，Executor 不重复判断。
 

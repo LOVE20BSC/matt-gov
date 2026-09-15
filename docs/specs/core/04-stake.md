@@ -23,23 +23,31 @@ Stake 按 `tokenAddress + memberId` 维护流动性质押和加速质押，不�
 
 ## 流动性质押与手续费
 
-`init` 仅部署授权者可调用一次，固定 `routerAddress`、`pairFactoryAddress` 和 `MAX_WITHDRAWABLE_TO_FEE_RATIO`。所有成员写操作校验当前 NFT 持有人；`voteAddress` 用于融合时检查来源本轮投票。金额单位为代币最小单位，等待期为 Phase。
+`init` 只校验 `initialized` 状态并固定依赖地址和参数，不设调用者限制；成功后 `initialized` 置为 `true`，再次调用回滚 `AlreadyInitialized()`。固定 `phaseAddress`、`memberNFTAddress`、`voteAddress`、`routerAddress`、`pairFactoryAddress`、`PROMISED_WAITING_PHASES_MIN`、`PROMISED_WAITING_PHASES_MAX` 和 `MAX_WITHDRAWABLE_TO_FEE_RATIO`。所有成员写操作校验当前 NFT 持有人；`voteAddress` 用于融合时检查来源本轮投票。金额单位为代币最小单位，等待期为 Phase。
 
-每个社区在首次质押时通过 `pairFactoryAddress.getPair(tokenAddress, parentTokenAddress)` 获取并保存唯一 Pair；Pair 为零地址时拒绝。
+每个社区在首次质押时通过 `pairFactoryAddress.getPair(tokenAddress, parentTokenAddress)` 获取并保存唯一 Pair；Pair 为零地址时回滚 `InvalidTokenAddress()`。
 
-调用者提供社区代币及父币，Stake 转入双币并通过 Router 添加 LP，再按 LP 数量计份额；提取时移除 LP 并返还双币。
+调用者提供社区代币及父币，Stake 转入双币并通过 Router 添加 LP；Router 调用时必须指定 `amountTokenMin`、`amountParentTokenMin` 和 `deadline`，最小量由调用方计算并传入，`deadline` 设置为合理的未来区块时间戳。添加 LP 成功后按 LP 数量计份额；提取时移除 LP 并返还双币。
+
+份额铸造公式（必须在手续费重分类之后计算）：
 
 ```text
 sharesMinted = totalLiquidityShares == 0
     ? lpMinted
     : floor(totalLiquidityShares * lpMinted / lastWithdrawableLp)
+```
 
+手续费重分类公式（必须在份额铸造之前执行）：
+
+```text
 currentSqrtKOfLp = floor(sqrt(reserve0 * reserve1) * totalLp / pairTotalSupply)
 newWithdrawableLp = floor(lastWithdrawableLp * lastSqrtKOfLp / currentSqrtKOfLp)
 newFeeLp = totalLp - newWithdrawableLp
 ```
 
 `totalLp` 是合约持有 LP 数量，`pairTotalSupply` 是 Pair 的 LP 总供应。仅当 `currentSqrtKOfLp > lastSqrtKOfLp` 时重分类手续费；`pairTotalSupply == 0`、`currentSqrtKOfLp == 0` 或基准未增长时跳过结算，不能先除零再判断。结算更新 `lastWithdrawableLp`、`lastFeeLp` 和 `lastSqrtKOfLp`。
+
+**流动性质押的执行顺序**：先重分类手续费（更新 `lastWithdrawableLp`），再按新的 `lastWithdrawableLp` 计算份额。两个公式都以 `lastWithdrawableLp` 为输入，顺序错误会导致份额和手续费计算错误。
 
 手续费增量归协议，不归旧质押者。重分类后可提取 LP 下降；相同新存入 LP 对应更多份额。无池价变化的比例模型中，这是剥离手续费，不是损失本金；整数舍入仍须按公式计算。
 
@@ -52,7 +60,7 @@ newFeeLp = totalLp - newWithdrawableLp
 1. 社区代币直接销毁
 2. 父币按固定路径 `[parentTokenAddress, tokenAddress]` 经 Router 换成社区代币后销毁
 3. 最小输出量由同笔交易按当前 Pair 储备计算，不接受调用方传入
-4. 更新 `totalBurnedToken` 和 `totalBurnedParentToken`（换币前父币数量）
+4. 更新 `totalBurnedToken` 和 `totalParentTokenBurned`（换币前父币数量）
 
 低于阈值时保留待结算；Pair、Router、销毁或统计更新任一步失败，整笔回滚。每次只处理一个代币社区。
 
@@ -87,6 +95,29 @@ Vote 每次投票通过 `Stake.validGovVotes(tokenAddress, memberId)` 读取当�
 - 目标本轮已投票仍可接收，后续按增加后的票权上限补投增量；源已投票禁止融合，防止同一份资产重复投票。
 - 融合后按目标份额正常提取双币和加速代币；解锁中的成员需完成提取后才可再次融合。
 
+## 拒绝条件与错误
+
+各接口的校验与回滚：
+
+| 条件 | 回滚错误 |
+| --- | --- |
+| `init` 重复调用 | `AlreadyInitialized()` |
+| Round 0 时调用 `stakeLiquidity` | `NotAllowedToStakeAtRoundZero()` |
+| `stakeLiquidity` 或 `stakeBoost` 的金额为零 | `StakeAmountMustBeSet()` |
+| `promisedWaitingPhases` 不在 `[PROMISED_WAITING_PHASES_MIN, PROMISED_WAITING_PHASES_MAX]` 范围 | `PromisedWaitingPhasesOutOfRange()` |
+| 追加质押或加速时 `promisedWaitingPhases` 小于已有值 | `PromisedWaitingPhasesMustBeGreaterOrEqualThanBefore()` |
+| `unstake` 时已申请解锁 | `UnstakeAlreadyRequested()` |
+| `unstake` 时无流动性质押 | `NoStakedLiquidity()` |
+| `withdraw` 时未申请解锁 | `UnstakeNotRequested()` |
+| `withdraw` 时等待期未满足 | `NotEnoughWaitingPhases()` |
+| `tokenAddress` 不是已登记 LOVE20 代币或 Pair 为零地址 | `InvalidTokenAddress()` |
+| `memberId` 不存在或为 `0` | `InvalidMemberId()` |
+| 调用者不持有指定 `memberId` 的 NFT | `NotMemberOwner(memberId)` |
+| `mergeStake` 时源与目标相同 | `SourceAndTargetMustBeDifferent()` |
+| `mergeStake` 时源在当前治理 Round 已有非零投票 | `MemberHasVotedInCurrentRound()` |
+| `mergeStake` 时目标在当前治理 Round 已有非零投票 | `MemberHasVotedInCurrentRound()` |
+| `mergeStake` 时目标非空且等待期短于源 | `TargetPromisedWaitingPhasesTooShort()` |
+
 ## 实现约束
 
 事件与错误定义见 [`IStake.sol`](../../../interfaces/core/IStake.sol)。
@@ -94,7 +125,8 @@ Vote 每次投票通过 `Stake.validGovVotes(tokenAddress, memberId)` 读取当�
 - 当前质押余额为 `0` 就表示没有质押；只有 RoundHistory 的历史查询需要区分”本轮没有记录”和”本轮明确归零”，直接沿用旧 RoundHistory 的显式记录语义，不新增额外布尔状态。
 - 流动性写操作统一先校验参数和权限并锁定重入；读取 Pair 状态，在任何除法前处理 `pairTotalSupply == 0`、`currentSqrtKOfLp == 0` 和基准未增长；需要 Router、Pair 或 ERC20 调用时，以外部调用成功返回的实际数量计算并更新 `lastWithdrawableLp`、`lastFeeLp`、`lastSqrtKOfLp`、成员份额和社区总份额。任一步失败全部回滚。BSC 不使用 SL/ST 凭证，所有份额和可提取 LP 直接存入 Stake。
 - 手续费结算失败（Pair 取回、Router 兑换、销毁或统计更新任一失败）时整笔结算回滚；提取本金前自动结算手续费，手续费结算失败则提取也回滚。
-- 空目标沿用本文件的等待期继承例外；未列出的只读字段按 `MemberStake` 和 `GlobalStake` 直接暴露查询。
+- 空目标沿用本文件的等待期继承例外；`MemberStake` 和 `GlobalStake` 结构体仅用于内部存储，不作为查询返回格式。
 - `stakeData()` 和 `globalStakeData()` 返回的 `tokenAmountForLiquidity` / `parentTokenAmountForLiquidity` 以及 `withdrawableLp` / `feeLp` 都是查询时根据当前 Pair 状态现算的值，不是直接读取存储的历史基准。
+- 分页查询 `globalBoostUpdatedRounds` 和 `boostUpdatedRounds` 使用 `(offset, limit, reverse)` 参数顺序并返回 `(rounds, totalCount)`，与 `IPhase`、`IMemberNFT`、`ILaunch` 的分页接口一致。
 
 历史来源：`LOVE20TKM/core/src/LOVE20Stake.sol` 和 `LOVE20TKM/core/src/LOVE20SLToken.sol`；提交已固定，当前 BSC 行为以本文件为准。验收见 [Core 验收](09-testing.md)。
