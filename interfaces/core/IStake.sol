@@ -60,9 +60,42 @@ interface IStakeEvents {
         uint256 parentTokenAmountForLiquidity,
         uint256 boostShares
     );
+    event SettleFees(
+        address indexed tokenAddress,
+        uint256 indexed round,
+        uint256 feeLp,
+        uint256 tokenBurned,
+        uint256 parentTokenBurned
+    );
+    event MergeStake(
+        address indexed tokenAddress,
+        uint256 indexed round,
+        uint256 indexed sourceMemberId,
+        uint256 targetMemberId,
+        uint256 liquiditySharesMerged,
+        uint256 boostSharesMerged
+    );
 }
 
-interface IStake is IStakeEvents {
+interface IStakeErrors {
+    error AlreadyInitialized();
+    error NotAllowedToStakeAtRoundZero();
+    error StakeAmountMustBeSet();
+    error UnstakeAlreadyRequested();
+    error UnstakeNotRequested();
+    error PromisedWaitingPhasesOutOfRange();
+    error PromisedWaitingPhasesMustBeGreaterOrEqualThanBefore();
+    error NoStakedLiquidity();
+    error NotEnoughWaitingPhases();
+    error InvalidTokenAddress();
+    error InvalidMemberId();
+    error NotMemberOwner(uint256 memberId);
+    error SourceAndTargetMustBeDifferent();
+    error MemberHasVotedInCurrentRound();
+    error TargetPromisedWaitingPhasesTooShort();
+}
+
+interface IStake is IStakeErrors, IStakeEvents {
     function init(
         address phaseAddress,
         address memberNFTAddress,
@@ -70,8 +103,10 @@ interface IStake is IStakeEvents {
         address routerAddress,
         address pairFactoryAddress,
         uint256 promisedWaitingPhasesMin,
-        uint256 promisedWaitingPhasesMax
+        uint256 promisedWaitingPhasesMax,
+        uint256 maxWithdrawableToFeeRatio
     ) external;
+    function settleFees(address tokenAddress) external;
     function stakeLiquidity(
         address tokenAddress,
         uint256 tokenAmount,
@@ -91,6 +126,10 @@ interface IStake is IStakeEvents {
 
     function PROMISED_WAITING_PHASES_MIN() external view returns (uint256);
     function PROMISED_WAITING_PHASES_MAX() external view returns (uint256);
+    function MAX_WITHDRAWABLE_TO_FEE_RATIO() external view returns (uint256);
+    function pairAddress(address tokenAddress) external view returns (address);
+    function totalBurnedToken(address tokenAddress) external view returns (uint256);
+    function totalBurnedParentToken(address tokenAddress) external view returns (uint256);
     function globalGovVotes(address tokenAddress) external view returns (uint256);
     function stakeData(address tokenAddress, uint256 memberId)
         external view returns (
@@ -126,15 +165,4 @@ interface IStake is IStakeEvents {
         uint256 limit,
         uint256 offset
     ) external view returns (uint256[] memory);
-
-    error AlreadyInitialized();
-    error NotAllowedToStakeAtRoundZero();
-    error StakeAmountMustBeSet();
-    error UnstakeAlreadyRequested();
-    error UnstakeNotRequested();
-    error PromisedWaitingPhasesOutOfRange();
-    error PromisedWaitingPhasesMustBeGreaterOrEqualThanBefore();
-    error NoStakedLiquidity();
-    error NotEnoughWaitingBlocks();
-    error RoundHasNotStartedYet();
 }
