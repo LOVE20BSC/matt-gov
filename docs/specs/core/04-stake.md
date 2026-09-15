@@ -1,6 +1,6 @@
 # Stake
 
-Stake 按 `tokenAddress + memberId` 维护流动性和加速质押，不发行 SL/ST 凭证。两类资产共享解锁生命周期；权限见 [通用规则](01-common-rules.md)。
+Stake 按 `tokenAddress + memberId` 维护流动性质押和加速质押，不发行 SL/ST 凭证。两类资产共享解锁生命周期；权限见 [通用规则](01-common-rules.md)。
 
 ## 状态
 
@@ -8,13 +8,14 @@ Stake 按 `tokenAddress + memberId` 维护流动性和加速质押，不发行 S
 
 | 字段 | 含义 |
 | --- | --- |
-| `lpShares` / `boostShares` | 成员 LP / 加速质押份额 |
+| `liquidityShares` / `boostShares` | 成员流动性份额 / 加速质押份额 |
 | `promisedWaitingPhases` | 承诺解锁期，单位 Phase |
 | `unlockRequestPhase` | 申请 Phase；0 表示未申请 |
-| `totalLpShares` / `totalBoostShares` | 社区份额总量 |
-| `withdrawableLp` | 可提取 LP 基准，每次质押/提取更新 |
-| `feeLp` | 协议手续费 LP，不参与份额计算 |
-| `sqrtKOfLp` | 按持有 LP 占 Pair 比例计算的上次 sqrt(k) 基准 |
+| `totalLiquidityShares` / `totalBoostShares` | 社区份额总量 |
+| `totalLp` | 合约持有的 LP 代币总量 |
+| `lastWithdrawableLp` | 上次结算后的可提取 LP 基准 |
+| `lastFeeLp` | 上次结算后的协议手续费 LP |
+| `lastSqrtKOfLp` | 上次结算的 sqrt(k) 基准 |
 | `cumulatedBoostShares[tokenAddress][round][memberId]` | 指定治理 Round 的累计加速份额 |
 
 ## 流动性质押与手续费
@@ -24,16 +25,16 @@ Stake 按 `tokenAddress + memberId` 维护流动性和加速质押，不发行 S
 调用者提供社区代币及父币，Stake 转入双币并通过 Router 添加 LP，再按 LP 数量计份额；提取时移除 LP 并返还双币。
 
 ```text
-sharesMinted = totalLpShares == 0
+sharesMinted = totalLiquidityShares == 0
     ? lpMinted
-    : floor(totalLpShares * lpMinted / withdrawableLp)
+    : floor(totalLiquidityShares * lpMinted / lastWithdrawableLp)
 
 currentSqrtKOfLp = floor(sqrt(reserve0 * reserve1) * totalLp / pairTotalSupply)
-newWithdrawableLp = floor(previousWithdrawableLp * previousSqrtKOfLp / currentSqrtKOfLp)
+newWithdrawableLp = floor(lastWithdrawableLp * lastSqrtKOfLp / currentSqrtKOfLp)
 newFeeLp = totalLp - newWithdrawableLp
 ```
 
-`totalLp` 是合约持有 LP 数量，`pairTotalSupply` 是 Pair 的 LP 总供应。仅当 `currentSqrtKOfLp > previousSqrtKOfLp` 时重分类手续费；`pairTotalSupply == 0`、`currentSqrtKOfLp == 0` 或基准未增长时跳过结算，不能先除零再判断。结算更新 `withdrawableLp`、`feeLp` 和 `sqrtKOfLp`。
+`totalLp` 是合约持有 LP 数量，`pairTotalSupply` 是 Pair 的 LP 总供应。仅当 `currentSqrtKOfLp > lastSqrtKOfLp` 时重分类手续费；`pairTotalSupply == 0`、`currentSqrtKOfLp == 0` 或基准未增长时跳过结算，不能先除零再判断。结算更新 `lastWithdrawableLp`、`lastFeeLp` 和 `lastSqrtKOfLp`。
 
 手续费增量归协议，不归旧质押者。重分类后可提取 LP 下降；相同新存入 LP 对应更多份额。无池价变化的比例模型中，这是剥离手续费，不是损失本金；整数舍入仍须按公式计算。
 
@@ -44,7 +45,7 @@ newFeeLp = totalLp - newWithdrawableLp
 ## 治理票与加速质押
 
 ```text
-govVotes = lpShares * promisedWaitingPhases
+govVotes = liquidityShares * promisedWaitingPhases
 ```
 
 Vote 每次投票通过 `Stake.validGovVotes(tokenAddress, memberId)` 读取当前有效票，不冻结治理票上限；追加质押、改变承诺等待期和申请解锁会影响票权。加速质押本身不产生票权。
@@ -66,7 +67,7 @@ Vote 每次投票通过 `Stake.validGovVotes(tokenAddress, memberId)` 读取当�
 - 源和目标不同且已存在；调用者必须持有源，不要求持有目标。
 - 任一方待解锁、源在当前治理 Round 已有非零投票时拒绝。
 - 空目标（`promisedWaitingPhases = 0`）继承源等待期；非空目标等待期短于源则拒绝，否则保持目标等待期。
-- 源全部 LP 和加速份额并入目标，源当前质押清零。目标原资产不得减少，历史投票和激励不回写。
+- 源全部流动性份额和加速份额并入目标，源当前质押清零。目标原资产不得减少，历史投票和激励不回写。
 - 目标本轮已投票仍可接收，后续按增加后的票权上限补投增量；源已投票禁止融合，防止同一份资产重复投票。
 - 融合后按目标份额正常提取双币和加速代币；解锁中的成员需完成提取后才可再次融合。
 
@@ -74,8 +75,9 @@ Vote 每次投票通过 `Stake.validGovVotes(tokenAddress, memberId)` 读取当�
 
 事件与错误定义见 [`IStake.sol`](../../../interfaces/core/IStake.sol)。
 
-- 当前质押余额为 `0` 就表示没有质押；只有 RoundHistory 的历史查询需要区分“本轮没有记录”和“本轮明确归零”，直接沿用旧 RoundHistory 的显式记录语义，不新增额外布尔状态。
-- LP 写操作统一先校验参数和权限并锁定重入；读取 Pair 状态，在任何除法前处理 `pairTotalSupply == 0`、`currentSqrtKOfLp == 0` 和基准未增长；需要 Router、Pair 或 ERC20 调用时，以外部调用成功返回的实际数量计算并更新 `withdrawableLp`、`feeLp`、`sqrtKOfLp`、成员份额和社区总份额。任一步失败全部回滚。BSC 不使用 SL/ST 凭证，所有份额和可提取 LP 直接存入 Stake。
-- 空目标沿用本文件的等待期继承例外；未列出的只读字段按 `StakeData` 和 `TokenStakeGlobals` 直接暴露查询。
+- 当前质押余额为 `0` 就表示没有质押；只有 RoundHistory 的历史查询需要区分”本轮没有记录”和”本轮明确归零”，直接沿用旧 RoundHistory 的显式记录语义，不新增额外布尔状态。
+- 流动性写操作统一先校验参数和权限并锁定重入；读取 Pair 状态，在任何除法前处理 `pairTotalSupply == 0`、`currentSqrtKOfLp == 0` 和基准未增长；需要 Router、Pair 或 ERC20 调用时，以外部调用成功返回的实际数量计算并更新 `lastWithdrawableLp`、`lastFeeLp`、`lastSqrtKOfLp`、成员份额和社区总份额。任一步失败全部回滚。BSC 不使用 SL/ST 凭证，所有份额和可提取 LP 直接存入 Stake。
+- 空目标沿用本文件的等待期继承例外；未列出的只读字段按 `MemberStake` 和 `GlobalStake` 直接暴露查询。
+- `stakeData()` 和 `globalStakeData()` 返回的 `tokenAmountForLiquidity` / `parentTokenAmountForLiquidity` 以及 `withdrawableLp` / `feeLp` 都是查询时根据当前 Pair 状态现算的值，不是直接读取存储的历史基准。
 
 历史来源：`LOVE20TKM/core/src/LOVE20Stake.sol` 和 `LOVE20TKM/core/src/LOVE20SLToken.sol`；提交已固定，当前 BSC 行为以本文件为准。验收见 [Core 验收](09-testing.md)。

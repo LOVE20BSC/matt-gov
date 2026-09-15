@@ -1,18 +1,19 @@
 // SPDX-License-Identifier: MIT
 pragma solidity =0.8.37;
 
-struct StakeData {
-    uint256 lpShares;
+struct MemberStake {
+    uint256 liquidityShares;
     uint256 boostShares;
     uint256 promisedWaitingPhases;
     uint256 unlockRequestPhase;
 }
 
-struct TokenStakeGlobals {
-    uint256 totalLpShares;
-    uint256 withdrawableLp;
-    uint256 feeLp;
-    uint256 sqrtKOfLp;
+struct GlobalStake {
+    uint256 totalLiquidityShares;
+    uint256 totalLp;
+    uint256 lastWithdrawableLp;
+    uint256 lastFeeLp;
+    uint256 lastSqrtKOfLp;
     uint256 totalBoostShares;
 }
 
@@ -21,19 +22,19 @@ interface IStakeEvents {
         address indexed tokenAddress,
         uint256 indexed round,
         uint256 indexed memberId,
-        uint256 tokenAmountForLP,
-        uint256 parentTokenAmountForLP,
+        uint256 tokenAmount,
+        uint256 parentTokenAmount,
         uint256 promisedWaitingPhases,
         uint256 govVotesAdded,
         uint256 govVotes,
-        uint256 lpSharesAdded,
-        uint256 lpShares
+        uint256 liquiditySharesAdded,
+        uint256 liquidityShares
     );
-    event StakeToken(
+    event StakeBoost(
         address indexed tokenAddress,
         uint256 indexed round,
         uint256 indexed memberId,
-        uint256 tokenAmount,
+        uint256 boostAmount,
         uint256 promisedWaitingPhases,
         uint256 govVotesAdded,
         uint256 govVotes,
@@ -46,7 +47,7 @@ interface IStakeEvents {
         uint256 indexed memberId,
         uint256 promisedWaitingPhases,
         uint256 govVotes,
-        uint256 lpShares,
+        uint256 liquidityShares,
         uint256 boostShares
     );
     event Withdraw(
@@ -54,9 +55,9 @@ interface IStakeEvents {
         uint256 indexed round,
         uint256 indexed memberId,
         uint256 promisedWaitingPhases,
-        uint256 lpShares,
-        uint256 tokenAmountForLP,
-        uint256 parentTokenAmountForLP,
+        uint256 liquidityShares,
+        uint256 tokenAmountForLiquidity,
+        uint256 parentTokenAmountForLiquidity,
         uint256 boostShares
     );
 }
@@ -77,10 +78,10 @@ interface IStake is IStakeEvents {
         uint256 parentTokenAmount,
         uint256 promisedWaitingPhases,
         uint256 memberId
-    ) external returns (uint256 govVotesAdded, uint256 lpSharesAdded);
-    function stakeToken(
+    ) external returns (uint256 govVotesAdded, uint256 liquiditySharesAdded);
+    function stakeBoost(
         address tokenAddress,
-        uint256 tokenAmount,
+        uint256 boostAmount,
         uint256 promisedWaitingPhases,
         uint256 memberId
     ) external returns (uint256 govVotesAdded);
@@ -90,31 +91,41 @@ interface IStake is IStakeEvents {
 
     function PROMISED_WAITING_PHASES_MIN() external view returns (uint256);
     function PROMISED_WAITING_PHASES_MAX() external view returns (uint256);
-    function govVotesNum(address tokenAddress) external view returns (uint256);
-    function accountStakeStatus(address tokenAddress, uint256 memberId)
-        external view returns (StakeData memory);
+    function globalGovVotes(address tokenAddress) external view returns (uint256);
+    function stakeData(address tokenAddress, uint256 memberId)
+        external view returns (
+            uint256 liquidityShares,
+            uint256 boostShares,
+            uint256 promisedWaitingPhases,
+            uint256 unlockRequestPhase,
+            uint256 tokenAmountForLiquidity,
+            uint256 parentTokenAmountForLiquidity
+        );
     function validGovVotes(address tokenAddress, uint256 memberId) external view returns (uint256);
-    function tokenStakeGlobals(address tokenAddress)
-        external view returns (TokenStakeGlobals memory);
+    function globalStakeData(address tokenAddress)
+        external view returns (
+            uint256 totalLiquidityShares,
+            uint256 totalLp,
+            uint256 withdrawableLp,
+            uint256 feeLp,
+            uint256 totalBoostShares,
+            uint256 tokenAmountForLiquidity,
+            uint256 parentTokenAmountForLiquidity
+        );
     function canWithdraw(address tokenAddress, uint256 memberId) external view returns (bool);
-    function cumulatedTokenAmountByAccount(
+    function cumulatedBoostShares(
         address tokenAddress,
         uint256 round,
         uint256 memberId
     ) external view returns (uint256);
-    function stakeTokenUpdatedRoundsCount(address tokenAddress)
-        external view returns (uint256);
-    function stakeTokenUpdatedRoundsAtIndex(address tokenAddress, uint256 index)
-        external view returns (uint256);
-    function stakeTokenUpdatedRoundsByAccountCount(
-        address tokenAddress,
-        uint256 memberId
-    ) external view returns (uint256);
-    function stakeTokenUpdatedRoundsByAccountAtIndex(
+    function globalBoostUpdatedRounds(address tokenAddress, uint256 limit, uint256 offset)
+        external view returns (uint256[] memory);
+    function boostUpdatedRounds(
         address tokenAddress,
         uint256 memberId,
-        uint256 index
-    ) external view returns (uint256);
+        uint256 limit,
+        uint256 offset
+    ) external view returns (uint256[] memory);
 
     error AlreadyInitialized();
     error NotAllowedToStakeAtRoundZero();
