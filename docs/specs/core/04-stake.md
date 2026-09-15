@@ -17,7 +17,7 @@ Stake 按 `tokenAddress + memberId` 维护流动性质押和加速质押，不�
 | `lastFeeLp` | 上次结算后的协议手续费 LP 基准 |
 | `lastSqrtKOfLp` | 上次结算的 sqrt(k) 基准 |
 | `cumulatedBoostShares[tokenAddress][round][memberId]` | 指定治理 Round 的累计加速份额 |
-| `pairAddress[tokenAddress]` | 社区对应的 PancakeSwap Pair 地址 |
+| `pairAddress[tokenAddress]` | 社区对应的 Uniswap V2 兼容 Pair 地址 |
 | `totalBurnedToken[tokenAddress]` | 社区代币全局累计销毁量 |
 | `totalBurnedParentToken[tokenAddress]` | 父币全局累计销毁量（换币前） |
 

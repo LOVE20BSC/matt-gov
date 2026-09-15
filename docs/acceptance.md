@@ -238,10 +238,10 @@
 - 各 Executor 提供 `currentVoteRound()`、`currentJoinRound()`、`currentMintRound()` 等标准接口
 
 ### LP 兼容性
-**覆盖要求**：覆盖目标 PancakeSwap Factory/Pair/Router 在 `Stake` 场景下的 LP Shares 铸造、`sqrt(k)` 手续费重分类、结算阈值、结算不重复扣减 `withdrawableLp`、兑换报价、储备/基线更新、按份额提取和失败回滚；不得仅以 ABI 可编译作为兼容性结论。
+**覆盖要求**：覆盖目标 Uniswap V2 兼容 DEX 的 Factory/Pair/Router 在 `Stake` 场景下的 LP Shares 铸造、`sqrt(k)` 手续费重分类、结算阈值、结算不重复扣减 `withdrawableLp`、兑换报价、储备/基线更新、按份额提取和失败回滚；不得仅以 ABI 可编译作为兼容性结论。
 
 **测试方式**：
-- 单元测试：`compatibility/test/PancakeSwapCompatibility.t.sol` 的 Stake 集成场景
+- 单元测试：`compatibility/test/UniswapV2Compatibility.t.sol` 的 Stake 集成场景
 - 对比测试：与 Uniswap V2 参考实现的数值一致性
 - 验收证据：兼容性测试报告、目标网络实测日志
 
@@ -265,7 +265,7 @@
 - 二次分配精度无损失
 
 ### 外部依赖兼容性
-**覆盖要求**：`compatibility` 必须分别对本地 Uniswap V2/WETH9 参考实现和每个准备部署的目标网络 profile 的 WBNB、PancakeSwap Factory/Pair/Router 执行测试，覆盖接口返回值、Pair 创建和 LP 铸造/销毁、Swap 手续费与储备变化、Router 报价和实际输出、Token 顺序、失败回滚及协议计算所需的 `sqrt(k)` 数据；测试记录目标链、合约地址、区块高度和提交，任何未验证的外部地址不得进入对应 BSC 部署配置。
+**覆盖要求**：`compatibility` 必须分别对本地 Uniswap V2/WETH9 参考实现和每个准备部署的目标网络 profile 的 WBNB、Uniswap V2 兼容 DEX（如 PancakeSwap）的 Factory/Pair/Router 执行测试，覆盖接口返回值、Pair 创建和 LP 铸造/销毁、Swap 手续费与储备变化、Router 报价和实际输出、Token 顺序、失败回滚及协议计算所需的 `sqrt(k)` 数据；测试记录目标链、合约地址、区块高度和提交，任何未验证的外部地址不得进入对应 BSC 部署配置。
 
 **测试方式**：
 - 单元测试：`compatibility/test/*.t.sol` 按目标网络分组
