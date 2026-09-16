@@ -30,13 +30,13 @@
 
 ## Proposal 与 Target
 
-- **Proposal**：底层治理对象，由 `Submit` 创建、由 `Submit` 推举、由 `Vote` 表决、由 `Mint` 铸造提案激励。Proposal 的标准头部/主体命名为 `ProposalHead` / `ProposalBody`，分别替代旧 `ActionHead` / `ActionBody`；头部至少包含 `id`、`author`、`createAtBlock`，主体至少包含 `title`、`details`；创建者字段使用旧代码命名 `author`，但 BSC 值记录创建 Proposal 的 MemberNFT/memberId，不再以地址作为业务主体。
+- **Proposal**：底层治理对象，由 `Submit` 创建、由 `Submit` 推举、由 `Vote` 表决、由 `Mint` 铸造提案激励。Proposal 记录命名为 `ProposalInfo { ProposalHead head, ProposalBody body }`，对应旧 `ActionInfo` 及其 `ActionHead` / `ActionBody`：头部是合约分配的三项 `id`、`author`、`createAtBlock`，主体是创建者提供的全部字段 `title`、`details`、`target`、`targetMode`、`targetData`。创建者字段使用旧代码命名 `author`，但 BSC 值记录创建 Proposal 的 MemberNFT/memberId，不再以地址作为业务主体。
 - **Proposal Target**：Proposal 的激励铸造接收主体。Target 可以是普通地址或合约；合约型 Target 是否接收回调由 `targetMode` 决定。代币由协议按规则铸造，不表述为某人发放代币。
 - **ActionTarget**：当前社群行动提案类型的 Proposal Target。它把 Proposal 与行动执行合约关联，并提供该提案类型的通用加入/退出状态和应急清理边界。
 - **行动执行合约**：由 `ActionTarget` 关联的业务合约，负责具体行动的参与、验证、资产处理和行动层激励分配。`executor` 不属于底层治理框架的通用业务角色。
 - **GroupAction 参与归属**：GroupAction Executor 以 `tokenAddress + actionId + groupId + memberId` 的当前有效关系为事实来源，维护跨其所有代币社区和行动的 17 组可枚举 `g*` 全局索引；每组提供全量数组、`Count` 和 `AtIndex` 查询。Group Chat 通过 `gTokenAddressesByGroupIdByMemberIdCount(groupId, memberId) > 0` 判断归属；ActionTarget 的强制退出不修改这些业务索引。
 - **proposalId 与 actionId**：`proposalId` 是所有 Proposal 的统一 ID；只有部分行动类 Proposal 使用 `actionId` 作为业务别名，二者数值完全相同，`actionId` 是 `proposalId` 的子集，不创建第二个 ID。
-- **回调与 KV**：Proposal 创建、提案推举和提案投票分别触发对应 Target 回调；回调名称为 `onProposalCreated`、`onProposalSubmitted`、`onProposalVoted`；推举回调使用 `submitterId`，投票回调使用 `voterId` 和本次增量票数；核心只传递标准 Proposal 上下文和不透明 KV，不解释提案扩展业务；具体字段由对应 Target 或行动执行合约定义。
+- **回调与透传数据**：Proposal 创建、提案推举和提案投票分别触发对应 Target 回调；回调名称为 `onProposalCreated`、`onProposalSubmitted`、`onProposalVoted`；推举回调使用 `submitterId`，投票回调使用 `voterId` 和本次增量票数；核心只传递标准 Proposal 上下文和不透明的 Target Data（核心接口中为 `bytes[]`/`bytes[][]` 参数），不解释提案扩展业务；该数据的编码在 action 层称 KV，具体字段由对应 Target 或行动执行合约定义。
 
 ## 架构与仓库关系
 

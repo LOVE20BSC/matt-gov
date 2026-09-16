@@ -64,8 +64,58 @@ LOVE20BSC 当前统一使用以下编译和依赖基线：
 - 先删除已裁决移出的业务和依赖，再补入 BSC 必需内容；不复制不会使用的旧合约、库或外部接口。
 - Core 统一使用 `Proposal`；只有 Action 层使用 `actionId` 作为 Proposal 的业务别名。
 - `matt-gov/interfaces/` 是 LOVE20 自有函数、事件和错误的 ABI 唯一来源；标准继承 API 由目标依赖（如 OpenZeppelin）提供，不在准备仓库重复声明。目标仓库的 `src/interfaces/` 必须同步自有声明，并可通过 `is` 继承同一标准依赖接口补齐标准 API；该依赖继承不视为自有接口差异。涉及继承的接口必须在对账文档中分别标记“自有声明”和“完整 ABI（含继承成员）”两种口径。
+- **接口文件不写 NatSpec**：`interfaces/` 只声明 ABI，语义、校验顺序、返回值约定和分页语义写在模块规格与对账文档里；接口体保持连续声明，不用 `///`、不用空行划注释块（`ILaunch`、`IMint`、`IPhase`、`IStake`、`IVote` 均无注释）。仅当信息落不进规格时才留一行 `@dev`，如 `ILOVE20Token`/`IMemberNFT` 标注“实现继承 OpenZeppelin 的 ERC20 / ERC721Enumerable”，供 ABI 对账区分自有声明与完整 ABI。空行只用于语义分组（分隔函数与内联 `error`、写操作与配置 getter）。
 - 复用优先：迁移前先检查目标仓库已固定的依赖和 LOVE20BSC 共享库；已有实现满足语义时直接复用并固定版本，不得重复复制。确需新增实现时，说明现有库不适用的原因，并同步依赖或共享库对账。
 - `init` 一律不设调用者限制，合约不保存部署者地址，也不授予部署者特权；只有 `init` 校验初始化状态。部署是否成功由发布前 check 脚本核对实际绑定结果判定，任何不一致即重新部署，不能把“部署后立即初始化”当作防抢跑保证。
+
+## 集合读取函数的设计原则
+
+先定形态，再定名字；适用于 core 与各扩展层的新增、改名函数。
+
+**只有有界集合才提供全量读取。** 规模由常量或固定配置决定（社区总数、管理组名单）才算有界；由外部输入决定（成员数、提案数、推举记录数、消息数）一律按无界处理，只给分页，且同一集合不同时给全量与分页两版——全量那条在规模变大后会把调用方 gas 耗尽，进了 ABI 又删不掉。
+
+**分页只回定长数据。** 页内成员由别人决定，只有每一项都定长，一页的体量才随 `limit` 增长。
+
+| 页内成员 | 分页返回 |
+| --- | --- |
+| 全部定长（`uint256`/`address`/`bool`） | 可直接回记录本体（`submitInfos`） |
+| 含变长成员（`string`、`bytes`、动态数组） | 只回 id，本体另设按 id 批量（`proposalIds` + `proposalInfosByIds`） |
+
+分页若回含 `string`/`bytes` 的结构体，一条大记录就能把整页顶到调用方 gas 上限之上，而且跳不过去——只能反复调小 `limit` 试探。
+
+**分页签名固定。** `(uint256 offset, uint256 limit, bool reverse)` → `(列表, 真实总数)`，参数顺序「作用域键 → offset → limit → reverse」，语义同 `IPhase.syncObservations`：越界返回空数组与真实总数、不回滚；`limit` 超剩余按剩余返回；`reverse` 从新到旧。不另设计数入口，只取总数传 `limit = 0`。
+
+**命名 = 载荷 + 条件。**
+
+| 返回值 / 条件 | 记号 | 例 |
+| --- | --- | --- |
+| 轻量标识数组 | `<复数>Ids` | `proposalIds`、`votedSenderIds` |
+| 记录数组 | `<复数>Infos` | `submitInfos`、`chatInfos` |
+| 标量 | 不加后缀 | `isSubmitted`、`proposalIdBySubmitter` |
+| 按键筛选 | `By<key>` | `proposalIdsByAuthor`、`messagesBySender` |
+| 显式 ID 数组 | `ByIds` | `proposalInfosByIds` |
+
+裸集合名不用于返回数组的函数（看不出回的是标识还是记录）。**是否分页不进名字**——由入参 `(offset, limit, reverse)` 决定，不加 `Paginated`/`Paged`/`Page`/`List` 之类的记号，也不为同一集合另设无窗口的重载。作用域键（`tokenAddress`、`groupId`）是定位不是筛选，不进名字。
+
+**集合只留一条完整读取路径**（分页或按 id 批量）。按键取单值的函数是叠加其上的，只在下面三种情况才留：
+
+| 理由 | 例 |
+| --- | --- |
+| 用的是集合定位键之外的新键，否则只能扫全表 | `tokenAddressBySymbol` |
+| 该键上还没有能取值的入口 | `submitterIdByProposalId` |
+| 旧接口的保留成员 | `isSubmitted` |
+
+存在性布尔与取值是两个不同的值，同键并存不算重复（`isNameUsed` 与 `idOf`、`isSubmitted` 与 `submitterIdByProposalId`）；真正的重复是同一把键、同一个值再暴露一次。**删除一个入口前，先确认它所依赖的另一个入口在同一批变更后仍然成立。**
+
+**按显式 ID 数组的批量入口**（`ByIds`）三条要求：
+
+- **下标对齐**：返回数组长度等于入参长度，第 `i` 项对应第 `i` 个 id；不做「只回存在的那几条」，否则调用方无从得知缺的是哪个。
+- **无效即整笔回滚、不补空**：任何 id 不可用就回滚（`proposalInfosByIds` 给 `ProposalNotFound`）。这条只管数组——标量没有位置语义，`proposalIdBySubmitter` 与 `submitterIdByProposalId` 回 `0` 表示「本轮未推举」是合法的。
+- **只读且不写状态的不设长度上限**：上限是为防「调用方传大数组、让合约替它在本笔里干活」的 gas 转嫁，只读没有这条路径，超限只是调用方自己 out-of-gas，上限由区块 gas 自然给出。决定成本的是单条体量而非条数——`proposalInfosByIds` 回含无上限 `title`/`details`/`targetData` 的记录，所以它能按 id 批量读、却不能进分页。写状态或成本会落在第三方的批量不适用本豁免，必须有明确上限并写明来源。
+
+读一条传单元素数组，不另设单条入口——否则是集合的第二条路径，还会造出只差一个字母、返回值却是两种东西的近名对（旧 `proposal()` 与 `proposals()`）。
+
+审查时按本节核对，并在报告里写明该集合的**有界性判据**与**页内成员是否定长**。
 
 ## 每一步的审查证据
 

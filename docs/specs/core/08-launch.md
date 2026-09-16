@@ -16,7 +16,7 @@ Launch 负责首币部署、LOVE20Token 创建、基础发射与次数账本。T
 
 `Launch.init` 不保存或校验部署者地址，只允许成功一次；成功后 `initialized()` 为 `true`。该初始化仍存在被抢先绑定的窗口：被抢跑的版本不得发布，必须重新部署并核对受影响的依赖，不把“部署后立即初始化”当作防抢跑保证。部署是否成功由发布前检查脚本判定——逐项核对 `initialized()`、依赖地址、首币名称与符号、首币分发地址、发射参数和供应量配置，任何不一致即重新部署。
 
-首币不消耗成员发射次数，也不接收或处理 Launch KV 数组，固定采用 `NoCallback`。`Launch.init` 任一步失败回滚全部效果；成功后不得重初始化、替换依赖或改写首币。Pair 在首次 LP 质押时由 `Stake` 按需查询或创建，Launch 不创建 Pair，也不重复铸造首批供应。部署参数的含义见 [参数表](00-protocol-model.md#初始化参数)。
+首币不消耗成员发射次数，不带分发数据，固定采用 `NoCallback`。`Launch.init` 任一步失败回滚全部效果；成功后不得重初始化、替换依赖或改写首币。Pair 在首次 LP 质押时由 `Stake` 按需查询或创建，Launch 不创建 Pair，也不重复铸造首批供应。部署参数的含义见 [参数表](00-protocol-model.md#初始化参数)。
 
 `Launch.init` 的校验与回滚：
 
@@ -98,23 +98,24 @@ Launch 只保存“成员可用整数次数”和“社区累计已产生次数�
 
 测试网前缀沿用旧实现：先按配置长度校验 `tokenSymbol`，再读取 `parentTokenAddress` 的符号，其前 4 字节等于 `Test` 时给符号加上 `Test` 前缀，然后生成名称。该前缀施加在校验之后，因此测试网子币的实际符号可以超出配置长度；首币不施加该前缀。
 
-普通发射的社区必须与 `parentTokenAddress` 一致，父币必须是已登记 LOVE20 代币，`distributor` 非零。分发支持 `NoCallback` 和 `Callback` 两种模式。Launch 回调使用本次发射的 `keys`/`values` 数组；两数组可以同时为空，非空时必须等长，并且不设长度上限：Launch 只原样透传，不遍历、不解析。
+普通发射的社区必须与 `parentTokenAddress` 一致，父币必须是已登记 LOVE20 代币，`distributor` 非零。分发支持 `NoCallback` 和 `Callback` 两种模式。普通发射携带一个 `bytes[] distributorData` 数组；可以为空，不设长度上限，元素内容与编码由 distributor 自行约定：Launch 只原样透传，不遍历、不解析。
 
 分发回调接口见 [`ILaunchDistributor.sol`](../../../interfaces/core/ILaunchDistributor.sol)。
 
-`NoCallback` 不调用回调且要求两数组为空；`Callback` 要求 `distributor` 为合约并调用 `onTokenLaunched`，原样透传 Launch KV，回调失败则整笔发射回滚。首币使用旧 Burn `Airdrop`，固定采用 `NoCallback`；普通发射才可选择 `Callback`。
+`NoCallback` 不调用回调，且忽略 `distributorData`（不校验是否为空）；`Callback` 要求 `distributor` 为合约并调用 `onTokenLaunched`，原样透传 `distributorData`，回调失败则整笔发射回滚。首币使用旧 Burn `Airdrop`，固定采用 `NoCallback`；普通发射才可选择 `Callback`。
 
 回调仅由 Launch 调用，发生于代币创建、首批供应到账、代币登记与次数扣减之后；`launcherMemberId` 取本次 `memberId`。distributor 校验调用方并防止同一 token 重复处理；Launch 不开放额外的补触发回调入口。两种模式均允许非零合约接收，EOA 仅允许 NoCallback。
 
 distributor 自行实现领取与查询逻辑，`claim(tokenAddress)` 只是建议接口，不是协议必需 ABI。发射者负责选择分发目标，承担其失败和 Gas 耗尽风险。
 
-校验顺序固定为参数 → 存在性 → 持有 → 账本 → 扣减 → 最终符号唯一性：先校验参数（`tokenSymbol`、`distributor`、KV 与分发模式），再校验存在性（`parentTokenAddress` 已登记、`memberId` 存在），然后校验调用者持有 `memberId`，再校验账本余量并扣减次数，最后按施加 `Test` 前缀后的最终符号校验唯一性。唯一性校验必须排在父币存在性校验之后：最终符号要先读取父币符号才能得到。
+校验顺序固定为参数 → 存在性 → 持有 → 账本 → 扣减 → 最终符号唯一性：先校验参数（`tokenSymbol`、`distributor` 与分发模式），再校验存在性（`parentTokenAddress` 已登记、`memberId` 存在），然后校验调用者持有 `memberId`，再校验账本余量并扣减次数，最后按施加 `Test` 前缀后的最终符号校验唯一性。唯一性校验必须排在父币存在性校验之后：最终符号要先读取父币符号才能得到。
+
+`distributorData` 不参与校验：除了分发模式本身，Launch 不对它设任何条件，`NoCallback` 下直接忽略。
 
 | 条件 | 回滚错误 |
 | --- | --- |
 | `tokenSymbol` 不合法 | `InvalidTokenSymbol()` |
 | `distributor == address(0)` | `InvalidAddress()` |
-| 两数组非等长，或 `NoCallback` 下两数组非空 | `InvalidKVLength()` |
 | `Callback` 但 `distributor` 不是合约 | `InvalidDistributorMode()` |
 | `parentTokenAddress` 不是已登记 LOVE20 代币（含零地址） | `InvalidParentToken()` |
 | `memberId` 不存在（含 `0`） | MemberNFT 的标准错误（`ownerOf` 回滚） |

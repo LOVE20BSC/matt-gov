@@ -20,4 +20,4 @@
 | Mint | Proposal 激励铸造 |
 | Phase | 当前时间片和业务轮次映射 |
 
-Core 只传递 Proposal 上下文与不透明 KV，不解释候选、链群、LP、托管或服务分配。上述业务由对应 Executor 处理；ActionTarget 不持有参与资产。主体与术语见 [组织上下文](../../../CONTEXT.md)。
+Core 只传递 Proposal 上下文与不透明的 Target Data，不解释候选、链群、LP、托管或服务分配。上述业务由对应 Executor 处理；ActionTarget 不持有参与资产。主体与术语见 [组织上下文](../../../CONTEXT.md)。

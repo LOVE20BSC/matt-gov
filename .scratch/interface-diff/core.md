@@ -136,20 +136,21 @@ OZ 5 的标准回滚由固定依赖提供：`IERC721Errors`、`ERC721OutOfBounds
 
 ## 4. ISubmit vs ILOVE20Submit
 
-旧：`LOVE20TKM/core/src/interfaces/ILOVE20Submit.sol`。从「行动提案」抽象为「通用 Proposal + Target + KV」，行动特有字段全部移出。
+旧：`LOVE20TKM/core/src/interfaces/ILOVE20Submit.sol`。从「行动提案」抽象为「通用 Proposal + Target + Target Data」，行动特有字段全部移出。
 
 ### 结构体与枚举
 
 | 新 | 旧 | 状态 |
 | --- | --- | --- |
-| `ProposalHead { uint256 id, uint256 author, uint256 createAtBlock }` | `ActionHead { uint256 id, address author, uint256 createAtBlock }` | 改名+改参（`author` 类型变） |
-| `ProposalBody { string title, string details }` | `ActionBody { minStake, maxRandomAccounts, whiteListAddress, title, verificationRule, verificationKeys[], verificationInfoGuides[] }` | 改名+改参（7 字段 → 2 字段） |
-| `ProposalParams { title, details, target, targetMode, keys[], values[] }` | 无 | 新增 |
+| `ProposalHead { uint256 id, uint256 author, uint256 createAtBlock }` | `ActionHead { uint256 id, address author, uint256 createAtBlock }` | 改名+改参（`author` 由地址改为 `memberId`） |
+| `ProposalBody { string title, string details, address target, TargetMode targetMode, bytes[] targetData }` | `ActionBody { minStake, maxRandomAccounts, whiteListAddress, title, verificationRule, verificationKeys[], verificationInfoGuides[] }` | 改名+改参（7 字段 → 5 字段） |
+| `ProposalInfo { ProposalHead head, ProposalBody body }` | `ActionInfo { ActionHead head, ActionBody body }` | 改名 |
+| `SubmitInfo { uint256 submitterId, uint256 proposalId }` | `ActionSubmitInfo { address submitter, uint256 actionId }` | 改名+改参（主体由地址改为 `memberId`；字段名 `submitter` → `submitterId`） |
 | `enum TargetMode { NoCallback, Callback }` | 无 | 新增 |
-| 无 | `ActionInfo { head, body }` | 删除（`proposal()` 改为多返回值） |
-| 无 | `ActionSubmitInfo { address submitter, uint256 actionId }` | 删除（`submissionAtIndex()` 改为多返回值） |
 
-旧 `ActionBody` 的 `minStake`、`maxRandomAccounts`、`whiteListAddress`、`verificationRule`、`verificationKeys`、`verificationInfoGuides` 不进入新 Proposal 主体，改由 `ProposalParams.keys/values` 的不透明 KV 传给对应 Target。
+旧 `ActionBody` 的 `minStake`、`maxRandomAccounts`、`whiteListAddress`、`verificationRule`、`verificationKeys`、`verificationInfoGuides` 不进入新 `ProposalBody`，改由 `targetData` 的不透明 Target Data 传给对应 Target；`title` 保留，新增 `details`、`target`、`targetMode`。
+
+`ProposalBody` 既是 `submitNewProposal` 的入参，也是 `ProposalInfo` 的组成，不另立 `Params` 结构。旧 4 个结构体全部有对应（4 个改名），另新增 `TargetMode` 枚举。
 
 ### 函数
 
@@ -157,23 +158,35 @@ OZ 5 的标准回滚由固定依赖提供：`IERC721Errors`、`ERC721OutOfBounds
 | --- | --- | --- |
 | `stakeAddress()` | 同名 | 保留 |
 | `SUBMIT_MIN_PER_THOUSAND()` | 同名 | 保留 |
-| `MAX_VERIFICATION_KEY_LENGTH()` | 同名 | 保留 |
-| `createProposal(tokenAddress, memberId, ProposalParams) returns (uint256 proposalId)` | `submitNewAction(tokenAddress, ActionBody) returns (uint256 actionId)` | 改名+改参 |
-| `submit(tokenAddress, memberId, proposalId)` | `submit(tokenAddress, actionId)` | 改参 |
-| `canSubmit(tokenAddress, uint256 memberId)` | `canSubmit(tokenAddress, address account)` | 改参 |
 | `isSubmitted(tokenAddress, round, proposalId)` | `isSubmitted(tokenAddress, round, actionId)` | 保留（仅参数名） |
-| `proposal(tokenAddress, proposalId) returns (head, body, target, targetMode, keys, values)` | `actionInfo(tokenAddress, actionId) returns (ActionInfo)` | 改名+改参 |
-| `proposalsCount(tokenAddress)` | `actionsCount(tokenAddress)` | 改名 |
-| `proposalsAtIndex(tokenAddress, index) returns (uint256 proposalId)` | `actionsAtIndex(tokenAddress, index) returns (ActionInfo)` | 改名+改参（返回完整结构 → 仅 ID） |
-| `submissionsCount(tokenAddress, round)` | `actionSubmitsCount(tokenAddress, round)` | 改名 |
-| `submissionAtIndex(tokenAddress, round, index) returns (proposalId, submitterId)` | `actionSubmitsAtIndex(tokenAddress, round, index) returns (ActionSubmitInfo)` | 改名+改参 |
-| `currentRound()` | 旧由 `is IPhase` 隐式提供 | 新增（显式声明） |
+| `phaseAddress()` | 无 | 新增 |
+| `memberNFTAddress()` | 无 | 新增 |
+| `initialized()` | 无 | 新增 |
 | `init(phaseAddress, stakeAddress, memberNFTAddress, submitMinPerThousand)` | 无 | 新增 |
+| `currentRound()` | 旧由 `is IPhase` 隐式提供 | 新增（显式声明） |
+| `canSubmit(tokenAddress, uint256 memberId)` | `canSubmit(tokenAddress, address account)` | 改参 |
+| `submitNewProposal(tokenAddress, memberId, ProposalBody) returns (uint256 proposalId)` | `submitNewAction(tokenAddress, ActionBody) returns (uint256 actionId)` | 改名+改参 |
+| `submit(tokenAddress, memberId, proposalId)` | `submit(tokenAddress, actionId)` | 改参 |
+| `proposalInfosByIds(tokenAddress, proposalIds[]) returns (ProposalInfo[])` | `actionInfo(tokenAddress, actionId) returns (ActionInfo)` | 改名+改参（去掉单条入口，改按显式 ID 批量，返回与入参下标一一对应） |
+| `proposalIds(tokenAddress, offset, limit, reverse) returns (proposalIdList, totalCount)` | `actionsCount(tokenAddress)` + `actionsAtIndex(tokenAddress, index)` | 合并+改名+改参 |
+| `proposalIdsByAuthor(tokenAddress, author, offset, limit, reverse) returns (proposalIdList, totalCount)` | `authorActionIdsCount(tokenAddress, address author)` + `authorActionIdsAtIndex(tokenAddress, address author, index)` | 合并+改名+改参 |
+| `submitInfos(tokenAddress, round, offset, limit, reverse) returns (SubmitInfo[], totalCount)` | `actionSubmitsCount(tokenAddress, round)` + `actionSubmitsAtIndex(tokenAddress, round, index)` | 合并+改名+改参（分页回完整记录而非 id 列表） |
+| `proposalIdBySubmitter(tokenAddress, round, submitterId) returns (uint256 proposalId)` | `submitInfoBySubmitter(tokenAddress, round, address submitter) returns (ActionSubmitInfo)` | 改名+改参（主体改 `memberId`，返回值收为 `proposalId`） |
+| `submitterIdByProposalId(tokenAddress, round, proposalId) returns (uint256 submitterId)` | `submitInfo(tokenAddress, round, actionId) returns (ActionSubmitInfo)` | 改名+改参（返回值收为 `submitterId`；与上一条互为逆） |
+| 无 | `MAX_VERIFICATION_KEY_LENGTH()` | 删除（无消费者；验证内容已下移到 Target Data） |
 | 无 | `canJoin(tokenAddress, actionId, address account)` | 删除（下移 action 层） |
-| 无 | `submitInfo(tokenAddress, round, actionId)` | 删除 |
-| 无 | `submitInfoBySubmitter(tokenAddress, round, address submitter)` | 删除 |
-| 无 | `authorActionIdsCount(tokenAddress, address author)` | 删除 |
-| 无 | `authorActionIdsAtIndex(tokenAddress, address author, index)` | 删除 |
+
+`submitNewProposal` 沿用旧 `submitNewAction` 的动词与语义，`submit` 沿用旧名。旧 `submitNewAction` 的内部就是 `_createAction` + `_submitByActionId`，新接口同样在同一笔内先创建再推举，这对名称因此名副其实。旧代码里创建即占用该成员本轮的推举名额、同一提案每轮只能被推举一次，两条约束原样保留；`submit` 只推举已有提案，可跨轮、推举者可为作者以外的人。
+
+三处枚举合并为分页：参数顺序为「作用域键 → `offset` → `limit` → `reverse`」，并同时返回真实总数，与 `IPhase.syncObservations`、`IMemberNFT.holders`、`ILaunch.tokens`/`childTokens`、`IStake` 的分页一致。旧 `actionsCount`/`actionsAtIndex` 与 `authorActionIdsCount`/`authorActionIdsAtIndex`、`actionSubmitsCount`/`actionSubmitsAtIndex` 的按下标访问随之取消，因此不再声明越界错误。
+
+**分页返回值随页内成员是否定长**：`ProposalBody` 的 `title`/`details`/`targetData` 都不设长度上限，页内成员又由别人决定，一页里落进一条大 `targetData` 就能让整页超出调用方 gas 上限且无法跳过，所以 `proposalIds`/`proposalIdsByAuthor` 只回 `proposalId`，本体走 `proposalInfosByIds(proposalIds[])` 按 id 批量取；`SubmitInfo` 全为 `uint256`，任意一页的体量都与 `limit` 成正比，故 `submitInfos` 分页直接回完整记录。旧 `actionsAtIndex`/`actionSubmitsAtIndex` 直接在枚举里回结构体，这条路被撤掉了。不设单条详情入口：读一条传单元素数组，避免出现只差一个字母、返回值却是两种东西的近名对。
+
+命名记号三条：**数组返回值在名字里体现载荷**——`Ids` 只回轻量标识、`Infos` 回记录本体，裸集合名不用于返回数组的函数，标量返回值不加后缀；**筛选条件进名字**——默认全量不标记，按键用 `By<key>`，显式 ID 数组用 `ByIds`，可串联成 `By<key>ByIds`（group-chat 的 `votedSenderIds`、`chatInfos`/`roundInfos` 即此记号）；**是否分页不进名字**——由入参 `(offset, limit, reverse)` 决定，不为同一集合另设无窗口的全量重载。仓库现有 28 个分页函数一律以参数表意，名字里不带 `Paginated`/`Paged`/`Page`。
+
+单键查询三条：`isSubmitted` 与两条方向单键 `proposalIdBySubmitter`/`submitterIdByProposalId`。后两条是旧 `submitInfo`/`submitInfoBySubmitter` 各改名而来——`(tokenAddress, round)` 下的推举记录是 `(proposalId, submitterId)` 对，且「每人每轮一个」「每提案每轮一次」使两种键都是唯一键，旧接口的两个方向本就互为镜像，故按同样方式改名、返回值都由 `ActionSubmitInfo` 收为单个标量（`0` = 本轮未推举）；`submitInfos` 的分页是集合的完整读取路径，两条单键是两个方向的定点通道，三者读同一份记录。`isSubmitted` 保留是因为它是旧接口同名同参的保留成员——它与 `submitterIdByProposalId` 同键但给出两个不同的值（存在性 vs 取值），不构成重复，如同 `IMemberNFT.isNameUsed` 与 `idOf`。
+
+旧 `ILOVE20Submit` 继承 `IPhase`，旧 ABI 另外包含 Phase 的全部查询（`currentPhase`、`currentBlockInPhase`、`phaseAtBlock`、`sync` 等）。新版把 Phase 拆为独立合约，`ISubmit` 只显式声明 `currentRound()`，时间线经 `phaseAddress()` 指向的 `Phase` 读取。
 
 ### 事件
 
@@ -182,32 +195,48 @@ OZ 5 的标准回滚由固定依赖提供：`IERC721Errors`、`ERC721OutOfBounds
 | `ProposalCreated(tokenAddress, proposalId, uint256 author, string title, string details, address target, TargetMode targetMode)` | `ActionCreate(tokenAddress, round, address author, actionId, ActionBody actionBody)` | 改名+改参 |
 | `ProposalSubmitted(tokenAddress, round, uint256 submitterId, proposalId)` | `ActionSubmit(tokenAddress, round, address submitter, actionId)` | 改名+改参 |
 
-`ProposalCreated` 去掉 `round` 字段、`ActionBody` 结构展开为 `title`/`details`、新增 `target`/`targetMode`。
+`ProposalCreated` 去掉 `round` 字段、`ActionBody` 结构展开为 `title`/`details`、新增 `target`/`targetMode`，且**不含 `targetData`**：`TokenLaunched` 与 `VoteCast` 同样有透传数据入参而事件不发，三个合约口径一致。`targetData` 是不透明的机器数据，Target 由回调取得、索引器由 `proposalInfosByIds(proposalIds[])` 取得，事件带它只增加永久落盘。
+
+`ProposalSubmitted` 由两个写入口共发：`submitNewProposal` 一笔内先 `ProposalCreated` 后 `ProposalSubmitted`，`submit` 只发后者。旧 `ActionCreate`/`ActionSubmit` 也是这个顺序（`submitNewAction` 内先 `_createAction` 后 `_submitByActionId`），回调亦然（先 `onProposalCreated` 后 `onProposalSubmitted`）。
 
 ### 错误
 
 | 新 | 旧 | 状态 |
 | --- | --- | --- |
 | `AlreadyInitialized()` | 同 | 保留 |
+| `CannotSubmitAction()` | 同 | 保留 |
+| `AlreadySubmitted()` | 同 | 保留 |
+| `OnlyOneSubmitPerRound()` | 同 | 保留 |
 | `ProposalNotFound(uint256 proposalId)` | `ActionIdNotExist()` | 改名+改参（新增参数） |
-| `InvalidKVLength()` | 无 | 新增 |
-| `IndexOutOfBounds(uint256 length)` | 无 | 新增 |
-| 无 | `MinStakeZero()`、`MaxRandomAccountsZero()`、`VerificationRuleEmpty()`、`VerificationKeyLengthExceeded()` | 删除（对应字段已移出 Proposal 主体） |
-| 无 | `TitleEmpty()` | 删除（`title` 仍在主体，校验错误未声明） |
-| `CannotSubmitAction()`、`AlreadySubmitted()`、`OnlyOneSubmitPerRound()` | 同名 | 保留（沿用旧 Submit 的门槛与去重 selector） |
+| `InvalidAddress()` | 无 | 新增 |
+| `InvalidTargetMode()` | 无 | 新增 |
+| `NotMemberOwner(uint256 memberId)` | 无 | 新增 |
+| `EmptyString(string parameter)` | 无 | 新增 |
+| `ZeroAmount(string parameter)` | 无 | 新增 |
+| `InvalidAmount()` | 无 | 新增 |
+| `RoundNotStarted()` | 无 | 新增 |
+| 无 | `MinStakeZero()` | 删除（字段已移出 Proposal 主体） |
+| 无 | `MaxRandomAccountsZero()` | 删除（字段已移出 Proposal 主体） |
+| 无 | `TitleEmpty()` | 删除（`title` 仍在主体，改用 `EmptyString("title")`） |
+| 无 | `VerificationRuleEmpty()` | 删除（字段已移出 Proposal 主体） |
+| 无 | `VerificationKeyLengthExceeded()` | 删除（字段已移出 Proposal 主体） |
+
+旧 10 个错误 = 保留 4 + 改名 1 + 删除 5；新 12 个 = 保留 4 + 改名 1 + 新增 7。错误顺序：保留 4 项的旧相对顺序不变（`AlreadyInitialized` → `CannotSubmitAction` → `AlreadySubmitted` → `OnlyOneSubmitPerRound`），改名项与 7 个新增项插在其后。
+
+逐条件的错误映射与各入口的校验顺序见 [`core/05-submit.md`](../../docs/specs/core/05-submit.md)。
 
 ---
 
 ## 5. IVote vs ILOVE20Vote
 
-旧：`LOVE20TKM/core/src/interfaces/ILOVE20Vote.sol`。全量保留，`actionId` → `proposalId`、`account` → `memberId`，新增 KV 与投票者质押量查询。
+旧：`LOVE20TKM/core/src/interfaces/ILOVE20Vote.sol`。全量保留，`actionId` → `proposalId`、`account` → `memberId`，新增 Target Data 与投票者质押量查询。
 
 ### 函数
 
 | 新 | 旧 | 状态 |
 | --- | --- | --- |
 | `stakeAddress()`、`submitAddress()` | 同名 | 保留 |
-| `vote(tokenAddress, memberId, proposalIds[], votes[], keys[][], values[][])` | `vote(tokenAddress, actionIds[], votes[])` | 改参（新增 memberId 与二维 KV） |
+| `vote(tokenAddress, memberId, proposalIds[], votes[], bytes[][] targetData)` | `vote(tokenAddress, actionIds[], votes[])` | 改参（新增 memberId 与二维 Target Data） |
 | `canVote(tokenAddress, uint256 memberId)` | `canVote(tokenAddress, address account)` | 改参 |
 | `maxVotesNum(tokenAddress, uint256 memberId)` | `maxVotesNum(tokenAddress, address account)` | 改参 |
 | `votesNum(tokenAddress, round)` | 同名 | 保留 |
@@ -235,7 +264,7 @@ OZ 5 的标准回滚由固定依赖提供：`IERC721Errors`、`ERC721OutOfBounds
 | --- | --- | --- |
 | `VoteCast(tokenAddress, round, uint256 voterId, proposalId, votes)` | `Vote(tokenAddress, round, address voter, actionId, votes)` | 改名+改参 |
 | `ProposalNotSubmitted()` | `ActionNotSubmitted()` | 改名 |
-| `InvalidKVLength()` | 无 | 新增 |
+| `InvalidTargetDataLength()` | 无 | 新增 |
 | `AlreadyInitialized()`、`CannotVote()`、`NotEnoughVotesLeft()`、`VotesMustBeGreaterThanZero()` | 同 | 保留 |
 
 ---
@@ -343,11 +372,11 @@ MemberNFT 的配置 getter 同样遵循大写命名；`MAX_NAME_LENGTH()` 仅去
 
 保留 5 个：`AlreadyInitialized`、`InvalidTokenSymbol`、`TokenSymbolExists()`（触发条件 `tokenAddressBySymbol[最终符号] != address(0)`，与旧 `_launchToken` 相同）、`InvalidTokenAddress()`（触发条件 `!isLOVE20Token(tokenAddress)`，与旧 `contribute` 相同）、`InvalidParentToken()`（触发条件 `!isLOVE20Token(parentTokenAddress)`，与旧 `launchToken` 相同）。
 
-新增 12 个：`InvalidAddress`、`InvalidKVLength`、`InvalidDistributorMode`、`ZeroAmount(string parameter)`、`UnauthorizedCaller`、`NotMemberOwner(uint256 memberId)`、`CountMustBeGreaterThanZero()`、`SourceAndTargetMustBeDifferent()`、`NotEnoughLaunchCount`、`LaunchCountLimitReached`、`InvalidAmount()`、`EmptyString(string parameter)`。
+新增 11 个：`InvalidAddress`、`InvalidDistributorMode`、`ZeroAmount(string parameter)`、`UnauthorizedCaller`、`NotMemberOwner(uint256 memberId)`、`CountMustBeGreaterThanZero()`、`SourceAndTargetMustBeDifferent()`、`NotEnoughLaunchCount`、`LaunchCountLimitReached`、`InvalidAmount()`、`EmptyString(string parameter)`。
 
 删除 11 个：`NotEligibleToLaunchToken`、`LaunchAlreadyEnded`、`LaunchNotEnded`、`ClaimDelayNotPassed`、`NoContribution`、`NotEnoughWaitingBlocks`、`TokensAlreadyClaimed`、`LaunchAlreadyExists`、`ParentTokenNotSet`、`ZeroContribution`、`InvalidToAddress`。
 
-错误顺序：保留 5 项的旧相对顺序不变（`AlreadyInitialized` → `InvalidTokenSymbol` → `TokenSymbolExists` → `InvalidTokenAddress` → `InvalidParentToken`），12 个新增项插在其后。
+错误顺序：保留 5 项的旧相对顺序不变（`AlreadyInitialized` → `InvalidTokenSymbol` → `TokenSymbolExists` → `InvalidTokenAddress` → `InvalidParentToken`），11 个新增项插在其后。
 
 逐条件的错误映射与初始化交易顺序见 [`core/08-launch.md`](../../docs/specs/core/08-launch.md)。
 

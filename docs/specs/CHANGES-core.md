@@ -112,29 +112,43 @@
 ### 🔄 关键变化
 - **主体身份**：`submitterAddress` → `submitterId (memberId)`
 - **权限校验**：`msg.sender` → `MemberNFT.ownerOf(submitterId) == msg.sender`
+- **创建入口改名**：`submitNewAction(tokenAddress, ActionBody)` → `submitNewProposal(tokenAddress, memberId, ProposalBody)`，沿用旧 `submitNewAction`/`submit` 的动词配对；**保留旧代码「创建后立即推举」的语义**——旧 `submitNewAction` 内部即 `_createAction` + `_submitByActionId` 一笔完成，新接口同样在同一笔内先创建再推举，两个入口共用「每人每轮一个」「每提案每轮一次」两条名额约束
+- **校验顺序对齐 core 统一口径**：旧 `submitNewAction` 先查 `canSubmit` 再校验参数，新接口按「参数 → 存在性 → 持有 → 门槛 → 本轮名额」执行。非行为差异（任一不满足都回滚整笔），改的是错误优先级：参数非法且不满足门槛时报精确参数错误而非 `CannotSubmitAction()`
 
 ### 🆕 接口新增（2026-09-15）
-- **错误声明拆出子接口**：`ISubmitErrors` 独立声明（含新增 9 个错误）
+- **错误声明拆出子接口**：`ISubmitErrors` 独立声明（含新增 7 个错误，另有 1 个改名）
 - **删除无用常量**：移除 `MAX_VERIFICATION_KEY_LENGTH()`（无消费者）
 - **补全 getter**：新增 `initialized()`, `phaseAddress()`, `memberNFTAddress()`
-- **修复接口遗漏**：
-  - `IndexOutOfBounds` 参数名 `length` → `index`（与旧代码一致）
-  - `submissionAtIndex` 返回值补充 `submitterId`
-  - 新增 `submitInfo()` - 查询某 Proposal 在某轮的推举者（对应旧代码 `submitInfo` mapping）
-  - 新增 `submitInfoBySubmitter()` - 查询某成员在某轮推举的 Proposal（对应旧代码 `submitInfoBySubmitter` mapping）
+- **两条方向单键查询**（旧 `submitInfo` / `submitInfoBySubmitter` 各改名，返回值都由 `ActionSubmitInfo` 收为单个标量，`0` 表示本轮未推举）：
+  - `proposalIdBySubmitter()` - 由成员在某轮推举的提案反查（旧 `submitInfoBySubmitter`）
+  - `submitterIdByProposalId()` - 由提案反查其推举者（旧 `submitInfo`），与上一条互为逆
+  - **原因**：`(tokenAddress, round)` 下的推举记录是 `(proposalId, submitterId)` 对，且「每人每轮一个」「每提案每轮一次」使两种键都是唯一键；两条单键是两个方向的定点通道，`submitInfos()` 的分页是集合的完整读取路径，三者读同一份记录。旧接口的两个方向本就互为镜像，按同样方式改名
+- **单键存在性判定保留**：`isSubmitted()` 是旧接口同名同参的保留成员，回 `bool`；它与 `submitterIdByProposalId()` 同键但给出的是两个不同的值（存在性 vs 取值），不构成重复，如同 `IMemberNFT.isNameUsed` 与 `idOf`
 - **删除 minStake 字段**：
-  - 从 `ProposalBody`、`ProposalParams` 删除 `minStake`
-  - 删除 `createProposal` 中的 `minStake > 0` 校验（`ZeroAmount("minStake")` 不再用于此处）
+  - 从 `ProposalBody` 删除 `minStake`（旧 `ActionBody` 的该字段）
+  - 删除 `submitNewProposal` 中的 `minStake > 0` 校验（`ZeroAmount("minStake")` 不再用于此处）
   - `ProposalCreated` 事件不含 `minStake`
   - **原因**：BSC 架构删除统一 Join 模块，旧代码中 `minStake` 用于首次加入门槛的逻辑已移至 Action 层各 Executor 独立配置
+- **结构体按旧分层重组**：
+  - 新增 `ProposalInfo { ProposalHead head, ProposalBody body }`，对应旧 `ActionInfo { ActionHead head, ActionBody body }`
+  - `ProposalBody` 改为「创建者提供的全部字段」：`title`、`details`、`target`、`targetMode`、`targetData`，`submitNewProposal` 的入参与 `ProposalInfo` 的组成共用这一个结构
+  - `ActionSubmitInfo` 改名 `SubmitInfo`，字段 `submitter` 由地址改为 `submitterId`
+  - **原因**：旧 `ActionBody` 就是创建者提供的全部字段，保留两套同字段的名字只会让 `submitNewProposal` 的入参与 `proposalInfosByIds()` 的返回看起来属于不同结构
 - **枚举改用分页**：
-  - 删除 4 个函数：`proposalsCount()`、`proposalsAtIndex()`、`proposalsByAuthorCount()`、`proposalsByAuthorAtIndex()`
-  - 新增 2 个分页函数：
-    - `proposals(address, uint256 offset, uint256 limit)` 返回 `(uint256[] proposalIds, uint256 totalCount)`
-    - `proposalsByAuthor(address, uint256 author, uint256 offset, uint256 limit)` 返回 `(uint256[] proposalIds, uint256 totalCount)`
+  - 删除 6 个函数：`proposalsCount()`、`proposalsAtIndex()`、`proposalsByAuthorCount()`、`proposalsByAuthorAtIndex()`、`submissionsCount()`、`submissionAtIndex()`
+  - 新增 3 个分页函数，统一 `(offset, limit, reverse)` 入参、按页返回并同时给出集合真实总数，语义同 `Phase.syncObservations`：
+    - `proposalIds(address tokenAddress, uint256 offset, uint256 limit, bool reverse)` 返回 `(uint256[] proposalIdList, uint256 totalCount)`
+    - `proposalIdsByAuthor(address tokenAddress, uint256 author, uint256 offset, uint256 limit, bool reverse)` 返回 `(uint256[] proposalIdList, uint256 totalCount)`
+    - `submitInfos(address tokenAddress, uint256 round, uint256 offset, uint256 limit, bool reverse)` 返回 `(SubmitInfo[] submitInfoList, uint256 totalCount)`
   - **原因**：与 Phase 的 `syncObservations` 分页模式保持一致，单次调用获取数据 + 总数，Gas 效率更高
+- **读取面三类**：分页 = `proposalIds`/`proposalIdsByAuthor`/`submitInfos`；按 id 批量取详情 = `proposalInfosByIds(proposalIds[])`；单键 = `isSubmitted`、`proposalIdBySubmitter`、`submitterIdByProposalId`
+  - **分页返回值随成员是否定长**：`proposalIds`/`proposalIdsByAuthor` 只回 `proposalId`，因为 `ProposalBody` 的 `title`/`details`/`targetData` 都不设长度上限，分页回本体时某条大 `targetData` 就能把整页顶到调用方 gas 上限之上且跳不过去；`submitInfos` 回完整记录，因为 `SubmitInfo` 全为 `uint256`，任意一页的体量都与 `limit` 成正比
+  - **不设单条详情入口**：读一条传单元素数组，避免出现只差一个字母、返回值却是两种东西的近名对
+  - **命名记号**：数组返回值在名字里体现载荷——`Ids` 只回轻量标识、`Infos` 回记录本体，裸集合名不用于返回数组的函数；筛选条件进名字（默认全量不标记、`By<key>` 按键、`ByIds` 显式 ID 数组）；是否分页不进名字，由入参 `(offset, limit, reverse)` 决定，不为同一集合另设无窗口的全量重载
+  - 旧 `actionsAtIndex`/`actionSubmitsAtIndex` 直接在枚举里回结构体，改为「分页回标识 + 按 id 批量取详情」
+  - **命名依据**：分页记号沿用 core 已实现集合读取的复数集合名（`syncObservations`、`holders`、`tokens`、`childTokens`、`boostUpdatedRounds`）与 group-chat 里轻量标识带 `Ids` 的先例（`votedSenderIds`、`memberIds`）；「按显式 ID 数组取记录」沿用 group-chat 的 `chatInfos`/`roundInfos`（复数 + `Infos`）。仓库现有 28 个分页函数全部以参数 `(offset, limit, reverse)` 表意，名字里不带任何分页记号，本接口沿用同一口径
 
-#### 新增错误（用于精准 revert）
+#### 新增与改名错误（相对旧代码，用于精准 revert）
 | 错误名 | 触发条件 | Selector |
 |--------|----------|----------|
 | `EmptyString(string field)` | 标题为空 | `0x62a65aec` |
@@ -144,17 +158,17 @@
 | `InvalidTargetMode()` | targetMode 枚举越界或 Callback 且 target 无代码 | `0x2589e3a0` |
 | `RoundNotStarted()` | `currentRound() == 0`（业务可选校验） | `0x8e9c6e1c` |
 | `NotMemberOwner(uint256 memberId)` | 调用者不持有该 memberId | `0x33393244` |
-| `ProposalNotFound(uint256 proposalId)` | proposalId 不存在 | `0x428d06a9` |
-| `IndexOutOfBounds(uint256 index)` | 枚举索引越界 | `0x44945fcc` |
+| `ProposalNotFound(uint256 proposalId)` | proposalId 不存在（旧 `ActionIdNotExist()` 改名并加参） | `0x428d06a9` |
 
 ### 📍 实现参考
 ```
 旧代码：LOVE20TKM/core/src/LOVE20Submit.sol
 保留：推举门槛、去重逻辑、核心 selector
 修改：所有 address 参数改为 uint256 memberId
-新增：精准错误、缺失 getter、ISubmitErrors 子接口
-删除：MAX_VERIFICATION_KEY_LENGTH()、minStake 字段及其校验、4 个枚举函数
-新增：2 个分页函数（proposals、proposalsByAuthor）
+新增：精准错误、缺失 getter、ISubmitErrors 子接口、ProposalInfo 包装与按 id 批量取详情 proposalInfosByIds(proposalIds[])
+删除：MAX_VERIFICATION_KEY_LENGTH()、minStake 字段及其校验、6 个枚举函数
+改名：actionInfo → proposalInfosByIds（去掉单条入口，改为按 id 批量）、submitInfoBySubmitter → proposalIdBySubmitter、submitInfo → submitterIdByProposalId（两个方向各改名，返回值都收为单个标量）
+合并：actionsCount/AtIndex → proposalIds、authorActionIdsCount/AtIndex → proposalIdsByAuthor、actionSubmitsCount/AtIndex → submitInfos（分页回记录）
 ```
 
 ---
@@ -234,7 +248,7 @@
 - **发射次数阈值换算与额度结转**：旧 `LOVE20Mint` 只在每次治理激励铸造时对账户计数 `+1`，旧 `LOVE20Launch` 用整数除法反推剩余次数，既没有阈值、也没有额度累计与余数结转。阈值向上取整、余数保留、跨多次阈值属新设计，见 [Mint 的发射额度](core/07-mint.md#发射额度的生成)
 - **社区次数上限**：每个社区最多产生 `MAX_LAUNCH_COUNT` 次发射
 - **次数融合**：`mergeLaunchCount(tokenAddress, sourceMemberId, targetMemberId, count)`
-- **分发模式与回调**：`distributor`、`DistributorMode` 与 Launch KV
+- **分发模式与回调**：`distributor`、`DistributorMode` 与不透明的 `bytes[] distributorData`
 
 ### 🔄 关键变化
 

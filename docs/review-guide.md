@@ -103,9 +103,11 @@ rg -n 'core\.md|action\.md|group-chat\.md|launchFirstToken|initializeGenesis|TOD
 #### 4. 接口
 
 - [ ] 每个公开函数有完整 Solidity 签名
-- [ ] 参数、返回值、可见性、权限、事件和错误均有说明
+- [ ] 参数、返回值、可见性、权限、事件和错误均有说明（说明写在模块规格与对账文档里，接口文件本身不写 NatSpec，见[迁移规范](migration-standards.md#修改原则)）
 - [ ] 只读查询说明空值、越界、未开始和不存在对象的行为
-- [ ] 数组、批量参数和分页参数有最大边界
+- [ ] 集合读取符合[集合读取函数的设计原则](migration-standards.md#集合读取函数的设计原则)：集合有界才提供全量读取，分页只回定长数据，函数名体现载荷（`Ids`/`Infos`）与筛选条件（`By<key>`/`ByIds`）
+- [ ] 按键取单值的新增函数能说出保留理由（新键 / 该键上无其他入口 / 旧接口保留成员），不是已有入口的投影；按显式 ID 数组批量读的函数写明下标对齐、无效即回滚不补空
+- [ ] 数组、批量参数和分页参数有最大边界；只读、无状态写、按显式 ID 取详情的批量查询可以不设上限，但规格必须写明理由
 
 #### 5. 数学和单位
 
@@ -135,7 +137,7 @@ rg -n 'core\.md|action\.md|group-chat\.md|launchFirstToken|initializeGenesis|TOD
 | --- | --- | --- |
 | 身份 | `CONTEXT.md`、Core、Action、Group Chat | 业务主体是否始终是 `memberId` |
 | 时间 | `CONTEXT.md`、`core/03`、`action/02`、Group Chat Query | Phase、治理 Round、行动轮次是否可推导且不冲突 |
-| 回调 | `core/05`、`core/06`、`action/01`、CHANGES | 签名、参数顺序、KV、失败回滚是否一致 |
+| 回调 | `core/05`、`core/06`、`action/01`、CHANGES | 签名、参数顺序、透传数据（core 为 Target Data，action 为 KV）、失败回滚是否一致 |
 | 激励 | `core/07`、`action/07`、`acceptance.md` | 预留、铸造、销毁和分配是否守恒 |
 | 发射 | `core/00`、`core/08`、`acceptance.md`、CHANGES | `Launch.init`、首币、次数和阈值是否一致 |
 | 参与 | `action/01`、`action/03`、Group Chat 类型 | 加入/退出、forceExit、资产和资格来源是否一致 |

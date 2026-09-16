@@ -4,7 +4,7 @@
 
 事件和错误定义分别位于 [`IMemberNFT.sol`](../../../interfaces/core/IMemberNFT.sol)、[`IPhase.sol`](../../../interfaces/core/IPhase.sol)、[`IStake.sol`](../../../interfaces/core/IStake.sol)、[`ISubmit.sol`](../../../interfaces/core/ISubmit.sol)、[`IVote.sol`](../../../interfaces/core/IVote.sol)、[`IMint.sol`](../../../interfaces/core/IMint.sol)、[`ILaunch.sol`](../../../interfaces/core/ILaunch.sol) 和 [`ILOVE20Token.sol`](../../../interfaces/core/ILOVE20Token.sol)。
 
-必须拒绝无效成员或非来源控制者、零 Target/Distributor、非法模式、KV 长度不等、重复 Proposal/推举、投票超额、Round 未结束或未准备、重复铸造/销毁、待解锁时追加或融合、解锁期不足、跨社区次数操作、次数不足或超上限。未冻结专用 selector 的拒绝条件不能冒充已确定 ABI。
+必须拒绝无效成员或非来源控制者、零 Target/Distributor、非法模式、Target Data 长度不等、重复 Proposal/推举、投票超额、Round 未结束或未准备、重复铸造/销毁、待解锁时追加或融合、解锁期不足、跨社区次数操作、次数不足或超上限。未冻结专用 selector 的拒绝条件不能冒充已确定 ABI。
 
 批量治理激励中任一 Round 无效，以及 Pair、Router、Target、distributor 回调等外部调用失败时，整笔交易回滚。
 
@@ -19,6 +19,12 @@
 | [Stake](04-stake.md) | 两类资产统一解锁；向非自有目标融合 | 只增目标状态；同一等待期后提取两类资产 |
 | Stake | LP 份额、手续费销毁统计、Uniswap V2 兼容 DEX、加速历史继承 | 份额/资产/历史与模块公式一致，不因无记录而错误复活 |
 | [Proposal](05-submit.md) / [Vote](06-vote.md) | 零 Target、三类回调失败 | 拒绝并整体回滚 |
+| Proposal | `proposalIds`/`proposalIdsByAuthor`/`submitInfos` 分页：`offset` 越界、`limit` 超剩余、`reverse`、只取总数 | 三个查询都按 `(offset, limit, reverse)` 按页返回并给出真实总数，越界返回空数组且不回滚，`reverse` 时从新到旧；`proposalIds`/`proposalIdsByAuthor` 只回 `proposalId`；`limit = 0` 只回总数 |
+| Proposal | `proposalInfosByIds(proposalIds[])` 批量：未分配 ID、批量缺项、批量大小 | 回 `ProposalInfo` 数组，与入参下标一一对应，无长度上限；任一 ID 未分配回滚 `ProposalNotFound`，不静默补空 |
+| Proposal | `submitInfos` 记录内容与轮次边界：同轮多笔推举、无推举的 Round、未开始的 Round | 每条记录同时含 `submitterId` 与 `proposalId`；无推举或未开始的 Round 返回空数组与 `0` 而不回滚 |
+| Proposal | 两条方向单键：`proposalIdBySubmitter` 与 `submitterIdByProposalId` 互为逆、回 `0` 的三种情形 | 已推举时两条互为逆映射；未分配过的 `proposalId`、已分配但本轮未推举、本轮未推举的成员都回 `0` 而不回滚 |
+| Proposal | `submitNewProposal` 创建后立即推举：事件顺序、回调顺序、本轮名额、`Phase.sync` | 同一笔内先 `ProposalCreated` 后 `ProposalSubmitted`，先 `onProposalCreated` 后 `onProposalSubmitted`；写满三处推举状态并占用本 Round 名额；本轮首笔推举触发 `sync` |
+| Proposal | 两个入口的名额与去重交叉：先 `submitNewProposal` 再 `submit`、同轮重复创建、跨轮推举已有 Proposal | 同一成员同轮第二次推举回滚 `OnlyOneSubmitPerRound`；同一 Proposal 同轮第二次回滚 `AlreadySubmitted`；跨轮推举已有 Proposal 成功且不触发创建回调 |
 | [Mint](07-mint.md) | Round 准备、单 Proposal 结算、重复准备 | 每轮仅预留一次，单项不能重复结算 |
 | Mint | 约 300 个 Proposal 的准备、缓存读取 | 准备阶段一次扫描并缓存达标 Proposal 总票数；后续单项结算不再扫描 Vote 列表，重复准备不改缓存 |
 | Mint | 两种零总量、三段治理结果、批量多轮 | 预留不重加，销毁不重复，任一失败整体回滚 |
