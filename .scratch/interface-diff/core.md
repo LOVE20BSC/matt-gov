@@ -81,7 +81,7 @@ OZ 5 的标准回滚由固定依赖提供：`IERC721Errors`、`ERC721OutOfBounds
 | 错误 `InvalidPhase(uint256)`、`InvalidKeyOrder()` | 无 | 新增 |
 | 无 | 错误 `RoundNotStarted()` | 删除（改由 Phase 的 `InvalidPhase` 承担；Action Executor 与 Group Chat 各自另声明同名错误） |
 
-旧 4 个函数全部改名（`originBlocks`→`ORIGIN_BLOCKS`、`phaseBlocks`→`currentPhaseBlocks`、`currentRound`→`currentPhase`、`roundByBlockNumber`→`phaseAtBlock`）；新 11 个函数 = 改名 4 + 新增 7。旧唯一错误 `RoundNotStarted` 删除，新错误 2 个均为新增。新 `IPhase` 新增的四个配置 getter 对应构造函数新增的四个参数（`TARGET_SECONDS` 由 `TARGET_DAYS` 换算），`SYNC_OBSERVATION_LIMIT` 约束 `sync` 单次可处理的观测条数。
+旧 4 个函数全部改名（`originBlocks`→`ORIGIN_BLOCKS`、`phaseBlocks`→`currentPhaseBlocks`、`currentRound`→`currentPhase`、`roundByBlockNumber`→`phaseAtBlock`）；新 11 个函数 = 改名 4 + 新增 7。旧唯一错误 `RoundNotStarted` 删除，新错误 2 个均为新增。新 `IPhase` 新增的四个配置 getter 对应构造函数新增的四个参数，`SYNC_OBSERVATION_LIMIT` 约束 `sync` 单次可处理的观测条数。
 
 旧 `IPhase` 被 6 个 core 接口继承并因此隐式暴露 `currentRound()`；新 `IPhase` 是独立合约接口，不被继承。
 
@@ -342,7 +342,7 @@ OZ 5 的标准回滚由固定依赖提供：`IERC721Errors`、`ERC721OutOfBounds
 
 ## 7. ILaunch vs ILOVE20Launch
 
-旧：`LOVE20TKM/core/src/interfaces/ILOVE20Launch.sol`。变化最大的接口：旧版是「公平发射募资 + 认购 + 领取」，新版是「子币创建 + 发射次数账本」。整块募资分配业务不迁移（`launch` 代码库本阶段不创建）。
+旧：`LOVE20TKM/core/src/interfaces/ILOVE20Launch.sol`，并整体并入 `ILOVE20TokenFactory.sol`（其成员去向见「删除的旧函数」之后）。变化最大的接口：旧版是「公平发射募资 + 认购 + 领取」，新版是「子币创建 + 发射次数账本」。整块募资分配业务不迁移（`launch` 代码库本阶段不创建）。
 
 接口组织：旧文件为 `ILOVE20LaunchErrors` → `ILOVE20LaunchEvents` → `ILOVE20Launch` 三段，新 `ILaunch.sol` 保留同样三段（`ILaunchErrors` → `ILaunchEvents` → `ILaunch`）；枚举 `DistributorMode` 置于文件作用域顶部，与旧文件在顶部放 `struct LaunchInfo` 和常量一致。
 
@@ -377,7 +377,19 @@ OZ 5 的标准回滚由固定依赖提供：`IERC721Errors`、`ERC721OutOfBounds
 | 募资参数常量 | `FIRST_PARENT_TOKEN_FUNDRAISING_GOAL`、`PARENT_TOKEN_FUNDRAISING_GOAL`、`SECOND_HALF_MIN_BLOCKS`、`WITHDRAW_WAITING_BLOCKS` |
 | 发射资格门槛 | `MIN_GOV_REWARD_MINTS_TO_LAUNCH`（改为 `launchCount` 账本 + `maxLaunchCount` 上限） |
 | 代币枚举（按发射者或募资状态） | `childTokensByLauncherCount`/`AtIndex`、`launchingTokensCount`/`AtIndex`、`launchedTokensCount`/`AtIndex`、`launchingChildTokensCount`/`AtIndex`、`launchedChildTokensCount`/`AtIndex`、`participatedTokensCount`/`AtIndex`（代币列表、某社区子币列表和符号账本保留为分页查询与 `tokenAddressBySymbol`，见上表；按成员聚合的发射历史由 `TokenLaunched` 的 `launcherMemberId` 链下索引） |
-| 依赖地址 | `submitAddress()` |
+| 依赖地址 | `submitAddress()`、`tokenFactoryAddress()` |
+
+旧 36 个函数 = 保留 4 + 改参 1 + 改名+改参 1 + 合并 4 + 删除 26；新 20 个 = 保留 4 + 改参 1 + 改名+改参 1 + 合并 2 + 新增 12。`tokensCount`+`tokensAtIndex`、`childTokensCount`+`childTokensAtIndex` 各合成一个分页函数，故旧侧 4 个计数为新侧 2 个。
+
+`tokenFactoryAddress()` 随 `ILOVE20TokenFactory` 一并消失：新 `Launch` 自己创建代币（`init` 建首币、`launchToken` 建子币），不再有独立工厂。旧 `ILOVE20TokenFactory` 的其余成员去向如下，`AlreadyInitialized()`、`EmptyString(string)`、`InvalidAmount()`、`UnauthorizedCaller()` 四个错误与 `ILaunchErrors` 同名项合并，`ZeroAddress(string parameter)` 统一为 `InvalidAddress()`。
+
+| 旧 `ILOVE20TokenFactory` 成员 | 去向 |
+| --- | --- |
+| `mintAddress()`、`LAUNCH_AMOUNT()`、`MAX_SUPPLY()` | `ILaunch` 同名保留 |
+| `createToken(parentTokenAddress, name, symbol)` | 折入 `Launch.init`（首币）与 `ILaunch.launchToken`（子币） |
+| 事件 `TokenCreate(tokenAddress, parentTokenAddress, name, symbol)` | 并入 `ILaunchEvents.TokenLaunched`（补 `launcherMemberId`/`distributor`） |
+| `MAX_WITHDRAWABLE_TO_FEE_RATIO()`、`uniswapV2Factory()` | 跨接口迁移到 `IStake`（`pairFactoryAddress()` 承接 Pair Factory 地址） |
+| `launchAddress()`、`stakeAddress()` | 删除（前者是工厂回指其调用方，后者随 Pair 生命周期移出 Launch） |
 
 MemberNFT 的配置 getter 同样遵循大写命名；`MAX_NAME_LENGTH()` 仅去掉旧名中的 `GROUP`，其余配置 getter 保持旧名。
 
@@ -387,7 +399,7 @@ MemberNFT 的配置 getter 同样遵循大写命名；`MAX_NAME_LENGTH()` 仅去
 
 | 新 | 旧 | 状态 |
 | --- | --- | --- |
-| `TokenLaunched(tokenAddress, parentTokenAddress, uint256 launcherMemberId, address distributor, string name, string symbol)` | `LaunchToken(tokenAddress, string tokenSymbol, parentTokenAddress, address account)`、`TokenCreated(...)` | 合并创建与发射事件；增加与最终 LOVE20Token 一致的 `name`/`symbol` |
+| `TokenLaunched(tokenAddress, parentTokenAddress, uint256 launcherMemberId, address distributor, string name, string symbol)` | `LaunchToken(tokenAddress, string tokenSymbol, parentTokenAddress, address account)`、`TokenCreate(tokenAddress, parentTokenAddress, string name, string symbol)` | 合并创建与发射事件（`TokenCreate` 来自旧 `ILOVE20TokenFactory`）；增加 `launcherMemberId`/`distributor` |
 | `LaunchCountAdded`、`LaunchCountMerged` | 无 | 新增 |
 | 无 | `Contribute`、`Withdraw`、`Claim`、`SecondHalfStart`、`LaunchEnd` | 删除 |
 

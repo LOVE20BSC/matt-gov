@@ -4,9 +4,9 @@ Phase 维护连续的无语义时间片、同步观测和动态校准，不内�
 
 ## 参数与查询
 
-`ORIGIN_BLOCKS`、`ORIGIN_PHASE_BLOCKS`、`targetDays` 为正数；`ADJUST_THRESHOLD` 使用 `1e18` 精度且大于零，`SYNC_OBSERVATION_LIMIT` 为正数。`block.number == ORIGIN_BLOCKS` 时为 Phase 1；不存在有效 Phase 0。`TARGET_SECONDS = targetDays * 86400`，如 7 天。
+`ORIGIN_BLOCKS`、`ORIGIN_PHASE_BLOCKS`、`TARGET_SECONDS` 为正数；`ADJUST_THRESHOLD` 使用 `1e18` 精度且大于零，`SYNC_OBSERVATION_LIMIT` 为正数。`block.number == ORIGIN_BLOCKS` 时为 Phase 1；不存在有效 Phase 0。`TARGET_SECONDS` 是每个 Phase 的目标自然时长，单位秒，7 天为 `604800`。
 
-构造参数为 `ORIGIN_BLOCKS`、`ORIGIN_PHASE_BLOCKS`、`targetDays`、`ADJUST_THRESHOLD` 和 `SYNC_OBSERVATION_LIMIT`；完整运行时 ABI 见 [`IPhase.sol`](../../../interfaces/core/IPhase.sol)。`SYNC_OBSERVATION_LIMIT` 为正数，用于初始化每轮同步前的快速回溯条数。
+构造参数为 `ORIGIN_BLOCKS`、`ORIGIN_PHASE_BLOCKS`、`TARGET_SECONDS`、`ADJUST_THRESHOLD` 和 `SYNC_OBSERVATION_LIMIT`；完整运行时 ABI 见 [`IPhase.sol`](../../../interfaces/core/IPhase.sol)。`SYNC_OBSERVATION_LIMIT` 为正数，用于初始化每轮同步前的快速回溯条数。
 
 | 接口 | 返回或作用 |
 | --- | --- |
@@ -37,13 +37,13 @@ Phase 维护连续的无语义时间片、同步观测和动态校准，不内�
 
 1. 先从最近观测向前检查最多 `SYNC_OBSERVATION_LIMIT` 条；仍未找到合格观测时，通过 `OrderedHistoryIndex` 二分查找最近的合格观测。
 2. 对满足条件的记录计算以下公式，除法向下取整。
-3. `deviation > adjustThreshold` 才调整，等于阈值时不调整。
+3. `deviation > ADJUST_THRESHOLD` 才调整，等于阈值时不调整。
 4. 新长度至少为 1，只用于尚未生成的 Phase，已生成阶段不回写。
 
 ```text
-observedPhaseBlocks = floor(elapsedBlocks * targetSeconds / elapsedSeconds)
-deviation = floor(abs(observedPhaseBlocks - currentPhaseBlocks) * 1e18 / currentPhaseBlocks)
-newPhaseBlocks = max(1, observedPhaseBlocks)
+observed = floor(elapsedBlocks * TARGET_SECONDS / elapsedSeconds)
+deviation = floor(abs(observed - currentPhaseBlocks) * 1e18 / currentPhaseBlocks)
+newPhaseBlocks = max(1, observed)
 ```
 
 `deviation` 是比例表达式，不能先用整数除法截成零再与阈值比较。`elapsedBlocks` 和 `elapsedSeconds` 是选定观测到本次同步的区块差与秒差。
@@ -60,8 +60,8 @@ Submit 和 Vote 的 `currentRound()` 等于 `Phase.currentPhase()`。创建、�
 
 - 默认从最近观测向前检查最多 `SYNC_OBSERVATION_LIMIT` 条；仍未找到合格观测时，通过 `OrderedHistoryIndex` 二分查找最近的合格观测。
 - 没有合格观测、`elapsedBlocks == 0` 或 `elapsedSeconds == 0` 时只记录观测，不调整参数。
-- 偏差阈值由初始化参数 `adjustThreshold` 提供，按 `1e18` 精度；超过阈值才调整。
-- 新长度为 `max(1, floor(elapsedBlocks * targetSeconds / elapsedSeconds))`；已生成 Phase 不回写。
-- `block.number < originBlocks` 时 `currentPhase()` 和 `phaseAtBlock(block.number)` 返回 `0`；`phaseInfo(0)` 无效。
+- 偏差阈值由初始化参数 `ADJUST_THRESHOLD` 提供，按 `1e18` 精度；超过阈值才调整。
+- 新长度为 `max(1, floor(elapsedBlocks * TARGET_SECONDS / elapsedSeconds))`；已生成 Phase 不回写。
+- `block.number < ORIGIN_BLOCKS` 时 `currentPhase()` 和 `phaseAtBlock(block.number)` 返回 `0`；`phaseInfo(0)` 无效。
 
 验收见 [Core 验收](09-testing.md)。

@@ -48,7 +48,7 @@
 
 ### 核心设计
 - **无业务语义**：Phase 只维护连续时间片，不命名具体阶段
-- **动态校准**：根据实际区块时间自动调整 `phaseBlocks`，使每个 Phase 接近目标自然天数
+- **动态校准**：根据实际区块时间自动调整 `currentPhaseBlocks`，使每个 Phase 接近目标自然天数
 - **固定映射**：Core 治理和 Action 层各 Executor 按各自规格把 Phase 映射为业务轮次
 
 ### 关键特性
@@ -57,7 +57,7 @@
 - `sync()` 任何地址可调用；按调用前 `currentPhase()` 全局限频，每个治理投票 Round 最多一次有效同步
 - 同轮重复 `sync()` 无操作返回，不追加观测、不调整参数、不发事件，不能阻塞 Submit
 - Submit 每轮首个推举自动调用一次 `sync()`；已同步时该调用无操作返回
-- 默认先回溯最近 10 条观测，未命中时二分查找；偏差阈值 `adjustThreshold` 在初始化时配置
+- 默认先回溯最近 10 条观测，未命中时二分查找；偏差阈值 `ADJUST_THRESHOLD` 在初始化时配置
 
 ### 为什么新增
 - 不同行动类型需要不同阶段数（LP 3阶段，链群 4阶段）
@@ -240,7 +240,7 @@
 
 - `isLOVE20Token` 的登记判定
 - `tokenSymbol` 的长度与字符集校验
-- `tokenSymbol + "@" + parentSymbol` 名称拼法，以及父币符号前 4 字节为 `Test` 时施加的测试网前缀（校验之后施加，实际符号可超出配置长度）
+- `tokenSymbol + "@" + parentTokenSymbol` 名称拼法，以及父币符号前 4 字节为 `Test` 时施加的测试网前缀（校验之后施加，实际符号可超出配置长度）
 - `launchToken` 的“检查—创建—登记”外部调用骨架
 
 ### 🆕 新增设计（旧实现中不存在）
@@ -300,6 +300,7 @@
 ### 🔄 BSC 调整
 - Launch 内部创建逻辑接收非零 `distributor`，首批供应量直接铸给该地址
 - 删除 SL/ST 实例创建及其 Stake 依赖；Pair 生命周期移入 `Stake`，由其在首次 LP 质押时按需创建
+- `MAX_WITHDRAWABLE_TO_FEE_RATIO` 与 Pair Factory 地址一并移入 `Stake`：前者原在 `ILOVE20TokenFactory` 和 `ILOVE20SLToken` 各有一份，现只由 `IStake.MAX_WITHDRAWABLE_TO_FEE_RATIO()` 提供；后者即旧 `ILOVE20TokenFactory.uniswapV2Factory()`，现为 `IStake.pairFactoryAddress()`
 - 首个代币依赖 Airdrop 合约分发（来源：LOVE20TKM/burn）
 - 删除 `burnForParentToken`、`parentPool()`、`BurnForParentToken` 事件和 `InsufficientBalance` 错误：BSC 版不再由代币合约承担父币赎回，社区手续费中父币的换币与销毁由 `Stake` 结算（见 [Stake](core/04-stake.md)）；`parentTokenAddress` 保留，`Stake` 用它判定代币是否已登记。同时移除随之不再需要的 `ReentrancyGuard` 继承
 
@@ -371,4 +372,4 @@
 4. **发射次数融合**：部分融合、向非调用者持有的目标 NFT 转移
 5. **治理激励拆分**：三段返回值（voteReward, boostReward, burnReward）
 6. **批量多轮铸造**：原子性，任一 Round 失败则整笔回滚
-7. **Phase 动态校准**：由初始化的 `adjustThreshold` 控制，超过阈值时计算新 phaseBlocks
+7. **Phase 动态校准**：由初始化的 `ADJUST_THRESHOLD` 控制，超过阈值时计算新 currentPhaseBlocks

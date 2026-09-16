@@ -31,7 +31,7 @@ Launch 负责首币部署、LOVE20Token 创建、基础发射与次数账本。T
 
 `launchAmount` 必须大于零，`maxSupply` 必须不小于 `launchAmount`，即 `0 < launchAmount <= maxSupply`；两者相等是合法配置。零供应代币不可创建：LOVE20Token 构造函数独立拒绝零 `initialSupply`，绕过 `init` 直接部署同样回滚 `InvalidSupply()`。
 
-首币符号不套用 `TOKEN_SYMBOL_LENGTH` 校验：旧实现的第一个代币走 `tokensCount() == 0` 分支，跳过符号校验与测试网 `Test` 前缀（名称仍按 `tokenSymbol + "@" + parentSymbol` 拼接）；BSC 版由 `init` 参数直接给定首币名称和符号，因此首币符号长度可以与配置的子币符号长度不同。
+首币符号不套用 `TOKEN_SYMBOL_LENGTH` 校验：旧实现的第一个代币走 `tokensCount() == 0` 分支，跳过符号校验与测试网 `Test` 前缀（名称仍按 `tokenSymbol + "@" + parentTokenSymbol` 拼接）；BSC 版由 `init` 参数直接给定首币名称和符号，因此首币符号长度可以与配置的子币符号长度不同。
 
 首币 `distributor` 为 Burn 活动结束后由旧 `LOVE20TKM/burn` 来源单独部署的 Airdrop；Burn 业务不迁移。旧仓库只读，来源提交、来源区块、Merkle Root、部署地址及公开源码证据见 [仓库清单](../../repositories.md)。不能把部署外部 Airdrop 误写为改造旧仓库。
 
@@ -92,7 +92,7 @@ Launch 只保存“成员可用整数次数”和“社区累计已产生次数�
 
 发射、次数和代币查询接口均见 [`ILaunch.sol`](../../../interfaces/core/ILaunch.sol)。
 
-`memberId` 必须由调用者当前持有；不用地址默认 NFT 映射。发射只检查账本余量和 NFT 当前所有权，不要求推举资格：旧 `remainingLaunchCount` 中的 `Submit.canSubmit` 门槛已取消，`submitAddress` 依赖同步删除。名称沿用旧 Launch 的 `tokenSymbol + "@" + parentSymbol` 生成方式。
+`memberId` 必须由调用者当前持有；不用地址默认 NFT 映射。发射只检查账本余量和 NFT 当前所有权，不要求推举资格：旧 `remainingLaunchCount` 中的 `Submit.canSubmit` 门槛已取消，`submitAddress` 依赖同步删除。名称沿用旧 Launch 的 `tokenSymbol + "@" + parentTokenSymbol` 生成方式。
 
 `tokenSymbol` 的合法性沿用旧实现：长度必须等于部署配置的符号长度；首字符必须为 ASCII `A-Z`；其余字符必须为 ASCII `A-Z` 或 `0-9`。不满足时回滚 `InvalidTokenSymbol()`。
 
@@ -123,7 +123,7 @@ distributor 自行实现领取与查询逻辑，`claim(tokenAddress)` 只是建�
 | `launchCount[parentTokenAddress][memberId] == 0` | `NotEnoughLaunchCount()` |
 | 施加 `Test` 前缀后的最终符号已登记 | `TokenSymbolExists()` |
 
-名称只按 `tokenSymbol + "@" + parentSymbol` 生成，不另存名称账本。
+名称只按 `tokenSymbol + "@" + parentTokenSymbol` 生成，不另存名称账本。
 
 ## 事件
 
@@ -138,7 +138,7 @@ distributor 自行实现领取与查询逻辑，`claim(tokenAddress)` 只是建�
 次数消耗不单独发事件：`launchToken` 每次成功都发 `TokenLaunched`，且每次发射恰消耗一次次数，因此消耗历史可由 `TokenLaunched` 重建，余量可用 `launchCount` 直接查询；再发一个消耗事件只会重复同一笔交易的同一事实。
 
 - 首币由 `init` 发出 `TokenLaunched`（`launcherMemberId = 0`）；`init`、`launchToken`、`addLaunchCount`、`mergeLaunchCount` 之外的入口不产生上述事件。
-- `TokenLaunched` 同时记录创建和发射所需的代币元数据；不再另发 `TokenCreated`。
+- `TokenLaunched` 同时记录创建和发射所需的代币元数据；不再另发旧 `ILOVE20TokenFactory` 的 `TokenCreate`。
 - 链上查询覆盖全部已发射代币、某社区的子币列表和符号到地址（见 [代币登记与查询](#代币登记与查询)）；按成员聚合的发射历史仍由 `TokenLaunched` 的 `launcherMemberId` 链下索引。
 
 ## LOVE20Token 创建
@@ -155,6 +155,6 @@ LOVE20Token 使用构造函数接收 `name`、`symbol`、`initialSupply`、`maxS
 - `MemberNFT.init(firstToken)` 由 `Launch.init` 在创建首币时同步调用完成；MemberNFT 不保存 Launch 地址，费用代币地址是唯一外部地址依赖。
 - `mintAddress` 在 `init` 后不可变更，并作为此后每个 LOVE20Token 的 `minter`。升级 Mint 需要连同 `Launch` 一起重部署，已发射代币的 `minter` 不会随之改写。
 
-旧来源 `LOVE20TKM/core/src/LOVE20Launch.sol`（提交见[旧代码基线](../../repositories.md#旧代码基线)）已逐项核对。BSC 版**保留**的旧行为：`isLOVE20Token` 的登记判定、`tokenSymbol` 的长度与字符集校验、`tokenSymbol + "@" + parentSymbol` 名称拼法与测试网 `Test` 前缀、`launchToken` 的“检查—创建—登记”外部调用骨架、代币列表与某社区子币列表的链上枚举（旧 `tokensCount`/`tokensAtIndex`、`childTokensCount`/`childTokensAtIndex` 改为分页查询）、符号到地址账本（旧 `tokenAddressBySymbol` 与 `TokenSymbolExists` 唯一性校验），以及代币地址到父币地址（旧 `LaunchInfo.parentTokenAddress`）。其余整块删除：公平发射募资与认购领取（`contribute`/`withdraw`/`claim`/`claimInfo`）、`LaunchInfo` 的其余 10 个字段、`CLAIM_DELAY_BLOCKS`，以及按发射者或募资状态划分的其余枚举（`childTokensByLauncher*`、`launching*`、`launched*`、`participatedTokens*`）。次数阈值换算、额度余数结转、社区上限和次数融合都不在旧实现中，属新设计，见 [Mint 的发射额度](07-mint.md#发射额度的生成)。
+旧来源 `LOVE20TKM/core/src/LOVE20Launch.sol`（提交见[旧代码基线](../../repositories.md#旧代码基线)）已逐项核对。BSC 版**保留**的旧行为：`isLOVE20Token` 的登记判定、`tokenSymbol` 的长度与字符集校验、`tokenSymbol + "@" + parentTokenSymbol` 名称拼法与测试网 `Test` 前缀、`launchToken` 的“检查—创建—登记”外部调用骨架、代币列表与某社区子币列表的链上枚举（旧 `tokensCount`/`tokensAtIndex`、`childTokensCount`/`childTokensAtIndex` 改为分页查询）、符号到地址账本（旧 `tokenAddressBySymbol` 与 `TokenSymbolExists` 唯一性校验），以及代币地址到父币地址（旧 `LaunchInfo.parentTokenAddress`）。其余整块删除：公平发射募资与认购领取（`contribute`/`withdraw`/`claim`/`claimInfo`）、`LaunchInfo` 的其余 10 个字段、`CLAIM_DELAY_BLOCKS`，以及按发射者或募资状态划分的其余枚举（`childTokensByLauncher*`、`launching*`、`launched*`、`participatedTokens*`）。次数阈值换算、额度余数结转、社区上限和次数融合都不在旧实现中，属新设计，见 [Mint 的发射额度](07-mint.md#发射额度的生成)。
 
 验收见 [Core 验收](09-testing.md)。
