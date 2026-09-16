@@ -33,6 +33,9 @@ interface IStakeErrors {
     error SourceAndTargetMustBeDifferent();
     error SourceHasVotedInCurrentRound();
     error TargetPromisedWaitingPhasesTooShort();
+    error InvalidAddress();
+    error ZeroAmount(string parameter);
+    error InvalidAmount();
 }
 
 interface IStakeEvents {

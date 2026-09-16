@@ -98,25 +98,87 @@ Vote 每次投票通过 `Stake.validGovVotes(tokenAddress, memberId)` 读取当�
 
 ## 拒绝条件与错误
 
-各接口的校验与回滚：
+各入口按「参数 → 存在性 → 持有 → 账本」的顺序校验，先命中的条件先回滚，同一入口内不重排。事件与错误定义见 [`IStake.sol`](../../../interfaces/core/IStake.sol)。
 
-| 条件 | 回滚错误 |
-| --- | --- |
-| `init` 重复调用 | `AlreadyInitialized()` |
-| Round 0 时调用 `stakeLiquidity` | `NotAllowedToStakeAtRoundZero()` |
-| `stakeLiquidity` 或 `stakeBoost` 的金额为零 | `StakeAmountMustBeSet()` |
-| `promisedWaitingPhases` 不在 `[PROMISED_WAITING_PHASES_MIN, PROMISED_WAITING_PHASES_MAX]` 范围 | `PromisedWaitingPhasesOutOfRange()` |
-| 追加质押或加速时 `promisedWaitingPhases` 小于已有值 | `PromisedWaitingPhasesMustBeGreaterOrEqualThanBefore()` |
-| `unstake` 时已申请解锁 | `UnstakeAlreadyRequested()` |
-| `unstake` 时无流动性质押 | `NoStakedLiquidity()` |
-| `withdraw` 时未申请解锁 | `UnstakeNotRequested()` |
-| `withdraw` 时等待期未满足 | `NotEnoughWaitingPhases()` |
-| `tokenAddress` 不是已登记 LOVE20 代币或 Pair 为零地址 | `InvalidTokenAddress()` |
-| `memberId` 不存在或为 `0` | `InvalidMemberId()` |
-| 调用者不持有指定 `memberId` 的 NFT | `NotMemberOwner(memberId)` |
-| `mergeStake` 时源与目标相同 | `SourceAndTargetMustBeDifferent()` |
-| `mergeStake` 时源在当前治理 Round 已有非零投票 | `SourceHasVotedInCurrentRound()` |
-| `mergeStake` 时目标非空且等待期短于源 | `TargetPromisedWaitingPhasesTooShort()` |
+`tokenAddress` 的有效性统一按两条判定：`ILOVE20Token(tokenAddress).parentTokenAddress()` 返回零地址，即不是已登记 LOVE20 代币；需要 Pair 的入口再判 `pairAddress[tokenAddress]` 为零地址。两者都回滚 `InvalidTokenAddress()`。
+
+### `init`
+
+| 顺序 | 条件 | 回滚错误 |
+| --- | --- | --- |
+| 1 | 已初始化 | `AlreadyInitialized()` |
+| 2 | `phaseAddress`、`memberNFTAddress`、`voteAddress`、`routerAddress`、`pairFactoryAddress` 任一为零地址 | `InvalidAddress()` |
+| 3 | `promisedWaitingPhasesMin` 为零 | `ZeroAmount("promisedWaitingPhasesMin")` |
+| 4 | `maxWithdrawableToFeeRatio` 为零 | `ZeroAmount("maxWithdrawableToFeeRatio")` |
+| 5 | `promisedWaitingPhasesMin` 大于 `promisedWaitingPhasesMax` | `InvalidAmount()` |
+
+### `stakeLiquidity`
+
+| 顺序 | 条件 | 回滚错误 |
+| --- | --- | --- |
+| 1 | `tokenAmount` 或 `parentTokenAmount` 为零 | `StakeAmountMustBeSet()` |
+| 2 | `promisedWaitingPhases` 不在 `[PROMISED_WAITING_PHASES_MIN, PROMISED_WAITING_PHASES_MAX]` 范围 | `PromisedWaitingPhasesOutOfRange()` |
+| 3 | `tokenAddress` 无效，或首次质押时 Pair 为零地址 | `InvalidTokenAddress()` |
+| 4 | 当前 Phase 为 `0` | `NotAllowedToStakeAtRoundZero()` |
+| 5 | `memberId` 为 `0` | `InvalidMemberId()` |
+| 6 | 调用者不持有指定 `memberId` 的 NFT | `NotMemberOwner(memberId)` |
+| 7 | 已申请解锁 | `UnstakeAlreadyRequested()` |
+| 8 | `promisedWaitingPhases` 小于已有值 | `PromisedWaitingPhasesMustBeGreaterOrEqualThanBefore()` |
+
+### `stakeBoost`
+
+| 顺序 | 条件 | 回滚错误 |
+| --- | --- | --- |
+| 1 | `boostAmount` 为零 | `StakeAmountMustBeSet()` |
+| 2 | `promisedWaitingPhases` 不在 `[PROMISED_WAITING_PHASES_MIN, PROMISED_WAITING_PHASES_MAX]` 范围 | `PromisedWaitingPhasesOutOfRange()` |
+| 3 | `tokenAddress` 无效 | `InvalidTokenAddress()` |
+| 4 | `memberId` 为 `0` | `InvalidMemberId()` |
+| 5 | 调用者不持有指定 `memberId` 的 NFT | `NotMemberOwner(memberId)` |
+| 6 | 已申请解锁 | `UnstakeAlreadyRequested()` |
+| 7 | 无流动性质押 | `NoStakedLiquidity()` |
+| 8 | `promisedWaitingPhases` 小于已有值 | `PromisedWaitingPhasesMustBeGreaterOrEqualThanBefore()` |
+
+### `unstake`
+
+| 顺序 | 条件 | 回滚错误 |
+| --- | --- | --- |
+| 1 | `tokenAddress` 无效 | `InvalidTokenAddress()` |
+| 2 | `memberId` 为 `0` | `InvalidMemberId()` |
+| 3 | 调用者不持有指定 `memberId` 的 NFT | `NotMemberOwner(memberId)` |
+| 4 | 已申请解锁 | `UnstakeAlreadyRequested()` |
+| 5 | 无流动性质押 | `NoStakedLiquidity()` |
+
+### `withdraw`
+
+| 顺序 | 条件 | 回滚错误 |
+| --- | --- | --- |
+| 1 | `tokenAddress` 无效，或 Pair 为零地址 | `InvalidTokenAddress()` |
+| 2 | `memberId` 为 `0` | `InvalidMemberId()` |
+| 3 | 调用者不持有指定 `memberId` 的 NFT | `NotMemberOwner(memberId)` |
+| 4 | 未申请解锁 | `UnstakeNotRequested()` |
+| 5 | 无流动性质押 | `NoStakedLiquidity()` |
+| 6 | 当前 Phase 小于 `unlockRequestPhase + promisedWaitingPhases` | `NotEnoughWaitingPhases()` |
+
+### `mergeStake`
+
+| 顺序 | 条件 | 回滚错误 |
+| --- | --- | --- |
+| 1 | 源与目标相同 | `SourceAndTargetMustBeDifferent()` |
+| 2 | `tokenAddress` 无效 | `InvalidTokenAddress()` |
+| 3 | 源或目标 `memberId` 为 `0` | `InvalidMemberId()` |
+| 4 | 调用者不持有源 `memberId` 的 NFT | `NotMemberOwner(sourceMemberId)` |
+| 5 | 源或目标已申请解锁 | `UnstakeAlreadyRequested()` |
+| 6 | 源无流动性质押 | `NoStakedLiquidity()` |
+| 7 | 源在当前治理 Round 已有非零投票 | `SourceHasVotedInCurrentRound()` |
+| 8 | 目标非空且其 `promisedWaitingPhases` 短于源 | `TargetPromisedWaitingPhasesTooShort()` |
+
+### `settleFees`
+
+| 顺序 | 条件 | 回滚错误 |
+| --- | --- | --- |
+| 1 | `tokenAddress` 无效，或 Pair 为零地址 | `InvalidTokenAddress()` |
+
+任何人可调用；未达结算阈值时无操作返回，不回滚。
 
 ## 实现约束
 
@@ -126,6 +188,8 @@ Vote 每次投票通过 `Stake.validGovVotes(tokenAddress, memberId)` 读取当�
 - 流动性写操作统一先校验参数和权限并锁定重入；读取 Pair 状态，在任何除法前处理 `pairTotalSupply == 0`、`currentSqrtKOfLp == 0` 和基准未增长；需要 Router、Pair 或 ERC20 调用时，以外部调用成功返回的实际数量计算并更新 `lastWithdrawableLp`、`lastFeeLp`、`lastSqrtKOfLp`、成员份额和社区总份额。任一步失败全部回滚。BSC 不使用 SL/ST 凭证，所有份额和可提取 LP 直接存入 Stake。
 - 手续费结算失败（Pair 取回、Router 兑换、销毁或统计更新任一失败）时整笔结算回滚；提取本金前自动结算手续费，手续费结算失败则提取也回滚。
 - 空目标沿用本文件的等待期继承例外；`MemberStake` 和 `GlobalStake` 结构体仅用于内部存储，不作为查询返回格式。
+- `InvalidMemberId()` 只覆盖 `memberId == 0`；`memberId` 非零但不存在的，由 `MemberNFT.ownerOf` 抛出 OpenZeppelin 的 `ERC721NonexistentToken`，与 `Launch` 的既有实现一致，不另作归一化。
+- 治理票为 `liquidityShares × promisedWaitingPhases`；`unlockRequestPhase != 0` 时 `validGovVotes` 返回 `0`，`globalGovVotes` 与全体成员 `validGovVotes` 之和保持一致，追加质押、提升等待期、申请解锁、融合、提取都要同步增减。
 - `stakeData()` 和 `globalStakeData()` 返回的 `tokenAmountForLiquidity` / `parentTokenAmountForLiquidity` 以及 `withdrawableLp` / `feeLp` 都是查询时根据当前 Pair 状态现算的值，不是直接读取存储的历史基准。
 - 分页查询 `globalBoostUpdatedRounds` 和 `boostUpdatedRounds` 使用 `(offset, limit, reverse)` 参数顺序并返回 `(rounds, totalCount)`，与 `IPhase`、`IMemberNFT`、`ILaunch` 的分页接口一致。
 
