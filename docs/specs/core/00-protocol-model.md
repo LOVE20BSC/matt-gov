@@ -44,7 +44,7 @@ Core 不解释具体 Proposal 的业务字段，扩展通过 Target 接入。
 | Launch | `launchRatio` | 发射阈值比例；状态变量和公开 getter 为 `LAUNCH_RATIO`，`1e18` 精度，如 `1e16 = 1%` |
 | Launch | `maxLaunchCount` | 每社区累计次数上限；状态变量和公开 getter 为 `MAX_LAUNCH_COUNT`，如 `100` |
 | Launch | `tokenSymbolLength` | 子币符号固定字节长度；状态变量和公开 getter 为 `TOKEN_SYMBOL_LENGTH`，沿用旧 Launch 校验 |
-| Launch | `LAUNCH_AMOUNT`、`MAX_SUPPLY` | 首批/最大供应量，Launch.init 固定；`launchAmount <= maxSupply` |
+| Launch | `LAUNCH_AMOUNT`、`MAX_SUPPLY` | 首批/最大供应量，Launch.init 固定；`0 < launchAmount <= maxSupply` |
 
 上述 Launch 参数按 `LaunchInitParams` 的字段顺序传入，字段名与参数名一致；结构体定义见 [`ILaunch.sol`](../../../interfaces/core/ILaunch.sol)。
 

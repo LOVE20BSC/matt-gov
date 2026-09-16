@@ -21,6 +21,7 @@ interface IMemberNFTErrors {
     error NameTooLong(uint256 length, uint256 maxLength);
     error NameInvalidCharacters();
     error AlreadyInitialized();
+    error FeeTransferFailed();
 }
 
 /// @dev The target contract also inherits OpenZeppelin's ERC721Enumerable,

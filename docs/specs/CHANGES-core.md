@@ -31,12 +31,13 @@
 
 旧 `LOVE20TKM/group/src/LOVE20Group.sol` 整体复制为 `core/MemberNFT.sol`，业务逻辑不改；行为规范见 [MemberNFT 规格](core/02-member-nft.md)。"协议唯一身份"仅指各业务合约以 `memberId` 为键使用它（见 Stake、Submit、Vote、Mint、Launch 各节），本合约不新增承载或转移规则。
 
-差异四项：
+差异五项：
 
 - **合约名与接口标识符**：`LOVE20Group` → `MemberNFT`，ERC721 名称 `LOVE20 Member NFT`、符号 `Member`；对外接口仅去除 group 字样且不重复 member（如 `groupNameOf` → `nameOf`、`GroupNameEmpty` → `NameEmpty`），持有人枚举另行改为分页（见下）——旧 Group 是成员身份 NFT，不是“群”的 NFT
 - **名称长度上限**：`64 bytes` → `32 bytes`（避免与钱包地址混淆）
 - **铸造费用代币地址**：由旧构造函数传入改为 `init(firstTokenAddress)`，由 `Launch.init` 在创建首币时同步调用一次
 - **持有人枚举改分页**：`holdersCount()` 与 `holdersAtIndex(uint256 index)` 合并为 `holders(uint256 offset, uint256 limit, bool reverse) returns (address[] memory holderList, uint256 totalCount)`；`offset` 大于或等于总数时返回空数组与真实总数、不回滚，配套删除错误 `HolderIndexOutOfBounds(uint256 length)`。分页语义与 `Phase.syncObservations` 一致。持有人集合的精确去重语义不变（地址去重、自转账既不加入也不移除、移除采用 swap-and-pop）
+- **铸造路径内部整理**：费用扣款由旧 `SafeERC20.safeTransferFrom` 的 `SafeERC20FailedOperation(address)` 改为 `IERC20.transferFrom` 失败后回滚 `FeeTransferFailed()`，回滚面全部落在 `IMemberNFT.sol`、不再依赖 OZ 库内错误；`_validateName` 顺带返回规范化名称，`mint` 内 `_toLowerCase` 只算一次。对外 ABI 只多出 `FeeTransferFailed`
 
 ---
 
@@ -286,6 +287,7 @@
 - Launch 内部创建逻辑接收非零 `distributor`，首批供应量直接铸给该地址
 - 删除 SL/ST 实例创建及其 Stake 依赖；Pair 生命周期移入 `Stake`，由其在首次 LP 质押时按需创建
 - 首个代币依赖 Airdrop 合约分发（来源：LOVE20TKM/burn）
+- 删除 `burnForParentToken`、`parentPool()`、`BurnForParentToken` 事件和 `InsufficientBalance` 错误：BSC 版不再由代币合约承担父币赎回，社区手续费中父币的换币与销毁由 `Stake` 结算（见 [Stake](core/04-stake.md)）；`parentTokenAddress` 保留，`Stake` 用它判定代币是否已登记。同时移除随之不再需要的 `ReentrancyGuard` 继承
 
 ### 📍 实现参考
 ```
