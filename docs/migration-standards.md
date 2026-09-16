@@ -91,11 +91,12 @@ LOVE20BSC 当前统一使用以下编译和依赖基线：
 | --- | --- | --- |
 | 轻量标识数组 | `<复数>Ids` | `proposalIds`、`votedSenderIds` |
 | 记录数组 | `<复数>Infos` | `submitInfos`、`chatInfos` |
+| 实体地址数组 | 裸集合名 | `tokens`、`childTokens`、`holders` |
 | 标量 | 不加后缀 | `isSubmitted`、`proposalIdBySubmitter` |
 | 按键筛选 | `By<key>` | `proposalIdsByAuthor`、`messagesBySender` |
 | 显式 ID 数组 | `ByIds` | `proposalInfosByIds` |
 
-裸集合名不用于返回数组的函数（看不出回的是标识还是记录）。**是否分页不进名字**——由入参 `(offset, limit, reverse)` 决定，不加 `Paginated`/`Paged`/`Page`/`List` 之类的记号，也不为同一集合另设无窗口的重载。作用域键（`tokenAddress`、`groupId`）是定位不是筛选，不进名字。
+裸集合名只用于元素本身是实体地址的数组：地址就是该实体的标识，其名称、符号等身份信息由该地址自己的合约提供，`Ids`/`Infos` 这类后缀在这里不承担区分作用，加了反而与「返回标识集合」混淆。元素是整数标识或记录时，裸集合名看不出回的是哪一种，必须带后缀。**是否分页不进名字**——由入参 `(offset, limit, reverse)` 决定，不加 `Paginated`/`Paged`/`Page`/`List` 之类的记号，也不为同一集合另设无窗口的重载。作用域键（`tokenAddress`、`groupId`）是定位不是筛选，不进名字。
 
 **集合只留一条完整读取路径**（分页或按 id 批量）。按键取单值的函数是叠加其上的，只在下面三种情况才留：
 

@@ -28,7 +28,7 @@ Core 不解释具体 Proposal 的业务字段，扩展通过 Target 接入。
 | MemberNFT 构造参数 | `bytesThreshold` | 短名称字节阈值；状态变量和公开 getter 为 `BYTES_THRESHOLD`，如 `7` |
 | MemberNFT 构造参数 | `multiplier` | 每缩短一字节的费用倍数；状态变量和公开 getter 为 `MULTIPLIER`，如 `10` |
 | MemberNFT 构造参数 | `maxNameLength` | 最大字节数；状态变量和公开 getter 为 `MAX_NAME_LENGTH`，如 `32` |
-| Phase 构造参数 | `originBlocks`、`phaseBlocks`、`targetDays`、`adjustThreshold` | 启动区块、初始区块数、目标天数、偏差阈值；前三者大于零，阈值使用 `1e18` 精度 |
+| Phase 构造参数 | `ORIGIN_BLOCKS`、`ORIGIN_PHASE_BLOCKS`、`targetDays`、`ADJUST_THRESHOLD`、`SYNC_OBSERVATION_LIMIT` | 启动区块、初始区块数、目标天数、偏差阈值、单次同步回溯上限；五项均须大于零，`TARGET_SECONDS = targetDays * 86400`，偏差阈值使用 `1e18` 精度 |
 | Stake | `phaseAddress`、`memberNFTAddress`、`voteAddress`、`routerAddress`、`pairFactoryAddress` | 时间、身份、融合投票检查、路由和 Pair Factory 依赖 |
 | Stake | `promisedWaitingPhasesMin`、`promisedWaitingPhasesMax` | 承诺解锁期的最小、最大 Phase 数 |
 | Submit | `phaseAddress`、`stakeAddress`、`memberNFTAddress` | 时间、质押和身份依赖 |
@@ -44,9 +44,9 @@ Core 不解释具体 Proposal 的业务字段，扩展通过 Target 接入。
 | Launch | `launchRatio` | 发射阈值比例；状态变量和公开 getter 为 `LAUNCH_RATIO`，`1e18` 精度，如 `1e16 = 1%` |
 | Launch | `maxLaunchCount` | 每社区累计次数上限；状态变量和公开 getter 为 `MAX_LAUNCH_COUNT`，如 `100` |
 | Launch | `tokenSymbolLength` | 子币符号固定字节长度；状态变量和公开 getter 为 `TOKEN_SYMBOL_LENGTH`，沿用旧 Launch 校验 |
-| Launch | `LAUNCH_AMOUNT`、`MAX_SUPPLY` | 首批/最大供应量，Launch.init 固定；`0 < launchAmount <= maxSupply` |
+| Launch | `launchAmount`、`maxSupply` | 首批/最大供应量，`Launch.init` 固定；状态变量和公开 getter 为 `LAUNCH_AMOUNT`、`MAX_SUPPLY`；`0 < launchAmount <= maxSupply` |
 
-上述 Launch 参数按 `LaunchInitParams` 的字段顺序传入，字段名与参数名一致；结构体定义见 [`ILaunch.sol`](../../../interfaces/core/ILaunch.sol)。
+上表的 Launch 行按含义分组，不表示传参顺序；`Launch.init` 只接受一个 `LaunchInitParams`，实参顺序即结构体字段顺序（依赖地址 → 分发目标 → 经济与符号参数 → 供应量 → 首币元数据），参数表中的名字与字段名一致。结构体定义见 [`ILaunch.sol`](../../../interfaces/core/ILaunch.sol)。
 
 MemberNFT 的首币地址由 `Launch.init` 在创建首币时同步调用 `MemberNFT.init(tokenAddress)` 绑定，不在部署时传入；公开 getter 保持旧名 `LOVE20_TOKEN_ADDRESS()`。MemberNFT 不保存 Launch 地址。Launch 的首币分发地址、名称、符号和供应量配置统一见 [Launch](08-launch.md)。Pair Factory 和 Router 都是 Stake 的外部依赖，不参与代币创建。
 

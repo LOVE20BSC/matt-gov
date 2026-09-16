@@ -25,7 +25,7 @@ interface IMemberNFTErrors {
 }
 
 /// @dev The target contract also inherits OpenZeppelin's ERC721Enumerable,
-/// which supplies the standard ERC721 and enumerable API.
+/// which supplies the standard ERC721, metadata and enumerable API.
 interface IMemberNFT is IMemberNFTEvents, IMemberNFTErrors {
     function LOVE20_TOKEN_ADDRESS() external view returns (address);
 
