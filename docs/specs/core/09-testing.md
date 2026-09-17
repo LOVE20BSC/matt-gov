@@ -18,6 +18,13 @@
 | Phase | 任意地址先同步、同轮跨社区重复、下轮再同步 | 每个投票轮只记录一次；重复无操作、不阻塞 Submit；下轮重新允许 |
 | [Stake](04-stake.md) | 两类资产统一解锁；向非自有目标融合 | 只增目标状态；同一等待期后提取两类资产 |
 | Stake | LP 份额、手续费销毁统计、Uniswap V2 兼容 DEX、加速历史继承 | 份额/资产/历史与模块公式一致，不因无记录而错误复活 |
+| Stake | 入池最优量折算与滑点：储备任一侧为零、比例一致、偏离未超/超过 `slippage`、LP 铸出为零 | 储备为零时按期望量入池；比例一致时不折算；偏离未超阈值时只转入折算量并计入相应份额；超过阈值回滚 `SlippageExceeded(slippage, deviation)`；LP 为零回滚 `ZeroAmount("lpMinted")` |
+| Stake | Pair 读取：首次质押读取并登记、再次质押不再访问 Factory、未登记 Pair 的社区调用各入口 | 首次质押读 Factory 的 `getPair` 并保存；已登记后不再访问 Factory；未登记 Pair 时所有入口回滚 `InvalidTokenAddress()`，`Stake` 从不创建 Pair |
+| Stake | 加速历史查询的轮次边界：已结束轮、无记录轮、明确归零轮、未来轮 | 前三者按最近不晚于目标轮的记录返回（含显式归零）；未来轮回滚 `InvalidPhase(round)`，不把当前记录当作未来轮的值 |
+| Stake | 结算的夹子防护：阈值单位触发、同 Phase 重复调用、剩余手续费、单笔量小到无法产出 | 单笔处理量恰为一个阈值单位（价格移动不超过 `1 / MAX_WITHDRAWABLE_TO_FEE_RATIO`）；同一 Phase 第二次调用无操作返回；`FeesSettled` 只报实际处理量；剩余留待下个 Phase 且不重复扣减 `withdrawableLp`；单笔量过小时不结算也不消耗本 Phase 额度 |
+| Stake | 等待期到期边界：`unlockRequestPhase + promisedWaitingPhases` 的前一个、恰好、后一个 Phase | 前一个与恰好等于该 Phase 都回滚 `NotEnoughWaitingPhases()`；其后一个 Phase 起允许提取；`canWithdraw` 与 `withdraw` 在同一 Phase 上给出相同结论 |
+| Stake | 加速历史的解锁归属：申请解锁、等待期内查询、提取、解锁中再追加 | 申请解锁当轮即扣减成员与全局累计；等待期与提取都不重复扣减；`totalBoostShares` 到提取才减少；解锁中追加回滚 `UnstakeAlreadyRequested()` |
+| Stake | `init` 参数校验与重复初始化：五个依赖地址任一为零、`promisedWaitingPhasesMin` 为零、`maxWithdrawableToFeeRatio` 为零、`promisedWaitingPhasesMin > promisedWaitingPhasesMax`、已初始化 | 依赖地址任一为零 → `InvalidAddress()`；`promisedWaitingPhasesMin` 为零 → `ZeroAmount("promisedWaitingPhasesMin")`；`maxWithdrawableToFeeRatio` 为零 → `ZeroAmount("maxWithdrawableToFeeRatio")`；`min > max` → `InvalidAmount()`；已初始化 → `AlreadyInitialized()`（初始化状态先于参数校验，同时命中回滚前者）；成功后五个依赖 getter 与三个参数 getter 等于入参，再次调用回滚 |
 | [Proposal](05-submit.md) / [Vote](06-vote.md) | 零 Target、三类回调失败 | 拒绝并整体回滚 |
 | Proposal | `proposalIds`/`proposalIdsByAuthor`/`submitInfos` 分页：`offset` 越界、`limit` 超剩余、`reverse`、只取总数 | 三个查询都按 `(offset, limit, reverse)` 按页返回并给出真实总数，越界返回空数组且不回滚，`reverse` 时从新到旧；`proposalIds`/`proposalIdsByAuthor` 只回 `proposalId`；`limit = 0` 只回总数 |
 | Proposal | `proposalInfosByIds(proposalIds[])` 批量：未分配 ID、批量缺项、批量大小 | 回 `ProposalInfo` 数组，与入参下标一一对应，无长度上限；任一 ID 未分配回滚 `ProposalNotFound`，不静默补空 |
@@ -33,5 +40,6 @@
 | [Launch](08-launch.md) | 向非自有 NFT 部分融合、次数消耗、账本上限、非 Mint 调用 `addLaunchCount` | 源扣目标增，不转移额度，已消耗次数不能再次使用；只有 `init` 校验初始化状态，三个写入口不重复校验 |
 | Launch.init | 首币、Airdrop、参数校验、任一步失败或重复初始化 | `Launch.init(LaunchInitParams)` 一次完成配置、首币创建和 MemberNFT 初始化，失败全回滚，成功后不能重做；首币发含名称和符号的 `TokenLaunched`（`launcherMemberId = 0`） |
 | Launch | 代币列表与子币列表分页、`offset` 越界、符号重复、按代币地址取父币 | `tokens`/`childTokens` 按页返回且包含首币，越界返回空数组与真实总数；施加 `Test` 前缀后的符号重复回滚 `TokenSymbolExists()`；`parentTokenOf` 与 `isLOVE20Token` 对首币、子币与未登记地址的结果一致 |
+| Launch | 发射即建池：`init` 首币、`launchToken` 子币、Factory 返回零地址 | `init` 与每次 `launchToken` 都在同一笔内对新建代币调用 `createPair(tokenAddress, parentTokenAddress)`；返回零地址回滚 `InvalidAddress()`；`Stake` 首次质押时读到的正是该 Pair |
 
 存在“待确认”的场景必须先确定预期，不得用当前实现结果反推规格。

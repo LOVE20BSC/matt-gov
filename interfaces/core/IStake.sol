@@ -36,6 +36,8 @@ interface IStakeErrors {
     error InvalidAddress();
     error ZeroAmount(string parameter);
     error InvalidAmount();
+    error SlippageExceeded(uint256 slippage, uint256 deviation);
+    error InvalidPhase(uint256 phaseNumber);
 }
 
 interface IStakeEvents {
@@ -43,6 +45,8 @@ interface IStakeEvents {
         address indexed tokenAddress,
         uint256 indexed round,
         uint256 indexed memberId,
+        uint256 tokenAmountDesired,
+        uint256 parentTokenAmountDesired,
         uint256 tokenAmount,
         uint256 parentTokenAmount,
         uint256 promisedWaitingPhases,
@@ -81,14 +85,14 @@ interface IStakeEvents {
         uint256 parentTokenAmountForLiquidity,
         uint256 boostShares
     );
-    event SettleFees(
+    event FeesSettled(
         address indexed tokenAddress,
         uint256 indexed round,
         uint256 feeLp,
         uint256 tokenBurned,
         uint256 parentTokenBurned
     );
-    event MergeStake(
+    event StakeMerged(
         address indexed tokenAddress,
         uint256 indexed round,
         uint256 indexed sourceMemberId,
@@ -120,6 +124,7 @@ interface IStake is IStakeErrors, IStakeEvents {
         address tokenAddress,
         uint256 tokenAmount,
         uint256 parentTokenAmount,
+        uint256 slippage,
         uint256 promisedWaitingPhases,
         uint256 memberId
     ) external returns (uint256 govVotesAdded, uint256 liquiditySharesAdded);

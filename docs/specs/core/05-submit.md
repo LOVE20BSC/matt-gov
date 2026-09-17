@@ -71,7 +71,7 @@ Proposal 由合约分配的头部与创建者提供的主体组成，对外以 `
 | `proposalIdsByAuthor(tokenAddress, author, offset, limit, reverse)` | 某成员创建的 Proposal，按创建顺序 | `(proposalIdList, totalCount)` |
 | `submitInfos(tokenAddress, round, offset, limit, reverse)` | 某社区某 Round 的推举记录，按推举顺序 | `(submitInfoList, totalCount)` |
 
-前两个只回 `proposalId`，详情走 [`proposalInfosByIds`](#按-id-批量取详情)。`submitInfos` 的每条记录含 `submitterId` 与 `proposalId`，「本轮推举了哪些提案」与「谁推举了哪个提案」由同一条读路径给出，不再拆成两个入口。某 Round 尚无推举或尚未开始时，`submitInfos` 返回空数组与 `0`，不回滚。
+前两个只回 `proposalId`，详情走 [`proposalInfosByIds`](#按-id-批量取详情)。`submitInfos` 的每条记录含 `submitterId` 与 `proposalId`，「本轮推举了哪些提案」与「谁推举了哪个提案」由同一条读路径给出，不再拆成两个入口。某 Round 尚无推举或尚未开始时，`submitInfos` 返回空数组与 `0`，不回滚（取该轮记录集合的口径，见[跨模块约定](00-protocol-model.md#实现约束)）。
 
 **分页只回定长数据**：页内成员由别人决定，`ProposalBody` 的 `title`/`details`/`targetData` 都不设长度上限，一旦分页回本体，某条大 `targetData` 的 Proposal 就能把包含它的整页顶到调用方 gas 上限之上，而且跳不过去——只能反复调小 `limit` 试探。需要详情时走 [按 id 批量取详情](#按-id-批量取详情)。`SubmitInfo` 全为 `uint256` 字段，分页回记录不触这条红线。
 

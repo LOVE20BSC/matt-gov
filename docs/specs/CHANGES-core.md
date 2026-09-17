@@ -88,6 +88,19 @@
 - **单向转移**：调用者只需控制来源 MemberNFT
 - **场景**：支持 MemberNFT 场外交易时携带质押资产
 
+#### 接口差异（代码级）
+- **`stakeLiquidity` 加参数**：新增 `slippage`（`1e18` 精度），入池前先按 Pair 储备折算最优数量并按该值校验偏离；旧接口与旧 Hub 都只接收数量，数量折算与条件校验原在 `LOVE20TKM/periphery/src/LOVE20Hub.sol`
+- **入池折算的零储备分支由「两侧都为零」放宽为「任一侧为零」**：旧 `_calculateOptimalAmounts` 只在 `tokenReserve == 0 && parentTokenReserve == 0` 时跳过折算，单侧为零会走进折算分支——`tokenReserve == 0` 在该分支的第一次除法除零 panic，`parentTokenReserve == 0` 则折算得 0 并撞上最小量 `require` 回滚（旧最小量由调用方传入，通常大于零）；新实现任一侧储备为零即跳过折算、直接采用期望数量，没有除零面
+- **新增错误**：`SlippageExceeded(uint256 slippage, uint256 deviation)`、`InvalidTokenAddress()`、`InvalidMemberId()`、`NotMemberOwner(uint256)`、`SourceAndTargetMustBeDifferent()`、`SourceHasVotedInCurrentRound()`、`TargetPromisedWaitingPhasesTooShort()`、`InvalidAddress()`、`ZeroAmount(string)`、`InvalidAmount()`、`InvalidPhase(uint256)`
+- **错误改名与承接**：`NotEnoughWaitingBlocks` → `NotEnoughWaitingPhases`；删除 `InvalidToAddress()`、`RoundHasNotStartedYet()`，后者的「轮次尚未开始」语义由 `InvalidPhase(uint256)` 承接（与 `IPhaseErrors` 同名同参数）；`SlippageExceeded` 的两个参数分别是请求容差与实际偏离
+- **新增事件**：`FeesSettled`、`StakeMerged`
+- **事件改名与改字段**：`StakeToken` → `StakeBoost`；`StakeLiquidity` 增加 `tokenAmountDesired`/`parentTokenAmountDesired` 并保留实际入池量；`StakeLiquidity`/`Unstake`/`Withdraw`/`StakeBoost` 的账户参数由 `address account` 改为 `uint256 memberId`
+- **新增函数**：`init`、`settleFees`、`mergeStake`、`canWithdraw`、`globalStakeData`、`pairAddress`、`totalBurnedToken`、`totalParentTokenBurned` 及 6 个依赖 getter
+- **函数改名与改参**：`govVotesNum` → `globalGovVotes`；`accountStakeStatus` → `stakeData`；`cumulatedTokenAmountByAccount` → `cumulatedBoostShares`；`stakeTokenUpdatedRoundsCount`/`AtIndex` 与 `...ByAccountCount`/`AtIndex` 两对 → 分页 `globalBoostUpdatedRounds`/`boostUpdatedRounds`；`stakeToken` → `stakeBoost`；`unstake`/`withdraw` 由 `(address)` 改为 `(address, uint256 memberId)`
+- **删除函数**：`caculateGovVotes`、`cumulatedTokenAmount`、`initialStakeRound`
+- **新增 DEX 依赖声明**：`IPair`、`IPairFactory`、`IRouter` 三个最小外部接口，落在 `core/src/interfaces/`，**不进入 `matt-gov/interfaces/`**（它们不是 LOVE20 自有 ABI，而是外部部署的调用面，仓库不引入 Uniswap 依赖）；增删 LP 直接经 Pair，Router 只用于父币手续费换币，Factory 的 `createPair` 由 `Launch` 在创建代币（首币与子币）时调用、`getPair` 由 `Stake` 在首次质押时读取——旧 `LOVE20TokenFactory.createToken` 也是创建代币时一并 `createPair`，BSC 把这个位置随 TokenFactory 一起并入了 `Launch`
+- **手续费结算加限频与单笔上限**：旧 `LOVE20SLToken.withdrawFee` 一次把全部 `feeLp` 取回，没有规模约束；新实现把 `MAX_WITHDRAWABLE_TO_FEE_RATIO` 的阈值单位同时用作单笔结算量（`settlementUnit = withdrawableLp / MAX_WITHDRAWABLE_TO_FEE_RATIO`），并限制每社区每 Phase 最多结算一次，未处理部分保留待结算。接口不新增参数；该参数因此同时是夹子敞口的尺度，部署取值须满足 `MAX_WITHDRAWABLE_TO_FEE_RATIO >= 1 / 池费率`
+- **`pairTotalSupply == 0` 的重分类由「清零」改为「原样返回」**：旧 `_calculateLpAndSqrtK` 在该分支返回 `(0, 0, 0)`，会把既有手续费与可提取基准一并抹掉；新实现原样返回上次基准，跳过本次重分类。`lastFeeLp + lastWithdrawableLp == 0`（尚未有质押）走同一分支，两者都不进入结算
 ### ❌ 删除能力
 - 不再产生 SL（Staking Liquidity）代币
 - 不再产生 ST（Staking Token）代币
@@ -270,7 +283,7 @@
 - **达到上限后**：治理激励仍可铸造，但不再增加发射次数
 
 #### 首个代币部署
-- `Launch.init(LaunchInitParams)` 在同一笔初始化交易中写入依赖、发射和供应量参数，直接创建首个代币、设置 `minter`、发送首批代币到 Airdrop，并同步调用 `MemberNFT.init(firstToken)` 完成其初始化；Pair 由 `Stake` 在首次 LP 质押时按需创建
+- `Launch.init(LaunchInitParams)` 在同一笔初始化交易中写入依赖（含 Pair Factory）、发射和供应量参数，直接创建首个代币、**创建首币 Pair**、设置 `minter`、发送首批代币到 Airdrop，并同步调用 `MemberNFT.init(firstToken)` 完成其初始化
 - `Launch` 的分发参数与 Proposal 的 `target + targetMode` 对齐：首币固定使用 Airdrop 和 `NoCallback`；普通发射可使用 `NoCallback` 或 `Callback`
 - `Launch.init` 任一步失败则整笔回滚；成功后不得再次初始化或创建第二个首个代币
 - Airdrop 来源和 Burn 追溯证据按部署记录保存
@@ -299,7 +312,7 @@
 
 ### 🔄 BSC 调整
 - Launch 内部创建逻辑接收非零 `distributor`，首批供应量直接铸给该地址
-- 删除 SL/ST 实例创建及其 Stake 依赖；Pair 生命周期移入 `Stake`，由其在首次 LP 质押时按需创建
+- 删除 SL/ST 实例创建及其 Stake 依赖；Pair 生命周期随 TokenFactory 一起并入 `Launch`，由其在创建每个代币时建池，`Stake` 只在首次质押时读取
 - `MAX_WITHDRAWABLE_TO_FEE_RATIO` 与 Pair Factory 地址一并移入 `Stake`：前者原在 `ILOVE20TokenFactory` 和 `ILOVE20SLToken` 各有一份，现只由 `IStake.MAX_WITHDRAWABLE_TO_FEE_RATIO()` 提供；后者即旧 `ILOVE20TokenFactory.uniswapV2Factory()`，现为 `IStake.pairFactoryAddress()`
 - 首个代币依赖 Airdrop 合约分发（来源：LOVE20TKM/burn）
 - 删除 `burnForParentToken`、`parentPool()`、`BurnForParentToken` 事件和 `InsufficientBalance` 错误：BSC 版不再由代币合约承担父币赎回，社区手续费中父币的换币与销毁由 `Stake` 结算（见 [Stake](core/04-stake.md)）；`parentTokenAddress` 保留，`Stake` 用它判定代币是否已登记。同时移除随之不再需要的 `ReentrancyGuard` 继承

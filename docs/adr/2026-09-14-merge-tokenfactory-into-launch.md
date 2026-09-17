@@ -6,16 +6,16 @@
 
 ## 决策
 
-不再部署独立的 `TokenFactory`。`Launch` 直接保存 `LAUNCH_AMOUNT`、`MAX_SUPPLY`，并在内部创建 `LOVE20Token`。
+不再部署独立的 `TokenFactory`。`Launch` 直接保存 `LAUNCH_AMOUNT`、`MAX_SUPPLY`，并在内部创建 `LOVE20Token`，同时在同一笔交易内为该代币建池。
 
 `TokenLaunched` 是唯一的代币创建事件，`name` 和 `symbol` 与最终部署的 LOVE20Token 完全一致。删除 `ITokenFactory`、`TokenFactory` 及其独立初始化流程。
 
 ## 原因
 
 - 当前 TokenFactory 只有 Launch 一个调用者。
-- 它不再创建 Pair、SL 或 ST，没有独立生命周期。
+- 它承担的职责只剩创建代币一项：`createPair` 随 `createToken` 一起并入 `Launch`，SL/ST 在 BSC 版已删除，没有独立生命周期。
 - 合并后减少一个部署地址、一次初始化和一组重复配置。
-- 合并后的 Launch runtime 为 12,081 B（`optimizer = true`、`optimizer_runs = 200`），低于 24,576 B 合约体积限制。
+- 合并后的 Launch runtime 为 11,325 B（`optimizer = true`、`optimizer_runs = 200`），低于 24,576 B 合约体积限制。
 
 ## 取舍
 

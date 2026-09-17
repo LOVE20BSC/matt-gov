@@ -89,7 +89,7 @@ OZ 5 的标准回滚由固定依赖提供：`IERC721Errors`、`ERC721OutOfBounds
 
 ## 3. IStake vs ILOVE20Stake
 
-旧：`LOVE20TKM/core/src/interfaces/ILOVE20Stake.sol`。去 SL/ST 凭证（份额直接在 Stake 记账）+ 按 memberId 归属 + `stakeToken` 改造为 `stakeBoost` + 新增 `settleFees`/`mergeStake`。
+旧：`LOVE20TKM/core/src/interfaces/ILOVE20Stake.sol`。去 SL/ST 凭证（份额直接在 Stake 记账）+ 按 memberId 归属 + `stakeToken` 改造为 `stakeBoost` + 新增 `settleFees`/`mergeStake`。另有两个旧仓来源并入：`LOVE20TKM/core/src/LOVE20SLToken.sol` 的 LP/手续费结算公式，以及 `LOVE20TKM/periphery/src/LOVE20Hub.sol` 的入池最优量折算与滑点校验。DEX 依赖以 `IPair`、`IPairFactory`、`IRouter` 三个最小接口声明。
 
 ### 结构体
 
@@ -110,13 +110,13 @@ OZ 5 的标准回滚由固定依赖提供：`IERC721Errors`、`ERC721OutOfBounds
 | `phaseAddress()`、`memberNFTAddress()`、`voteAddress()`、`routerAddress()`、`pairFactoryAddress()` | 无 | 新增（依赖 getter） |
 | `init(phaseAddress, memberNFTAddress, voteAddress, routerAddress, pairFactoryAddress, promisedWaitingPhasesMin, promisedWaitingPhasesMax, maxWithdrawableToFeeRatio)` | 无 | 新增 |
 | `settleFees(address tokenAddress)` | 无 | 新增（手续费单独结算入口） |
-| `stakeLiquidity(tokenAddress, tokenAmount, parentTokenAmount, promisedWaitingPhases, uint256 memberId) returns (govVotesAdded, liquiditySharesAdded)` | `stakeLiquidity(tokenAddress, tokenAmountForLP, parentTokenAmountForLP, promisedWaitingPhases, address to) returns (govVotesAdded, slAmountAdded)` | 改参（`to` → `memberId`，返回份额改名） |
+| `stakeLiquidity(tokenAddress, tokenAmount, parentTokenAmount, slippage, promisedWaitingPhases, uint256 memberId) returns (govVotesAdded, liquiditySharesAdded)` | `stakeLiquidity(tokenAddress, tokenAmountForLP, parentTokenAmountForLP, promisedWaitingPhases, address to) returns (govVotesAdded, slAmountAdded)` | 改参（`to` → `memberId`、新增 `slippage`，返回份额改名；原 `LOVE20Hub` 的最优量折算与滑点校验并入本入口） |
 | `stakeBoost(tokenAddress, boostAmount, promisedWaitingPhases, uint256 memberId) returns (uint256 govVotesAdded)` | `stakeToken(tokenAddress, tokenAmount, promisedWaitingPhases, address to) returns (uint256 govVotesAdded)` | 改名+改参 |
 | `unstake(tokenAddress, uint256 memberId)` | `unstake(tokenAddress)` | 改参 |
 | `withdraw(tokenAddress, uint256 memberId)` | `withdraw(tokenAddress)` | 改参 |
 | `mergeStake(tokenAddress, uint256 sourceMemberId, uint256 targetMemberId)` | 无 | 新增 |
 | `PROMISED_WAITING_PHASES_MIN()`、`PROMISED_WAITING_PHASES_MAX()` | 同名 | 保留 |
-| `MAX_WITHDRAWABLE_TO_FEE_RATIO()` | 旧在 `ILOVE20SLToken`/`ILOVE20TokenFactory` | 跨接口迁移（手续费重分类阈值改由 Stake 持有） |
+| `MAX_WITHDRAWABLE_TO_FEE_RATIO()` | 旧在 `ILOVE20SLToken`/`ILOVE20TokenFactory` | 跨接口迁移（手续费重分类阈值改由 Stake 持有，并同时用作单笔结算量） |
 | `pairAddress(address tokenAddress)`、`totalBurnedToken(address tokenAddress)`、`totalParentTokenBurned(address tokenAddress)` | 无 | 新增 |
 | `globalGovVotes(address tokenAddress)` | `govVotesNum(address tokenAddress)` | 改名（`global` 前缀区分社区总量与成员量） |
 | `stakeData(tokenAddress, uint256 memberId) returns (liquidityShares, boostShares, promisedWaitingPhases, unlockRequestPhase, tokenAmountForLiquidity, parentTokenAmountForLiquidity)` | `accountStakeStatus(tokenAddress, address account) returns (AccountStakeStatus)` | 改名+改参（主体改 `memberId`；结构体展开为标量并追加两项现算 LP 数量） |
@@ -138,26 +138,26 @@ OZ 5 的标准回滚由固定依赖提供：`IERC721Errors`、`ERC721OutOfBounds
 
 | 新 | 旧 | 状态 |
 | --- | --- | --- |
-| `StakeLiquidity` | `StakeLiquidity` | 改参（`address account` → `uint256 memberId`；`tokenAmountForLP`/`parentTokenAmountForLP` → `tokenAmount`/`parentTokenAmount`；`slAmountAdded`/`slAmount` → `liquiditySharesAdded`/`liquidityShares`） |
+| `StakeLiquidity` | `StakeLiquidity` | 改参（`address account` → `uint256 memberId`；`tokenAmountForLP`/`parentTokenAmountForLP` → `tokenAmount`/`parentTokenAmount`；`slAmountAdded`/`slAmount` → `liquiditySharesAdded`/`liquidityShares`；新增 `tokenAmountDesired`/`parentTokenAmountDesired`，字段数 10 → 12） |
 | `StakeBoost` | `StakeToken` | 改名+改参（`address account` → `uint256 memberId`；`tokenAmount` → `boostAmount`；`stAmount` → `boostSharesAdded` + `boostShares`，字段数 8 → 9） |
 | `Unstake` | `Unstake` | 改参（`address account` → `uint256 memberId`；`slAmount`/`stAmount` → `liquidityShares`/`boostShares`） |
 | `Withdraw` | `Withdraw` | 改参（`address account` → `uint256 memberId`；`slAmount` → `liquidityShares`；`stAmount` → `boostShares`；`tokenAmountForLp`/`parentTokenAmountForLp` → `tokenAmountForLiquidity`/`parentTokenAmountForLiquidity`） |
-| `SettleFees` | 无 | 新增 |
-| `MergeStake` | 无 | 新增 |
+| `FeesSettled` | 无 | 新增（旧 `ILOVE20SLToken.WithdrawFee` 的对应事件，按完成时命名） |
+| `StakeMerged` | 无 | 新增（按完成时命名） |
 
 ### 错误
 
-旧 11 个 = 保留 8 + 改名 1 + 删除 2；新 18 个 = 保留 8 + 改名 1 + 新增 9。
+旧 11 个 = 保留 8 + 改名 1 + 删除 2；新 20 个 = 保留 8 + 改名 1 + 新增 11。
 
 保留 8 个（相对顺序不变）：`AlreadyInitialized`、`NotAllowedToStakeAtRoundZero`、`StakeAmountMustBeSet`、`UnstakeAlreadyRequested`、`UnstakeNotRequested`、`PromisedWaitingPhasesOutOfRange`、`PromisedWaitingPhasesMustBeGreaterOrEqualThanBefore`、`NoStakedLiquidity`。
 
 改名 1 个：`NotEnoughWaitingBlocks` → `NotEnoughWaitingPhases`（等待单位由区块改为时间片）。
 
-删除 2 个：`InvalidToAddress()`（新接口不再接收 `to` 地址）、`RoundHasNotStartedYet()`（轮次未开始改由 Phase 层的 `InvalidPhase` 承担）。
+删除 2 个：`InvalidToAddress()`（新接口不再接收 `to` 地址）、`RoundHasNotStartedYet()`（轮次未开始的语义由 `IStakeErrors.InvalidPhase(uint256)` 承接，与 `IPhaseErrors.InvalidPhase` 同名同参数、selector 相同）。
 
-新增 9 个：`InvalidTokenAddress`、`InvalidMemberId`、`NotMemberOwner(uint256 memberId)`、`SourceAndTargetMustBeDifferent()`、`SourceHasVotedInCurrentRound()`、`TargetPromisedWaitingPhasesTooShort()`、`InvalidAddress()`、`ZeroAmount(string parameter)`、`InvalidAmount()`。后 6 个服务于 `mergeStake` 与 `settleFees` 两个新入口。
+新增 11 个：`InvalidTokenAddress`、`InvalidMemberId`、`NotMemberOwner(uint256 memberId)`、`SourceAndTargetMustBeDifferent()`、`SourceHasVotedInCurrentRound()`、`TargetPromisedWaitingPhasesTooShort()`、`InvalidAddress()`、`ZeroAmount(string parameter)`、`InvalidAmount()`、`SlippageExceeded(uint256 slippage, uint256 deviation)`、`InvalidPhase(uint256 phaseNumber)`。后 7 个服务于 `init`、`stakeLiquidity`、`mergeStake` 与 `settleFees` 入口；`SlippageExceeded` 承接旧 `LOVE20Hub` 的两条 `require` 字符串，第一个参数是请求容差、第二个是实际偏离；`InvalidPhase` 承接删除的 `RoundHasNotStartedYet`。
 
-错误顺序：保留 8 项的旧相对顺序不变（原 `InvalidToAddress` 位置直接消失），改名项与 9 个新增项插在其后。
+错误顺序：保留 8 项的旧相对顺序不变（原 `InvalidToAddress` 位置直接消失），改名项与 11 个新增项插在其后。
 
 ---
 
@@ -356,8 +356,8 @@ OZ 5 的标准回滚由固定依赖提供：`IERC721Errors`、`ERC721OutOfBounds
 | `launchToken(tokenSymbol, parentTokenAddress, memberId, distributor, distributorMode, bytes[] distributorData) returns (tokenAddress)` | `launchToken(tokenSymbol, parentTokenAddress) returns (tokenAddress)` | 改参（2 → 6 参数；新增发起成员、分配者、回调模式与不透明分配数据） |
 | `launchCount(tokenAddress, uint256 memberId)` | `remainingLaunchCount(parentTokenAddress, address account)` | 改名+改参（剩余次数 → 累计次数账本） |
 | `enum DistributorMode { NoCallback, Callback }` | 无 | 新增 |
-| `init(LaunchInitParams)` | 无 | 新增（一次完成依赖、发射参数、供应量配置和首币元数据初始化） |
-| `memberNFTAddress()`、`rootParentTokenAddress()`、`LAUNCH_RATIO()`、`MAX_LAUNCH_COUNT()`、`LAUNCH_AMOUNT()`、`MAX_SUPPLY()` | 无 | 新增 |
+| `init(LaunchInitParams)` | 无 | 新增（一次完成依赖（含 Pair Factory）、发射参数、供应量配置和首币元数据初始化） |
+| `memberNFTAddress()`、`rootParentTokenAddress()`、`pairFactoryAddress()`、`LAUNCH_RATIO()`、`MAX_LAUNCH_COUNT()`、`LAUNCH_AMOUNT()`、`MAX_SUPPLY()` | 无 | 新增（`pairFactoryAddress()` 承接旧 `ILOVE20TokenFactory.uniswapV2Factory()` 的建池职责） |
 | `initialized()` | 旧实现有 `bool public initialized`（自动 getter 进入合约 ABI，未写进旧接口） | 新增（公开初始化状态，与 `IMemberNFT` 对齐，供发布前检查脚本核对） |
 | `mergeLaunchCount(tokenAddress, sourceMemberId, targetMemberId, count)` | 无 | 新增 |
 | `addLaunchCount(tokenAddress, memberId, count)` | 无 | 新增 |
@@ -379,7 +379,7 @@ OZ 5 的标准回滚由固定依赖提供：`IERC721Errors`、`ERC721OutOfBounds
 | 代币枚举（按发射者或募资状态） | `childTokensByLauncherCount`/`AtIndex`、`launchingTokensCount`/`AtIndex`、`launchedTokensCount`/`AtIndex`、`launchingChildTokensCount`/`AtIndex`、`launchedChildTokensCount`/`AtIndex`、`participatedTokensCount`/`AtIndex`（代币列表、某社区子币列表和符号账本保留为分页查询与 `tokenAddressBySymbol`，见上表；按成员聚合的发射历史由 `TokenLaunched` 的 `launcherMemberId` 链下索引） |
 | 依赖地址 | `submitAddress()`、`tokenFactoryAddress()` |
 
-旧 36 个函数 = 保留 4 + 改参 1 + 改名+改参 1 + 合并 4 + 删除 26；新 20 个 = 保留 4 + 改参 1 + 改名+改参 1 + 合并 2 + 新增 12。`tokensCount`+`tokensAtIndex`、`childTokensCount`+`childTokensAtIndex` 各合成一个分页函数，故旧侧 4 个计数为新侧 2 个。
+旧 36 个函数 = 保留 4 + 改参 1 + 改名+改参 1 + 合并 4 + 删除 26；新 21 个 = 保留 4 + 改参 1 + 改名+改参 1 + 合并 2 + 新增 13。`tokensCount`+`tokensAtIndex`、`childTokensCount`+`childTokensAtIndex` 各合成一个分页函数，故旧侧 4 个计数为新侧 2 个。
 
 `tokenFactoryAddress()` 随 `ILOVE20TokenFactory` 一并消失：新 `Launch` 自己创建代币（`init` 建首币、`launchToken` 建子币），不再有独立工厂。旧 `ILOVE20TokenFactory` 的其余成员去向如下，`AlreadyInitialized()`、`EmptyString(string)`、`InvalidAmount()`、`UnauthorizedCaller()` 四个错误与 `ILaunchErrors` 同名项合并，`ZeroAddress(string parameter)` 统一为 `InvalidAddress()`。
 
@@ -388,8 +388,8 @@ OZ 5 的标准回滚由固定依赖提供：`IERC721Errors`、`ERC721OutOfBounds
 | `mintAddress()`、`LAUNCH_AMOUNT()`、`MAX_SUPPLY()` | `ILaunch` 同名保留 |
 | `createToken(parentTokenAddress, name, symbol)` | 折入 `Launch.init`（首币）与 `ILaunch.launchToken`（子币） |
 | 事件 `TokenCreate(tokenAddress, parentTokenAddress, name, symbol)` | 并入 `ILaunchEvents.TokenLaunched`（补 `launcherMemberId`/`distributor`） |
-| `MAX_WITHDRAWABLE_TO_FEE_RATIO()`、`uniswapV2Factory()` | 跨接口迁移到 `IStake`（`pairFactoryAddress()` 承接 Pair Factory 地址） |
-| `launchAddress()`、`stakeAddress()` | 删除（前者是工厂回指其调用方，后者随 Pair 生命周期移出 Launch） |
+| `MAX_WITHDRAWABLE_TO_FEE_RATIO()`、`uniswapV2Factory()` | `MAX_WITHDRAWABLE_TO_FEE_RATIO()` 跨接口迁移到 `IStake`；`uniswapV2Factory()` 拆为 `ILaunch.pairFactoryAddress()`（建池）与 `IStake.pairFactoryAddress()`（读取），两处必须指向同一个 Factory |
+| `launchAddress()`、`stakeAddress()` | 删除（两者都是旧工厂回指其调用方的地址；Pair 生命周期仍留在 `Launch`，由其在创建代币时建池） |
 
 MemberNFT 的配置 getter 同样遵循大写命名；`MAX_NAME_LENGTH()` 仅去掉旧名中的 `GROUP`，其余配置 getter 保持旧名。
 

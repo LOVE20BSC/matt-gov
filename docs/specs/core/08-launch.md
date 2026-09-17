@@ -12,11 +12,11 @@ Launch 负责首币部署、LOVE20Token 创建、基础发射与次数账本。T
 
 初始化为一笔交易：
 
-1. 部署全部合约取得地址，提交 `Launch.init(LaunchInitParams)`。同一笔交易内完成：写入依赖、发射参数和供应量配置，创建首币、登记首币，并同步调用 `MemberNFT.init(tokenAddress)` 完成其初始化；MemberNFT 不保存 Launch 地址。
+1. 部署全部合约取得地址，提交 `Launch.init(LaunchInitParams)`。同一笔交易内完成：写入依赖（含 Pair Factory）、发射参数和供应量配置，创建首币、**创建首币的 Pair**、登记首币，并同步调用 `MemberNFT.init(tokenAddress)` 完成其初始化；MemberNFT 不保存 Launch 地址。
 
 `Launch.init` 不保存或校验部署者地址，只允许成功一次；成功后 `initialized()` 为 `true`。该初始化仍存在被抢先绑定的窗口：被抢跑的版本不得发布，必须重新部署并核对受影响的依赖，不把“部署后立即初始化”当作防抢跑保证。部署是否成功由发布前检查脚本判定——逐项核对 `initialized()`、依赖地址、首币名称与符号、首币分发地址、发射参数和供应量配置，任何不一致即重新部署。
 
-首币不消耗成员发射次数，不带分发数据，固定采用 `NoCallback`。`Launch.init` 任一步失败回滚全部效果；成功后不得重初始化、替换依赖或改写首币。Pair 在首次 LP 质押时由 `Stake` 按需查询或创建，Launch 不创建 Pair，也不重复铸造首批供应。部署参数的含义见 [参数表](00-protocol-model.md#初始化参数)。
+首币不消耗成员发射次数，不带分发数据，固定采用 `NoCallback`。`Launch.init` 任一步失败回滚全部效果；成功后不得重初始化、替换依赖或改写首币。**Launch 拥有 Pair 生命周期**：每创建一个代币（首币与子币相同），都在同一笔交易内向 `pairFactoryAddress.createPair(tokenAddress, parentTokenAddress)` 建池，因此已登记 LOVE20 代币必定已有 Pair；`Stake` 只在首次质押时读取并保存该地址，不创建 Pair。Launch 不重复铸造首批供应。部署参数的含义见 [参数表](00-protocol-model.md#初始化参数)。
 
 `Launch.init` 的校验与回滚：
 
@@ -28,6 +28,7 @@ Launch 负责首币部署、LOVE20Token 创建、基础发射与次数账本。T
 | `launchAmount == 0` | `ZeroAmount("launchAmount")` |
 | `launchAmount > maxSupply` | `InvalidAmount()` |
 | 首币名称或符号为空 | `EmptyString("name")` / `EmptyString("symbol")`，属于 `init` 参数校验 |
+| 首币建池返回零地址 | `InvalidAddress()` |
 
 `launchAmount` 必须大于零，`maxSupply` 必须不小于 `launchAmount`，即 `0 < launchAmount <= maxSupply`；两者相等是合法配置。零供应代币不可创建：LOVE20Token 构造函数独立拒绝零 `initialSupply`，绕过 `init` 直接部署同样回滚 `InvalidSupply()`。
 
@@ -122,6 +123,7 @@ distributor 自行实现领取与查询逻辑，`claim(tokenAddress)` 只是建�
 | 调用者不持有 `memberId` | `NotMemberOwner(memberId)` |
 | `launchCount[parentTokenAddress][memberId] == 0` | `NotEnoughLaunchCount()` |
 | 施加 `Test` 前缀后的最终符号已登记 | `TokenSymbolExists()` |
+| 子币建池返回零地址 | `InvalidAddress()` |
 
 名称只按 `tokenSymbol + "@" + parentTokenSymbol` 生成，不另存名称账本。
 
@@ -143,7 +145,7 @@ distributor 自行实现领取与查询逻辑，`claim(tokenAddress)` 只是建�
 
 ## LOVE20Token 创建
 
-`Launch` 直接保存 `LAUNCH_AMOUNT`、`MAX_SUPPLY`，并在内部创建 LOVE20Token。创建时把 `mintAddress` 作为 `minter` 写入 LOVE20Token，把首批供应直接铸给 `distributor`，不创建 Pair 或 SL/ST；Pair 生命周期仍由 `Stake` 管理。父币是否已登记、发射次数和分发回调由 Launch 检查。
+`Launch` 直接保存 `LAUNCH_AMOUNT`、`MAX_SUPPLY`，并在内部创建 LOVE20Token。创建时把 `mintAddress` 作为 `minter` 写入 LOVE20Token，把首批供应直接铸给 `distributor`，并在同一笔内向 `pairFactoryAddress` 为该代币建池；不创建 SL/ST。父币是否已登记、发射次数和分发回调由 Launch 检查。
 
 ## 实现约束
 
