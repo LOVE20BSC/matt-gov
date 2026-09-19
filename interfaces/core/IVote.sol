@@ -1,8 +1,20 @@
 // SPDX-License-Identifier: MIT
 pragma solidity =0.8.37;
 
+interface IVoteErrors {
+    error AlreadyInitialized();
+    error InvalidTargetDataLength();
+    error ProposalNotSubmitted();
+    error CannotVote();
+    error NotEnoughVotesLeft();
+    error VotesMustBeGreaterThanZero();
+    error InvalidAddress();
+    error NotMemberOwner(uint256 memberId);
+    error InvalidMemberId();
+}
+
 interface IVoteEvents {
-    event VoteCast(
+    event Voted(
         address indexed tokenAddress,
         uint256 round,
         uint256 indexed voterId,
@@ -11,9 +23,13 @@ interface IVoteEvents {
     );
 }
 
-interface IVote is IVoteEvents {
+interface IVote is IVoteErrors, IVoteEvents {
+    function initialized() external view returns (bool);
     function stakeAddress() external view returns (address);
     function submitAddress() external view returns (address);
+    function phaseAddress() external view returns (address);
+    function memberNFTAddress() external view returns (address);
+    function mintAddress() external view returns (address);
     function init(
         address phaseAddress,
         address stakeAddress,
@@ -35,9 +51,9 @@ interface IVote is IVoteEvents {
     function votesNum(address tokenAddress, uint256 round) external view returns (uint256);
     function votesNumByProposalId(address tokenAddress, uint256 round, uint256 proposalId)
         external view returns (uint256);
-    function votesNumByAccount(address tokenAddress, uint256 round, uint256 memberId)
+    function votesNumByMemberId(address tokenAddress, uint256 round, uint256 memberId)
         external view returns (uint256);
-    function votesNumByAccountByProposalId(
+    function votesNumByMemberIdByProposalId(
         address tokenAddress,
         uint256 round,
         uint256 memberId,
@@ -45,19 +61,37 @@ interface IVote is IVoteEvents {
     ) external view returns (uint256);
     function isProposalIdVoted(address tokenAddress, uint256 round, uint256 proposalId)
         external view returns (bool);
-    function accountVotedProposalIdsCount(address tokenAddress, uint256 round, uint256 memberId)
-        external view returns (uint256);
-    function accountVotedProposalIdsAtIndex(address tokenAddress, uint256 round,
-        uint256 memberId, uint256 index) external view returns (uint256 proposalId);
+    function votedProposalIds(
+        address tokenAddress,
+        uint256 round,
+        uint256 offset,
+        uint256 limit,
+        bool reverse
+    ) external view returns (uint256[] memory proposalIdList, uint256 totalCount);
+    function votedProposalIdsByMemberId(
+        address tokenAddress,
+        uint256 round,
+        uint256 memberId,
+        uint256 offset,
+        uint256 limit,
+        bool reverse
+    ) external view returns (uint256[] memory proposalIdList, uint256 totalCount);
+    function voterIds(
+        address tokenAddress,
+        uint256 round,
+        uint256 proposalId,
+        uint256 offset,
+        uint256 limit,
+        bool reverse
+    ) external view returns (uint256[] memory memberIdList, uint256 totalCount);
     function votesNumsByMemberId(address tokenAddress, uint256 round, uint256 memberId)
         external view returns (uint256[] memory proposalIds, uint256[] memory votes);
-    function votesNumsByMemberIdByProposalIds(address tokenAddress, uint256 round,
-        uint256 memberId, uint256[] calldata proposalIds)
-        external view returns (uint256[] memory votes);
-    function accountsByProposalIdCount(address tokenAddress, uint256 round, uint256 proposalId)
-        external view returns (uint256);
-    function accountsByProposalIdAtIndex(address tokenAddress, uint256 round,
-        uint256 proposalId, uint256 index) external view returns (uint256 memberId);
+    function votesNumsByMemberIdByProposalIds(
+        address tokenAddress,
+        uint256 round,
+        uint256 memberId,
+        uint256[] calldata proposalIds
+    ) external view returns (uint256[] memory votes);
     function stakedAmountOfVotersByMemberId(
         address tokenAddress,
         uint256 round,
@@ -65,15 +99,4 @@ interface IVote is IVoteEvents {
     ) external view returns (uint256);
     function stakedAmountOfVoters(address tokenAddress, uint256 round)
         external view returns (uint256);
-    function votedProposalIdsCount(address tokenAddress, uint256 round)
-        external view returns (uint256);
-    function votedProposalIdsAtIndex(address tokenAddress, uint256 round, uint256 index)
-        external view returns (uint256 proposalId);
-
-    error AlreadyInitialized();
-    error InvalidTargetDataLength();
-    error ProposalNotSubmitted();
-    error CannotVote();
-    error NotEnoughVotesLeft();
-    error VotesMustBeGreaterThanZero();
 }
