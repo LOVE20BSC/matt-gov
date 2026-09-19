@@ -147,6 +147,7 @@
   - `ProposalBody` 改为「创建者提供的全部字段」：`title`、`details`、`target`、`targetMode`、`targetData`，`submitNewProposal` 的入参与 `ProposalInfo` 的组成共用这一个结构
   - `ActionSubmitInfo` 改名 `SubmitInfo`，字段 `submitter` 由地址改为 `submitterId`
   - **原因**：旧 `ActionBody` 就是创建者提供的全部字段，保留两套同字段的名字只会让 `submitNewProposal` 的入参与 `proposalInfosByIds()` 的返回看起来属于不同结构
+- **新增 `proposalTarget`**：`proposalTarget(address tokenAddress, uint256 proposalId)` 回 `(address target, TargetMode targetMode)`，未分配过的 ID 回滚 `ProposalNotFound(proposalId)`。供 Vote 每笔判断回调目标——整条 `ProposalInfo` 含无上限的 `title`/`details`/`targetData`，读取成本随正文大小线性增长（最小 mock 实测每笔 3 万～9 万 gas），而调用方只需要这两个字段。按 `migration-standards.md`「按键取单值」新增的第四种情况（先量后加）加入
 - **枚举改用分页**：
   - 删除 6 个函数：`proposalsCount()`、`proposalsAtIndex()`、`proposalsByAuthorCount()`、`proposalsByAuthorAtIndex()`、`submissionsCount()`、`submissionAtIndex()`
   - 新增 3 个分页函数，统一 `(offset, limit, reverse)` 入参、按页返回并同时给出集合真实总数，语义同 `Phase.syncObservations`：
@@ -189,18 +190,62 @@
 
 ### ✅ 保留逻辑
 - 投票流程和票数记录：参考 `LOVE20TKM/core/src/LOVE20Vote.sol`
-- 投票增量机制（支持同一 Round 多次投票）
-- Proposal Target 回调机制
+- 投票增量机制（同一 Round 可多次投票，累计不得超过票上限）
+- 票上限来自 `Stake.validGovVotes`，与旧 `maxVotesNum` 同源
 
 ### 🔄 关键变化
 - **主体身份**：`voterAddress` → `voterId (memberId)`
-- **权限校验**：`msg.sender` → `MemberNFT.ownerOf(voterId) == msg.sender`
+- **权限校验**：`msg.sender` → `MemberNFT.ownerOf(voterId) == msg.sender`（新增 `NotMemberOwner(uint256)`）
+- **初始化**：旧 `constructor(originBlocks, phaseBlocks)` 与 `initialize(stakeAddress_, submitAddress_)` → `init(phaseAddress, stakeAddress, submitAddress, memberNFTAddress, mintAddress)`，五个依赖地址都做非零校验（`InvalidAddress()`）
+- **时间源**：旧继承 `Phase` 基类的 `currentRound()` → 读 `IPhase(phaseAddress).currentPhase()`，并新增 `isRoundEnded(round)`（`round == 0` 返回 `false`）
+- **加速快照（新增能力）**：旧 Vote 不保存质押快照，BSC 新增 `stakedAmountOfVotersByMemberId` 与 `stakedAmountOfVoters`，供 Mint 的 `memberBoost` 与 `totalBoost` 读取。首投记入 `Stake.cumulatedBoostShares(tokenAddress, round, memberId)` 全量，之后再次投票只补记高于已记值的正增量，未增加不更新；质押增加但没有后续投票不更新快照
+- **Target 回调（新增能力）**：每笔投票在状态写完后回调 `IProposalTarget.onProposalVoted`，转发 `round`、`voterId`、本次增量票数与 Target Data；`NoCallback` 或 `target` 为零时跳过，回调失败整笔回滚。目标与模式从 `ISubmit.proposalTarget` 读取，不读整条 `ProposalInfo`
+- **批量入参加 Target Data**：`vote` 增加 `memberId` 与 `targetData`；`targetData` 可传空外层数组，表示每笔回调都使用空 Target Data，传入时必须与 `proposalIds` 等长
+- **枚举改分页**：6 个 `*Count`/`AtIndex` → 3 个分页入口，与 Submit、Stake、Phase 同一口径
+
+### 🆕 接口差异（代码级）
+| 旧 | 新 | Selector（新） |
+|--------|----------|----------|
+| `vote(address,uint256[],uint256[])` | `vote(address,uint256,uint256[],uint256[],bytes[][])`（加 `memberId` 与 `targetData`） | `0x297de04d` |
+| `initialize(address,address)` | `init(address,address,address,address,address)` | `0x359ef75b` |
+| 事件 `Vote(address,uint256,address,uint256)` | 事件 `Voted(address,uint256,uint256,uint256,uint256)`（`tokenAddress`、`voterId`、`proposalId` 三个 indexed，`round` 不 indexed） | `0xffe38c1f` |
+| `votesNumByActionId(address,uint256,uint256)` | `votesNumByProposalId(address,uint256,uint256)` | `0xcf655d22` |
+| `votesNumByAccount(address,uint256,address)` | `votesNumByMemberId(address,uint256,uint256)` | `0x78d364ec` |
+| `votesNumByAccountByActionId(address,uint256,address,uint256)` | `votesNumByMemberIdByProposalId(address,uint256,uint256,uint256)` | `0x7dc52f06` |
+| `isActionIdVoted(address,uint256,uint256)` | `isProposalIdVoted(address,uint256,uint256)` | `0x390490e8` |
+| `canVote(address,address)` | `canVote(address,uint256)` | `0x19eb8d48` |
+| `maxVotesNum(address,address)` | `maxVotesNum(address,uint256)` | `0xa5a9bfae` |
+| `votedActionIdsCount` / `AtIndex` | `votedProposalIds(address,uint256,uint256,uint256,bool)` 分页 | `0xadbd0ed9` |
+| `accountVotedActionIdsCount` / `AtIndex` | `votedProposalIdsByMemberId(address,uint256,uint256,uint256,uint256,bool)` 分页 | `0xe6660fee` |
+| `accountsByActionIdCount` / `AtIndex` | `voterIdsByProposalId(address,uint256,uint256,uint256,uint256,bool)` 分页 | `0x70959bb8` |
+| `votesNumsByAccount(address,uint256,address)` | `votesNumsByMemberId(address,uint256,uint256,uint256,uint256,bool)` 分页，按页回 id 与票数 | `0x8e5dd371` |
+| `votesNumsByAccountByActionIds(address,uint256,address,uint256[])` | `votesNumsByMemberIdByProposalIds(address,uint256,uint256,uint256[])` | `0x9b774733` |
+| — | `stakedAmountOfVotersByMemberId(address,uint256,uint256)` | `0x8f88d86f` |
+| — | `stakedAmountOfVoters(address,uint256)` | `0xb641b6d7` |
+| — | `isRoundEnded(uint256)` | `0x7b831c30` |
+| — | `initialized()`、`phaseAddress()`、`stakeAddress()`、`submitAddress()`、`memberNFTAddress()`、`mintAddress()` | — |
+
+**保留未改名**：`votesNum(address,uint256)` selector `0x00afdbae`，与旧同名同参。
+
+#### 错误（相对旧代码）
+| 错误名 | 触发条件 | Selector |
+|--------|----------|----------|
+| `AlreadyInitialized()` | 已初始化 | `0x0dc149f0` |
+| `ProposalNotSubmitted()` | 该 Proposal 本轮未推举（旧 `ActionNotSubmitted()` 改名） | `0xeaab125f` |
+| `CannotVote()` | 票上限为零 | `0xc527094f` |
+| `NotEnoughVotesLeft()` | 本轮累计票数超过票上限 | `0xcc1f40e6` |
+| `VotesMustBeGreaterThanZero()` | 本次票数为零 | `0xc94f8246` |
+| `NotMemberOwner(uint256 memberId)` | 调用者不持有该 memberId（新增） | `0x33393244` |
+| `InvalidAddress()` | `init` 的五个依赖地址为零（新增） | `0xe6c4247b` |
+| `InvalidTargetDataLength()` | `proposalIds` 为空或与 `votes` 不等长；`targetData` 传入时与 `proposalIds` 不等长（新增） | `0xca104307` |
 
 ### 📍 实现参考
 ```
 旧代码：LOVE20TKM/core/src/LOVE20Vote.sol
-保留：投票记录结构、增量逻辑
-修改：所有 address 参数改为 uint256 memberId
+保留：投票记录结构、增量机制、票上限来源
+修改：所有 address 参数改为 uint256 memberId；事件 Vote → Voted
+新增：加速快照（stakedAmountOfVoters*）、逐 Proposal 的 Target 回调与 targetData、五个依赖 getter、isRoundEnded
+删除：6 个枚举函数（改分页）；memberId == 0 不再由 InvalidMemberId() 承接，沿用 MemberNFT.ownerOf 的错误
 ```
 
 ---

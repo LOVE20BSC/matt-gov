@@ -87,6 +87,8 @@ Proposal 由合约分配的头部与创建者提供的主体组成，对外以 `
 
 `submitInfos` 分页与两条方向单键（`proposalIdBySubmitter`、`submitterIdByProposalId`）的分工：分页是集合的完整读取路径，两条单键是它在两把唯一键上的定点通道，三者读到的是同一份推举记录，不各自维护状态。
 
+`proposalTarget(tokenAddress, proposalId)` 回该 Proposal 的 `target` 与 `targetMode`，未分配过的 ID 同样回滚 `ProposalNotFound(proposalId)`。它是 `proposalInfosByIds` 之外的轻量取值入口，供每笔投票都要判断回调目标的 Vote 使用：整条 `ProposalInfo` 含无上限的 `title`/`details`/`targetData`，随正文大小线性变贵（实测每笔 3 万～9 万 gas），而 Vote 只需要这两个字段。按 `migration-standards.md`「按键取单值」的第四种情况加入——先量后加，省下的开销与调用方自身的写入开销同量级。
+
 ## 推举
 
 推举门槛沿用旧 Submit：从 Stake 读取当前成员 `validGovVotes(tokenAddress, memberId)` 与社区 `globalGovVotes(tokenAddress)`；成员和社区票数均为正，且 `floor(validGovVotes * 1000 / globalGovVotes) >= SUBMIT_MIN_PER_THOUSAND`。初始化门槛范围为 `1..1000`。
