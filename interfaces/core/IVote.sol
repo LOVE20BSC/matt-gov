@@ -10,7 +10,6 @@ interface IVoteErrors {
     error VotesMustBeGreaterThanZero();
     error InvalidAddress();
     error NotMemberOwner(uint256 memberId);
-    error InvalidMemberId();
 }
 
 interface IVoteEvents {
@@ -76,16 +75,22 @@ interface IVote is IVoteErrors, IVoteEvents {
         uint256 limit,
         bool reverse
     ) external view returns (uint256[] memory proposalIdList, uint256 totalCount);
-    function voterIds(
+    function voterIdsByProposalId(
         address tokenAddress,
         uint256 round,
         uint256 proposalId,
         uint256 offset,
         uint256 limit,
         bool reverse
-    ) external view returns (uint256[] memory memberIdList, uint256 totalCount);
-    function votesNumsByMemberId(address tokenAddress, uint256 round, uint256 memberId)
-        external view returns (uint256[] memory proposalIds, uint256[] memory votes);
+    ) external view returns (uint256[] memory voterIds, uint256 total);
+    function votesNumsByMemberId(
+        address tokenAddress,
+        uint256 round,
+        uint256 memberId,
+        uint256 offset,
+        uint256 limit,
+        bool reverse
+    ) external view returns (uint256[] memory proposalIds, uint256[] memory votes, uint256 total);
     function votesNumsByMemberIdByProposalIds(
         address tokenAddress,
         uint256 round,

@@ -15,6 +15,7 @@ interface IProposalTarget {
     ) external;
     function onProposalVoted(
         address tokenAddress,
+        uint256 round,
         uint256 proposalId,
         uint256 voterId,
         uint256 votes,

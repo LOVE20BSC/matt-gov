@@ -169,7 +169,6 @@
 | `InvalidAmount()` | `submitMinPerThousand > 1000` | `0x2c5211c6` |
 | `InvalidAddress()` | `init` 参数或 `target` 为零 | `0xe6c4247b` |
 | `InvalidTargetMode()` | targetMode 枚举越界或 Callback 且 target 无代码 | `0x2589e3a0` |
-| `RoundNotStarted()` | `currentRound() == 0`（业务可选校验） | `0x8e9c6e1c` |
 | `NotMemberOwner(uint256 memberId)` | 调用者不持有该 memberId | `0x33393244` |
 | `ProposalNotFound(uint256 proposalId)` | proposalId 不存在（旧 `ActionIdNotExist()` 改名并加参） | `0x428d06a9` |
 

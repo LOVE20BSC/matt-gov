@@ -16,7 +16,7 @@ targetData[0] = abi.encode(executorAddress)
 | --- | --- |
 | `onProposalCreated` | 校验保留项，保存 Executor 映射，原样转发完整创建 Target Data |
 | `onProposalSubmitted` | 读取已保存映射，转发本次推举上下文和 Target Data |
-| `onProposalVoted` | 读取映射，转发 `voterId`、本次增量票数及 Target Data，由 Executor 记账 |
+| `onProposalVoted` | 读取映射，转发 `round`、`voterId`、本次增量票数及 Target Data，由 Executor 记账 |
 
 完整签名统一见 [Core Target 回调](../../../interfaces/core/IProposalTarget.sol)。Executor 只接受 ActionTarget 转发，不接受外部直接调用；同一复合键重复创建回调必须拒绝，任一回调失败均回滚对应外层操作。
 

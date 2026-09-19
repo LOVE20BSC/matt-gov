@@ -149,7 +149,6 @@ Proposal 由合约分配的头部与创建者提供的主体组成，对外以 `
 | `EmptyString(string parameter)` | `title` 为空 |
 | `ZeroAmount(string parameter)` | `init` 的 `submitMinPerThousand == 0` |
 | `InvalidAmount()` | `init` 的 `submitMinPerThousand > 1000` |
-| `RoundNotStarted()` | `currentRound() == 0`（Phase 尚未开始；当前不强制校验，由业务决定是否允许 Phase 0 创建与推举） |
 | `ProposalNotFound(uint256 proposalId)` | `proposalInfosByIds` 传入未分配过的 ID；`submit` 的 `proposalId` 不存在 |
 | `CannotSubmitAction()` | 门槛或资格不足（创建段与推举段共用） |
 | `AlreadySubmitted()` | `submit` 中同一 Proposal 同轮重复推举 |
