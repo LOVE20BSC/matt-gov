@@ -183,7 +183,7 @@ launchCredit -= count * threshold
   Proposal 结算成功后发射。`target` 为本次读取的 `ISubmit.proposalTarget` 返回的 `target` 地址（与代币接收者一致）；`amount` 为实际铸造量。
 
 - **`RewardBurned(address indexed tokenAddress, uint256 indexed round, uint256 amount, bytes32 reason)`**  
-  准备期取消池或治理结算溢出时发射。一次准备可能发射 0～2 条；有多条时顺序为先加速池、后 Proposal 池。准备期的取消事件无条件发射，金额可为 0（当 `available` 小到池取整为 0 但仍满足取消条件时）；治理结算的溢出事件只在 `burnReward > 0` 时发射。`reason` 取值：
+  准备期取消池或治理结算溢出时发射。一次准备可能发射 0～2 条；有多条时顺序为先加速池、后 Proposal 池。准备期的 `RewardBurned` 事件只在对应池金额大于 0 时发射（与治理结算溢出口径一致）；金额为 0 时账本仍 `+0`、不发事件。`reason` 取值：
   - `keccak256("boostPoolCancelled")` - 准备期取消加速池（`totalBoost == 0`）
   - `keccak256("proposalPoolCancelled")` - 准备期取消 Proposal 池（`eligibleProposalVotes == 0`）
   - `keccak256("boostOverflow")` - 治理结算时加速上限溢出（`burnReward > 0`）

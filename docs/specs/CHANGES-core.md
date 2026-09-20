@@ -282,6 +282,7 @@
 - **Selector**：`0xe5ca3ca3` → `0x8187933a`
 - **校验**：新增 `maxGovBoostRewardMultiplier` 上界校验（`0 < x ≤ 1000`），防止溢出；其他参数校验保持不变
 - **函数数量**：28 → 27（移除 `stakeAddress()` getter）
+- **原因**：原 TKM 版本保留 `stakeAddress` 但未使用；BSC 版本加速数据源改为 Vote 快照，该依赖无消费者，已完全删除。
 
 
 #### 批量铸造
