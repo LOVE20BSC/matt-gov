@@ -138,6 +138,8 @@ else:
 
 两个查询函数均先校验存在性（`proposalRewardByProposalId` 调用 `Submit.proposalTarget`、`govRewardByMemberId` 调用 `MemberNFT.ownerOf`），后计算金额；不存在的 Proposal/成员回滚。未达标 Proposal 或未投票成员返回零金额；已铸造不影响金额，`minted` 返回 `true` 并仍返回原金额。
 
+未准备查询返回的金额是按**当前状态计算的投影值**，实际结算金额以准备时冻结的池值为准。查询与结算之间若有新铸造消耗供应量上限，查询投影可能高于最终准备结果；若有准备其他轮次预留池值，查询投影可能低于最终结果。
+
 `mintGovReward` 与 `mintProposalReward` 在三项和为 0 时拒绝 `NoRewardAvailable`，重复保护使用独立状态位，不能用金额是否大于零判断。
 
 `isRewardPrepared` 查询本轮是否已准备；未准备时返回 `false`。
@@ -193,7 +195,7 @@ launchCredit -= count * threshold
 - 初始化时拒绝五个依赖地址为零（`InvalidAddress()`）和两项激励比例之和超过 `1000`（`InvalidAmount()`）；校验顺序按 [通用规则](01-common-rules.md#初始化与安全)，先初始化状态、后参数校验。`proposalRewardMinVotePerThousand` 与 `maxGovBoostRewardMultiplier` 只作下界校验（非零），不约束上界；极端配置可导致乘法溢出 panic，属部署配置风险，应在发布前检查脚本中验证。
 - `prepareRewardIfNeeded` 只在首次准备时扫描 Vote 本轮有票 Proposal；实现和验收至少覆盖约 300 个 Proposal 的准备交易。准备成功后，`eligibleProposalVotes[tokenAddress][round]` 只读，不得再次读取 Vote 列表或改写。准备期的 `RewardBurned` 事件无条件发射，金额可为 0（当 `available` 小到池取整为 0 但仍满足取消条件时）；治理结算的溢出事件只在 `burnReward > 0` 时发射。
 - 各项分配向下取整产生的极小舍入余数不单独维护，也不追加结算状态；累计账本只记录实际铸造和明确销毁的额度。
-- `NotEnoughReward()` 与 `NotEnoughRewardToBurn()` 是防御性检查；在正确配置与正常流程下不可达（账本不变式 `rewardReserved >= rewardMinted + rewardBurned` 始终成立）。`_proposalRewardCalculation` 的 `eligibleVotes == 0` 早退、`_govRewardCalculation` 的 `totalVotes == 0` 早退、`_updateLaunchCredit` 的 `threshold == 0` 早退均为防御性分支，在当前账本不变式下不可达。
+- `NotEnoughReward()` 与 `NotEnoughRewardToBurn()` 是防御性检查；在正确配置与正常流程下不可达（账本不变式 `rewardReserved >= rewardMinted + rewardBurned` 始终成立）。`_proposalRewardCalculation` 的 `:381 eligibleVotes == 0` 早退、`_govRewardCalculation` 的 `:424 totalVotes == 0` 早退、`_updateLaunchCredit` 的 `:537 threshold == 0` 早退均为防御性分支，在当前账本不变式下不可达（`:381` 能进入时必有 `proposalVotes > 0` 且 `proposalVotes >= minVotes`，从而 `eligibleVotes > 0`；`:424` 能进入时必有 `memberVotes > 0`；`:537` 能进入时必有 `mintAmount > 0` 从而 `maxSupply - totalSupplyBeforeMint > 0`）。
 - 历史来源 `LOVE20TKM/core/src/LOVE20Mint.sol` 只作为行为参考，不替代本文件的账本规则。
 
 验收见 [Core 验收](09-testing.md)。
