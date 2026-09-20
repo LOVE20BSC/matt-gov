@@ -131,9 +131,17 @@ else:
 
 单轮、批量、查询和激励参数接口均见 [`IMint.sol`](../../../interfaces/core/IMint.sol)。
 
-`proposalRewardInfo` 未准备时返回 `(0, false, false)`，不能把它缓存为最终零激励；准备后按冻结池、Proposal 票数和已缓存的 `eligibleProposalVotes` 计算 amount，已铸造也返回原金额。未达标返回 0。治理查询未准备或未投票时返回零金额；不存在的 Proposal/成员回滚。三项和为 0 时拒绝 `NoRewardAvailable`，重复保护使用独立状态位，不能用金额是否大于零判断。
+`proposalRewardInfo` 未准备时返回 `(0, false, false)`，不能把它缓存为最终零激励；准备后按冻结池、Proposal 票数和已缓存的 `eligibleProposalVotes` 计算 amount，已铸造也返回原金额。未达标返回 0。
 
-批量按输入顺序执行，结果数组与输入等长；任一 Round 未结束、未准备、没有投票记录或已铸造，则整笔回滚。治理激励和发射额度/次数更新也必须原子完成。
+`govRewardByAccount` 未准备或未投票时返回零金额与 `minted = false`；已准备时按公式计算三项，已铸造也返回原金额。不存在的 Proposal/成员回滚。
+
+`mintGovReward` 与 `mintProposalReward` 在三项和为 0 时拒绝 `NoRewardAvailable`，重复保护使用独立状态位，不能用金额是否大于零判断。
+
+`isRewardPrepared` 查询本轮是否已准备；未准备时返回 `false`。
+
+`rewardAvailable` 按 `maxSupply - totalSupply - reservedAvailable` 计算当前可分配额度；`reservedAvailable` 返回 `rewardReserved - rewardMinted - rewardBurned`。
+
+批量接口 `mintGovRewards` 按输入顺序执行，结果数组与输入等长；任一 Round 未结束、未准备、没有投票记录或已铸造，则整笔回滚。治理激励和发射额度/次数更新也必须原子完成。
 
 ## 发射额度的生成
 
@@ -182,6 +190,7 @@ launchCredit -= count * threshold
 - 初始化时拒绝五个依赖地址为零（`InvalidAddress()`）和两项激励比例之和超过 `1000`（`InvalidAmount()`）；校验顺序按 [通用规则](01-common-rules.md#初始化与安全)，先初始化状态、后参数校验。
 - `prepareRewardIfNeeded` 只在首次准备时扫描 Vote 本轮有票 Proposal；实现和验收至少覆盖约 300 个 Proposal 的准备交易。准备成功后，`eligibleProposalVotes[tokenAddress][round]` 只读，不得再次读取 Vote 列表或改写。
 - 各项分配向下取整产生的极小舍入余数不单独维护，也不追加结算状态；累计账本只记录实际铸造和明确销毁的额度。
+- `NotEnoughReward()` 与 `NotEnoughRewardToBurn()` 是防御性检查；在正确配置与正常流程下不可达（账本不变式 `rewardReserved >= rewardMinted + rewardBurned` 始终成立）。
 - 历史来源 `LOVE20TKM/core/src/LOVE20Mint.sol` 只作为行为参考，不替代本文件的账本规则。
 
 验收见 [Core 验收](09-testing.md)。
