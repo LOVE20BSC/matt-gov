@@ -192,10 +192,10 @@ launchCredit -= count * threshold
 
 事件与错误定义见 [`IMint.sol`](../../../interfaces/core/IMint.sol)。
 
-- 初始化时拒绝五个依赖地址为零（`InvalidAddress()`）和两项激励比例之和超过 `1000`（`InvalidAmount()`）；校验顺序按 [通用规则](01-common-rules.md#初始化与安全)，先初始化状态、后参数校验。`proposalRewardMinVotePerThousand` 与 `maxGovBoostRewardMultiplier` 只作下界校验（非零），不约束上界；极端配置可导致乘法溢出 panic，属部署配置风险，应在发布前检查脚本中验证。
-- `prepareRewardIfNeeded` 只在首次准备时扫描 Vote 本轮有票 Proposal；实现和验收至少覆盖约 300 个 Proposal 的准备交易。准备成功后，`eligibleProposalVotes[tokenAddress][round]` 只读，不得再次读取 Vote 列表或改写。准备期的 `RewardBurned` 事件无条件发射，金额可为 0（当 `available` 小到池取整为 0 但仍满足取消条件时）；治理结算的溢出事件只在 `burnReward > 0` 时发射。
+- 初始化时拒绝四个依赖地址为零（`InvalidAddress()`）和两项激励比例之和超过 `1000`（`InvalidAmount()`）；校验顺序按 [通用规则](01-common-rules.md#初始化与安全)，先初始化状态、后参数校验。`maxGovBoostRewardMultiplier` 须满足 `0 < x ≤ 1000`（`InvalidAmount()`），上界与千分比体系对齐以防溢出；`proposalRewardMinVotePerThousand` 不做校验（允许为 0）。
+- `prepareRewardIfNeeded` 只在首次准备时扫描 Vote 本轮有票 Proposal；实现和验收至少覆盖约 300 个 Proposal 的准备交易。准备成功后，`eligibleProposalVotes[tokenAddress][round]` 只读，不得再次读取 Vote 列表或改写。准备期的 `RewardBurned` 事件只在对应池金额大于 0 时发射（与治理结算溢出口径一致）；金额为 0 时账本仍 `+0`、不发事件。
 - 各项分配向下取整产生的极小舍入余数不单独维护，也不追加结算状态；累计账本只记录实际铸造和明确销毁的额度。
-- `NotEnoughReward()` 与 `NotEnoughRewardToBurn()` 是防御性检查；在正确配置与正常流程下不可达（账本不变式 `rewardReserved >= rewardMinted + rewardBurned` 始终成立）。`_proposalRewardCalculation` 的 `:381 eligibleVotes == 0` 早退、`_govRewardCalculation` 的 `:424 totalVotes == 0` 早退、`_updateLaunchCredit` 的 `:537 threshold == 0` 早退均为防御性分支，在当前账本不变式下不可达（`:381` 能进入时必有 `proposalVotes > 0` 且 `proposalVotes >= minVotes`，从而 `eligibleVotes > 0`；`:424` 能进入时必有 `memberVotes > 0`；`:537` 能进入时必有 `mintAmount > 0` 从而 `maxSupply - totalSupplyBeforeMint > 0`）。
+- `NotEnoughReward()` 与 `NotEnoughRewardToBurn()` 是防御性检查；在正确配置与正常流程下不可达（账本不变式 `rewardReserved >= rewardMinted + rewardBurned` 始终成立）。`_proposalRewardCalculation` 的 `:389 eligibleVotes == 0` 早退、`_govRewardCalculation` 的 `:432 totalVotes == 0` 早退、`_updateLaunchCredit` 的 `:545 threshold == 0` 早退均为防御性分支，在当前账本不变式下不可达（`:389` 能进入时必有 `proposalVotes > 0` 且 `proposalVotes >= minVotes`，从而 `eligibleVotes > 0`；`:432` 能进入时必有 `memberVotes > 0`；`:545` 能进入时必有 `mintAmount > 0` 从而 `maxSupply - totalSupplyBeforeMint > 0`）。
 - 历史来源 `LOVE20TKM/core/src/LOVE20Mint.sol` 只作为行为参考，不替代本文件的账本规则。
 
 验收见 [Core 验收](09-testing.md)。

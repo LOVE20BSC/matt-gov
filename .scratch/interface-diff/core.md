@@ -312,12 +312,12 @@ OZ 5 的标准回滚由固定依赖提供：`IERC721Errors`、`ERC721OutOfBounds
 | `proposalReward(tokenAddress, round)` | `actionReward(tokenAddress, round)` | 改名 |
 | `PROPOSAL_REWARD_MIN_VOTE_PER_THOUSAND()` | `ACTION_REWARD_MIN_VOTE_PER_THOUSAND()` | 改名（保留大写配置 getter） |
 | `govRewardByMemberId(tokenAddress, round, memberId) returns (voteReward, boostReward, burnReward, minted)` | `govRewardByAccount(tokenAddress, round, address account) returns (verifyReward, boostReward, burnReward, isMinted)` | 改名+改参（成员 ID 替代账户地址；返回值语义改为投票激励；selector `0x8c25b309` 取代 `0x5eccfa65`） |
-| `proposalRewardByProposalId(tokenAddress, round, proposalId) returns (amount, minted)` | `actionRewardByActionIdByAccount(tokenAddress, round, actionId, address account) returns (reward, isMinted)` | 改名+改参（去 account 维度、返回值从 `(reward, prepared, isMinted)` 改为 `(amount, minted)`；selector `0x11eefe4c` 取代 `0x4c02dd3a`） |
+| `proposalRewardByProposalId(tokenAddress, round, proposalId) returns (amount, minted)` | `actionRewardByActionIdByAccount(tokenAddress, round, actionId, address account) returns (reward, isMinted)` | 改名+改参（去 account 维度、返回值从 `(reward, prepared, isMinted)` 改为 `(amount, minted)`；selector `0x11eefe4c` 取代 `0x30f5cfb6`） |
 | `rewardReserved`、`rewardMinted`、`rewardBurned`、`isRewardPrepared`、`govReward`、`rewardAvailable`、`reservedAvailable` | 同名 | 保留 |
 | `eligibleProposalVotes(tokenAddress, round)` | 无 | 新增 |
 | `launchCredit(tokenAddress, memberId)` | `numOfMintGovRewardByAccount(tokenAddress, address account)` | 语义替代（铸造次数计数 → 未消耗发射额度；整数次数移入 `ILOVE20Launch.launchCount`） |
-| `init(voteAddress, submitAddress, stakeAddress, launchAddress, memberNFTAddress, proposalRewardMinVotePerThousand, roundRewardGovPerThousand, roundRewardProposalPerThousand, maxGovBoostRewardMultiplier)` | 无 | 新增 |
-| `voteAddress()`、`submitAddress()`、`stakeAddress()`、`launchAddress()` | `voteAddress()`、`verifyAddress()`、`stakeAddress()` | `verifyAddress` 随验证阶段取消改为 `submitAddress`，并按新版依赖增加 `launchAddress`；函数数 19 → 23。见 [已确认 4](README.md#已确认并落地) |
+| `init(voteAddress, submitAddress, launchAddress, memberNFTAddress, proposalRewardMinVotePerThousand, roundRewardGovPerThousand, roundRewardProposalPerThousand, maxGovBoostRewardMultiplier)` | 无 | 新增（8 参数，selector `0x8187933a`） |
+| `voteAddress()`、`submitAddress()`、`launchAddress()` | `voteAddress()`、`verifyAddress()`、`stakeAddress()` | `verifyAddress` 随验证阶段取消改为 `submitAddress`，并按新版依赖增加 `launchAddress`；删除 `stakeAddress()`；函数数 19 → 23 → 27（成员增加后）→ 27（移除 `stakeAddress()` 后保持） |
 | 无 | `ROUND_REWARD_GOV_PER_THOUSAND()`、`ROUND_REWARD_ACTION_PER_THOUSAND()`、`MAX_GOV_BOOST_REWARD_MULTIPLIER()` | 删除 getter（改为 init 入参） |
 | 无 | `govVerifyReward(tokenAddress, round)`、`govBoostReward(tokenAddress, round)` | 删除，**已裁决不补**（激励计算查询由调用方自行计算） |
 | 无 | `calculateRoundGovReward(tokenAddress)`、`calculateRoundActionReward(tokenAddress)` | 删除，**已裁决不补**（同上） |

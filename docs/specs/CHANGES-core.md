@@ -275,7 +275,14 @@
 #### 加速质押参与激励分配
 - **旧**：加速质押参与治理激励的加速部分分配（50%），并受 2 倍上限
 - **新**：继续参与同一 50% 加速激励，并继续受 2 倍上限；BSC 仅把份额归属从地址改为 `memberId`
-- **依赖调整**：`stakeAddress` 参数保留为旧接口兼容，但当前无消费者；加速数据来源已改为 Vote 的 `stakedAmountOfVoters` / `stakedAmountOfVotersByMemberId` 快照。
+- **依赖调整**：`stakeAddress` 已从 `init` 参数与接口移除；加速数据来源改为 Vote 的 `stakedAmountOfVoters` / `stakedAmountOfVotersByMemberId` 快照，无需持有 Stake 合约引用。
+
+#### 初始化接口变更
+- **参数**：9 参数 → 8 参数，移除 `stakeAddress`
+- **Selector**：`0xe5ca3ca3` → `0x8187933a`
+- **校验**：新增 `maxGovBoostRewardMultiplier` 上界校验（`0 < x ≤ 1000`），防止溢出；其他参数校验保持不变
+- **函数数量**：28 → 27（移除 `stakeAddress()` getter）
+
 
 #### 批量铸造
 - **新增**：`mintGovRewards(tokenAddress, memberId, rounds[])`
@@ -286,7 +293,6 @@
 - **旧版来源**：`govRewardByAccount(address tokenAddress, uint256 round, address account)`。
 - **现行接口**：`govRewardByMemberId(address tokenAddress, uint256 round, uint256 memberId)`，selector 为 `0x8c25b309`；取代迁移中间版本的 `govRewardByAccount(address,uint256,uint256)`（`0x5eccfa65`），不保留兼容入口。参数顺序不变。
 - **查询语义**：未准备时实时读取 `rewardAvailable()` 计算轮次池并扫描 Vote 冻结结果计算金额；准备后读取准备时冻结的缓存值。未投票返回零金额；已铸造仍返回原金额并标记 `minted = true`；不存在的成员由 `MemberNFT.ownerOf` 回滚。
-- **保留依赖**：`stakeAddress` 为旧接口保留成员，当前无消费者（加速数据来源已改为 Vote 快照）。
 
 #### 准备、结算与发射额度
 - **取消时点前移**：旧实现首次治理结算时检查并取消空加速池/行动池；新实现准备时按 `totalBoost == 0` / `eligibleProposalVotes == 0` 取消对应池，每轮仅准备一次。零票轮仍发射 `RewardPrepared`，累计账本不变。

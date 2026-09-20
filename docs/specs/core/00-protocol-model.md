@@ -35,7 +35,7 @@ Core 不解释具体 Proposal 的业务字段，扩展通过 Target 接入。
 | Submit | `phaseAddress`、`stakeAddress`、`memberNFTAddress` | 时间、质押和身份依赖 |
 | Submit | `submitMinPerThousand` | 推举门槛，千分比，如 `10 = 1%` |
 | Vote | `phaseAddress`、`stakeAddress`、`submitAddress`、`memberNFTAddress`、`mintAddress` | 时间、票权、提案、身份和激励门槛依赖 |
-| Mint | `voteAddress`、`submitAddress`、`stakeAddress`、`launchAddress`、`memberNFTAddress` | 投票、提案、发射和铸造权限依赖；`stakeAddress` 为旧接口保留成员、当前无消费者（加速数据来源已改为 Vote 快照） |
+| Mint | `voteAddress`、`submitAddress`、`launchAddress`、`memberNFTAddress` | 投票、提案、发射和铸造权限依赖 |
 | Mint | `proposalRewardMinVotePerThousand` | 提案激励门槛；状态变量和公开 getter 为 `PROPOSAL_REWARD_MIN_VOTE_PER_THOUSAND`，千分比，如 `50 = 5%` |
 | Mint | `roundRewardGovPerThousand`、`roundRewardProposalPerThousand` | 治理池、提案池占可用供应的千分比；状态变量和公开 getter 为 `ROUND_REWARD_GOV_PER_THOUSAND`、`ROUND_REWARD_PROPOSAL_PER_THOUSAND`，如 `30`、`10` |
 | Mint | `maxGovBoostRewardMultiplier` | 加速激励相对投票激励的倍数上限；状态变量和公开 getter 为 `MAX_GOV_BOOST_REWARD_MULTIPLIER`，如 `2` |
