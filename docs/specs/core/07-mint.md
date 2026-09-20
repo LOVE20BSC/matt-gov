@@ -45,7 +45,7 @@ available = maxSupply - totalSupply - reservedAvailable
 2. 读取 Vote 的冻结结果。若 `totalVotes == 0`，两池和 `eligibleProposalVotes` 记为 0 并标记已准备，累计账本不变。
 3. 否则遍历 Vote 本轮有票 Proposal，按冻结 `totalVotes` 判断每个 Proposal 是否达到阈值，并把达标 Proposal 的票数总和写入 `eligibleProposalVotes[tokenAddress][round]`。
 4. 用准备前的 `available` 计算两池，并在本步骤唯一一次增加 `rewardReserved`。
-5. 若 `totalBoost == 0`，准备时直接取消加速池；若缓存的 `eligibleProposalVotes == 0`，准备时直接取消完整 Proposal 池。
+5. 若 `totalBoost == 0`，准备时直接取消加速池；若缓存的 `eligibleProposalVotes == 0`，准备时直接取消完整 Proposal 池。两个条件可同时成立，此时按顺序发射两条 `RewardBurned` 事件（先加速池、后 Proposal 池）。
 6. 保存轮次池值、达标票数和已准备状态，不逐个预写 Proposal 额度。后续 Proposal 结算只读取缓存，不再扫描 Vote 列表。
 
 ```text
@@ -163,7 +163,7 @@ launchCredit -= count * threshold
 - 初始化时拒绝五个依赖地址为零（`InvalidAddress()`）和两项激励比例之和超过 `1000`（`InvalidAmount()`）；校验顺序按 [通用规则](01-common-rules.md#初始化与安全)，先初始化状态、后参数校验。
 - `prepareRewardIfNeeded` 只在首次准备时扫描本轮 Vote 有票 Proposal；实现和验收至少覆盖约 300 个 Proposal 的准备交易。准备成功后，`eligibleProposalVotes[tokenAddress][round]` 只读，不得再次读取 Vote 列表或改写。
 - 各项分配向下取整产生的极小舍入余数不单独维护，也不追加结算状态；累计账本只记录实际铸造和明确销毁的额度。
-- `RewardBurned` 事件的 `reason` 取值：
+- 一次准备可能发射 0～2 条 `RewardBurned`；有多条时顺序为先加速池、后 Proposal 池。`RewardBurned` 事件的 `reason` 取值：
   - `keccak256("boost_pool_cancelled")` - 准备期取消加速池（`totalBoost == 0`）
   - `keccak256("proposal_pool_cancelled")` - 准备期取消 Proposal 池（`eligibleProposalVotes == 0`）
   - `keccak256("boost_overflow")` - 治理结算时加速上限溢出（`burnReward > 0`）
