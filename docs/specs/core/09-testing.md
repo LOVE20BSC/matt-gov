@@ -35,6 +35,7 @@
 | [Mint](07-mint.md) | Round 准备、单 Proposal 结算、重复准备 | 每轮仅预留一次，单项不能重复结算；对应 `MintTest.testZeroVotePreparationMustEmitEvent`、`testZeroProposalRewardMustRevert` |
 | Mint | 约 300 个 Proposal 的准备、缓存读取 | 准备阶段一次扫描并缓存达标 Proposal 总票数；后续单项结算不再扫描 Vote 列表，重复准备不改缓存；对应 `MintTest.testPrepareScansProposalsOnceAndCachesResult` |
 | Mint | 两种零总量、三段治理结果、批量多轮 | 预留不重加，销毁不重复，任一失败整体回滚；对应 `testBatchMustPreserveMemberOwner`、`testBatchFailureRollsBackRewardsAndLaunchCounts`、`testGovernanceQueryMatchesMintAndBoostBurn` |
+| Mint | init 参数校验、准备期双池取消、零额事件跳过、尘埃留存 | init 拒绝零地址、比例超限、倍数零值与超限；准备期 `totalBoost == 0` 与 `eligibleVotes == 0` 销毁对应池；零额不发 `RewardBurned`；多 Proposal 分配后尾数留存池中；对应 `MintCoverage.t.sol` 15 项（init 4 + 入口防御 4 + 准备期 3 + 尘埃 1 + 纯销毁 1 + 治理防御 2） |
 | Vote / Mint | 投票时快照为 50，随后追加 30；再次投票或不投票；NFT 转移 | 不投票仍按 50，再投票按 80、总量仅加 30；结算和转移不重算；Vote 快照由 `VoteTest` 覆盖，Mint 结算由 `MintTest.testGovernanceQueryMatchesMintAndBoostBurn` 覆盖 |
 | [Mint](07-mint.md) | 向上取整、跨多个阈值、社区上限 | 余数保留，新增次数不超上限，仅 Mint 可 `addLaunchCount`；对应 `testLaunchCreditMustUseActualPreMintSupply`、`testLaunchThresholdMustRoundUp`、`testLaunchCapRetainsUnconvertedCredit` |
 | [Launch](08-launch.md) | 向非自有 NFT 部分融合、次数消耗、账本上限、非 Mint 调用 `addLaunchCount` | 源扣目标增，不转移额度，已消耗次数不能再次使用；只有 `init` 校验初始化状态，三个写入口不重复校验 |
