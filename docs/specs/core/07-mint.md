@@ -75,13 +75,16 @@ if eligibleProposalVotes == 0:
 | `!IVote(voteAddress).isRoundEnded(round)` | `RoundNotReadyToMint()` |
 | `!isRewardPrepared[tokenAddress][round]` | `RoundNotReadyToMint()` |
 | 已铸造（独立状态位） | `AlreadyMinted()` |
-| Proposal 不达标或金额为 0 | `NoRewardAvailable()` |
+| `eligibleProposalVotes[tokenAddress][round] == 0` | `NoRewardAvailable()` |
+| Proposal 不达标 | `NoRewardAvailable()` |
 
 通过后写状态、铸造、发射事件：
 
 ```text
 实际铸造量 = floor(proposalReward * proposalVotes / eligibleProposalVotes)
 ```
+
+`eligibleProposalVotes == 0` 在准备阶段已取消完整 Proposal 池（见上），该 Round 任何 Proposal 都不能铸造；必须在除法前判零，否则会 panic。
 
 代币铸给 Target；行动类 Target 的后续转发见 [行动铸造链路](../action/07-minting.md#铸造链路)。无合格 Proposal 的完整池已在准备时取消，不能再次销毁。
 
@@ -97,7 +100,8 @@ if eligibleProposalVotes == 0:
 | `!IVote(voteAddress).isRoundEnded(round)` | `RoundNotReadyToMint()` |
 | `!isRewardPrepared[tokenAddress][round]` | `RoundNotReadyToMint()` |
 | 已铸造（独立状态位） | `AlreadyMinted()` |
-| `memberVotes == 0` 或金额为 0 | `NoRewardAvailable()` |
+| `memberVotes == 0` | `NoRewardAvailable()` |
+| `voteReward + boostReward + burnReward == 0` | `NoRewardAvailable()` |
 
 通过后写状态、铸造、销毁（若有溢出）、发射额度、发射事件。使用以下公式，金额除法向下取整：
 

@@ -49,13 +49,12 @@ interface IMintErrors {
 }
 
 interface IMint is IMintEvents, IMintErrors {
-    // 依赖 getter
     function voteAddress() external view returns (address);
     function submitAddress() external view returns (address);
     function stakeAddress() external view returns (address);
     function launchAddress() external view returns (address);
     function memberNFTAddress() external view returns (address);
-    // 配置 getter
+
     function PROPOSAL_REWARD_MIN_VOTE_PER_THOUSAND() external view returns (uint256);
     function ROUND_REWARD_GOV_PER_THOUSAND() external view returns (uint256);
     function ROUND_REWARD_PROPOSAL_PER_THOUSAND() external view returns (uint256);
