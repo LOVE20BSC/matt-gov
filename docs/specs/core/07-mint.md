@@ -41,7 +41,7 @@ available = maxSupply - totalSupply - reservedAvailable
 
 `prepareRewardIfNeeded` 任何地址可调用。
 
-1. 本轮已准备则直接返回，不更新状态；未结束的 Round 拒绝准备。
+1. 本轮已准备则直接返回，不更新状态；未结束的 Round 拒绝准备（通过 `IVote(voteAddress).isRoundEnded(round)` 判定，`isRoundEnded(0) == false`）。
 2. 读取 Vote 的冻结结果。若 `totalVotes == 0`，两池和 `eligibleProposalVotes` 记为 0 并标记已准备，累计账本不变。
 3. 否则遍历 Vote 本轮有票 Proposal，按冻结 `totalVotes` 判断每个 Proposal 是否达到阈值，并把达标 Proposal 的票数总和写入 `eligibleProposalVotes[tokenAddress][round]`。
 4. 用准备前的 `available` 计算两池，并在本步骤唯一一次增加 `rewardReserved`。
@@ -71,9 +71,9 @@ if eligibleProposalVotes == 0:
 
 | 条件 | 回滚 |
 | --- | --- |
-| `msg.sender != ISubmit(submitAddress).proposalTarget(tokenAddress, proposalId)` | `UnauthorizedCaller()` |
+| 读取 `(target, targetMode) = ISubmit(submitAddress).proposalTarget(tokenAddress, proposalId)`；`msg.sender != target` | `UnauthorizedCaller()` |
 | `!IVote(voteAddress).isRoundEnded(round)` | `RoundNotReadyToMint()` |
-| `!isRewardPrepared[tokenAddress][round]` | `RoundNotReadyToMint()` |
+| 未准备（通过独立状态位判定） | `RoundNotReadyToMint()` |
 | 已铸造（独立状态位） | `AlreadyMinted()` |
 | `eligibleProposalVotes[tokenAddress][round] == 0` | `NoRewardAvailable()` |
 | Proposal 不达标 | `NoRewardAvailable()` |
@@ -98,7 +98,7 @@ if eligibleProposalVotes == 0:
 | --- | --- |
 | `IMemberNFT(memberNFTAddress).ownerOf(memberId) != msg.sender` | `NotMemberOwner(uint256 memberId)` |
 | `!IVote(voteAddress).isRoundEnded(round)` | `RoundNotReadyToMint()` |
-| `!isRewardPrepared[tokenAddress][round]` | `RoundNotReadyToMint()` |
+| 未准备（通过独立状态位判定） | `RoundNotReadyToMint()` |
 | 已铸造（独立状态位） | `AlreadyMinted()` |
 | `memberVotes == 0` | `NoRewardAvailable()` |
 | `voteReward + boostReward + burnReward == 0` | `NoRewardAvailable()` |
@@ -129,7 +129,7 @@ else:
 
 单轮、批量、查询和激励参数接口均见 [`IMint.sol`](../../../interfaces/core/IMint.sol)。
 
-`proposalRewardInfo` 未准备时返回 `(0, false, false)`，不能把它缓存为最终零激励；准备后按冻结池、Proposal 票数和已缓存的 `eligibleProposalVotes` 计算 amount，已铸造也返回原金额。未达标返回 0。治理查询未准备或未投票时返回零金额；不存在的 Proposal/成员回滚。铸造金额为 0 时按旧逻辑拒绝 `NoRewardAvailable`，重复保护使用独立状态位，不能用金额是否大于零判断。
+`proposalRewardInfo` 未准备时返回 `(0, false, false)`，不能把它缓存为最终零激励；准备后按冻结池、Proposal 票数和已缓存的 `eligibleProposalVotes` 计算 amount，已铸造也返回原金额。未达标返回 0。治理查询未准备或未投票时返回零金额；不存在的 Proposal/成员回滚。三项和为 0 时拒绝 `NoRewardAvailable`，重复保护使用独立状态位，不能用金额是否大于零判断。
 
 批量按输入顺序执行，结果数组与输入等长；任一 Round 未结束、未准备、没有投票记录或已铸造，则整笔回滚。治理激励和发射额度/次数更新也必须原子完成。
 
@@ -164,9 +164,9 @@ launchCredit -= count * threshold
 - `prepareRewardIfNeeded` 只在首次准备时扫描本轮 Vote 有票 Proposal；实现和验收至少覆盖约 300 个 Proposal 的准备交易。准备成功后，`eligibleProposalVotes[tokenAddress][round]` 只读，不得再次读取 Vote 列表或改写。
 - 各项分配向下取整产生的极小舍入余数不单独维护，也不追加结算状态；累计账本只记录实际铸造和明确销毁的额度。
 - 一次准备可能发射 0～2 条 `RewardBurned`；有多条时顺序为先加速池、后 Proposal 池。`RewardBurned` 事件的 `reason` 取值：
-  - `keccak256("boost_pool_cancelled")` - 准备期取消加速池（`totalBoost == 0`）
-  - `keccak256("proposal_pool_cancelled")` - 准备期取消 Proposal 池（`eligibleProposalVotes == 0`）
-  - `keccak256("boost_overflow")` - 治理结算时加速上限溢出（`burnReward > 0`）
+  - `keccak256("boostPoolCancelled")` - 准备期取消加速池（`totalBoost == 0`）
+  - `keccak256("proposalPoolCancelled")` - 准备期取消 Proposal 池（`eligibleProposalVotes == 0`）
+  - `keccak256("boostOverflow")` - 治理结算时加速上限溢出（`burnReward > 0`）
 - 历史来源 `LOVE20TKM/core/src/LOVE20Mint.sol` 只作为行为参考，不替代本文件的账本规则。
 
 验收见 [Core 验收](09-testing.md)。
