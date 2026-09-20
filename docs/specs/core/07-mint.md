@@ -16,12 +16,14 @@ Mint 准备并结算治理和 Proposal 激励，不读取行动验证结果。�
 | `eligibleProposalVotes` | Mint 准备时按 Vote 冻结结果计算并缓存的本轮所有达标 Proposal 票数之和 |
 | `launchCredit` | 每个 token、成员尚未转换为发射次数的治理激励额度，见[发射额度的生成](#发射额度的生成) |
 
-Proposal 达标条件：
+Proposal 达标条件（链上查询通过 `isProposalIdWithReward(tokenAddress, round, proposalId)`）：
 
 ```text
 proposalVotes > 0
 proposalVotes * 1000 >= totalVotes * proposalRewardMinVotePerThousand
 ```
+
+`isProposalIdWithReward` 未准备时返回 `false`；准备后按缓存的 `eligibleProposalVotes` 与 Vote 的 `votesNumByProposalId` 判定，已铸造不影响返回值（仍返回 `true`）。
 
 `PerThousand` 参数使用千分比，例如门槛 50 表示 5%。账本始终满足：
 
@@ -103,7 +105,7 @@ if eligibleProposalVotes == 0:
 | `memberVotes == 0` | `NoRewardAvailable()` |
 | `voteReward + boostReward + burnReward == 0` | `NoRewardAvailable()` |
 
-通过后写状态、铸造、销毁（若有溢出）、发射额度、发射事件。使用以下公式，金额除法向下取整：
+通过后写状态、铸造、销毁（若有溢出）、发射额度、发射事件。代币铸给调用者（`msg.sender`，即当前 NFT 持有人）。使用以下公式，金额除法向下取整：
 
 ```text
 votePoolAmount = floor(govReward / 2)
@@ -121,7 +123,7 @@ else:
 
 `memberVotes` 为本轮累计投出票数；`memberBoost` 和 `totalBoost` 均取 Vote 的同轮冻结快照，记账时机见 [Vote](06-vote.md#投票和加速快照)。投票后仅追加质押、不再投票，不增加本轮加速权重；NFT 转移不重算快照。两池按固定 50/50 拆分，奇数余量归加速池。`totalBoost == 0` 时整份加速池已在准备时取消，本次不得再计 `burnReward`。未投票者即使有加速质押也不能领取治理激励。
 
-批量接口 `mintGovRewards` 逐轮按上述顺序执行，任一轮失败整笔回滚。
+批量接口 `mintGovRewards` 逐轮按上述顺序执行，任一轮失败整笔回滚。空 `rounds` 数组允许（返回空数组，无副作用）。
 
 例：两池各 500、成员投票占 10%、加速份额占 50%、倍数上限为 2。结果为 `voteReward = 50`、`boostReward = 100`、`burnReward = 150`；实际铸造 150。
 
@@ -156,17 +158,30 @@ launchCredit -= count * threshold
 
 例（最小单位）：当前阈值为 100、原额度为 80、本次铸造 50、剩余次数足够，则得到 1 次，余数 30。下次按新的铸造前供应量重新计算阈值，不沿用 100。
 
+## 事件
+
+- **`RewardPrepared(address indexed tokenAddress, uint256 indexed round, uint256 govReward, uint256 proposalReward, uint256 eligibleProposalVotes, uint256 rewardReserved, uint256 rewardBurned)`**  
+  准备完成后发射。`govReward` 与 `proposalReward` 为本轮冻结池值；`eligibleProposalVotes` 为缓存的达标票数之和（`totalBoost == 0` 或 `eligibleProposalVotes == 0` 时该字段对应取 0）；`rewardReserved` 与 `rewardBurned` 为准备完成后的**累计值**（不是增量）。`totalVotes == 0` 时两池与 `eligibleProposalVotes` 均为 0，`rewardReserved` 与 `rewardBurned` 不变。
+
+- **`GovernanceRewardMinted(address indexed tokenAddress, uint256 indexed round, uint256 indexed memberId, uint256 voteReward, uint256 boostReward, uint256 burnReward)`**  
+  治理结算成功后发射。`memberId` 为被结算成员；三项金额按公式计算（`totalBoost == 0` 时 `boostReward` 与 `burnReward` 均为 0）。
+
+- **`ProposalRewardMinted(address indexed tokenAddress, uint256 indexed round, uint256 indexed proposalId, address target, uint256 amount)`**  
+  Proposal 结算成功后发射。`target` 为本次读取的 `ISubmit.proposalTarget` 返回的 `target` 地址（与代币接收者一致）；`amount` 为实际铸造量。
+
+- **`RewardBurned(address indexed tokenAddress, uint256 indexed round, uint256 amount, bytes32 reason)`**  
+  准备期取消池或治理结算溢出时发射。一次准备可能发射 0～2 条；有多条时顺序为先加速池、后 Proposal 池。`reason` 取值：
+  - `keccak256("boostPoolCancelled")` - 准备期取消加速池（`totalBoost == 0`）
+  - `keccak256("proposalPoolCancelled")` - 准备期取消 Proposal 池（`eligibleProposalVotes == 0`）
+  - `keccak256("boostOverflow")` - 治理结算时加速上限溢出（`burnReward > 0`）
+
 ## 实现约束
 
 事件与错误定义见 [`IMint.sol`](../../../interfaces/core/IMint.sol)。
 
 - 初始化时拒绝五个依赖地址为零（`InvalidAddress()`）和两项激励比例之和超过 `1000`（`InvalidAmount()`）；校验顺序按 [通用规则](01-common-rules.md#初始化与安全)，先初始化状态、后参数校验。
-- `prepareRewardIfNeeded` 只在首次准备时扫描本轮 Vote 有票 Proposal；实现和验收至少覆盖约 300 个 Proposal 的准备交易。准备成功后，`eligibleProposalVotes[tokenAddress][round]` 只读，不得再次读取 Vote 列表或改写。
+- `prepareRewardIfNeeded` 只在首次准备时扫描 Vote 本轮有票 Proposal；实现和验收至少覆盖约 300 个 Proposal 的准备交易。准备成功后，`eligibleProposalVotes[tokenAddress][round]` 只读，不得再次读取 Vote 列表或改写。
 - 各项分配向下取整产生的极小舍入余数不单独维护，也不追加结算状态；累计账本只记录实际铸造和明确销毁的额度。
-- 一次准备可能发射 0～2 条 `RewardBurned`；有多条时顺序为先加速池、后 Proposal 池。`RewardBurned` 事件的 `reason` 取值：
-  - `keccak256("boostPoolCancelled")` - 准备期取消加速池（`totalBoost == 0`）
-  - `keccak256("proposalPoolCancelled")` - 准备期取消 Proposal 池（`eligibleProposalVotes == 0`）
-  - `keccak256("boostOverflow")` - 治理结算时加速上限溢出（`burnReward > 0`）
 - 历史来源 `LOVE20TKM/core/src/LOVE20Mint.sol` 只作为行为参考，不替代本文件的账本规则。
 
 验收见 [Core 验收](09-testing.md)。
