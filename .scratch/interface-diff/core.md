@@ -317,8 +317,9 @@ OZ 5 的标准回滚由固定依赖提供：`IERC721Errors`、`ERC721OutOfBounds
 | `eligibleProposalVotes(tokenAddress, round)` | 无 | 新增 |
 | `launchCredit(tokenAddress, memberId)` | `numOfMintGovRewardByAccount(tokenAddress, address account)` | 语义替代（铸造次数计数 → 未消耗发射额度；整数次数移入 `ILOVE20Launch.launchCount`） |
 | `init(voteAddress, submitAddress, launchAddress, memberNFTAddress, proposalRewardMinVotePerThousand, roundRewardGovPerThousand, roundRewardProposalPerThousand, maxGovBoostRewardMultiplier)` | `init(voteAddress, submitAddress, stakeAddress, launchAddress, memberNFTAddress, proposalRewardMinVotePerThousand, roundRewardGovPerThousand, roundRewardProposalPerThousand, maxGovBoostRewardMultiplier)` | 改参（移除 `stakeAddress`，9 参 → 8 参；selector `0x8187933a` 取代 `0xe5ca3ca3`） |
-| 无 | `stakeAddress()` | 已删除（getter 随 init 参数一并移除；加速数据源改为 Vote 快照，无消费者） |
-| 无 | `ROUND_REWARD_GOV_PER_THOUSAND()`、`ROUND_REWARD_ACTION_PER_THOUSAND()`、`MAX_GOV_BOOST_REWARD_MULTIPLIER()` | 删除 getter（改为 init 入参） |
+| `voteAddress()`、`submitAddress()`、`launchAddress()`、`memberNFTAddress()`、`initialized()` | `voteAddress()`、`verifyAddress()`、`stakeAddress()` | verifyAddress 随验证阶段取消改为 submitAddress；新增 launchAddress()；删除 stakeAddress()；其余同名保留；函数数 19 → 23 → … → 28 → 27（移除 stakeAddress() getter） |
+| `ROUND_REWARD_PROPOSAL_PER_THOUSAND()` | `ROUND_REWARD_ACTION_PER_THOUSAND()` | 改名 |
+| `ROUND_REWARD_GOV_PER_THOUSAND()`、`MAX_GOV_BOOST_REWARD_MULTIPLIER()` | 同名 | 保留 |
 | 无 | `govVerifyReward(tokenAddress, round)`、`govBoostReward(tokenAddress, round)` | 删除，**已裁决不补**（激励计算查询由调用方自行计算） |
 | 无 | `calculateRoundGovReward(tokenAddress)`、`calculateRoundActionReward(tokenAddress)` | 删除，**已裁决不补**（同上） |
 | 无 | `boostRewardBurnCheckeded(tokenAddress, round)`、`actionRewardBurnChecked(tokenAddress, round)` | 删除（前者旧名含拼写错误） |

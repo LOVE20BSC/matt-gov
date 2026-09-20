@@ -33,7 +33,7 @@
 
 因此每个合约在目标代码库通常保留三个提交：旧代码基线、BSC 实现、单元测试。
 
-**提交消息一律使用英文**，遵循 [Conventional Commits](https://www.conventionalcommits.org/) 规范：`type(scope): description`。常用 type 包括 `feat`（新功能）、`fix`（修复）、`refactor`（重构）、`test`（测试）、`docs`（文档）、`chore`（工具链或基础设施）。scope 为模块小写名（`mint`、`vote`、`phase`）。描述部分使用祈使句、首字母小写、不加句号。
+**提交消息一律使用英文**，遵循 [Conventional Commits](https://www.conventionalcommits.org/) 规范：`type(scope): description`。常用 type 包括 `feat`（新功能）、`fix`（修复）、`refactor`（重构）、`test`（测试）、`docs`（文档）、`chore`（工具链或基础设施）。scope 为模块小写名（`mint`、`vote`、`phase`）。描述部分使用祈使句、首字母小写、不加句号。**本规则自生效后新提交适用；历史提交不改写。**
 
 不要用额外的样式提交、临时修复提交或 revert 提交污染历史；发现问题时，在对应提交完成前 amend。已纳入 Git 的文件需要保留路径连续性；路径变化使用 `git mv`，不要删除后重建。
 
