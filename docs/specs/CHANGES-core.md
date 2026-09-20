@@ -254,7 +254,7 @@
 
 ### ✅ 保留逻辑
 - 轮次激励池准备：参考 `LOVE20TKM/core/src/LOVE20Mint.sol`
-- Proposal 激励门槛和分配公式
+- 治理激励各半分配、加速倍数上限及超限额度取消；BSC 的票数基准和舍入差异见下文。
 
 ### 🔄 关键变化
 
@@ -262,8 +262,8 @@
 - **旧**：verifyReward（验证激励，50%）+ boostReward（加速激励，50%）
 - **新**：voteReward（投票激励，50%）+ boostReward（加速激励，50%）
 
-**机制保持一致**：
-- 50/50 拆分保持不变：`govReward / 2`
+**机制与舍入差异**：
+- 保留各半拆分；旧实现两半均为 `floor(govReward / 2)`，奇数余量留在预留账本；新实现投票池仍向下取整，加速池为 `govReward - floor(govReward / 2)`，奇数余量归加速池。
 - 第一部分按投票行为分配（旧称"验证激励"，新称"投票激励"）
 - 第二部分按加速质押分配（仍称"加速激励"）
 - 2 倍上限机制保持不变
@@ -275,15 +275,29 @@
 #### 加速质押参与激励分配
 - **旧**：加速质押参与治理激励的加速部分分配（50%），并受 2 倍上限
 - **新**：继续参与同一 50% 加速激励，并继续受 2 倍上限；BSC 仅把份额归属从地址改为 `memberId`
+- **依赖调整**：`stakeAddress` 参数保留为旧接口兼容，但当前无消费者；加速数据来源已改为 Vote 的 `stakedAmountOfVoters` / `stakedAmountOfVotersByMemberId` 快照。
 
 #### 批量铸造
 - **新增**：`mintGovRewards(tokenAddress, memberId, rounds[])`
 - **原子性**：批量多轮铸造，任一 Round 失败则整笔回滚
+- **长度**：由调用者决定，不设数量上限；超出交易承载能力的失败和 gas 成本由调用者承担，空数组无副作用。
+
+#### 成员查询命名
+- **旧版来源**：`govRewardByAccount(address tokenAddress, uint256 round, address account)`。
+- **现行接口**：`govRewardByMemberId(address tokenAddress, uint256 round, uint256 memberId)`，selector 为 `0x8c25b309`；取代迁移中间版本的 `govRewardByAccount(address,uint256,uint256)`（`0x5eccfa65`），不保留兼容入口。参数顺序不变。
+- **查询语义**：未准备时实时读取 `rewardAvailable()` 计算轮次池并扫描 Vote 冻结结果计算金额；准备后读取准备时冻结的缓存值。未投票返回零金额；已铸造仍返回原金额并标记 `minted = true`；不存在的成员由 `MemberNFT.ownerOf` 回滚。
+- **保留依赖**：`stakeAddress` 为旧接口保留成员，当前无消费者（加速数据来源已改为 Vote 快照）。
+
+#### 准备、结算与发射额度
+- **取消时点前移**：旧实现首次治理结算时检查并取消空加速池/行动池；新实现准备时按 `totalBoost == 0` / `eligibleProposalVotes == 0` 取消对应池，每轮仅准备一次。零票轮仍发射 `RewardPrepared`，累计账本不变。
+- **独立状态位**：旧实现用已铸造金额大于零判重；新实现分别按 Proposal、成员保存独立已结算状态，只有销毁额度而无实际铸币的治理结算也不能重做。
+- **Proposal 分配**：旧行动激励按验证得分发给账户；新实现按达标 Proposal 的票数占比分配整池，整笔铸给其 Target。门槛从旧式向下取整改为精确比例判定，并要求正票数；达标票数仅在准备时扫描并缓存，零奖励不能领取。
+- **发射额度**：正数实际治理激励按成员累积为 `launchCredit`；以铸造前剩余供应量向上取整阈值，换成整数次数并保留余量。社区累计次数达到上限后停止新增次数和额度。
 
 #### `isProposalIdWithReward` 行为变化
 - **旧**：纯计算，未准备时也可判定（读取实时票数与门槛）
-- **新**：未准备时返回 `false`；准备后读缓存判定
-- **理由**：新设计在准备期缓存 `eligibleProposalVotes`，未准备时缓存不存在，无法按公式判定
+- **新**：无论已准备或未准备均读取实时 Vote 数据判定；准备后若 `eligibleProposalVotes == 0` 可快速返回 `false`（全轮无达标 Proposal 的缓存优化）
+- **理由**：查询准备无关化，与金额查询函数保持一致的实时计算语义
 
 #### 错误回滚顺序调整
 - **Proposal 铸造**：新实现「已铸造 → 零值判定」，旧实现「零值 → 已铸造」
@@ -293,8 +307,9 @@
 ### 📍 实现参考
 ```
 旧代码：LOVE20TKM/core/src/LOVE20Mint.sol
-保留：轮次准备、Proposal 分配
-修改：治理激励改为 50%/50% 拆分，增加 2 倍上限
+保留：轮次准备、治理激励各半分配、加速倍数上限与溢出取消
+修改：成员身份与查询命名、投票及加速快照基准、奇数余量、Proposal 分配、取消时点、独立状态位
+新增：批量治理铸造、发射额度与次数换算
 ```
 
 ---

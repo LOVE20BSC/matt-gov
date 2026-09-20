@@ -36,7 +36,7 @@
 - 铸造失败整笔回滚
 
 **测试方式**：
-- 单元测试：`core/test/Mint.t.sol` 的 `test_PrepareOnlyOnce()`、`test_MintFailsBeforePrepare()`、`test_ProposalMintOnce()` 等
+- 单元测试：`core/test/Mint.t.sol` 的 `testZeroVotePreparationMustEmitEvent()`、`testZeroProposalRewardMustRevert()`、`testPrepareScansProposalsOnceAndCachesResult()`、`testNonexistentRewardQueriesMustRevert()` 等
 - 集成测试：`love20-anvil/scenarios/proposal-lifecycle.yml` 完整流程
 - 验收证据：测试日志 + 覆盖率报告（要求该场景分支覆盖率 100%）
 
@@ -72,11 +72,11 @@
 - Proposal 激励与行动激励正确隔离
 
 ### 治理融合与激励铸造
-**覆盖要求**：覆盖调用者只控制来源 MemberNFT 时，可以把指定社区的治理质押单向融合进他人持有的有效目标 MemberNFT；目标既有资产不能减少。覆盖从流动质押或加速质押入口提高等待期时，按现有 LP Shares 原子重算成员和社区治理票。覆盖同一成员单轮铸造、显式 Round 数组的批量多轮铸造、逐轮三类结果和任一 Round 失败时整笔回滚。
+**覆盖要求**：覆盖调用者只控制来源 MemberNFT 时，可以把指定社区的治理质押单向融合进他人持有的有效目标 MemberNFT；目标既有资产不能减少。覆盖从流动质押或加速质押入口提高等待期时，按现有 LP Shares 原子重算成员和社区治理票。覆盖同一成员单轮铸造、调用者自行决定长度的 Round 数组批量铸造、逐轮三类结果和任一 Round 失败时整笔回滚；批量接口不设协议长度上限，超出交易承载能力由调用者承担。
 
 **测试方式**：
 - 单元测试：`core/test/Stake.t.sol` 的融合场景、等待期提升场景
-- 单元测试：`core/test/Mint.t.sol` 的单轮/批量铸造场景
+- 单元测试：`core/test/Mint.t.sol` 的 `testGovernanceQueryMatchesMintAndBoostBurn()`、`testBatchMustPreserveMemberOwner()`、`testBatchFailureRollsBackRewardsAndLaunchCounts()`、`testEmptyBatchHasNoSideEffects()`
 - 验收证据：测试日志显示融合前后状态变化、批量铸造的原子性
 
 **判定标准**：
@@ -88,7 +88,7 @@
 **覆盖要求**：覆盖本次铸造前剩余供应量的阈值向上取整、只有正数实际治理激励进入 `launchCredit`、剩余供应量为零时不计算阈值、一次治理激励跨过多个完整阈值、整数除法余数继续累计、每个社区达到 `maxLaunchCount` 后停止新增次数和额度、调用者只控制来源 MemberNFT 时向他人持有的目标 MemberNFT 部分融合整数次数但不转移 `launchCredit`、源次数扣减/目标次数增加的原子性，以及次数消耗后不能再次发射。
 
 **测试方式**：
-- 单元测试：`core/test/Mint.t.sol` 的阈值计算、跨阈值、余数累计场景
+- 单元测试：`core/test/Mint.t.sol` 的 `testLaunchCreditMustUseActualPreMintSupply()`、`testLaunchThresholdMustRoundUp()`、`testLaunchCapRetainsUnconvertedCredit()`
 - 单元测试：`core/test/Launch.t.sol` 的账本上限、次数融合、消耗场景
 - 验收证据：边界值测试日志
 

@@ -32,11 +32,11 @@
 | Proposal | 两条方向单键：`proposalIdBySubmitter` 与 `submitterIdByProposalId` 互为逆、回 `0` 的三种情形 | 已推举时两条互为逆映射；未分配过的 `proposalId`、已分配但本轮未推举、本轮未推举的成员都回 `0` 而不回滚 |
 | Proposal | `submitNewProposal` 创建后立即推举：事件顺序、回调顺序、本轮名额、`Phase.sync` | 同一笔内先 `ProposalCreated` 后 `ProposalSubmitted`，先 `onProposalCreated` 后 `onProposalSubmitted`；写满三处推举状态并占用本 Round 名额；本轮首笔推举触发 `sync` |
 | Proposal | 两个入口的名额与去重交叉：先 `submitNewProposal` 再 `submit`、同轮重复创建、跨轮推举已有 Proposal | 同一成员同轮第二次推举回滚 `OnlyOneSubmitPerRound`；同一 Proposal 同轮第二次回滚 `AlreadySubmitted`；跨轮推举已有 Proposal 成功且不触发创建回调 |
-| [Mint](07-mint.md) | Round 准备、单 Proposal 结算、重复准备 | 每轮仅预留一次，单项不能重复结算 |
-| Mint | 约 300 个 Proposal 的准备、缓存读取 | 准备阶段一次扫描并缓存达标 Proposal 总票数；后续单项结算不再扫描 Vote 列表，重复准备不改缓存 |
-| Mint | 两种零总量、三段治理结果、批量多轮 | 预留不重加，销毁不重复，任一失败整体回滚 |
-| Vote / Mint | 投票时快照为 50，随后追加 30；再次投票或不投票；NFT 转移 | 不投票仍按 50，再投票按 80、总量仅加 30；结算和转移不重算 |
-| [Mint](07-mint.md) | 向上取整、跨多个阈值、社区上限 | 余数保留，新增次数不超上限，仅 Mint 可 addLaunchCount |
+| [Mint](07-mint.md) | Round 准备、单 Proposal 结算、重复准备 | 每轮仅预留一次，单项不能重复结算；对应 `MintTest.testZeroVotePreparationMustEmitEvent`、`testZeroProposalRewardMustRevert` |
+| Mint | 约 300 个 Proposal 的准备、缓存读取 | 准备阶段一次扫描并缓存达标 Proposal 总票数；后续单项结算不再扫描 Vote 列表，重复准备不改缓存；对应 `MintTest.testPrepareScansProposalsOnceAndCachesResult` |
+| Mint | 两种零总量、三段治理结果、批量多轮 | 预留不重加，销毁不重复，任一失败整体回滚；对应 `testBatchMustPreserveMemberOwner`、`testBatchFailureRollsBackRewardsAndLaunchCounts`、`testGovernanceQueryMatchesMintAndBoostBurn` |
+| Vote / Mint | 投票时快照为 50，随后追加 30；再次投票或不投票；NFT 转移 | 不投票仍按 50，再投票按 80、总量仅加 30；结算和转移不重算；Vote 快照由 `VoteTest` 覆盖，Mint 结算由 `MintTest.testGovernanceQueryMatchesMintAndBoostBurn` 覆盖 |
+| [Mint](07-mint.md) | 向上取整、跨多个阈值、社区上限 | 余数保留，新增次数不超上限，仅 Mint 可 `addLaunchCount`；对应 `testLaunchCreditMustUseActualPreMintSupply`、`testLaunchThresholdMustRoundUp`、`testLaunchCapRetainsUnconvertedCredit` |
 | [Launch](08-launch.md) | 向非自有 NFT 部分融合、次数消耗、账本上限、非 Mint 调用 `addLaunchCount` | 源扣目标增，不转移额度，已消耗次数不能再次使用；只有 `init` 校验初始化状态，三个写入口不重复校验 |
 | Launch.init | 首币、Airdrop、参数校验、任一步失败或重复初始化 | `Launch.init(LaunchInitParams)` 一次完成配置、首币创建和 MemberNFT 初始化，失败全回滚，成功后不能重做；首币发含名称和符号的 `TokenLaunched`（`launcherMemberId = 0`） |
 | Launch | 代币列表与子币列表分页、`offset` 越界、符号重复、按代币地址取父币 | `tokens`/`childTokens` 按页返回且包含首币，越界返回空数组与真实总数；施加 `Test` 前缀后的符号重复回滚 `TokenSymbolExists()`；`parentTokenOf` 与 `isLOVE20Token` 对首币、子币与未登记地址的结果一致 |

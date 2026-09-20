@@ -311,8 +311,8 @@ OZ 5 的标准回滚由固定依赖提供：`IERC721Errors`、`ERC721OutOfBounds
 | `isProposalIdWithReward(tokenAddress, round, proposalId)` | `isActionIdWithReward(tokenAddress, round, actionId)` | 改名 |
 | `proposalReward(tokenAddress, round)` | `actionReward(tokenAddress, round)` | 改名 |
 | `PROPOSAL_REWARD_MIN_VOTE_PER_THOUSAND()` | `ACTION_REWARD_MIN_VOTE_PER_THOUSAND()` | 改名（保留大写配置 getter） |
-| `govRewardByAccount(tokenAddress, round, memberId) returns (voteReward, boostReward, burnReward, minted)` | `govRewardByAccount(tokenAddress, round, address account) returns (verifyReward, boostReward, burnReward, isMinted)` | 改参 |
-| `proposalRewardInfo(tokenAddress, round, proposalId) returns (amount, prepared, minted)` | `actionRewardByActionIdByAccount(tokenAddress, round, actionId, address account) returns (reward, isMinted)` | 改名+改参（去 account 维度，新增 prepared） |
+| `govRewardByMemberId(tokenAddress, round, memberId) returns (voteReward, boostReward, burnReward, minted)` | `govRewardByAccount(tokenAddress, round, address account) returns (verifyReward, boostReward, burnReward, isMinted)` | 改名+改参（成员 ID 替代账户地址；返回值语义改为投票激励；selector `0x8c25b309` 取代 `0x5eccfa65`） |
+| `proposalRewardByProposalId(tokenAddress, round, proposalId) returns (amount, minted)` | `actionRewardByActionIdByAccount(tokenAddress, round, actionId, address account) returns (reward, isMinted)` | 改名+改参（去 account 维度、返回值从 `(reward, prepared, isMinted)` 改为 `(amount, minted)`；selector `0x11eefe4c` 取代 `0x4c02dd3a`） |
 | `rewardReserved`、`rewardMinted`、`rewardBurned`、`isRewardPrepared`、`govReward`、`rewardAvailable`、`reservedAvailable` | 同名 | 保留 |
 | `eligibleProposalVotes(tokenAddress, round)` | 无 | 新增 |
 | `launchCredit(tokenAddress, memberId)` | `numOfMintGovRewardByAccount(tokenAddress, address account)` | 语义替代（铸造次数计数 → 未消耗发射额度；整数次数移入 `ILOVE20Launch.launchCount`） |
@@ -336,7 +336,7 @@ OZ 5 的标准回滚由固定依赖提供：`IERC721Errors`、`ERC721OutOfBounds
 
 ### 错误
 
-旧 6 个全部保留（`AlreadyInitialized`、`NoRewardAvailable`、`AlreadyMinted`、`RoundNotReadyToMint`、`NotEnoughReward`、`NotEnoughRewardToBurn`）；新增 `ProposalNotFound(uint256 proposalId)`、`NotMemberOwner(uint256 memberId)`。
+旧 6 个全部保留（`AlreadyInitialized`、`NoRewardAvailable`、`AlreadyMinted`、`RoundNotReadyToMint`、`NotEnoughReward`、`NotEnoughRewardToBurn`）；新增 `NotMemberOwner(uint256 memberId)`、`InvalidAddress()`、`InvalidAmount()`、`UnauthorizedCaller()`。`ProposalNotFound` 属于 ISubmit，不在 IMint 中。
 
 ---
 

@@ -41,7 +41,6 @@ interface IMintErrors {
     error RoundNotReadyToMint();
     error NotEnoughReward();
     error NotEnoughRewardToBurn();
-    error ProposalNotFound(uint256 proposalId);
     error NotMemberOwner(uint256 memberId);
     error InvalidAddress();
     error InvalidAmount();
@@ -51,7 +50,6 @@ interface IMintErrors {
 interface IMint is IMintEvents, IMintErrors {
     function voteAddress() external view returns (address);
     function submitAddress() external view returns (address);
-    function stakeAddress() external view returns (address);
     function launchAddress() external view returns (address);
     function memberNFTAddress() external view returns (address);
 
@@ -63,7 +61,6 @@ interface IMint is IMintEvents, IMintErrors {
     function init(
         address voteAddress,
         address submitAddress,
-        address stakeAddress,
         address launchAddress,
         address memberNFTAddress,
         uint256 proposalRewardMinVotePerThousand,
@@ -90,9 +87,9 @@ interface IMint is IMintEvents, IMintErrors {
     function proposalReward(address tokenAddress, uint256 round) external view returns (uint256);
     function eligibleProposalVotes(address tokenAddress, uint256 round)
         external view returns (uint256);
-    function proposalRewardInfo(address tokenAddress, uint256 round, uint256 proposalId)
-        external view returns (uint256 amount, bool prepared, bool minted);
-    function govRewardByAccount(address tokenAddress, uint256 round, uint256 memberId)
+    function proposalRewardByProposalId(address tokenAddress, uint256 round, uint256 proposalId)
+        external view returns (uint256 amount, bool minted);
+    function govRewardByMemberId(address tokenAddress, uint256 round, uint256 memberId)
         external view returns (
             uint256 voteReward,
             uint256 boostReward,
