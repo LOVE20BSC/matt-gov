@@ -46,15 +46,15 @@
 
 | 新 | 旧 | 状态 |
 | --- | --- | --- |
-| `isAccountJoined(tokenAddress, actionId, uint256 memberId)` | `IExtensionCenter.isAccountJoined(tokenAddress, actionId, address account)` | 改参 |
+| `isJoined(tokenAddress, actionId, uint256 memberId)` | `IExtensionCenter.isAccountJoined(tokenAddress, actionId, address account)` | 改名+改参（去 Account 前缀） |
 | `join(tokenAddress, actionId, uint256 memberId)` | `IExtensionCenter.addAccount(tokenAddress, actionId, address account, verificationInfos[])` | 改名+改参（`verificationInfos` 移入各 Executor 的 `join`；ActionTarget 只记录加入布尔状态） |
 | `exit(tokenAddress, actionId, uint256 memberId)` | `IExtensionCenter.removeAccount(tokenAddress, actionId, address account) returns (bool)` | 改名+改参（去返回值） |
 | `actionIdsByMemberId(tokenAddress, memberId, offset, limit, reverse) returns (actionIds[], total)` | `IExtensionCenter.actionIdsByAccount(tokenAddress, address account, address[] factories)` 部分对应 | 改名+改参（采用标准分页签名 `(offset, limit, reverse) → (列表, 总数)`；删除 factories 参数与 extensions/factories 返回数组） |
-| `executor(tokenAddress, uint256 proposalId)` | `IExtensionCenter.extension(tokenAddress, actionId)` | 改名 |
+| `executor(tokenAddress, actionId)` | `IExtensionCenter.extension(tokenAddress, actionId)` | 改名+改参（proposalId → actionId，Action 层视角） |
 | `forceExit(tokenAddress, actionId, memberId)` | 无 | 新增（应急登记清理） |
-| `mintProposalReward(tokenAddress, round, proposalId) returns (uint256 amount)` | 无 | 新增（激励中转） |
-| `proposalIdsByExecutor(tokenAddress, round, address executor_)` | 无 | 新增 |
-| `proposals(tokenAddress, round) returns (proposalIds[], executors[])` | 无 | 新增 |
+| `mintProposalReward(tokenAddress, round, proposalId) returns (uint256 amount)` | 无 | 新增（激励中转；保留 proposalId 因为是 Core 调用） |
+| `actionIdsByExecutor(tokenAddress, round, address executor_, offset, limit, reverse) returns (actionIds[], total)` | 无 | 新增（标准分页；某轮某 executor 的行动数无界） |
+| `actions(tokenAddress, round, offset, limit, reverse) returns (actionIds[], executors[], total)` | 无 | 新增（标准分页；某轮行动数无界） |
 | `init(memberNFTAddress, submitAddress, voteAddress, mintAddress)` | 无 | 新增 |
 | 继承 `IProposalTarget` 三回调 | 无 | 新增 |
 | 无 | `IExtensionCenter.registerActionIfNeeded(tokenAddress, actionId)` | 删除（改由 `onProposalCreated` 回调建立关联） |
@@ -72,10 +72,10 @@
 
 | 新 | 旧 | 状态 |
 | --- | --- | --- |
-| `ProposalLinked(tokenAddress, proposalId, address executor)` | `IExtensionCenter.RegisterAction(tokenAddress, actionId, extension, factory)` | 改名+改参 |
-| `ActionJoined(tokenAddress, actionId, memberId, round)` | `IExtensionCenter.AddAccount(tokenAddress, round, actionId, address account, accountCount)` | 改名+改参（简化为只记录加入状态，删除 amount/isExperience/providerMemberId 字段） |
-| `ActionExited(tokenAddress, actionId, memberId, round)` | `IExtensionCenter.RemoveAccount(tokenAddress, round, actionId, address account, accountCount)` | 改名+改参（简化） |
-| `ActionWithdrawn(tokenAddress, actionId, memberId, round)`、`ForceExited(tokenAddress, actionId, memberId)` | 无 | 新增 |
+| `ActionCreated(tokenAddress, actionId, address executor)` | `IExtensionCenter.RegisterAction(tokenAddress, actionId, extension, factory)` | 改名+改参（去 factory 字段） |
+| `Joined(tokenAddress, actionId, memberId, round)` | `IExtensionCenter.AddAccount(tokenAddress, round, actionId, address account, accountCount)` | 改名+改参（简化为只记录加入状态，删除 accountCount） |
+| `Exited(tokenAddress, actionId, memberId, round)` | `IExtensionCenter.RemoveAccount(tokenAddress, round, actionId, address account, accountCount)` | 改名+改参（简化，删除 accountCount） |
+| `ForceExited(tokenAddress, actionId, memberId)` | 无 | 新增 |
 | 无 | `IExtensionCenter.SetExtensionDelegate`、`UpdateVerificationInfo`；`IExtension.Initialize` | 删除 |
 
 ### 错误

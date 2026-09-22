@@ -24,13 +24,13 @@ targetData[0] = abi.encode(executorAddress)
 
 记录当前成员是否加入行动，供加入列表和外部资格查询；包括 GroupAction，但不保存 Executor 的资产、验证或群归属。
 
-**事件分层设计**：ActionTarget 发出简化的加入/退出事件（只包含 `tokenAddress, actionId, memberId, round`），记录通用加入状态；各 Executor（如 `ILpExecutor`、`IGroupActionExecutor`）在自己的合约中发出包含完整业务字段（`amount, isExperience, providerMemberId` 等）的同名事件。两层事件不冲突，各自记录各自层级的信息。
+**事件分层设计**：ActionTarget 发出简化的加入/退出事件（`Joined`、`Exited`，只包含 `tokenAddress, actionId, memberId, round`），记录通用加入状态；各 Executor（如 `ILpExecutor`、`IGroupActionExecutor`）在自己的合约中发出包含完整业务字段（`amount, isExperience, providerMemberId` 等）的同名事件。两层事件不冲突，各自记录各自层级的信息。ActionTarget 不发出 `Withdrawn` 事件，因为 withdraw 不改变加入状态。
 
 **集合读取**：成员的行动列表是无界集合（由成员加入次数决定），采用标准分页签名 `actionIdsByMemberId(tokenAddress, memberId, offset, limit, reverse) returns (actionIds[], total)`。参数语义：越界返回空数组与真实总数、不回滚；`limit` 超剩余按剩余返回；`reverse` 为 true 时从新到旧。只取总数时传 `limit = 0`。符合[集合读取设计原则](../../migration-standards.md#集合读取函数的设计原则)。
 
 完整 ABI 见 [`IActionTarget.sol`](../../../interfaces/action/IActionTarget.sol)。
 
-`init` 仅部署授权者可调用一次。join/exit/`mintProposalReward` 仅关联 Executor 可调用；Executor 通过继承 [`IProposalTarget.sol`](../../../interfaces/core/IProposalTarget.sol) 接收三类 Proposal 回调，创建/推举回调仅 Submit 可调用，投票回调仅 Vote 可调用。重复加入、重复退出均不改状态；因此 `forceExit` 后，Executor 正常调用 `exit` 必须成功且不改状态。重复铸造回滚。不存在关联时 `executor` 返回零，但写操作拒绝零关联。`isAccountJoined` 无记录时返回 false。
+`init` 仅部署授权者可调用一次。join/exit/`mintProposalReward` 仅关联 Executor 可调用；Executor 通过继承 [`IProposalTarget.sol`](../../../interfaces/core/IProposalTarget.sol) 接收三类 Proposal 回调，创建/推举回调仅 Submit 可调用，投票回调仅 Vote 可调用。重复加入、重复退出均不改状态；因此 `forceExit` 后，Executor 正常调用 `exit` 必须成功且不改状态。重复铸造回滚。不存在关联时 `executor` 返回零，但写操作拒绝零关联。`isJoined` 无记录时返回 false。
 
 ## forceExit
 
@@ -42,12 +42,14 @@ Executor 失效时，成员 NFT 当前持有人可清除加入状态并触发事
 
 ## Round 查询
 
-行动阶段 Round 查询见 [阶段模型](02-phase-model.md) 及各 Executor 接口；`IActionTarget.sol` 仅提供按 Round 查询已关联 Proposal 的列表接口。
+行动阶段 Round 查询见 [阶段模型](02-phase-model.md) 及各 Executor 接口；`IActionTarget.sol` 提供按 Round 查询已关联 Proposal 的列表接口。
 
 从 Vote 的 `votedProposalIdsCount` / `votedProposalIdsAtIndex` 读取本轮有票 Proposal，再按映射筛选，不维护独立反向索引，不在这里计算激励门槛；不能读成历史累计。不另设人工 Proposal 数量上限，服务结算只扫描该轮实际有票且已关联的列表。
 
+**集合读取分页**：`actionIdsByExecutor(tokenAddress, round, executor, offset, limit, reverse)` 和 `actions(tokenAddress, round, offset, limit, reverse)` 均为无界集合（某轮某 executor 的行动数、某轮总行动数由外部创建决定），采用标准分页签名返回 `(列表, total)`。
+
 ## 实现约束
 
-列表按单轮完整返回，不新增分页。空集合返回空数组；Count 返回数量，AtIndex 的索引从 0 开始，越界回滚 `IndexOutOfBounds`。forceExit 重复清理无操作，不发重复事件；不能以清理失败阻塞 Executor 正常退还资产。
+Round 查询列表按单轮完整返回，采用标准分页。空集合返回空数组；Count 返回数量，AtIndex 的索引从 0 开始，越界回滚 `IndexOutOfBounds`。forceExit 重复清理无操作，不发重复事件；不能以清理失败阻塞 Executor 正常退还资产。
 
 激励转发见 [铸造链路](07-minting.md#铸造链路)，验收见 [Action 验收](08-testing.md)。
