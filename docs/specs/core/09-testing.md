@@ -4,7 +4,7 @@
 
 事件和错误定义分别位于 [`IMemberNFT.sol`](../../../interfaces/core/IMemberNFT.sol)、[`IPhase.sol`](../../../interfaces/core/IPhase.sol)、[`IStake.sol`](../../../interfaces/core/IStake.sol)、[`ISubmit.sol`](../../../interfaces/core/ISubmit.sol)、[`IVote.sol`](../../../interfaces/core/IVote.sol)、[`IMint.sol`](../../../interfaces/core/IMint.sol)、[`ILaunch.sol`](../../../interfaces/core/ILaunch.sol) 和 [`ILOVE20Token.sol`](../../../interfaces/core/ILOVE20Token.sol)。
 
-必须拒绝无效成员或非来源控制者、零 Target/Distributor、非法模式、Target Data 长度不等、重复 Proposal/推举、投票超额、Round 未结束或未准备、重复铸造/销毁、待解锁时追加或融合、解锁期不足、跨社区次数操作、次数不足或超上限。未冻结专用 selector 的拒绝条件不能冒充已确定 ABI。
+必须拒绝无效成员或非来源控制者、零 Target/Distributor、非法模式、Target Data 长度不等、重复 Proposal/推举、投票超额、Round 未结束、重复铸造/销毁、待解锁时追加或融合、解锁期不足、跨社区次数操作、次数不足或超上限。Mint 在铸造入口内部自动准备未准备的 Round，不把“未准备”作为公开拒绝条件。未冻结专用 selector 的拒绝条件不能冒充已确定 ABI。
 
 批量治理激励中任一 Round 无效，以及 Pair、Router、Target、distributor 回调等外部调用失败时，整笔交易回滚。
 

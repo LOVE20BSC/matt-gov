@@ -41,7 +41,7 @@ available = maxSupply - totalSupply - reservedAvailable
 
 完整 ABI 见 [`IMint.sol`](../../../interfaces/core/IMint.sol)。
 
-`prepareRewardIfNeeded` 任何地址可调用。
+首次调用治理或 Proposal 铸造入口时，Mint 在内部准备该 Round；准备逻辑不再作为公开 ABI 暴露。
 
 1. 本轮已准备则直接返回，不更新状态；未结束的 Round 拒绝准备（通过 `IVote(voteAddress).isRoundEnded(round)` 判定，`isRoundEnded(0) == false`）。
 2. 读取 Vote 的冻结结果。若 `totalVotes == 0`，两池和 `eligibleProposalVotes` 记为 0 并标记已准备，累计账本不变。
@@ -67,7 +67,7 @@ if eligibleProposalVotes == 0:
 
 ## Proposal 结算
 
-只允许该 Proposal 已记录的 Target 调用，每个 token、Round、Proposal 只能铸造一次；未准备、未结束、Proposal 不达标或 `eligibleProposalVotes == 0` 时拒绝。
+只允许该 Proposal 已记录的 Target 调用，每个 token、Round、Proposal 只能铸造一次；未结束、Proposal 不达标或 `eligibleProposalVotes == 0` 时拒绝。若该 Round 尚未准备，入口先自动准备。
 
 校验顺序：
 
@@ -75,7 +75,6 @@ if eligibleProposalVotes == 0:
 | --- | --- |
 | 读取 `(target, targetMode) = ISubmit(submitAddress).proposalTarget(tokenAddress, proposalId)`；`msg.sender != target` | `UnauthorizedCaller()` |
 | `!IVote(voteAddress).isRoundEnded(round)` | `RoundNotReadyToMint()` |
-| 未准备（通过独立状态位判定） | `RoundNotReadyToMint()` |
 | 已铸造（独立状态位） | `AlreadyMinted()` |
 | `eligibleProposalVotes[tokenAddress][round] == 0` | `NoRewardAvailable()` |
 | Proposal 不达标 | `NoRewardAvailable()` |
@@ -92,7 +91,7 @@ if eligibleProposalVotes == 0:
 
 ## 治理结算
 
-只允许成员 NFT 当前持有人为本轮实际投过票的 `memberId` 结算。
+只允许成员 NFT 当前持有人为本轮实际投过票的 `memberId` 结算；若该 Round 尚未准备，入口先自动准备。
 
 校验顺序：
 
@@ -100,7 +99,6 @@ if eligibleProposalVotes == 0:
 | --- | --- |
 | `IMemberNFT(memberNFTAddress).ownerOf(memberId) != msg.sender` | `NotMemberOwner(uint256 memberId)` |
 | `!IVote(voteAddress).isRoundEnded(round)` | `RoundNotReadyToMint()` |
-| 未准备（通过独立状态位判定） | `RoundNotReadyToMint()` |
 | 已铸造（独立状态位） | `AlreadyMinted()` |
 | `memberVotes == 0` | `NoRewardAvailable()` |
 | `voteReward + boostReward + burnReward == 0` | `NoRewardAvailable()` |
@@ -134,7 +132,7 @@ else:
 `proposalRewardByProposalId` 和 `govRewardByMemberId` 两个查询函数无论轮次是否已准备均能返回金额：
 
 - **已准备**：读取准备时冻结的 `govReward`、`proposalReward` 和 `eligibleProposalVotes`，按缓存值计算。
-- **未准备**：实时读取 `rewardAvailable` 计算轮次池，扫描 Vote 冻结结果计算 `eligibleProposalVotes`，按当前状态计算。**警告**：未准备查询需要扫描本轮所有有票 Proposal（O(N) 复杂度，N 为 Proposal 数量）；调用方应优先调用 `prepareRewardIfNeeded` 后再查询，或在前端/链下环境使用，避免在交易链路中对未准备轮次批量查询。**未准备时返回的是按当前状态计算的投影值，实际金额以准备时冻结的池值为准；写入口（`mintGovReward`、`mintProposalReward`）要求轮次已准备。**
+- **未准备**：实时读取 `rewardAvailable` 计算轮次池，扫描 Vote 冻结结果计算 `eligibleProposalVotes`，按当前状态计算。**警告**：未准备查询需要扫描本轮所有有票 Proposal（O(N) 复杂度，N 为 Proposal 数量）；调用方应优先读取已准备 Round，或在前端/链下环境使用，避免对未准备轮次批量查询。**未准备时返回的是按当前状态计算的投影值，实际金额以铸造入口自动准备时冻结的池值为准。**
 
 两个查询函数均先校验存在性（`proposalRewardByProposalId` 调用 `Submit.proposalTarget`、`govRewardByMemberId` 调用 `MemberNFT.ownerOf`），后计算金额；不存在的 Proposal/成员回滚。未达标 Proposal 或未投票成员返回零金额；已铸造不影响金额，`minted` 返回 `true` 并仍返回原金额。
 
@@ -146,7 +144,7 @@ else:
 
 `rewardAvailable` 按 `maxSupply - totalSupply - reservedAvailable` 计算当前可分配额度；`reservedAvailable` 返回 `rewardReserved - rewardMinted - rewardBurned`。
 
-批量接口 `mintGovRewards` 按输入顺序执行，结果数组与输入等长；任一 Round 未结束、未准备、没有投票记录或已铸造，则整笔回滚。治理激励和发射额度/次数更新也必须原子完成。
+批量接口 `mintGovRewards` 按输入顺序执行，结果数组与输入等长；任一 Round 未结束、没有投票记录或已铸造，则整笔回滚。治理激励和发射额度/次数更新也必须原子完成。
 
 ## 发射额度的生成
 
@@ -193,7 +191,7 @@ launchCredit -= count * threshold
 事件与错误定义见 [`IMint.sol`](../../../interfaces/core/IMint.sol)。
 
 - 初始化时拒绝四个依赖地址为零（`InvalidAddress()`）和两项激励比例之和超过 `1000`（`InvalidAmount()`）；校验顺序按 [通用规则](01-common-rules.md#初始化与安全)，先初始化状态、后参数校验。`maxGovBoostRewardMultiplier` 须满足 `0 < x ≤ 1000`（`InvalidAmount()`），上界与千分比体系对齐以防溢出；`proposalRewardMinVotePerThousand` 不做校验（允许为 0）。
-- `prepareRewardIfNeeded` 只在首次准备时扫描 Vote 本轮有票 Proposal；实现和验收至少覆盖约 300 个 Proposal 的准备交易。准备成功后，`eligibleProposalVotes[tokenAddress][round]` 只读，不得再次读取 Vote 列表或改写。零额事件行为见[事件](#事件)节。
+- Mint 的内部准备路径只在首次准备时扫描 Vote 本轮有票 Proposal；实现和验收至少覆盖约 300 个 Proposal 的准备交易。准备成功后，`eligibleProposalVotes[tokenAddress][round]` 只读，不得再次读取 Vote 列表或改写。零额事件行为见[事件](#事件)节。
 - 各项分配向下取整产生的极小舍入余数不单独维护，也不追加结算状态；累计账本只记录实际铸造和明确销毁的额度。
 - `NotEnoughReward()` 与 `NotEnoughRewardToBurn()` 是防御性检查；在正确配置与正常流程下不可达（账本不变式 `rewardReserved >= rewardMinted + rewardBurned` 始终成立）。`_proposalRewardCalculation` 的 `:389 eligibleVotes == 0` 早退、`_govRewardCalculation` 的 `:432 totalVotes == 0` 早退、`_updateLaunchCredit` 的 `:545 threshold == 0` 早退均为防御性分支，在当前账本不变式下不可达（`:389` 能进入时必有 `proposalVotes > 0` 且 `proposalVotes >= minVotes`，从而 `eligibleVotes > 0`；`:432` 能进入时必有 `memberVotes > 0`；`:545` 能进入时必有 `mintAmount > 0` 从而 `maxSupply - totalSupplyBeforeMint > 0`）。
 - 历史来源 `LOVE20TKM/core/src/LOVE20Mint.sol` 只作为行为参考，不替代本文件的账本规则。
