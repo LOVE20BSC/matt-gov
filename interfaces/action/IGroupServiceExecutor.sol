@@ -1,9 +1,21 @@
 // SPDX-License-Identifier: MIT
 pragma solidity =0.8.37;
 
-import {IProposalTarget} from "../core/IProposalTarget.sol";
+import {IActionExecutor} from "./IActionExecutor.sol";
 
 interface IGroupServiceExecutorEvents {
+    event Joined(
+        address indexed serviceTokenAddress,
+        uint256 indexed serviceProposalId,
+        uint256 indexed memberId,
+        uint256 round
+    );
+    event Exited(
+        address indexed serviceTokenAddress,
+        uint256 indexed serviceProposalId,
+        uint256 indexed memberId,
+        uint256 round
+    );
     event ServiceRewardDistributed(address indexed serviceTokenAddress, uint256 indexed serviceProposalId,
         address indexed actionTokenAddress, uint256 memberId, uint256 verifierReward, uint256 ownerReward,
         uint256 ownerBurned, uint256 round);
@@ -13,7 +25,7 @@ interface IGroupServiceExecutorEvents {
         uint256 amount, bytes32 reason);
 }
 
-interface IGroupServiceExecutor is IProposalTarget, IGroupServiceExecutorEvents {
+interface IGroupServiceExecutor is IActionExecutor, IGroupServiceExecutorEvents {
     function init(address actionTargetAddress, address memberNFTAddress, address phaseAddress,
         address stakeAddress, address mintAddress, address groupActionExecutorAddress) external;
     function currentVoteRound() external view returns (uint256);
@@ -24,7 +36,6 @@ interface IGroupServiceExecutor is IProposalTarget, IGroupServiceExecutorEvents 
         external view returns (uint256 reward, bool cached);
     function join(address serviceTokenAddress, uint256 serviceProposalId, uint256 memberId,
         string[] calldata verificationInfos) external;
-    function exit(address serviceTokenAddress, uint256 serviceProposalId, uint256 memberId) external;
     function joinInfo(address serviceTokenAddress, uint256 serviceProposalId, uint256 round, uint256 memberId)
         external view returns (bool joined);
     function actionTokenAddress(address serviceTokenAddress, uint256 serviceProposalId)

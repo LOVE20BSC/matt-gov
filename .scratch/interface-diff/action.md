@@ -2,6 +2,38 @@
 
 状态列取值同 [core.md](core.md)。跨层共性变化见 [README](README.md#跨层结构变化)。
 
+## IActionExecutor 通用接口
+
+新增 `IActionExecutor` 作为所有 Executor 的基础接口，定义统一的事件分层和加入/退出契约。
+
+```solidity
+interface IActionExecutor is IProposalTarget, IActionExecutorEvents {
+    function join(address tokenAddress, uint256 actionId, uint256 memberId, uint256 amount,
+        string[] calldata verificationInfos) external;
+    function exit(address tokenAddress, uint256 actionId, uint256 memberId) external;
+    function withdraw(address tokenAddress, uint256 actionId, uint256 memberId, uint256 amount) external;
+}
+```
+
+**事件分层**：
+- `IActionExecutor` 定义 `Joined/Withdrawn/Exited` 事件，包含完整业务字段（`amount, isExperience, providerMemberId`）
+- `IActionTarget` 定义 `ActionJoined/ActionWithdrawn/ActionExited` 事件，只包含通用字段（`tokenAddress, actionId, memberId, round`）
+- 两层事件名称不同，各自记录各自层级的信息，不冲突
+
+**继承关系**：
+- `ILpExecutor is IActionExecutor, ILpExecutorEvents`
+- `IGroupActionExecutor is IGroupActionIndexes, IActionExecutor, IGroupActionExecutorEvents`
+- `IGroupServiceExecutor is IActionExecutor, IGroupServiceExecutorEvents`
+
+各 Executor 根据业务需要扩展或覆盖 `join` 签名：
+- **LpExecutor**：使用基础签名
+- **GroupActionExecutor**：扩展 `groupId` 参数
+- **GroupServiceExecutor**：覆盖签名，去掉 `amount` 参数（查看服务不需要金额）
+
+详见 [`IActionExecutor.sol`](../../interfaces/action/IActionExecutor.sol) 和 [Executor 通用接口规格](../specs/action/00-executor-interface.md)。
+
+---
+
 ## 本层最大的结构变化：实例模型 → 单例多社区模型
 
 旧 `extension` 体系为每个 `tokenAddress + actionId` 部署一个 extension 实例，由工厂创建并在 `ExtensionCenter` 注册。因此旧接口分两类：
@@ -18,6 +50,20 @@
 - `FACTORY_ADDRESS()`、`initialize(address factory_)`、`initializeIfNeeded()`、`initialized()`、`TOKEN_ADDRESS()`、`actionId()` 一律删除，改为各 Executor 的 `init(...)` 一次性依赖注入。
 
 以下各节不再对每个函数重复标注这一层参数变化的理由。
+
+## IActionExecutor 通用接口
+
+新增 `IActionExecutor` 作为所有 Executor 的基础接口，定义通用部分：
+
+- 继承 `IProposalTarget`：所有 Executor 接收 Core 层的三类回调（创建/推举/投票）
+- `exit(tokenAddress, actionId, memberId)`：完全退出的签名是通用的
+
+**非通用部分**各 Executor 自行定义：
+- `join` 参数因行动类型而异（LP 需要 amount，GroupAction 需要 groupId，GroupService 不需要 amount）
+- `withdraw` 签名虽类似但语义不同（LP 和 GroupAction 是部分撤回，GroupService 可能不需要）
+- 事件字段不同（LP 的 Joined 只包含 amount，GroupAction 还包含 isExperience/providerMemberId/groupId）
+
+完整接口见 [`IActionExecutor.sol`](../../interfaces/action/IActionExecutor.sol) 和 [规格文档](../../docs/specs/action/00-executor-interface.md)。
 
 ## 继承关系与完整 ABI 规模
 
@@ -72,10 +118,10 @@
 
 | 新 | 旧 | 状态 |
 | --- | --- | --- |
-| `ActionCreated(tokenAddress, actionId, address executor)` | `IExtensionCenter.RegisterAction(tokenAddress, actionId, extension, factory)` | 改名+改参（去 factory 字段） |
-| `Joined(tokenAddress, actionId, memberId, round)` | `IExtensionCenter.AddAccount(tokenAddress, round, actionId, address account, accountCount)` | 改名+改参（简化为只记录加入状态，删除 accountCount） |
-| `Exited(tokenAddress, actionId, memberId, round)` | `IExtensionCenter.RemoveAccount(tokenAddress, round, actionId, address account, accountCount)` | 改名+改参（简化，删除 accountCount） |
-| `ForceExited(tokenAddress, actionId, memberId)` | 无 | 新增 |
+| `ProposalLinked(tokenAddress, proposalId, address executor)` | `IExtensionCenter.RegisterAction(tokenAddress, actionId, extension, factory)` | 改名+改参（去 factory 字段） |
+| `ActionJoined(tokenAddress, actionId, memberId, round)` | `IExtensionCenter.AddAccount(tokenAddress, round, actionId, address account, accountCount)` | 改名+改参（简化为只记录加入状态，删除 accountCount；业务字段由 Executor 层的 `Joined` 事件承载） |
+| `ActionExited(tokenAddress, actionId, memberId, round)` | `IExtensionCenter.RemoveAccount(tokenAddress, round, actionId, address account, accountCount)` | 改名+改参（简化，删除 accountCount） |
+| `ActionWithdrawn(tokenAddress, actionId, memberId, round)`、`ForceExited(tokenAddress, actionId, memberId)` | 无 | 新增 |
 | 无 | `IExtensionCenter.SetExtensionDelegate`、`UpdateVerificationInfo`；`IExtension.Initialize` | 删除 |
 
 ### 错误
@@ -120,7 +166,7 @@
 
 | 新 | 旧 | 状态 |
 | --- | --- | --- |
-| `ActionJoined(tokenAddress, actionId, memberId, round, amount, isExperience, providerMemberId)`、`ActionWithdrawn`、`ActionExited` | `ITokenJoin.Join(tokenAddress, round, actionId, address account, amount)`、`Exit(...)` | 改名+改参（Executor 层事件包含完整业务字段；ActionTarget 层事件简化） |
+| `Joined(tokenAddress, actionId, memberId, round, amount, isExperience, providerMemberId)`、`Withdrawn`、`Exited` | `ITokenJoin.Join(tokenAddress, round, actionId, address account, amount)`、`Exit(...)` | 改名+改参（`IActionExecutor` 层事件包含完整业务字段；ActionTarget 层发出简化的 `ActionJoined/ActionWithdrawn/ActionExited` 事件） |
 | `ActionRewardMinted(tokenAddress, actionId, round, totalAmount, bytes32 recipientType)` | `IReward.ClaimReward(tokenAddress, round, actionId, address account, mintAmount, burnAmount)` | 改名+改参 |
 | `RewardBurned(tokenAddress, actionId, round, amount, bytes32 reason)` | `IReward.BurnReward(tokenAddress, round, actionId, amount)` | 改名+改参 |
 | 错误 `InsufficientGovRatio()` | `ILp.InsufficientGovRatio()` | 保留 |
@@ -210,7 +256,7 @@
 
 | 新 | 旧 | 状态 |
 | --- | --- | --- |
-| `ActionJoined`、`ActionWithdrawn`、`ActionExited` | `IGroupJoin.Join(...)`、`Exit(...)`（各含 3 个 accountCount 字段） | 改名+改参 |
+| `Joined`、`Withdrawn`、`Exited` | `IGroupJoin.Join(...)`、`Exit(...)`（各含 3 个 accountCount 字段） | 改名+改参（`IActionExecutor` 层事件包含完整业务字段；ActionTarget 层发出简化的 `ActionJoined/ActionWithdrawn/ActionExited` 事件） |
 | `VerificationBatchSubmitted(tokenAddress, actionId, groupId, round, batchIndex, scores[])` | `IGroupVerify.SubmitOriginScores(tokenAddress, round, actionId, groupId, startIndex, count, isComplete)` | 改名+改参（新增 `scores` 明细，去 `isComplete`） |
 | `VerifierApplied`、`VerifierLocked` | 无 | 新增 |
 | `ActionRewardMinted`、`RewardBurned` | 无（旧在 `IReward`） | 新增 |

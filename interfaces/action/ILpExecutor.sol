@@ -1,22 +1,39 @@
 // SPDX-License-Identifier: MIT
 pragma solidity =0.8.37;
 
-import {IProposalTarget} from "../core/IProposalTarget.sol";
+import {IActionExecutor} from "./IActionExecutor.sol";
 
 interface ILpExecutorEvents {
-    event ActionJoined(address indexed tokenAddress, uint256 indexed actionId, uint256 indexed memberId,
-        uint256 round, uint256 amount, bool isExperience, uint256 providerMemberId);
-    event ActionWithdrawn(address indexed tokenAddress, uint256 indexed actionId, uint256 indexed memberId,
-        uint256 round, uint256 amount, bool isExperience, uint256 providerMemberId);
-    event ActionExited(address indexed tokenAddress, uint256 indexed actionId, uint256 indexed memberId,
-        uint256 round, bool isExperience, uint256 providerMemberId);
+    event Joined(
+        address indexed tokenAddress,
+        uint256 indexed actionId,
+        uint256 indexed memberId,
+        uint256 round,
+        uint256 amount
+    );
+    event Withdrawn(
+        address indexed tokenAddress,
+        uint256 indexed actionId,
+        uint256 indexed memberId,
+        uint256 round,
+        uint256 amount
+    );
+    event Exited(
+        address indexed tokenAddress,
+        uint256 indexed actionId,
+        uint256 indexed memberId,
+        uint256 round
+    );
     event ActionRewardMinted(address indexed tokenAddress, uint256 indexed actionId, uint256 indexed round,
         uint256 totalAmount, bytes32 recipientType);
     event RewardBurned(address indexed tokenAddress, uint256 indexed actionId, uint256 indexed round,
         uint256 amount, bytes32 reason);
 }
 
-interface ILpExecutor is IProposalTarget, ILpExecutorEvents {
+interface ILpExecutor is IActionExecutor, ILpExecutorEvents {
+    function join(address tokenAddress, uint256 actionId, uint256 memberId, uint256 amount,
+        string[] calldata verificationInfos) external;
+    function withdraw(address tokenAddress, uint256 actionId, uint256 memberId, uint256 amount) external;
     function GOV_RATIO_MULTIPLIER(address tokenAddress, uint256 actionId) external view returns (uint256);
     function MIN_GOV_RATIO(address tokenAddress, uint256 actionId) external view returns (uint256);
     function init(address actionTargetAddress, address memberNFTAddress, address phaseAddress,
@@ -24,10 +41,6 @@ interface ILpExecutor is IProposalTarget, ILpExecutorEvents {
     function currentVoteRound() external view returns (uint256);
     function currentJoinRound() external view returns (uint256);
     function currentMintRound() external view returns (uint256);
-    function join(address tokenAddress, uint256 actionId, uint256 memberId,
-        uint256 amount, string[] calldata verificationInfos) external;
-    function withdraw(address tokenAddress, uint256 actionId, uint256 memberId, uint256 amount) external;
-    function exit(address tokenAddress, uint256 actionId, uint256 memberId) external;
     function joinedAmount(address tokenAddress, uint256 actionId) external view returns (uint256);
     function joinedAmountByMemberId(address tokenAddress, uint256 actionId, uint256 memberId)
         external view returns (uint256);

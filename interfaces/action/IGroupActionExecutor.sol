@@ -2,7 +2,7 @@
 pragma solidity =0.8.37;
 
 import {IGroupActionIndexes} from "./IGroupActionIndexes.sol";
-import {IProposalTarget} from "../core/IProposalTarget.sol";
+import {IActionExecutor} from "./IActionExecutor.sol";
 
 struct GroupConfig {
     string description;
@@ -22,12 +22,29 @@ struct VerifierApplication {
 }
 
 interface IGroupActionExecutorEvents {
-    event ActionJoined(address indexed tokenAddress, uint256 indexed actionId, uint256 indexed memberId,
-        uint256 round, uint256 amount, bool isExperience, uint256 providerMemberId);
-    event ActionWithdrawn(address indexed tokenAddress, uint256 indexed actionId, uint256 indexed memberId,
-        uint256 round, uint256 amount, bool isExperience, uint256 providerMemberId);
-    event ActionExited(address indexed tokenAddress, uint256 indexed actionId, uint256 indexed memberId,
-        uint256 round, bool isExperience, uint256 providerMemberId);
+    event Joined(
+        address indexed tokenAddress,
+        uint256 indexed actionId,
+        uint256 indexed memberId,
+        uint256 round,
+        uint256 amount,
+        bool isExperience,
+        uint256 providerMemberId,
+        uint256 groupId
+    );
+    event Withdrawn(
+        address indexed tokenAddress,
+        uint256 indexed actionId,
+        uint256 indexed memberId,
+        uint256 round,
+        uint256 amount
+    );
+    event Exited(
+        address indexed tokenAddress,
+        uint256 indexed actionId,
+        uint256 indexed memberId,
+        uint256 round
+    );
     event VerifierApplied(address indexed tokenAddress, uint256 indexed actionId, uint256 indexed memberId,
         uint256 round, uint256 applicationId);
     event VerificationBatchSubmitted(address indexed tokenAddress, uint256 indexed actionId, uint256 indexed groupId,
@@ -47,7 +64,7 @@ interface IGroupActionExecutorEvents {
         uint256 maxJoinAmount, uint256 maxAccounts);
 }
 
-interface IGroupActionExecutor is IGroupActionIndexes, IProposalTarget, IGroupActionExecutorEvents {
+interface IGroupActionExecutor is IGroupActionIndexes, IActionExecutor, IGroupActionExecutorEvents {
     function JOIN_TOKEN_ADDRESS(address tokenAddress, uint256 actionId) external view returns (address);
     function ACTIVATION_STAKE_AMOUNT(address tokenAddress, uint256 actionId) external view returns (uint256);
     function MAX_JOIN_AMOUNT_RATIO(address tokenAddress, uint256 actionId) external view returns (uint256);
@@ -66,7 +83,6 @@ interface IGroupActionExecutor is IGroupActionIndexes, IProposalTarget, IGroupAc
     function join(address tokenAddress, uint256 actionId, uint256 groupId, uint256 memberId,
         uint256 amount, string[] calldata verificationInfos) external;
     function withdraw(address tokenAddress, uint256 actionId, uint256 memberId, uint256 amount) external;
-    function exit(address tokenAddress, uint256 actionId, uint256 memberId) external;
     function joinInfo(address tokenAddress, uint256 actionId, uint256 round, uint256 memberId)
         external view returns (uint256 joinedRound, uint256 amount, uint256 groupId);
     function groupIds(address tokenAddress, uint256 actionId, uint256 round)
