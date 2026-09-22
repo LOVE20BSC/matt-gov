@@ -24,6 +24,10 @@ targetData[0] = abi.encode(executorAddress)
 
 记录当前成员是否加入行动，供加入列表和外部资格查询；包括 GroupAction，但不保存 Executor 的资产、验证或群归属。
 
+**事件分层设计**：ActionTarget 发出简化的加入/退出事件（只包含 `tokenAddress, actionId, memberId, round`），记录通用加入状态；各 Executor（如 `ILpExecutor`、`IGroupActionExecutor`）在自己的合约中发出包含完整业务字段（`amount, isExperience, providerMemberId` 等）的同名事件。两层事件不冲突，各自记录各自层级的信息。
+
+**集合读取**：成员的行动列表是无界集合（由成员加入次数决定），采用标准分页签名 `actionIdsByMemberId(tokenAddress, memberId, offset, limit, reverse) returns (actionIds[], total)`。参数语义：越界返回空数组与真实总数、不回滚；`limit` 超剩余按剩余返回；`reverse` 为 true 时从新到旧。只取总数时传 `limit = 0`。符合[集合读取设计原则](../../migration-standards.md#集合读取函数的设计原则)。
+
 完整 ABI 见 [`IActionTarget.sol`](../../../interfaces/action/IActionTarget.sol)。
 
 `init` 仅部署授权者可调用一次。join/exit/`mintProposalReward` 仅关联 Executor 可调用；Executor 通过继承 [`IProposalTarget.sol`](../../../interfaces/core/IProposalTarget.sol) 接收三类 Proposal 回调，创建/推举回调仅 Submit 可调用，投票回调仅 Vote 可调用。重复加入、重复退出均不改状态；因此 `forceExit` 后，Executor 正常调用 `exit` 必须成功且不改状态。重复铸造回滚。不存在关联时 `executor` 返回零，但写操作拒绝零关联。`isAccountJoined` 无记录时返回 false。

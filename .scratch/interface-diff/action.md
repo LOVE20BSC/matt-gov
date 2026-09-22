@@ -40,15 +40,16 @@
 
 新 `IActionTarget` 继承 `IProposalTarget`，承担「提案与执行合约关联 + 通用加入/退出登记 + 激励中转」。旧 `ExtensionCenter` 的注册中心、委托和验证信息职责不迁移。
 
+**接口组织**：旧 `IExtensionCenter` 按 `IExtensionCenterEvents` + `IExtensionCenterErrors` + 主接口三部分声明；新 `IActionTarget` 保留相同结构：`IActionTargetEvents` + `IActionTargetErrors` + 主接口。
+
 ### 函数
 
 | 新 | 旧 | 状态 |
 | --- | --- | --- |
 | `isAccountJoined(tokenAddress, actionId, uint256 memberId)` | `IExtensionCenter.isAccountJoined(tokenAddress, actionId, address account)` | 改参 |
-| `join(tokenAddress, actionId, uint256 memberId)` | `IExtensionCenter.addAccount(tokenAddress, actionId, address account, verificationInfos[])` | 改名+改参（`verificationInfos` 移入各 Executor 的 `join`） |
+| `join(tokenAddress, actionId, uint256 memberId)` | `IExtensionCenter.addAccount(tokenAddress, actionId, address account, verificationInfos[])` | 改名+改参（`verificationInfos` 移入各 Executor 的 `join`；ActionTarget 只记录加入布尔状态） |
 | `exit(tokenAddress, actionId, uint256 memberId)` | `IExtensionCenter.removeAccount(tokenAddress, actionId, address account) returns (bool)` | 改名+改参（去返回值） |
-| `actionIdsByMemberId(tokenAddress, memberId) returns (uint256[])` | `IExtensionCenter.actionIdsByAccount(tokenAddress, address account, address[] factories) returns (actionIds[], extensions[], factories_[])` | 改名+改参（去 factories 参数与两个返回数组） |
-| `actionIdsByMemberIdCount`、`actionIdsByMemberIdAtIndex` | 无 | 新增 |
+| `actionIdsByMemberId(tokenAddress, memberId, offset, limit, reverse) returns (actionIds[], total)` | `IExtensionCenter.actionIdsByAccount(tokenAddress, address account, address[] factories)` 部分对应 | 改名+改参（采用标准分页签名 `(offset, limit, reverse) → (列表, 总数)`；删除 factories 参数与 extensions/factories 返回数组） |
 | `executor(tokenAddress, uint256 proposalId)` | `IExtensionCenter.extension(tokenAddress, actionId)` | 改名 |
 | `forceExit(tokenAddress, actionId, memberId)` | 无 | 新增（应急登记清理） |
 | `mintProposalReward(tokenAddress, round, proposalId) returns (uint256 amount)` | 无 | 新增（激励中转） |
@@ -72,9 +73,9 @@
 | 新 | 旧 | 状态 |
 | --- | --- | --- |
 | `ProposalLinked(tokenAddress, proposalId, address executor)` | `IExtensionCenter.RegisterAction(tokenAddress, actionId, extension, factory)` | 改名+改参 |
-| `ActionJoined(tokenAddress, actionId, memberId, round, amount, isExperience, providerMemberId)` | `IExtensionCenter.AddAccount(tokenAddress, round, actionId, address account, accountCount)` | 改名+改参 |
-| `ActionExited(tokenAddress, actionId, memberId, round, isExperience, providerMemberId)` | `IExtensionCenter.RemoveAccount(tokenAddress, round, actionId, address account, accountCount)` | 改名+改参 |
-| `ActionWithdrawn(...)`、`ForceExited(tokenAddress, actionId, memberId)` | 无 | 新增 |
+| `ActionJoined(tokenAddress, actionId, memberId, round)` | `IExtensionCenter.AddAccount(tokenAddress, round, actionId, address account, accountCount)` | 改名+改参（简化为只记录加入状态，删除 amount/isExperience/providerMemberId 字段） |
+| `ActionExited(tokenAddress, actionId, memberId, round)` | `IExtensionCenter.RemoveAccount(tokenAddress, round, actionId, address account, accountCount)` | 改名+改参（简化） |
+| `ActionWithdrawn(tokenAddress, actionId, memberId, round)`、`ForceExited(tokenAddress, actionId, memberId)` | 无 | 新增 |
 | 无 | `IExtensionCenter.SetExtensionDelegate`、`UpdateVerificationInfo`；`IExtension.Initialize` | 删除 |
 
 ### 错误
@@ -119,7 +120,7 @@
 
 | 新 | 旧 | 状态 |
 | --- | --- | --- |
-| `ActionJoined`、`ActionWithdrawn`、`ActionExited` | `ITokenJoin.Join(tokenAddress, round, actionId, address account, amount)`、`Exit(...)` | 改名+改参（统一为含 `memberId`/`isExperience`/`providerMemberId` 的三事件） |
+| `ActionJoined(tokenAddress, actionId, memberId, round, amount, isExperience, providerMemberId)`、`ActionWithdrawn`、`ActionExited` | `ITokenJoin.Join(tokenAddress, round, actionId, address account, amount)`、`Exit(...)` | 改名+改参（Executor 层事件包含完整业务字段；ActionTarget 层事件简化） |
 | `ActionRewardMinted(tokenAddress, actionId, round, totalAmount, bytes32 recipientType)` | `IReward.ClaimReward(tokenAddress, round, actionId, address account, mintAmount, burnAmount)` | 改名+改参 |
 | `RewardBurned(tokenAddress, actionId, round, amount, bytes32 reason)` | `IReward.BurnReward(tokenAddress, round, actionId, amount)` | 改名+改参 |
 | 错误 `InsufficientGovRatio()` | `ILp.InsufficientGovRatio()` | 保留 |
