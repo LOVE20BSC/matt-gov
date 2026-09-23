@@ -28,13 +28,11 @@ interface IVote is IVoteErrors, IVoteEvents {
     function submitAddress() external view returns (address);
     function phaseAddress() external view returns (address);
     function memberNFTAddress() external view returns (address);
-    function mintAddress() external view returns (address);
     function init(
         address phaseAddress,
         address stakeAddress,
         address submitAddress,
-        address memberNFTAddress,
-        address mintAddress
+        address memberNFTAddress
     ) external;
     function vote(
         address tokenAddress,

@@ -34,7 +34,7 @@ Core 不解释具体 Proposal 的业务字段，扩展通过 Target 接入。
 | Stake | `maxWithdrawableToFeeRatio` | 手续费结算阈值，同时是单笔结算量的分母；须不小于目标 DEX 池费率的倒数，见 [Stake](04-stake.md#手续费结算与销毁) |
 | Submit | `phaseAddress`、`stakeAddress`、`memberNFTAddress` | 时间、质押和身份依赖 |
 | Submit | `submitMinPerThousand` | 推举门槛，千分比，如 `10 = 1%` |
-| Vote | `phaseAddress`、`stakeAddress`、`submitAddress`、`memberNFTAddress`、`mintAddress` | 时间、票权、提案、身份和激励门槛依赖 |
+| Vote | `phaseAddress`、`stakeAddress`、`submitAddress`、`memberNFTAddress` | 时间、票权、提案和身份依赖 |
 | Mint | `voteAddress`、`submitAddress`、`launchAddress`、`memberNFTAddress` | 投票、提案、发射和身份依赖；BSC 版本已移除原 `stakeAddress`（加速数据源改为 Vote 快照） |
 | Mint | `proposalRewardMinVotePerThousand` | 提案激励门槛；状态变量和公开 getter 为 `PROPOSAL_REWARD_MIN_VOTE_PER_THOUSAND`，千分比，如 `50 = 5%` |
 | Mint | `roundRewardGovPerThousand`、`roundRewardProposalPerThousand` | 治理池、提案池占可用供应的千分比；状态变量和公开 getter 为 `ROUND_REWARD_GOV_PER_THOUSAND`、`ROUND_REWARD_PROPOSAL_PER_THOUSAND`，如 `30`、`10` |

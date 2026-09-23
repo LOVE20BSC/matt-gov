@@ -41,7 +41,7 @@ Vote 管理当前治理 Round 的 Proposal 投票和加速快照。Proposal 的�
 
 额度按整批累计判定：同一批里先投的票数计入后投的判定基准，超过上限的那笔回滚整批。
 
-`init` 校验顺序：先看初始化状态（`AlreadyInitialized()`），再逐个校验 `phaseAddress`、`stakeAddress`、`submitAddress`、`memberNFTAddress`、`mintAddress` 非零（`InvalidAddress()`）。
+`init` 校验顺序：先看初始化状态（`AlreadyInitialized()`），再逐个校验 `phaseAddress`、`stakeAddress`、`submitAddress`、`memberNFTAddress` 非零（`InvalidAddress()`）。
 
 ## 接口
 

@@ -196,7 +196,7 @@
 ### 🔄 关键变化
 - **主体身份**：`voterAddress` → `voterId (memberId)`
 - **权限校验**：`msg.sender` → `MemberNFT.ownerOf(voterId) == msg.sender`（新增 `NotMemberOwner(uint256)`）
-- **初始化**：旧 `constructor(originBlocks, phaseBlocks)` 与 `initialize(stakeAddress_, submitAddress_)` → `init(phaseAddress, stakeAddress, submitAddress, memberNFTAddress, mintAddress)`，五个依赖地址都做非零校验（`InvalidAddress()`）
+- **初始化**：旧 `constructor(originBlocks, phaseBlocks)` 与 `initialize(stakeAddress_, submitAddress_)` → `init(phaseAddress, stakeAddress, submitAddress, memberNFTAddress)`，四个依赖地址都做非零校验（`InvalidAddress()`）
 - **时间源**：旧继承 `Phase` 基类的 `currentRound()` → 读 `IPhase(phaseAddress).currentPhase()`，并新增 `isRoundEnded(round)`（`round == 0` 返回 `false`）
 - **加速快照（新增能力）**：旧 Vote 不保存质押快照，BSC 新增 `stakedAmountOfVotersByMemberId` 与 `stakedAmountOfVoters`，供 Mint 的 `memberBoost` 与 `totalBoost` 读取。首投记入 `Stake.cumulatedBoostShares(tokenAddress, round, memberId)` 全量，之后再次投票只补记高于已记值的正增量，未增加不更新；质押增加但没有后续投票不更新快照
 - **Target 回调（新增能力）**：每笔投票在状态写完后回调 `IProposalTarget.onProposalVoted`，转发 `round`、`voterId`、本次增量票数与 Target Data；`NoCallback` 或 `target` 为零时跳过，回调失败整笔回滚。目标与模式从 `ISubmit.proposalTarget` 读取，不读整条 `ProposalInfo`
@@ -223,7 +223,7 @@
 | — | `stakedAmountOfVotersByMemberId(address,uint256,uint256)` | `0x8f88d86f` |
 | — | `stakedAmountOfVoters(address,uint256)` | `0xb641b6d7` |
 | — | `isRoundEnded(uint256)` | `0x7b831c30` |
-| — | `initialized()`、`phaseAddress()`、`stakeAddress()`、`submitAddress()`、`memberNFTAddress()`、`mintAddress()` | — |
+| — | `initialized()`、`phaseAddress()`、`stakeAddress()`、`submitAddress()`、`memberNFTAddress()` | — |
 
 **保留未改名**：`votesNum(address,uint256)` selector `0x00afdbae`，与旧同名同参。
 
