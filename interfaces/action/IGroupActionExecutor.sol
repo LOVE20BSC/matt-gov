@@ -3,6 +3,7 @@ pragma solidity =0.8.37;
 
 import {IGroupActionIndexes} from "./IGroupActionIndexes.sol";
 import {IActionExecutor} from "./IActionExecutor.sol";
+import {IVerificationInfo} from "./IVerificationInfo.sol";
 
 struct GroupConfig {
     string description;
@@ -64,7 +65,7 @@ interface IGroupActionExecutorEvents {
         uint256 maxJoinAmount, uint256 maxAccounts);
 }
 
-interface IGroupActionExecutor is IGroupActionIndexes, IActionExecutor, IGroupActionExecutorEvents {
+interface IGroupActionExecutor is IGroupActionIndexes, IActionExecutor, IVerificationInfo, IGroupActionExecutorEvents {
     function JOIN_TOKEN_ADDRESS(address tokenAddress, uint256 actionId) external view returns (address);
     function ACTIVATION_STAKE_AMOUNT(address tokenAddress, uint256 actionId) external view returns (uint256);
     function MAX_JOIN_AMOUNT_RATIO(address tokenAddress, uint256 actionId) external view returns (uint256);

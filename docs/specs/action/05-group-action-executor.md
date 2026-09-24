@@ -8,7 +8,14 @@ GroupAction 使用 MemberNFT 身份，`groupId` 是群主体的 `memberId`，不
 
 参与、群配置和历史查询接口见 [`IGroupActionExecutor.sol`](../../../interfaces/action/IGroupActionExecutor.sol)。
 
-创建 KV 沿用旧行动参数：`joinTokenAddress(address)`、`activationStakeAmount(uint256)`、`maxJoinAmountRatio(uint256)`、`activationMinGovRatio(uint256)`，键取 `keccak256`、值取 `abi.encode`。验证信息键和说明沿用 LP 的可选 KV。配置和激活资格、质押退还及容量计算沿用旧 GroupManager；`maxCapacity = 0` 使用理论容量，`maxJoinAmount/maxAccounts = 0` 不另设群级上限，非零最大加入量不得低于最小加入量。
+创建 KV 沿用旧行动参数：`joinTokenAddress(address)`、`activationStakeAmount(uint256)`、`maxJoinAmountRatio(uint256)`、`activationMinGovRatio(uint256)`，键取 `keccak256`、值取 `abi.encode`。配置和激活资格、质押退还及容量计算沿用旧 GroupManager；`maxCapacity = 0` 使用理论容量，`maxJoinAmount/maxAccounts = 0` 不另设群级上限，非零最大加入量不得低于最小加入量。
+
+**验证信息**：`IGroupActionExecutor` 继承 [`IVerificationInfo`](../../../interfaces/action/IVerificationInfo.sol)。验证信息分为两层：
+
+- **Action 级别模板**：由行动创建者在提交提案时定义，通过 `verificationSchema(tokenAddress, actionId)` 查询，返回 `(keys[], descriptions[])`，说明加入者需要提交哪些验证字段（如 `["twitter_handle", "tweet_url"]`）及其含义（如 `["你的推特账号", "转发推文链接"]`）。
+- **Member 级别实例**：由成员在加入行动时提交具体值，通过 `verificationValue(tokenAddress, actionId, memberId, key)` 查询单个字段值，`verificationInfos(tokenAddress, actionId, memberId)` 查询所有字段当前值，`verificationInfosByRound(tokenAddress, actionId, memberId, round)` 查询指定 round 的历史快照。
+
+验证信息模板的 keys 和 descriptions 在 Proposal 创建回调时通过可选 KV 传入，后续不可修改；成员提交的验证信息值在加入时写入，每次修改参与量时可更新。
 
 管理操作要求持有 groupId；自有参与操作要求持有 memberId。同一行动中成员只能归属一个 Group，追加不得改群；换群须先正常退出。`amount` 查询包含自有和体验参与总量。withdraw 只减少自有账本；自有余额归零且体验余额也为零时自动退出。Provider 只能用 trialWithdraw 撤回自己的体验代币；若使总参与量归零，合约自动退出成员。成员调用 exit 时同时结清自有和体验账本，分别返还成员和 Provider。无参与记录返回零元组，历史集合无记录返回空数组。
 
@@ -16,12 +23,12 @@ GroupAction 使用 MemberNFT 身份，`groupId` 是群主体的 `memberId`，不
 
 事实关系为 `tokenAddress + actionId + groupId + memberId`。跨本 Executor 的所有社区和行动维护 17 组可枚举索引：
 
-| 维度 | 查询名 |
-| --- | --- |
-| Group ID | `gGroupIds`、`gGroupIdsByMemberId`、`gGroupIdsByTokenAddress`、`gGroupIdsByTokenAddressByMemberId`、`gGroupIdsByTokenAddressByActionId` |
-| Token Address | `gTokenAddresses`、`gTokenAddressesByMemberId`、`gTokenAddressesByGroupId`、`gTokenAddressesByGroupIdByMemberId` |
-| Action ID | `gActionIdsByTokenAddress`、`gActionIdsByTokenAddressByMemberId`、`gActionIdsByTokenAddressByGroupId`、`gActionIdsByTokenAddressByGroupIdByMemberId` |
-| Member ID | `gMemberIds`、`gMemberIdsByGroupId`、`gMemberIdsByTokenAddress`、`gMemberIdsByTokenAddressByGroupId` |
+| 维度          | 查询名                                                                                                                                               |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Group ID      | `gGroupIds`、`gGroupIdsByMemberId`、`gGroupIdsByTokenAddress`、`gGroupIdsByTokenAddressByMemberId`、`gGroupIdsByTokenAddressByActionId`              |
+| Token Address | `gTokenAddresses`、`gTokenAddressesByMemberId`、`gTokenAddressesByGroupId`、`gTokenAddressesByGroupIdByMemberId`                                     |
+| Action ID     | `gActionIdsByTokenAddress`、`gActionIdsByTokenAddressByMemberId`、`gActionIdsByTokenAddressByGroupId`、`gActionIdsByTokenAddressByGroupIdByMemberId` |
+| Member ID     | `gMemberIds`、`gMemberIdsByGroupId`、`gMemberIdsByTokenAddress`、`gMemberIdsByTokenAddressByGroupId`                                                 |
 
 每组提供全量数组、追加 `Count` 的数量查询和追加 `AtIndex` 的单项查询。加入/退出同步维护，不依赖扫描事件。仍有其他有效关系时不能提前移除上层索引；最后关系退出才逐层清理。ActionTarget.forceExit 不修改这些索引。
 

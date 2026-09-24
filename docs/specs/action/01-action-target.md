@@ -26,7 +26,9 @@ targetData[0] = abi.encode(executorAddress)
 
 **事件分层设计**：ActionTarget 发出简化的加入/退出事件（`Joined`、`Exited`，只包含 `tokenAddress, actionId, memberId, round`），记录通用加入状态；各 Executor（如 `ILpExecutor`、`IGroupActionExecutor`）在自己的合约中发出包含完整业务字段（`amount, isExperience, providerMemberId` 等）的同名事件。两层事件不冲突，各自记录各自层级的信息。ActionTarget 不发出 `Withdrawn` 事件，因为 withdraw 不改变加入状态。
 
-**集合读取**：成员的行动列表是无界集合（由成员加入次数决定），采用标准分页签名 `actionIdsByMemberId(tokenAddress, memberId, offset, limit, reverse) returns (actionIds[], total)`。参数语义：越界返回空数组与真实总数、不回滚；`limit` 超剩余按剩余返回；`reverse` 为 true 时从新到旧。只取总数时传 `limit = 0`。符合[集合读取设计原则](../../migration-standards.md#集合读取函数的设计原则)。
+**集合读取**：成员的行动列表是无界集合（由成员加入次数决定），采用标准分页签名 `actionIdsByMemberId(tokenAddress, memberId, offset, limit, reverse) returns (actionIds[], total)`。行动的成员列表同样是无界集合，采用标准分页签名 `memberIdsByActionId(tokenAddress, actionId, offset, limit, reverse) returns (memberIds[], total)`。参数语义：越界返回空数组与真实总数、不回滚；`limit` 超剩余按剩余返回；`reverse` 为 true 时从新到旧。只取总数时传 `limit = 0`。符合[集合读取设计原则](../../migration-standards.md#集合读取函数的设计原则)。
+
+**历史查询**：提供按 round 的历史快照查询，`isJoinedByRound(tokenAddress, actionId, memberId, round)` 检查指定 round 时的加入状态，`memberIdsByActionIdByRound(tokenAddress, actionId, round, offset, limit, reverse)` 返回指定 round 时的成员列表（分页）。
 
 完整 ABI 见 [`IActionTarget.sol`](../../../interfaces/action/IActionTarget.sol)。
 

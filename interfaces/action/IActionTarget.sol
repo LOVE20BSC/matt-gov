@@ -25,8 +25,13 @@ interface IActionTargetErrors {
 interface IActionTarget is IProposalTarget, IActionTargetEvents, IActionTargetErrors {
     function init(address memberNFTAddress, address submitAddress, address voteAddress, address mintAddress) external;
     function isJoined(address tokenAddress, uint256 actionId, uint256 memberId) external view returns (bool);
+    function isJoinedByRound(address tokenAddress, uint256 actionId, uint256 memberId, uint256 round) external view returns (bool);
     function actionIdsByMemberId(address tokenAddress, uint256 memberId, uint256 offset, uint256 limit, bool reverse)
         external view returns (uint256[] memory actionIds, uint256 total);
+    function memberIdsByActionId(address tokenAddress, uint256 actionId, uint256 offset, uint256 limit, bool reverse)
+        external view returns (uint256[] memory memberIds, uint256 total);
+    function memberIdsByActionIdByRound(address tokenAddress, uint256 actionId, uint256 round, uint256 offset, uint256 limit, bool reverse)
+        external view returns (uint256[] memory memberIds, uint256 total);
     function join(address tokenAddress, uint256 actionId, uint256 memberId) external;
     function exit(address tokenAddress, uint256 actionId, uint256 memberId) external;
     function forceExit(address tokenAddress, uint256 actionId, uint256 memberId) external;
