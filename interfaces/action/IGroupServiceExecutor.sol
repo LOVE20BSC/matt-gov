@@ -28,10 +28,7 @@ interface IGroupServiceExecutorEvents {
 interface IGroupServiceExecutor is IActionExecutor, IGroupServiceExecutorEvents {
     function init(address actionTargetAddress, address memberNFTAddress, address phaseAddress,
         address stakeAddress, address mintAddress, address groupActionExecutorAddress) external;
-    function currentVoteRound() external view returns (uint256);
-    function currentJoinRound() external view returns (uint256);
     function currentVerifyRound() external view returns (uint256);
-    function currentMintRound() external view returns (uint256);
     function totalGroupActionReward(address actionTokenAddress, uint256 round)
         external view returns (uint256 reward, bool cached);
     function join(address serviceTokenAddress, uint256 serviceProposalId, uint256 memberId,
@@ -55,7 +52,6 @@ interface IGroupServiceExecutor is IActionExecutor, IGroupServiceExecutorEvents 
     error AlreadyInitialized();
     error InvalidKVLength();
     error InvalidRound(uint256 round);
-    error RoundNotStarted();
     error NotMemberOwner(uint256 memberId);
     error ProposalNotVoted(address tokenAddress, uint256 proposalId);
     error UnauthorizedCallback();

@@ -38,9 +38,6 @@ interface ILpExecutor is IActionExecutor, ILpExecutorEvents {
     function MIN_GOV_RATIO(address tokenAddress, uint256 actionId) external view returns (uint256);
     function init(address actionTargetAddress, address memberNFTAddress, address phaseAddress,
         address stakeAddress, address mintAddress, address pairFactoryAddress) external;
-    function currentVoteRound() external view returns (uint256);
-    function currentJoinRound() external view returns (uint256);
-    function currentMintRound() external view returns (uint256);
     function joinedAmount(address tokenAddress, uint256 actionId) external view returns (uint256);
     function joinedAmountByMemberId(address tokenAddress, uint256 actionId, uint256 memberId)
         external view returns (uint256);
@@ -60,7 +57,6 @@ interface ILpExecutor is IActionExecutor, ILpExecutorEvents {
     error UnauthorizedCallback();
     error InvalidParticipationAmount();
     error InvalidRound(uint256 round);
-    error RoundNotStarted();
     error NotMemberOwner(uint256 memberId);
     error ProposalNotVoted(address tokenAddress, uint256 proposalId);
     error InsufficientGovRatio();

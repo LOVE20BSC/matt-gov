@@ -72,10 +72,7 @@ interface IGroupActionExecutor is IGroupActionIndexes, IActionExecutor, IVerific
     function ACTIVATION_MIN_GOV_RATIO(address tokenAddress, uint256 actionId) external view returns (uint256);
     function init(address actionTargetAddress, address memberNFTAddress, address phaseAddress,
         address stakeAddress, address mintAddress, uint256[] calldata splits) external;
-    function currentVoteRound() external view returns (uint256);
-    function currentJoinRound() external view returns (uint256);
     function currentVerifyRound() external view returns (uint256);
-    function currentMintRound() external view returns (uint256);
     function activateGroup(address tokenAddress, uint256 actionId, uint256 groupId, GroupConfig calldata config) external;
     function deactivateGroup(address tokenAddress, uint256 actionId, uint256 groupId) external;
     function updateGroupInfo(address tokenAddress, uint256 actionId, uint256 groupId, GroupConfig calldata config) external;
@@ -146,7 +143,6 @@ interface IGroupActionExecutor is IGroupActionIndexes, IActionExecutor, IVerific
     error NotMemberOwner(uint256 memberId);
     error ProposalNotVoted(address tokenAddress, uint256 proposalId);
     error InvalidRound(uint256 round);
-    error RoundNotStarted();
     error InsufficientExperienceQuota(uint256 providerMemberId, uint256 required, uint256 available);
     error VerifierAlreadyLocked(address tokenAddress, uint256 actionId, uint256 round);
     error BatchIndexMismatch(uint256 expected, uint256 actual);

@@ -1,12 +1,13 @@
 # IActionExecutor 通用接口
 
-所有 Action 层 Executor（`ILpExecutor`、`IGroupActionExecutor`、`IGroupServiceExecutor`）继承 `IActionExecutor`，确保统一的回调契约和退出接口。
+所有 Action 层 Executor（`ILpExecutor`、`IGroupActionExecutor`、`IGroupServiceExecutor`）继承 `IActionExecutor`，确保统一的回调契约、退出接口和投票/加入/铸币 Round 查询。
 
 ## 设计原则
 
 **通用部分**（在 `IActionExecutor` 中定义）：
 - 继承 `IProposalTarget`，接收 Core 层的三类回调（创建/推举/投票）
 - `exit(tokenAddress, actionId, memberId)` — 完全退出的签名是通用的
+- `currentVoteRound()` / `currentJoinRound()` / `currentMintRound()` — 从 `Phase.currentPhase()` 推导的三阶段 Round；未开始回滚 `RoundNotStarted`
 
 **非通用部分**（各 Executor 自行定义）：
 - `join` — 参数因行动类型而异：
@@ -15,6 +16,7 @@
   - `IGroupServiceExecutor`: `join(serviceTokenAddress, serviceProposalId, memberId, verificationInfos)` — 无 `amount`
 - `withdraw` — 部分撤回接口，LP 和 GroupAction 需要，GroupService 可能不需要
 - 事件 — 各 Executor 的业务字段不同，各自声明 `Joined/Withdrawn/Exited` 事件
+- `currentVerifyRound()` — 仅 GroupAction / GroupService 的四阶段流水线提供；LP 不声明
 
 ## 与 ActionTarget 的事件分层
 
@@ -52,6 +54,11 @@ event Joined(address indexed tokenAddress, uint256 indexed actionId,
 ```solidity
 interface IActionExecutor is IProposalTarget {
     function exit(address tokenAddress, uint256 actionId, uint256 memberId) external;
+    function currentVoteRound() external view returns (uint256);
+    function currentJoinRound() external view returns (uint256);
+    function currentMintRound() external view returns (uint256);
+
+    error RoundNotStarted();
 }
 ```
 

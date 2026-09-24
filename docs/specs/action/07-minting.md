@@ -12,7 +12,7 @@ executor -> ActionTarget -> Mint -> ActionTarget -> executor
 
 Core 的预留、铸造和取消额度账本见 [Mint](../core/07-mint.md)，不能把 Executor 内部转账再次计作 Core 铸造。
 
-事件和错误定义分别见 [`IActionTarget.sol`](../../../interfaces/action/IActionTarget.sol)、[`ILpExecutor.sol`](../../../interfaces/action/ILpExecutor.sol)、[`IGroupActionExecutor.sol`](../../../interfaces/action/IGroupActionExecutor.sol) 和 [`IGroupServiceExecutor.sol`](../../../interfaces/action/IGroupServiceExecutor.sol)。每个接口只声明自身合约实际拥有的事件和错误。
+事件和错误定义分别见 [`IActionTarget.sol`](../../../interfaces/action/IActionTarget.sol)、[`IActionExecutor.sol`](../../../interfaces/action/IActionExecutor.sol)、[`ILpExecutor.sol`](../../../interfaces/action/ILpExecutor.sol)、[`IGroupActionExecutor.sol`](../../../interfaces/action/IGroupActionExecutor.sol) 和 [`IGroupServiceExecutor.sol`](../../../interfaces/action/IGroupServiceExecutor.sol)。每个接口只声明自身合约实际拥有的事件和错误；`RoundNotStarted` 在 `IActionExecutor` 中声明，由各 Executor 继承。
 
 事件按 BSC 业务主体使用 `memberId`；事件中的地址仅表示代币、合约或调用审计地址。
 
