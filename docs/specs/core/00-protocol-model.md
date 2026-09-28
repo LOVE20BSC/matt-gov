@@ -29,7 +29,7 @@ Core 不解释具体 Proposal 的业务字段，扩展通过 Target 接入。
 | MemberNFT 构造参数 | `multiplier` | 每缩短一字节的费用倍数；状态变量和公开 getter 为 `MULTIPLIER`，如 `10` |
 | MemberNFT 构造参数 | `maxNameLength` | 最大字节数；状态变量和公开 getter 为 `MAX_NAME_LENGTH`，如 `32` |
 | Phase 构造参数 | `ORIGIN_BLOCKS`、`ORIGIN_PHASE_BLOCKS`、`TARGET_SECONDS`、`ADJUST_THRESHOLD`、`SYNC_OBSERVATION_LIMIT` | 启动区块、初始区块数、每个 Phase 的目标自然时长（秒，7 天为 `604800`）、偏差阈值、单次同步回溯上限；五项均须大于零，偏差阈值使用 `1e18` 精度 |
-| Stake | `phaseAddress`、`memberNFTAddress`、`voteAddress`、`submitAddress`、`launchAddress`、`routerAddress`、`pairFactoryAddress` | 时间、身份、当前轮投票/推举检查、Launch 代币登记、路由和 Pair Factory 依赖；在 Stake 侧 Pair Factory 只用于读取 Launch 已创建或复用的 Pair |
+| Stake | `phaseAddress`、`memberNFTAddress`、`voteAddress`、`launchAddress`、`routerAddress`、`pairFactoryAddress` | 时间、身份、当前轮投票/推举检查、Launch 代币登记、路由和 Pair Factory 依赖；Stake 通过 Vote 已绑定的 Submit 读取推举记录；在 Stake 侧 Pair Factory 只用于读取 Launch 已创建或复用的 Pair |
 | Stake | `promisedWaitingPhasesMin`、`promisedWaitingPhasesMax` | 承诺解锁期的最小、最大 Phase 数 |
 | Stake | `maxWithdrawableToFeeRatio` | 手续费结算阈值，同时是单笔结算量的分母；须不小于目标 DEX 池费率的倒数，见 [Stake](04-stake.md#手续费结算与销毁) |
 | Submit | `phaseAddress`、`stakeAddress`、`memberNFTAddress` | 时间、质押和身份依赖 |

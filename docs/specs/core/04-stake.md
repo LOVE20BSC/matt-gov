@@ -24,7 +24,7 @@ Stake 按 `tokenAddress + memberId` 维护流动性质押和加速质押，不�
 
 ## 流动性质押与手续费
 
-`init` 只校验 `initialized` 状态并固定依赖地址和参数，不设调用者限制；成功后 `initialized` 置为 `true`，再次调用回滚 `AlreadyInitialized()`。固定 `phaseAddress`、`memberNFTAddress`、`voteAddress`、`submitAddress`、`launchAddress`、`routerAddress`、`pairFactoryAddress`、`PROMISED_WAITING_PHASES_MIN`、`PROMISED_WAITING_PHASES_MAX` 和 `MAX_WITHDRAWABLE_TO_FEE_RATIO`。所有成员写操作校验当前 NFT 持有人；`submitAddress` 与 `voteAddress` 用于融合时检查来源本轮是否已推举或投票，`launchAddress` 用于确认代币由 Launch 登记。金额单位为代币最小单位，等待期为 Phase。
+`init` 只校验 `initialized` 状态并固定依赖地址和参数，不设调用者限制；成功后 `initialized` 置为 `true`，再次调用回滚 `AlreadyInitialized()`。固定 `phaseAddress`、`memberNFTAddress`、`voteAddress`、`launchAddress`、`routerAddress`、`pairFactoryAddress`、`PROMISED_WAITING_PHASES_MIN`、`PROMISED_WAITING_PHASES_MAX` 和 `MAX_WITHDRAWABLE_TO_FEE_RATIO`。所有成员写操作校验当前 NFT 持有人；`voteAddress` 提供本轮投票记录并暴露其已绑定的 Submit，`launchAddress` 用于确认代币由 Launch 登记。金额单位为代币最小单位，等待期为 Phase。
 
 每个社区的唯一 Pair 由 [Launch](08-launch.md) 在发射该代币的同一笔交易内创建或复用；`Stake` 在首次质押时通过 `pairFactoryAddress.getPair(tokenAddress, parentTokenAddress)` 读取并保存，为零地址时回滚 `InvalidTokenAddress()`。**`Stake` 的所有入口都只接受 Launch 已登记的代币，只读取已登记的 Pair，不创建 Pair**，未登记或无 Pair 即回滚。
 
