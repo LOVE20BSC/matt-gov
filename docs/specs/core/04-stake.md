@@ -24,9 +24,9 @@ Stake 按 `tokenAddress + memberId` 维护流动性质押和加速质押，不�
 
 ## 流动性质押与手续费
 
-`init` 只校验 `initialized` 状态并固定依赖地址和参数，不设调用者限制；成功后 `initialized` 置为 `true`，再次调用回滚 `AlreadyInitialized()`。固定 `phaseAddress`、`memberNFTAddress`、`voteAddress`、`routerAddress`、`pairFactoryAddress`、`PROMISED_WAITING_PHASES_MIN`、`PROMISED_WAITING_PHASES_MAX` 和 `MAX_WITHDRAWABLE_TO_FEE_RATIO`。所有成员写操作校验当前 NFT 持有人；`voteAddress` 用于融合时检查来源本轮投票。金额单位为代币最小单位，等待期为 Phase。
+`init` 只校验 `initialized` 状态并固定依赖地址和参数，不设调用者限制；成功后 `initialized` 置为 `true`，再次调用回滚 `AlreadyInitialized()`。固定 `phaseAddress`、`memberNFTAddress`、`voteAddress`、`submitAddress`、`launchAddress`、`routerAddress`、`pairFactoryAddress`、`PROMISED_WAITING_PHASES_MIN`、`PROMISED_WAITING_PHASES_MAX` 和 `MAX_WITHDRAWABLE_TO_FEE_RATIO`。所有成员写操作校验当前 NFT 持有人；`submitAddress` 与 `voteAddress` 用于融合时检查来源本轮是否已推举或投票，`launchAddress` 用于确认代币由 Launch 登记。金额单位为代币最小单位，等待期为 Phase。
 
-每个社区的唯一 Pair 由 [Launch](08-launch.md) 在发射该代币的同一笔交易内创建；`Stake` 在首次质押时通过 `pairFactoryAddress.getPair(tokenAddress, parentTokenAddress)` 读取并保存，为零地址时回滚 `InvalidTokenAddress()`。**`Stake` 的所有入口都只读取已登记的 Pair、不创建 Pair**，未登记即回滚。
+每个社区的唯一 Pair 由 [Launch](08-launch.md) 在发射该代币的同一笔交易内创建或复用；`Stake` 在首次质押时通过 `pairFactoryAddress.getPair(tokenAddress, parentTokenAddress)` 读取并保存，为零地址时回滚 `InvalidTokenAddress()`。**`Stake` 的所有入口都只接受 Launch 已登记的代币，只读取已登记的 Pair，不创建 Pair**，未登记或无 Pair 即回滚。
 
 调用者提供社区代币、父币的期望数量和允许的滑点。Stake 按当前 Pair 储备折算本次实际入池的最优数量——按储备比例一侧取期望值、另一侧按比例折算，只转入折算后的数量，再直接向 Pair 铸出 LP：
 
@@ -124,18 +124,19 @@ Vote 每次投票通过 `Stake.validGovVotes(tokenAddress, memberId)` 读取当�
 用于同一社区质押的单向转移，可支持 NFT 场外交易：
 
 - 源和目标不同且已存在；调用者必须持有源，不要求持有目标。
-- 任一方待解锁时拒绝；源在当前治理 Round 已有非零投票时拒绝，目标已投票不阻止融合。
+- 任一方待解锁时拒绝；源在当前治理 Round 已使用过质押权时拒绝，目标已使用过质押权不阻止融合。
 - 空目标（`promisedWaitingPhases = 0`）继承源等待期；非空目标等待期短于源则拒绝，否则保持目标等待期。
 - 源全部流动性份额和加速份额并入目标，源当前质押清零。目标原资产不得减少，历史投票和激励不回写。
 - 目标本轮已投票仍可接收：融合只增加目标的流动性份额，按 `liquidityShares × promisedWaitingPhases` 重算后表现为治理票增量，与该成员自己追加质押产生的增量等价，可继续用这部分增量投票。
-- 源本轮已投票则禁止融合：源的票权已经计入本轮投票，融合会让同一份质押资产在本轮产生两次投票。
+- 源本轮已推举或已投票则禁止融合：推举或投票都视为使用质押权，融合会让同一份质押资产在本轮转移后再次使用。
+- 当前 Round 结束后限制清零；上一 Round 使用过质押权的来源，在下一 Round 可以再次融合。Submit 会先完成推举状态写入，再执行创建回调，回调不能绕过该限制。
 - 融合后按目标份额正常提取双币和加速代币；解锁中的成员需完成提取后才可再次融合。
 
 ## 拒绝条件与错误
 
 各入口按「参数 → 存在性 → 持有 → 账本」的顺序校验，先命中的条件先回滚，同一入口内不重排。事件与错误定义见 [`IStake.sol`](../../../interfaces/core/IStake.sol)。
 
-`tokenAddress` 的有效性统一按两条判定：`ILOVE20Token(tokenAddress).parentTokenAddress()` 返回零地址，即不是已登记 LOVE20 代币；需要 Pair 的入口再判 `pairAddress[tokenAddress]` 为零地址。两者都回滚 `InvalidTokenAddress()`。
+`tokenAddress` 的有效性统一由 `ILaunch(launchAddress).isLOVE20Token(tokenAddress)` 判定；未由 Launch 登记的地址即使实现了 `parentTokenAddress()` 也无效。需要 Pair 的入口再判 `pairAddress[tokenAddress]` 为零地址。两者都回滚 `InvalidTokenAddress()`。
 
 ### `init`
 
@@ -208,7 +209,7 @@ Vote 每次投票通过 `Stake.validGovVotes(tokenAddress, memberId)` 读取当�
 | 4 | 调用者不持有源 `memberId` 的 NFT | `NotMemberOwner(sourceMemberId)` |
 | 5 | 源或目标已申请解锁 | `UnstakeAlreadyRequested()` |
 | 6 | 源无流动性质押 | `NoStakedLiquidity()` |
-| 7 | 源在当前治理 Round 已有非零投票 | `SourceHasVotedInCurrentRound()` |
+| 7 | 源在当前治理 Round 已使用过质押权（已推举或已投票） | `SourceHasUsedStakeRightsInCurrentRound()` |
 | 8 | 目标非空且其 `promisedWaitingPhases` 短于源 | `TargetPromisedWaitingPhasesTooShort()` |
 
 ### `settleFees`

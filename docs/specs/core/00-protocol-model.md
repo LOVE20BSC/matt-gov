@@ -29,7 +29,7 @@ Core 不解释具体 Proposal 的业务字段，扩展通过 Target 接入。
 | MemberNFT 构造参数 | `multiplier` | 每缩短一字节的费用倍数；状态变量和公开 getter 为 `MULTIPLIER`，如 `10` |
 | MemberNFT 构造参数 | `maxNameLength` | 最大字节数；状态变量和公开 getter 为 `MAX_NAME_LENGTH`，如 `32` |
 | Phase 构造参数 | `ORIGIN_BLOCKS`、`ORIGIN_PHASE_BLOCKS`、`TARGET_SECONDS`、`ADJUST_THRESHOLD`、`SYNC_OBSERVATION_LIMIT` | 启动区块、初始区块数、每个 Phase 的目标自然时长（秒，7 天为 `604800`）、偏差阈值、单次同步回溯上限；五项均须大于零，偏差阈值使用 `1e18` 精度 |
-| Stake | `phaseAddress`、`memberNFTAddress`、`voteAddress`、`routerAddress`、`pairFactoryAddress` | 时间、身份、融合投票检查、路由和 Pair Factory 依赖；在 Stake 侧 Pair Factory 只用于读取 Launch 已创建的 Pair |
+| Stake | `phaseAddress`、`memberNFTAddress`、`voteAddress`、`submitAddress`、`launchAddress`、`routerAddress`、`pairFactoryAddress` | 时间、身份、当前轮投票/推举检查、Launch 代币登记、路由和 Pair Factory 依赖；在 Stake 侧 Pair Factory 只用于读取 Launch 已创建或复用的 Pair |
 | Stake | `promisedWaitingPhasesMin`、`promisedWaitingPhasesMax` | 承诺解锁期的最小、最大 Phase 数 |
 | Stake | `maxWithdrawableToFeeRatio` | 手续费结算阈值，同时是单笔结算量的分母；须不小于目标 DEX 池费率的倒数，见 [Stake](04-stake.md#手续费结算与销毁) |
 | Submit | `phaseAddress`、`stakeAddress`、`memberNFTAddress` | 时间、质押和身份依赖 |
@@ -39,7 +39,7 @@ Core 不解释具体 Proposal 的业务字段，扩展通过 Target 接入。
 | Mint | `proposalRewardMinVotePerThousand` | 提案激励门槛；状态变量和公开 getter 为 `PROPOSAL_REWARD_MIN_VOTE_PER_THOUSAND`，千分比，如 `50 = 5%` |
 | Mint | `roundRewardGovPerThousand`、`roundRewardProposalPerThousand` | 治理池、提案池占可用供应的千分比；状态变量和公开 getter 为 `ROUND_REWARD_GOV_PER_THOUSAND`、`ROUND_REWARD_PROPOSAL_PER_THOUSAND`，如 `30`、`10` |
 | Mint | `maxGovBoostRewardMultiplier` | 加速激励相对投票激励的倍数上限；状态变量和公开 getter 为 `MAX_GOV_BOOST_REWARD_MULTIPLIER`，如 `2` |
-| Launch | `mintAddress`、`memberNFTAddress`、`pairFactoryAddress` | 铸造、身份与建池依赖；每个代币在创建时即建 Pair |
+| Launch | `mintAddress`、`memberNFTAddress`、`pairFactoryAddress` | 铸造、身份与建池依赖；每个代币在创建时即创建或复用 Pair |
 | Launch | `rootParentTokenAddress` | 根父币 WBNB |
 | Launch | `distributor`、`name`、`symbol` | 首币分发目标、名称和符号；首币固定使用 `NoCallback`，`distributor` 非零 |
 | Launch | `launchRatio` | 发射阈值比例；状态变量和公开 getter 为 `LAUNCH_RATIO`，`1e18` 精度，如 `1e16 = 1%` |
@@ -49,7 +49,7 @@ Core 不解释具体 Proposal 的业务字段，扩展通过 Target 接入。
 
 上表的 Launch 行按含义分组，不表示传参顺序；`Launch.init` 只接受一个 `LaunchInitParams`，实参顺序即结构体字段顺序（依赖地址 → 分发目标 → 经济与符号参数 → 供应量 → 首币元数据），参数表中的名字与字段名一致。结构体定义见 [`ILaunch.sol`](../../../interfaces/core/ILaunch.sol)。
 
-MemberNFT 的首币地址由 `Launch.init` 在创建首币时同步调用 `MemberNFT.init(tokenAddress)` 绑定，不在部署时传入；公开 getter 保持旧名 `LOVE20_TOKEN_ADDRESS()`。MemberNFT 不保存 Launch 地址。Launch 的首币分发地址、名称、符号和供应量配置统一见 [Launch](08-launch.md)。Pair Factory 由 Launch 与 Stake 共用：Launch 在创建代币时建池，Stake 只在首次质押时读取该 Pair；Router 只属 Stake，用于父币手续费换币。
+MemberNFT 的首币地址由 `Launch.init` 在创建首币时同步调用 `MemberNFT.init(tokenAddress)` 绑定，不在部署时传入；公开 getter 保持旧名 `LOVE20_TOKEN_ADDRESS()`。MemberNFT 不保存 Launch 地址。Launch 的首币分发地址、名称、符号和供应量配置统一见 [Launch](08-launch.md)。Pair Factory 由 Launch 与 Stake 共用：Launch 在创建代币时创建或复用 Pair，Stake 只在首次质押时读取该 Pair；Router 只属 Stake，用于父币手续费换币。
 
 ## 实现约束
 

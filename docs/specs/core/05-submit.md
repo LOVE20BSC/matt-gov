@@ -37,7 +37,7 @@ Proposal 由合约分配的头部与创建者提供的主体组成，对外以 `
 
 结构体见 [`ISubmit.sol`](../../../interfaces/core/ISubmit.sol)。
 
-`submitNewProposal` 在一笔交易内完成「创建 + 推举」两步：先保存 Proposal 并触发创建回调，紧接着把它推举进当前 Round。调用者须持有 `memberId` 且满足 `canSubmit`，并因此消耗本 Round 的推举名额。创建后内容和 Target 不变，重名标题不等于重复 Proposal。
+`submitNewProposal` 在一笔交易内完成「创建 + 推举」两步：先保存 Proposal，再写入当前 Round 的推举状态，最后执行创建与推举回调。调用者须持有 `memberId` 且满足 `canSubmit`，并因此消耗本 Round 的推举名额；回调执行时 Proposal 与推举状态都已完整写入，不能通过融合转出来源质押。创建后内容和 Target 不变，重名标题不等于重复 Proposal。
 
 `NoCallback` 忽略 `targetData`，不要求为空；`Callback` 允许 `targetData` 为空，并在回调时原样透传。Target Data 的业务编码由 Target 自行定义。
 
@@ -45,7 +45,7 @@ Proposal 由合约分配的头部与创建者提供的主体组成，对外以 `
 
 完整 ABI 见 [`ISubmit.sol`](../../../interfaces/core/ISubmit.sol)。它沿用旧 `LOVE20TKM/core/src/interfaces/ILOVE20Submit.sol` 的 Proposal 创建、推举、枚举和查询职责；旧接口中的行动专属字段已按 BSC 规则移出命名结构，改由不透明的 Target Data 经 `ProposalBody.targetData` 传递，业务主体由地址改为 `memberId`。
 
-两个写入口沿用旧接口的动词配对与语义，`submitNewProposal` 就是「提交一个新提案」：创建与推举在同一笔内完成。`submit` 不创建，只把已有 `proposalId` 推举进当前 Round。Proposal 一经创建即长期存在，可在后续每个 Round 各被推举一次，推举者可以是作者以外的人。
+两个写入口沿用旧接口的动词配对与语义，`submitNewProposal` 就是「提交一个新提案」：创建与推举在同一笔内完成。`submit` 不创建，只把已有 `proposalId` 推举进当前 Round；两个入口都在回调前完成推举状态写入。Proposal 一经创建即长期存在，可在后续每个 Round 各被推举一次，推举者可以是作者以外的人。
 
 读取面分三类，职责不重叠：
 
@@ -108,10 +108,10 @@ Proposal 由合约分配的头部与创建者提供的主体组成，对外以 `
 5. **本轮名额**：同一成员同社区同 Round 尚未推举过（`OnlyOneSubmitPerRound()`）
 6. 分配 `proposalId`，写入 `ProposalInfo` 与作者索引
 7. 发出 `ProposalCreated` 事件
-8. `Callback` 时回调 `IProposalTarget.onProposalCreated`
-9. 写入三处推举状态：推举记录列表（供 `submitInfos`）、按 `proposalId` 的推举者（供 `isSubmitted` 与 `submitterIdByProposalId`）、按 `submitterId` 的反查（供 `proposalIdBySubmitter`）
-10. 发出 `ProposalSubmitted` 事件
-11. 本社区本轮首笔推举时调用 `Phase.sync()`
+8. 写入三处推举状态：推举记录列表（供 `submitInfos`）、按 `proposalId` 的推举者（供 `isSubmitted` 与 `submitterIdByProposalId`）、按 `submitterId` 的反查（供 `proposalIdBySubmitter`）
+9. 发出 `ProposalSubmitted` 事件
+10. 本社区本轮首笔推举时调用 `Phase.sync()`
+11. `Callback` 时回调 `IProposalTarget.onProposalCreated`
 12. `Callback` 时回调 `IProposalTarget.onProposalSubmitted`
 
 `submitNewProposal` 不会命中 `AlreadySubmitted()`：`proposalId` 在本笔内新分配，此前不存在任何推举记录，该判定只对 `submit` 可达。

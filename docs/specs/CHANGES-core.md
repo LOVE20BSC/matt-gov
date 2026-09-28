@@ -91,7 +91,7 @@
 #### 接口差异（代码级）
 - **`stakeLiquidity` 加参数**：新增 `slippage`（`1e18` 精度），入池前先按 Pair 储备折算最优数量并按该值校验偏离；旧接口与旧 Hub 都只接收数量，数量折算与条件校验原在 `LOVE20TKM/periphery/src/LOVE20Hub.sol`
 - **入池折算的零储备分支由「两侧都为零」放宽为「任一侧为零」**：旧 `_calculateOptimalAmounts` 只在 `tokenReserve == 0 && parentTokenReserve == 0` 时跳过折算，单侧为零会走进折算分支——`tokenReserve == 0` 在该分支的第一次除法除零 panic，`parentTokenReserve == 0` 则折算得 0 并撞上最小量 `require` 回滚（旧最小量由调用方传入，通常大于零）；新实现任一侧储备为零即跳过折算、直接采用期望数量，没有除零面
-- **新增错误**：`SlippageExceeded(uint256 slippage, uint256 deviation)`、`InvalidTokenAddress()`、`InvalidMemberId()`、`NotMemberOwner(uint256)`、`SourceAndTargetMustBeDifferent()`、`SourceHasVotedInCurrentRound()`、`TargetPromisedWaitingPhasesTooShort()`、`InvalidAddress()`、`ZeroAmount(string)`、`InvalidAmount()`、`InvalidPhase(uint256)`
+- **新增错误**：`SlippageExceeded(uint256 slippage, uint256 deviation)`、`InvalidTokenAddress()`、`InvalidMemberId()`、`NotMemberOwner(uint256)`、`SourceAndTargetMustBeDifferent()`、`SourceHasUsedStakeRightsInCurrentRound()`、`TargetPromisedWaitingPhasesTooShort()`、`InvalidAddress()`、`ZeroAmount(string)`、`InvalidAmount()`、`InvalidPhase(uint256)`
 - **错误改名与承接**：`NotEnoughWaitingBlocks` → `NotEnoughWaitingPhases`；删除 `InvalidToAddress()`、`RoundHasNotStartedYet()`，后者的「轮次尚未开始」语义由 `InvalidPhase(uint256)` 承接（与 `IPhaseErrors` 同名同参数）；`SlippageExceeded` 的两个参数分别是请求容差与实际偏离
 - **新增事件**：`FeesSettled`、`StakeMerged`
 - **事件改名与改字段**：`StakeToken` → `StakeBoost`；`StakeLiquidity` 增加 `tokenAmountDesired`/`parentTokenAmountDesired` 并保留实际入池量；`StakeLiquidity`/`Unstake`/`Withdraw`/`StakeBoost` 的账户参数由 `address account` 改为 `uint256 memberId`
