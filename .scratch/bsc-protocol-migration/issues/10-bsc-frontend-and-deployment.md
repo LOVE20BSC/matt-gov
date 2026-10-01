@@ -22,7 +22,7 @@ Blocked by: 01, 04, 09
 
 ## Answer
 
-- **网络 profile**：固定使用 `anvil`（chain ID `31337`）、`bsc97_dev`（BSC Testnet，chain ID `97`）、`bsc56_public_test`（BSC 主网公测实例）和 `bsc56_public`（BSC 主网正式实例）。两个 chain ID `56` profile 必须使用完全独立的地址、配置、代币符号和前端环境；`bsc97_testnet` 不作为名称。
+- **网络 profile**：固定使用 `anvil`（chain ID `31337`）、`bsc97_dev`（BSC Testnet，chain ID `97`）、`bsc56_public_test`（BSC 主网公测实例）和 `bsc56_public`（BSC 主网正式实例）。两个 chain ID `56` profile 必须使用完全独立的地址、配置、代币符号和前端环境。
 - **部署图**：`love20-anvil` 只编排 BSC 版实际仓库的部署脚本，至少覆盖 `core`、`action`、`group-chat` 和 `batch-transfer`；依赖顺序由新仓库的真实地址输入决定。旧 `burn`、`random`、`verify`、群级 delegate 和业务工厂节点不复制。首个代币的 Airdrop 不进入默认部署图，由旧 `burn` 代码库单独部署到 BSC 后，在公测和正式部署脚本中作为外部目标地址注入；不把 Burn 业务迁入新组织。公平发射后的复杂分配机制本阶段不创建 `launch` 代码库。
 - **地址与 ABI**：每个可部署仓库在 `script/network/<profile>/` 维护 `network.params`、账号占位文件和 `address*.params`；Foundry 编译产物是 ABI 的唯一来源，`love20-anvil` 仅汇总地址与产物生成 `state/addresses.json` 和前端环境文件。不同 profile 不共享地址文件。
 - **账号与密钥**：Anvil 使用公开默认账号只限本地测试；公开网络使用各仓库现有 Foundry keystore 流程。密码、Token 和私钥只能通过弹窗或交互式输入，不写入仓库、`.env`、地址文件或部署日志。
