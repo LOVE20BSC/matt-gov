@@ -93,9 +93,11 @@ Proposal 由合约分配的头部与创建者提供的主体组成，对外以 `
 
 推举门槛沿用旧 Submit：从 Stake 读取当前成员 `validGovVotes(tokenAddress, memberId)` 与社区 `globalGovVotes(tokenAddress)`；成员和社区票数均为正，且 `floor(validGovVotes * 1000 / globalGovVotes) >= SUBMIT_MIN_PER_THOUSAND`。初始化门槛范围为 `1..1000`。
 
-`canSubmit` 实现：先判 `globalGovVotes(tokenAddress) == 0` 返回 `false`，再判 `validGovVotes(tokenAddress, memberId) == 0` 返回 `false`，最后计算千分比，避免除零 panic。
+`canSubmit` 实现：先判 `globalGovVotes(tokenAddress) == 0` 返回 `false`，再判 `validGovVotes(tokenAddress, memberId) == 0` 返回 `false`，最后计算千分比，避免除零 panic。它只判断票权门槛，不判断本轮成员名额、提案去重或社区推举总数。
 
 调用者必须持有 `memberId`。每个成员每社区每 Round 最多推举一个 Proposal，同一 Proposal 同轮只能被推举一次；两个入口共用这两条约束——`submitNewProposal` 在创建后立即推举，因此同样占用本 Round 的名额，创建不是免额度的旁路。每社区每轮首个成功推举自动调用 `Phase.sync()`；`sync` 已同步时无操作返回、不会回滚，但若失败则按外部调用失败处理，整笔交易回滚。`submit` 推举已有 Proposal 不重复触发创建回调。
+
+每社区每 Round 最多推举 **1,000 个 Proposal**，两个入口在共同推举路径中按已成功推举的记录数检查；达到上限后回滚 `CannotSubmitAction()`，新 Proposal 的创建及作者索引也一并回滚。上限固定，不增加初始化参数；新一轮、其他社区独立计数，历史累计 Proposal 数不受此限制。名额先到先得，已有推举仍可投票和铸造激励。该限制使 Mint 的单轮有票 Proposal 扫描最多 1,000 项，不限制调用者自行选择的多轮批量铸造大小。
 
 ## 校验顺序
 
@@ -108,7 +110,7 @@ Proposal 由合约分配的头部与创建者提供的主体组成，对外以 `
 5. **本轮名额**：同一成员同社区同 Round 尚未推举过（`OnlyOneSubmitPerRound()`）
 6. 分配 `proposalId`，写入 `ProposalInfo` 与作者索引
 7. 发出 `ProposalCreated` 事件
-8. 写入三处推举状态：推举记录列表（供 `submitInfos`）、按 `proposalId` 的推举者（供 `isSubmitted` 与 `submitterIdByProposalId`）、按 `submitterId` 的反查（供 `proposalIdBySubmitter`）
+8. 检查社区本 Round 已推举数小于 1,000（`CannotSubmitAction()`），然后写入三处推举状态：推举记录列表（供 `submitInfos`）、按 `proposalId` 的推举者（供 `isSubmitted` 与 `submitterIdByProposalId`）、按 `submitterId` 的反查（供 `proposalIdBySubmitter`）
 9. 发出 `ProposalSubmitted` 事件
 10. 本社区本轮首笔推举时调用 `Phase.sync()`
 11. `Callback` 时回调 `IProposalTarget.onProposalCreated`
@@ -122,7 +124,7 @@ Proposal 由合约分配的头部与创建者提供的主体组成，对外以 `
 2. **存在性**：`proposalId` 存在（`ProposalNotFound(proposalId)`）、`memberId` 存在
 3. **持有权**：`ownerOf(memberId) == msg.sender`（`NotMemberOwner(memberId)`）
 4. **门槛**：`canSubmit(tokenAddress, memberId)`（`CannotSubmitAction()`）
-5. **去重**：先判同一 Proposal 同轮是否已推举（`AlreadySubmitted()`）、再判同一成员同社区同轮是否已推举其他 Proposal（`OnlyOneSubmitPerRound()`）
+5. **去重与总数**：先判同一 Proposal 同轮是否已推举（`AlreadySubmitted()`）、再判同一成员同社区同轮是否已推举其他 Proposal（`OnlyOneSubmitPerRound()`），最后检查社区本 Round 已推举数小于 1,000（`CannotSubmitAction()`）
 6. 写入三处状态：推举记录列表、按 `proposalId` 的推举者、按 `submitterId` 的反查
 7. 发出 `ProposalSubmitted` 事件
 8. 本社区本轮首笔推举时调用 `Phase.sync()`
@@ -152,7 +154,7 @@ Proposal 由合约分配的头部与创建者提供的主体组成，对外以 `
 | `ZeroAmount(string parameter)` | `init` 的 `submitMinPerThousand == 0` |
 | `InvalidAmount()` | `init` 的 `submitMinPerThousand > 1000` |
 | `ProposalNotFound(uint256 proposalId)` | `proposalInfosByIds` 传入未分配过的 ID；`submit` 的 `proposalId` 不存在 |
-| `CannotSubmitAction()` | 门槛或资格不足（创建段与推举段共用） |
+| `CannotSubmitAction()` | 门槛或资格不足，或本社区本 Round 已推举 1,000 个 Proposal（两个入口共用） |
 | `AlreadySubmitted()` | `submit` 中同一 Proposal 同轮重复推举 |
 | `OnlyOneSubmitPerRound()` | 同一成员同社区同轮已推举过（两个入口共用） |
 

@@ -25,6 +25,7 @@ Launch 负责首币部署、LOVE20Token 创建、基础发射与次数账本。T
 | 重复初始化 | `AlreadyInitialized()` |
 | 任一地址参数（含首币 `distributor`）为零 | `InvalidAddress()` |
 | `launchRatio == 0`、`maxLaunchCount == 0` 或 `tokenSymbolLength == 0` | `ZeroAmount("launchRatio")` / `ZeroAmount("maxLaunchCount")` / `ZeroAmount("tokenSymbolLength")` |
+| `launchRatio > 1e18` | `InvalidAmount()`；恰好 `1e18` 合法 |
 | `launchAmount == 0` | `ZeroAmount("launchAmount")` |
 | `launchAmount > maxSupply` | `InvalidAmount()` |
 | 首币名称或符号为空 | `EmptyString("name")` / `EmptyString("symbol")`，属于 `init` 参数校验 |

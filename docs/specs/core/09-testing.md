@@ -23,6 +23,7 @@
 | Stake | 加速历史查询的轮次边界：已结束轮、无记录轮、明确归零轮、未来轮 | 前三者按最近不晚于目标轮的记录返回（含显式归零）；未来轮回滚 `InvalidPhase(round)`，不把当前记录当作未来轮的值 |
 | Stake | 结算的夹子防护：阈值单位触发、同 Phase 重复调用、剩余手续费、单笔量小到无法产出 | 单笔处理量恰为一个阈值单位（价格移动不超过 `1 / MAX_WITHDRAWABLE_TO_FEE_RATIO`）；同一 Phase 第二次调用无操作返回；`FeesSettled` 只报实际处理量；剩余留待下个 Phase 且不重复扣减 `withdrawableLp`；单笔量过小时不结算也不消耗本 Phase 额度 |
 | Stake | 等待期到期边界：`unlockRequestPhase + promisedWaitingPhases` 的前一个、恰好、后一个 Phase | 前一个与恰好等于该 Phase 都回滚 `NotEnoughWaitingPhases()`；其后一个 Phase 起允许提取；`canWithdraw` 与 `withdraw` 在同一 Phase 上给出相同结论 |
+| Stake | 份额折算 LP 为零且有加速质押 | 跳过本金 LP 销毁，归还全部加速代币并清理头寸；只扣除退出成员份额和加速负债，可提取 LP 总账不减；对应 `StakeTest.testDustWithdrawalReturnsBoostAndClearsShares` |
 | Stake | 加速历史的解锁归属：申请解锁、等待期内查询、提取、解锁中再追加 | 申请解锁当轮即扣减成员与全局累计；等待期与提取都不重复扣减；`totalBoostShares` 到提取才减少；解锁中追加回滚 `UnstakeAlreadyRequested()` |
 | Stake | 当前 Round 质押融合：来源已推举、来源已投票、目标已使用、上一 Round 使用、创建回调内融合 | 来源当前 Round 已推举或已投票 → `SourceHasUsedStakeRightsInCurrentRound()`；目标已使用不阻止接收；上一 Round 的使用不影响下一 Round；`onProposalCreated` 回调期间也不能绕过来源检查 |
 | Stake | `init` 参数校验与重复初始化：七个依赖地址任一为零、`promisedWaitingPhasesMin` 为零、`maxWithdrawableToFeeRatio` 为零、`promisedWaitingPhasesMin > promisedWaitingPhasesMax`、已初始化 | 依赖地址任一为零 → `InvalidAddress()`；`promisedWaitingPhasesMin` 为零 → `ZeroAmount("promisedWaitingPhasesMin")`；`maxWithdrawableToFeeRatio` 为零 → `ZeroAmount("maxWithdrawableToFeeRatio")`；`min > max` → `InvalidAmount()`；已初始化 → `AlreadyInitialized()`（初始化状态先于参数校验，同时命中回滚前者）；成功后七个依赖 getter 与三个参数 getter 等于入参，再次调用回滚 |
@@ -33,14 +34,17 @@
 | Proposal | 两条方向单键：`proposalIdBySubmitter` 与 `submitterIdByProposalId` 互为逆、回 `0` 的三种情形 | 已推举时两条互为逆映射；未分配过的 `proposalId`、已分配但本轮未推举、本轮未推举的成员都回 `0` 而不回滚 |
 | Proposal | `submitNewProposal` 创建后立即推举：事件顺序、回调顺序、本轮名额、`Phase.sync` | 同一笔内先 `ProposalCreated` 后 `ProposalSubmitted`，先 `onProposalCreated` 后 `onProposalSubmitted`；写满三处推举状态并占用本 Round 名额；本轮首笔推举触发 `sync` |
 | Proposal | 两个入口的名额与去重交叉：先 `submitNewProposal` 再 `submit`、同轮重复创建、跨轮推举已有 Proposal | 同一成员同轮第二次推举回滚 `OnlyOneSubmitPerRound`；同一 Proposal 同轮第二次回滚 `AlreadySubmitted`；跨轮推举已有 Proposal 成功且不触发创建回调 |
+| Proposal | 每社区每 Round 的 1,000 个推举上限：两个入口、回滚、跨轮、跨社区 | 第 1,000 个允许，第 1,001 个新旧推举均回滚 `CannotSubmitAction`，不遗留创建或推举记录；`canSubmit` 仍只判断票权门槛；其他社区与下一轮正常推举，历史总数可以超过 1,000；对应 `SubmitTest.testSubmissionLimitPerTokenAndRound` |
 | [Mint](07-mint.md) | Round 准备、单 Proposal 结算、重复准备 | 每轮仅预留一次，单项不能重复结算；对应 `MintTest.testZeroVotePreparationMustEmitEvent`、`testZeroProposalRewardMustRevert` |
 | Mint | 约 300 个 Proposal 的准备、缓存读取 | 准备阶段一次扫描并缓存达标 Proposal 总票数；后续单项结算不再扫描 Vote 列表，重复准备不改缓存；对应 `MintTest.testPrepareScansProposalsOnceAndCachesResult` |
+| Submit / Vote / Mint | 真实 Core 创建、推举、投票至每轮上限 1,000 个，再领取两类激励 | 冷访问首次准备与治理领取在本地 8,000,000 gas 执行预算内完成；随后 Proposal 领取不重复预留；对应 `ProposalDoSTest.testPrepare1000Proposals`，DEX 为模拟依赖，不替代目标链验收 |
 | Mint | 两种零总量、三段治理结果、批量多轮 | 预留不重加，销毁不重复，任一失败整体回滚；对应 `testBatchMustPreserveMemberOwner`、`testBatchFailureRollsBackRewardsAndLaunchCounts`、`testGovernanceQueryMatchesMintAndBoostBurn` |
-| Mint | init 参数校验、准备期双池取消、零额事件跳过、尘埃留存 | init 拒绝零地址、比例超限、倍数零值与超限；准备期 `totalBoost == 0` 与 `eligibleVotes == 0` 销毁对应池；零额不发 `RewardBurned`；多 Proposal 分配后尾数留存池中；对应 `MintCoverage.t.sol` 15 项（init 4 + 入口防御 4 + 准备期 3 + 尘埃 1 + 纯销毁 1 + 治理防御 2） |
+| Mint | init 参数校验、准备期双池取消、零额事件跳过、尘埃留存 | init 拒绝零地址、比例超限、倍数零值与超限；Proposal 门槛 0 和 1000 合法，1001 回滚 `InvalidAmount` 且不初始化；准备期 `totalBoost == 0` 与 `eligibleVotes == 0` 销毁对应池；零额不发 `RewardBurned`；多 Proposal 分配后尾数留存池中；对应 `MintCoverage.t.sol` |
 | Vote / Mint | 投票时快照为 50，随后追加 30；再次投票或不投票；NFT 转移 | 不投票仍按 50，再投票按 80、总量仅加 30；结算和转移不重算；Vote 快照由 `VoteTest` 覆盖，Mint 结算由 `MintTest.testGovernanceQueryMatchesMintAndBoostBurn` 覆盖 |
 | [Mint](07-mint.md) | 向上取整、跨多个阈值、社区上限 | 余数保留，新增次数不超上限，仅 Mint 可 `addLaunchCount`；对应 `testLaunchCreditMustUseActualPreMintSupply`、`testLaunchThresholdMustRoundUp`、`testLaunchCapRetainsUnconvertedCredit` |
 | [Launch](08-launch.md) | 向非自有 NFT 部分融合、次数消耗、账本上限、非 Mint 调用 `addLaunchCount` | 源扣目标增，不转移额度，已消耗次数不能再次使用；只有 `init` 校验初始化状态，三个写入口不重复校验 |
 | Launch.init | 首币、Airdrop、参数校验、任一步失败或重复初始化 | `Launch.init(LaunchInitParams)` 一次完成配置、首币创建和 MemberNFT 初始化，失败全回滚，成功后不能重做；首币发含名称和符号的 `TokenLaunched`（`launcherMemberId = 0`） |
+| Launch.init | `launchRatio` 的 0、`1e18`、`1e18 + 1` 边界 | 0 回滚 `ZeroAmount`，`1e18` 合法，`1e18 + 1` 回滚 `InvalidAmount` 且不初始化；对应 `LaunchTest.testInitRejectsZeroAmountParameters`、`testInitLaunchRatioUpperBound` |
 | Launch | 代币列表与子币列表分页、`offset` 越界、符号重复、按代币地址取父币 | `tokens`/`childTokens` 按页返回且包含首币，越界返回空数组与真实总数；施加 `Test` 前缀后的符号重复回滚 `TokenSymbolExists()`；`parentTokenOf` 与 `isLOVE20Token` 对首币、子币与未登记地址的结果一致 |
 | Launch | 发射即建池：`init` 首币、`launchToken` 子币、预建正确 Pair、Factory 返回零地址 | `init` 与每次 `launchToken` 都在同一笔内查询 Pair；不存在时调用 `createPair`，已存在的正确 Pair 被复用；创建返回零地址回滚 `InvalidAddress()`；`Stake` 首次质押时读到的正是该 Pair |
 

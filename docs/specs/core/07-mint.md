@@ -25,7 +25,7 @@ proposalVotes * 1000 >= totalVotes * proposalRewardMinVotePerThousand
 
 `isProposalIdWithReward` 无论已准备或未准备，均读取 Vote 的 `votesNumByProposalId(tokenAddress, round, proposalId)` 与 `votesNum(tokenAddress, round)` 实时判定。准备后若 `eligibleProposalVotes == 0` 可快速返回 `false`（全轮无达标 Proposal 的缓存优化）。已铸造不影响返回值（仍返回 `true`）。本入口不做 Proposal 存在性校验；无效 `proposalId` 返回 `false`。
 
-`PerThousand` 参数使用千分比，例如门槛 50 表示 5%。账本始终满足：
+`PerThousand` 参数使用千分比，例如门槛 50 表示 5%。`init` 允许 `proposalRewardMinVotePerThousand` 为 `0..1000`，超过 1000 回滚 `InvalidAmount()`；零门槛仍要求 Proposal 有正数票。账本始终满足：
 
 ```text
 rewardReserved >= rewardMinted + rewardBurned
@@ -190,7 +190,7 @@ launchCredit -= count * threshold
 
 事件与错误定义见 [`IMint.sol`](../../../interfaces/core/IMint.sol)。
 
-- 初始化时拒绝四个依赖地址为零（`InvalidAddress()`）和两项激励比例之和超过 `1000`（`InvalidAmount()`）；校验顺序按 [通用规则](01-common-rules.md#初始化与安全)，先初始化状态、后参数校验。`maxGovBoostRewardMultiplier` 须满足 `0 < x ≤ 1000`（`InvalidAmount()`），上界与千分比体系对齐以防溢出；`proposalRewardMinVotePerThousand` 不做校验（允许为 0）。
+- 初始化时拒绝四个依赖地址为零（`InvalidAddress()`）和两项激励比例之和超过 `1000`（`InvalidAmount()`）；校验顺序按 [通用规则](01-common-rules.md#初始化与安全)，先初始化状态、后参数校验。`maxGovBoostRewardMultiplier` 须满足 `0 < x ≤ 1000`（`InvalidAmount()`），上界与千分比体系对齐以防溢出；`proposalRewardMinVotePerThousand` 须在 `0..1000` 范围，超出上界回滚 `InvalidAmount()`。
 - Mint 的内部准备路径只在首次准备时扫描 Vote 本轮有票 Proposal；实现和验收至少覆盖约 300 个 Proposal 的准备交易。准备成功后，`eligibleProposalVotes[tokenAddress][round]` 只读，不得再次读取 Vote 列表或改写。零额事件行为见[事件](#事件)节。
 - 各项分配向下取整产生的极小舍入余数不单独维护，也不追加结算状态；累计账本只记录实际铸造和明确销毁的额度。
 - `NotEnoughReward()` 与 `NotEnoughRewardToBurn()` 是防御性检查；在正确配置与正常流程下不可达（账本不变式 `rewardReserved >= rewardMinted + rewardBurned` 始终成立）。`_proposalRewardCalculation` 的 `:389 eligibleVotes == 0` 早退、`_govRewardCalculation` 的 `:432 totalVotes == 0` 早退、`_updateLaunchCredit` 的 `:545 threshold == 0` 早退均为防御性分支，在当前账本不变式下不可达（`:389` 能进入时必有 `proposalVotes > 0` 且 `proposalVotes >= minVotes`，从而 `eligibleVotes > 0`；`:432` 能进入时必有 `memberVotes > 0`；`:545` 能进入时必有 `mintAmount > 0` 从而 `maxSupply - totalSupplyBeforeMint > 0`）。
