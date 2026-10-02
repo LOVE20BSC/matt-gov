@@ -8,7 +8,7 @@
 | ActionTarget | forceExit 后正常退出 | forceExit 只清 Target 加入状态；随后 Executor 仍可返还资产、清理群归属，调用 `clearJoinState` 幂等成功 |
 | ActionTarget | 分页顺序契约 | 按 `01-action-target.md` 顺序契约执行：加入态集合的 `offset` 不保证跨调用稳定，删除（swap-and-pop）后同一 `offset` 的返回内容可变化；`offset` 越界返回空数组与真实总数、`limit = 0` 只返回总数 |
 | ActionTarget | Target Data 位置契约 | 创建回调第 `0` 项为 executor 保留项、业务项从第 `1` 项起；推举与投票回调不含保留项、业务项从第 `0` 项起；项数、位置与编码由各 Executor 自定并自行拒绝，ActionTarget 只原样透传、不校验 |
-| ActionTarget | 激励领取粒度 | Executor 每轮经 `mintProposalReward` 领取整笔一次，`(tokenAddress, actionId, round)` 重复回滚 `AlreadyMinted`；成员不参与该链路，ActionTarget 不暴露成员领取入口 |
+| ActionTarget | 激励铸造粒度与事件 | Executor 每轮经 `mintProposalReward` 铸造整笔一次，`(tokenAddress, actionId, round)` 重复回滚 `AlreadyMinted`，成功时发出行动级 `ActionRewardMinted(tokenAddress, actionId, round, amount)` 且 `amount` 与 `mintedProposalReward` 返回值一致；成员不参与该链路，ActionTarget 不暴露成员领取入口 |
 | ActionTarget | 铸造入口权限与查询 | 仅 `(tokenAddress, actionId)` 已注册绑定的 Executor 可调用铸造，其他地址与未注册绑定均回滚 `UnauthorizedExecutor`；`mintedProposalReward` 在未铸造/未关联时返回 `(0, false)` 不回滚，铸造后返回 `(amount, true)` |
 | [LP](04-lp-executor.md) | 时间加权、治理上限、部分撤回、完整退出 | 按 V2 聚合扣减结算，结算不超预算，零分母不 panic |
 | [阶段](02-phase-model.md) | LP 冷启动、GroupAction/GroupService 对齐 | 按确认后的三/四阶段映射，未开始回滚 RoundNotStarted |

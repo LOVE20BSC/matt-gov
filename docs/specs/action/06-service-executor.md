@@ -16,13 +16,13 @@
 | `groupReward(a, m)` | Group m 在行动 a 的成员激励总和 |
 | `serviceReward` | 本服务 Proposal 的整笔激励 |
 
-首次为可铸币服务轮次准备、领取或销毁时，按 `actionTokenAddress + round` 计算并缓存分母。`actionTokenAddress` 是 GroupService 绑定的社区，不代表某个被聚合的源行动。分母始终统计该社区本轮全部 GroupAction 激励，不缩成单行动激励。后续结算读取缓存；查询不能写状态，未缓存时只计算返回。已计算的零值通过 `denominatorCached` 区分。
+首次为可铸币服务轮次准备、铸造或销毁时，按 `actionTokenAddress + round` 计算并缓存分母。`actionTokenAddress` 是 GroupService 绑定的社区，不代表某个被聚合的源行动。分母始终统计该社区本轮全部 GroupAction 激励，不缩成单行动激励。后续结算读取缓存；查询不能写状态，未缓存时只计算返回。已计算的零值通过 `denominatorCached` 区分。
 
 分母缓存是内部状态，不属于对外 ABI。
 
 完整 ABI 见 [`IGroupServiceExecutor.sol`](../../../interfaces/action/IGroupServiceExecutor.sol)。
 
-创建 Target Data 从第 `1` 项起（第 `0` 项是 ActionTarget 保留的 executor）固定为 `targetData[1] = abi.encode(address actionTokenAddress)` 和 `targetData[2] = abi.encode(uint256 govRatioMultiplier)`；代币关系在创建时校验。join/exit 校验当前 NFT 持有人，按 RoundHistory 记录服务资格。加入资格仍为有效群 owner 或有效候选，领取只计算该轮实际贡献。共同准备/领取/销毁 ABI 见 [行动铸造](07-minting.md#铸造链路)。
+创建 Target Data 从第 `1` 项起（第 `0` 项是 ActionTarget 保留的 executor）固定为 `targetData[1] = abi.encode(address actionTokenAddress)` 和 `targetData[2] = abi.encode(uint256 govRatioMultiplier)`；代币关系在创建时校验。join/exit 校验当前 NFT 持有人，按 RoundHistory 记录服务资格。加入资格仍为有效群 owner 或有效候选，铸造只计算该轮实际贡献。共同准备/铸造/销毁 ABI 见 [行动铸造](07-minting.md#铸造链路)。
 
 保留的权重公式：
 
@@ -33,7 +33,7 @@ theoreticalVerifierReward(m) = floor(serviceReward * verifierWeightNumerator(m) 
 theoreticalOwnerReward(m) = floor(serviceReward * ownerWeightNumerator(m) / (totalGroupActionReward * 1e18))
 ```
 
-[组织验收](../../acceptance.md#groupservice-结算) 还要求：只有本轮加入服务 Proposal 的群 owner/候选 MemberNFT 可按人结算，未加入角色份额不重分配。角色分子为零时直接返回，不执行除法；两类角色都没有分子时也不需要读取分母。`totalGroupActionReward == 0` 时，任何地址可在轮次结束后调用 `burnRewardIfNeeded(serviceTokenAddress, serviceProposalId, round)` 销毁整笔服务激励。首次计算后缓存分母，后续结算直接读取。
+[组织验收](../../acceptance.md#groupservice-结算) 还要求：只有本轮加入服务 Proposal 的群 owner/候选 MemberNFT 可按人结算，未加入角色份额不重分配。角色分子为零时直接返回，不执行除法；两类角色都没有分子时也不需要读取分母。`totalGroupActionReward == 0` 时，任何地址可在轮次结束后调用 `burnRewardIfNeeded(serviceTokenAddress, serviceProposalId, round)` 销毁整笔服务激励，销毁由 `RewardBurned(tokenAddress, actionId, round, amount, reason)` 留痕。首次计算后缓存分母，后续结算直接读取。
 
 ## 治理上限
 
@@ -51,6 +51,8 @@ ownerOverflow(m) = theoreticalOwnerReward(m) - actualOwnerReward(m)
 其中 `theoreticalOwnerReward(m)` 使用上节权重公式；治理票读取 `Stake.validGovVotes(actionTokenAddress, m)` 和 `Stake.globalGovVotes(actionTokenAddress)`。每个角色先检查自己的分子，为零只跳过该角色，不影响同一 memberId 的另一角色；两个分子都为零则直接返回。上限启用且总治理票为零时只销毁 owner 理论激励；乘数为零直接关闭上限。结算使用服务铸造时 `actionTokenAddress` 社区最新的有效治理票；已结算的查询返回记录结果，不重新套用后续票权。
 
 `govRatioMultiplier` 来自服务 Proposal 创建回调的 `targetData[2]`；owner 超额按每个 owner 单独记入 `ownerBurned`。服务代币已经由 Mint 铸造并转入 Executor 后，销毁直接调用该代币的 `burn(amount)`；不重复修改 Core Mint 的 `rewardBurned`。服务 Proposal 本轮没有激励时由 Mint 的内部 Round 准备逻辑处理，Executor 不重复判断。
+
+成员级结清每次结算发出两条事件：基座的 `MemberRewardMinted(tokenAddress, actionId, memberId, round, mintAmount, burnAmount)` 记公共口径，本接口的 `ServiceRewardDistributed(...)` 追加角色细分。两者必须满足 `MemberRewardMinted.mintAmount == verifierReward + ownerReward` 且 `.burnAmount == ownerBurned`，因此基座的「可铸造」在本接口是**聚合值**（服务轮次的可铸造量不是标量，公共验证者与 owner 两部分独立计算），逐个角色的金额仍读 `serviceRewardByMember`。
 
 ## 二次分配
 
@@ -74,7 +76,7 @@ actualRecipientReward[i] = theoreticalRecipientReward[i]
 
 - `DistributionOverflow` 在配置比例总和超过 `1e18` 时触发；正好 `1e18` 合法。
 - 二次分配配置键为 `sourceTokenAddress + sourceActionId + groupId + round`；分配事件另带服务 Proposal 上下文。
-- ownerBurned 按 `serviceTokenAddress + serviceProposalId + round + memberId` 保存实际销毁量，不影响源行动缓存；领取与销毁失败时标记、转账和代币 burn 全部回滚。
+- ownerBurned 按 `serviceTokenAddress + serviceProposalId + round + memberId` 保存实际销毁量，不影响源行动缓存；铸造与销毁失败时标记、转账和代币 burn 全部回滚。
 - 来源为旧 `LOVE20TKM/extension-group/src/ExtensionGroupService.sol`、`LOVE20TKM/extension-group/src/GroupRecipients.sol` 与 `LOVE20TKM/extension/src/ExtensionBaseReward.sol`。公共验证者份额及全社区分母以本文件 BSC 规则为准。
 
 铸造见 [统一链路](07-minting.md#铸造链路)，验收见 [Action 验收](08-testing.md)。

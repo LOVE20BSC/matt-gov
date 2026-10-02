@@ -43,7 +43,7 @@ totalDeduction -= deductionReduction
 
 ## 治理上限与分配
 
-成员与社区治理票均在领取时读取 `Stake.validGovVotes(tokenAddress, memberId)` 和 `Stake.globalGovVotes(tokenAddress)`。已领取轮次的 `govRatio` 返回当时记录，不受后续质押变化影响。
+成员与社区治理票均在铸造时读取 `Stake.validGovVotes(tokenAddress, memberId)` 和 `Stake.globalGovVotes(tokenAddress)`。已铸造轮次的 `govRatio` 返回当时记录，不受后续质押变化影响。
 
 ```text
 theoreticalReward = floor(proposalReward * effectiveLpRatio / 1e18)
@@ -53,6 +53,6 @@ mintReward = floor(proposalReward * min(effectiveLpRatio, govRatioCap) / 1e18)
 burnReward = theoreticalReward - mintReward
 ```
 
-先处理零值：无有效参与量时成员激励为零；乘数为 0 时关闭上限并返回理论激励；上限启用且总治理票为 0 时该成员理论激励全部销毁。未参与的轮次查询返回零。销毁调用 Token.burn，不修改 Core 的取消预留账本。
+先处理零值：无有效参与量时成员激励为零；乘数为 0 时关闭上限并返回理论激励；上限启用且总治理票为 0 时该成员理论激励全部销毁。未参与的轮次查询返回零。销毁调用 Token.burn，不修改 Core 的取消预留账本。销毁量带成员归属，因此并入该成员 `MemberRewardMinted.burnAmount`，不单独立事件；纯销毁情形下 `mintAmount = 0` 而 `burnAmount > 0`，`minted` 仍为 true。
 
 来源：旧 `LOVE20TKM/extension-lp/src/ExtensionLp.sol`、`LOVE20TKM/extension-lp/src/ExtensionLpFactoryV2.sol` 和 `LOVE20TKM/extension/src/ExtensionBaseRewardTokenJoin.sol`。部分撤回是 BSC 新增，不声称旧 V2 已具备。验收见 [Action 验收](08-testing.md)。

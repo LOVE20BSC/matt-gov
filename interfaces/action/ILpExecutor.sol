@@ -24,10 +24,6 @@ interface ILpExecutorEvents {
         uint256 indexed memberId,
         uint256 round
     );
-    event ActionRewardMinted(address indexed tokenAddress, uint256 indexed actionId, uint256 indexed round,
-        uint256 totalAmount, bytes32 recipientType);
-    event RewardBurned(address indexed tokenAddress, uint256 indexed actionId, uint256 indexed round,
-        uint256 amount, bytes32 reason);
 }
 
 interface ILpExecutor is IActionExecutor, ILpExecutorEvents {
@@ -52,12 +48,6 @@ interface ILpExecutor is IActionExecutor, ILpExecutorEvents {
     function govRatio(address tokenAddress, uint256 actionId, uint256 round, uint256 memberId)
         external view returns (uint256 ratio, bool claimed);
 
-    error AlreadyInitialized();
-    error UnauthorizedCallback();
     error InvalidParticipationAmount();
-    error InvalidRound(uint256 round);
-    error NotMemberOwner(uint256 memberId);
-    error ProposalNotVoted(address tokenAddress, uint256 proposalId);
     error InsufficientGovRatio();
-    error RewardAlreadyMinted(address tokenAddress, uint256 actionId, uint256 memberId, uint256 round);
 }

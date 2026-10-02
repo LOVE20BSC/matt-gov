@@ -72,8 +72,10 @@
 
 #### 激励领取粒度（成员级 → 行动级）
 - **旧**：成员各自调用 `LOVE20Mint.mintActionReward` 领取自己那一份，去重键含 `msg.sender`（成员级，同一行动各成员互不影响）
-- **新**：Executor 每轮经 `ActionTarget.mintProposalReward` 一次性领取整笔激励，去重键 `tokenAddress + actionId + round`（行动级，整个行动本轮只能领一次），再按自身账本分给参与成员
+- **新**：Executor 每轮经 `ActionTarget.mintProposalReward` 一次性铸造整笔激励，去重键 `tokenAddress + actionId + round`（行动级，整个行动本轮只能铸一次），再按自身账本分给参与成员
 - **对成员不透明**：成员只与 Executor 的成员级入口交互，不需要了解也不依赖 ActionTarget 这一层；ActionTarget 不向成员暴露领取入口
+- **事件分层**：行动级整笔由 ActionTarget 发出 `ActionRewardMinted(tokenAddress, actionId, round, amount)`；成员级由各 Executor 发出 `MemberRewardMinted(tokenAddress, actionId, memberId, round, mintAmount, burnAmount)`（声明在共用基座 `IActionExecutorEvents`）。成员归属的销毁并入后者的 `burnAmount`；无成员归属的整批销毁才单独立为 `RewardBurned`，只由 `IGroupServiceExecutor` 声明
+- **共用成员上提**：三个 Executor 签名一致的 1 个事件与 7 个错误上提到 `IActionExecutor` 的子接口；只被两家使用的（如 `InvalidParticipationAmount`）留在各自子接口
 
 #### 行为变更（旧回滚 → 新幂等/不回滚）
 - **重复加入**：旧 `ExtensionCenter.sol:187-189` 回滚 `AccountAlreadyJoined`；新 `registerJoinState` 幂等，不改状态、不发事件

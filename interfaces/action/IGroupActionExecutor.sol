@@ -52,10 +52,6 @@ interface IGroupActionExecutorEvents {
         uint256 round, uint256 batchIndex, uint256[] scores);
     event VerifierLocked(address indexed tokenAddress, uint256 indexed actionId, uint256 indexed round,
         uint256 memberId);
-    event ActionRewardMinted(address indexed tokenAddress, uint256 indexed actionId, uint256 indexed round,
-        uint256 totalAmount, bytes32 recipientType);
-    event RewardBurned(address indexed tokenAddress, uint256 indexed actionId, uint256 indexed round,
-        uint256 amount, bytes32 reason);
     event ActivateGroup(address indexed tokenAddress, uint256 indexed actionId, uint256 round,
         uint256 indexed groupId, uint256 stakeAmount);
     event DeactivateGroup(address indexed tokenAddress, uint256 indexed actionId, uint256 round,
@@ -132,23 +128,18 @@ interface IGroupActionExecutor is IGroupActionIndexes, IActionExecutor, IVerific
     function generatedActionRewardByGroupId(address tokenAddress, uint256 actionId, uint256 round, uint256 groupId)
         external view returns (uint256);
 
-    error AlreadyInitialized();
     error InvalidParticipationAmount();
     error InvalidCandidate();
     error InvalidSplits();
     error ApplicationNotActive();
     error InvalidExecutor();
-    error UnauthorizedCallback();
-    error NotMemberOwner(uint256 memberId);
-    error ProposalNotVoted(address tokenAddress, uint256 proposalId);
-    error InvalidRound(uint256 round);
     error InsufficientExperienceQuota(uint256 providerMemberId, uint256 required, uint256 available);
     error VerifierAlreadyLocked(address tokenAddress, uint256 actionId, uint256 round);
     error BatchIndexMismatch(uint256 expected, uint256 actual);
-    error RewardAlreadyMinted(address tokenAddress, uint256 actionId, uint256 memberId, uint256 round);
 
-    // 以下 28 个错误自旧 IGroupJoin / IGroupManager / IGroupVerify 补齐，
-    // 对应校验在新实现中仍然存在。已排除随不信任投票与 extension 工厂机制一并删除的 6 个。
+    // The 28 errors below are restored from the legacy IGroupJoin / IGroupManager / IGroupVerify;
+    // the corresponding checks still exist in the new implementation. The 6 errors that went away
+    // with the no-confidence vote and the extension factory mechanism are excluded.
     error AlreadyInOtherGroup();
     error NotJoinedAction();
     error ExceedsActionMaxJoinAmount();

@@ -5,6 +5,8 @@ import {IProposalTarget} from "core/src/interfaces/IProposalTarget.sol";
 
 interface IActionTargetEvents {
     event ActionCreated(address indexed tokenAddress, uint256 indexed actionId, address indexed executor);
+    event ActionRewardMinted(address indexed tokenAddress, uint256 indexed actionId, uint256 indexed round,
+        uint256 amount);
     event Joined(address indexed tokenAddress, uint256 indexed actionId, uint256 indexed memberId, uint256 round);
     event Exited(address indexed tokenAddress, uint256 indexed actionId, uint256 indexed memberId, uint256 round);
     event ForceExited(address indexed tokenAddress, uint256 indexed actionId, uint256 indexed memberId);

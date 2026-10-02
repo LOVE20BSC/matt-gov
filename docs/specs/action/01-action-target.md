@@ -39,6 +39,8 @@ targetData[0] = abi.encode(executorAddress)
 
 **事件分层设计**：ActionTarget 发出简化的加入/退出事件（`Joined`、`Exited`，只包含 `tokenAddress, actionId, memberId, round`），记录通用加入状态；各 Executor（如 `ILpExecutor`、`IGroupActionExecutor`）在自己的合约中发出包含完整业务字段（`amount, isExperience, providerMemberId` 等）的同名事件。两层事件不冲突，各自记录各自层级的信息。ActionTarget 不发出 `Withdrawn` 事件，因为 withdraw 不改变加入状态。
 
+同一分层适用于激励，但两条事件的**名字与参数都不同**，因为层级与主体不同：行动级的整笔铸造由 ActionTarget 的 `ActionRewardMinted(tokenAddress, actionId, round, amount)` 记录，成员级的 `MemberRewardMinted(tokenAddress, actionId, memberId, round, mintAmount, burnAmount)` 由各 Executor 记录（见 [铸造链路](07-minting.md#铸造链路)）。`ActionRewardMinted` 的四个字段全部取自 `mintProposalReward` 这一笔调用本身，不需要额外状态。
+
 **集合读取**：成员的行动列表是无界集合（由成员加入次数决定），采用标准分页签名 `actionIdsByMemberId(tokenAddress, memberId, offset, limit, reverse) returns (actionIds[], total)`。行动的成员列表同样是无界集合，采用标准分页签名 `memberIdsByActionId(tokenAddress, actionId, offset, limit, reverse) returns (memberIds[], total)`。参数语义：越界返回空数组与真实总数、不回滚；`limit` 超剩余按剩余返回；`limit = 0` 只返回总数；`reverse` 为 true 时逆序遍历当前存储顺序。符合[集合读取设计原则](../../migration-standards.md#集合读取函数的设计原则)。
 
 **历史查询**：提供按 round 的历史快照查询，`isJoinedByRound(tokenAddress, actionId, memberId, round)` 检查指定 round 时的加入状态，`memberIdsByActionIdByRound(tokenAddress, actionId, round, offset, limit, reverse)` 返回指定 round 时的成员列表（分页）。round 大于当前 round 时按未开始处理：`isJoinedByRound` 返回 false，列表返回空数组与 `total = 0`。
@@ -55,9 +57,9 @@ targetData[0] = abi.encode(executorAddress)
 
 重复加入、重复退出均不改状态、不发重复事件；因此 `forceExit` 后，Executor 正常调用 `clearJoinState` 必须成功且不改状态。重复铸造回滚 `AlreadyMinted(tokenAddress, actionId, round)`。不存在关联时 `executor` 返回零，但写操作拒绝零关联。`isJoined` 与 `isJoinedByRound` 无记录时返回 false。
 
-**铸造信息查询**：`mintedProposalReward(tokenAddress, actionId, round)` 返回 `(amount, minted)`——`amount` 为本轮已铸造的金额，`minted` 表示本轮是否已铸造；未铸造与未关联的行动均返回 `(0, false)`，不回滚。前端与索引据此判断某行动某轮是否已领取，不需要扫描事件。
+**铸造信息查询**：`mintedProposalReward(tokenAddress, actionId, round)` 返回 `(amount, minted)`——`amount` 为本轮已铸造的金额，`minted` 表示本轮是否已铸造；未铸造与未关联的行动均返回 `(0, false)`，不回滚。前端与索引据此判断某行动某轮是否已铸造，不需要扫描事件；同一笔铸造另由 `ActionRewardMinted(tokenAddress, actionId, round, amount)` 留痕，`amount` 与该查询返回值同源，供历史回溯与审计使用。
 
-**激励链路对成员不透明**：Executor 每轮经 `mintProposalReward` 一次性领取该行动的整笔激励，去重键 `tokenAddress + actionId + round` 即行动级；领取后由 Executor 按自身账本分给参与成员。成员只与 Executor 的成员级入口打交道，不需要了解也不依赖 ActionTarget 这一层；ActionTarget 不向成员暴露任何领取入口。
+**激励链路对成员不透明**：Executor 每轮经 `mintProposalReward` 一次性铸造该行动的整笔激励，去重键 `tokenAddress + actionId + round` 即行动级；铸造后由 Executor 按自身账本分给参与成员。成员只与 Executor 的成员级入口打交道，不需要了解也不依赖 ActionTarget 这一层；ActionTarget 不向成员暴露任何领取入口。
 
 ## forceExit
 

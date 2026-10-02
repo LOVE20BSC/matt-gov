@@ -49,11 +49,5 @@ interface IGroupServiceExecutor is IActionExecutor, IGroupServiceExecutorEvents 
         uint256 sourceActionId, uint256 groupId) external view returns (uint256[] memory recipientIds,
         uint256[] memory ratios, uint256[] memory amounts, uint256 ownerAmount);
 
-    error AlreadyInitialized();
-    error InvalidRound(uint256 round);
-    error NotMemberOwner(uint256 memberId);
-    error ProposalNotVoted(address tokenAddress, uint256 proposalId);
-    error UnauthorizedCallback();
-    error RewardAlreadyMinted(address tokenAddress, uint256 actionId, uint256 memberId, uint256 round);
     error DistributionOverflow(uint256 configured, uint256 available);
 }
