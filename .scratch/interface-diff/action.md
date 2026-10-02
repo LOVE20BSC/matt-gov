@@ -75,14 +75,15 @@ interface IActionExecutor is IProposalTarget, IActionExecutorErrors {
 
 新 action 层有 4 个接口带继承，其**完整 ABI = 自身声明 + 继承成员**。下表给出总数，各节表格只列自身声明的部分。
 
-| 接口 | 自身声明 | 继承自 | 完整 ABI |
+| 接口 | 自身函数 | 继承自 | 完整函数 ABI |
 | --- | --- | --- | --- |
 | `IActionTarget` | 19 | `IProposalTarget`（3） | 22 |
-| `ILpExecutor` | 16 | `IActionExecutor`（2）+ `IProposalTarget`（3） | 21 |
-| `IGroupActionExecutor` | 43 | `IGroupActionIndexes`（51）+ `IActionExecutor`（2）+ `IProposalTarget`（3） | 99 |
-| `IGroupServiceExecutor` | 15 | `IActionExecutor`（2）+ `IProposalTarget`（3） | 20 |
+| `IActionExecutor` | 8 | `IProposalTarget`（3） | 11 |
+| `ILpExecutor` | 12 | `IActionExecutor`（8）+ `IProposalTarget`（3） | 23 |
+| `IGroupActionExecutor` | 43 | `IGroupActionIndexes`（51）+ `IActionExecutor`（8）+ `IProposalTarget`（3） | 105 |
+| `IGroupServiceExecutor` | 11 | `IActionExecutor`（8）+ `IProposalTarget`（3） | 22 |
 
-`IActionTarget` 的自身声明数按 2026-10-02 Review 裁决后的接口重算（补 4 个依赖 getter + `initialized()`，删不可达错误，`join`/`exit` 改名为 `registerJoinState`/`clearJoinState`）。三个 Executor 的自身声明数未随本轮变化；其 `Errors` 子接口拆分（`ILpExecutorErrors` 等）与成员顺序修正在各自 Review 步处理。
+本表只统计**函数**；事件与错误见各节。`IActionTarget` 的自身声明数按 2026-10-02 Review 裁决后的接口重算（补 4 个依赖 getter + `initialized()`，删不可达错误，`join`/`exit` 改名为 `registerJoinState`/`clearJoinState`）。`IActionExecutor` 的行按成员级奖励裁决后重算：自身 8 个函数（`actionTarget`、`initialized`、`exit`、`mintMemberReward`、`currentVoteRound`、`currentJoinRound`、`currentMintRound`、`memberReward`），另有 7 个错误与 1 个事件。三个 Executor 的自身声明数不随共用基座的变化而变；其 `Errors` 子接口拆分与成员顺序修正在各自 Review 步处理。
 
 旧侧对应情况：旧 `LOVE20TKM/group-chat/src/interfaces/sources/ban/IAdminBanSource.sol`、`LOVE20TKM/group-chat/src/interfaces/sources/scope/IGroupMemberScope.sol`、`LOVE20TKM/group-chat/src/interfaces/sources/scope/IGroupJoinScopeSource.sol`、`LOVE20TKM/group-chat/src/interfaces/sources/ban/IGovVotedBanSource.sol` 均通过 `is IPostBanSource`/`is IPostScopeSource` 继承行为契约（见 [group-chat.md](group-chat.md)）；旧 `LOVE20TKM/extension-group/src/interface/IExtensionGroupActionFactory.sol` 继承 `IGroupActionFactory`、`IExtensionFactory`，随工厂体系一并删除。
 
@@ -129,12 +130,15 @@ interface IActionExecutor is IProposalTarget, IActionExecutorErrors {
 | 新 | 旧 | 状态 |
 | --- | --- | --- |
 | `ActionCreated(tokenAddress, actionId, address executor)` | `IExtensionCenter.RegisterAction(tokenAddress, actionId, extension, factory)` | 改名+改参（去 factory 字段） |
+| `ActionRewardMinted(tokenAddress, actionId, round, amount)` | 无（旧 `IReward.ClaimReward(...)` 是 per-member 口径，由各 Executor 的 `MemberRewardMinted` 承接） | 新增（**行动级整笔铸造**的事件留痕，与同层查询 `mintedProposalReward` 同源；`amount` 即 `mintProposalReward` 的返回值） |
 | `Joined(tokenAddress, actionId, memberId, round)` | `IExtensionCenter.AddAccount(tokenAddress, round, actionId, address account, accountCount)` | 改名+改参（简化为只记录加入状态，删除 accountCount；业务字段由 Executor 层的 `Joined` 事件承载） |
 | `Exited(tokenAddress, actionId, memberId, round)` | `IExtensionCenter.RemoveAccount(tokenAddress, round, actionId, address account, accountCount)` | 改名+改参（简化，删除 accountCount） |
 | `ForceExited(tokenAddress, actionId, memberId)` | 无 | 新增 |
 | 无 | `IExtensionCenter.SetExtensionDelegate`、`UpdateVerificationInfo`；`IExtension.Initialize` | 删除 |
 
 ActionTarget 不发出 `Withdrawn`：部分撤回不改变加入状态，该事件只由 Executor 层发出（见 [ADR-003](../../docs/adr/003-action-target-interface-simplification.md)）。
+
+ActionTarget 发出 `ActionRewardMinted` 而不是让各 Executor 各发一条：该事件的粒度是**行动级整笔**，去重键 `tokenAddress + actionId + round` 由 ActionTarget 定义（`01-action-target.md`），整笔也先落在 ActionTarget（Mint 铸给 Target 后再转给 Executor），四要素 `tokenAddress`/`actionId`/`round`/`amount` 在 `mintProposalReward` 内全部可得。Executor 侧只发业务粒度的 `MemberRewardMinted`（见第 2 节）。
 
 ### 错误
 
@@ -178,12 +182,16 @@ ActionTarget 不发出 `Withdrawn`：部分撤回不改变加入状态，该事�
 
 | 新 | 旧 | 状态 |
 | --- | --- | --- |
-| `Joined(tokenAddress, actionId, memberId, round, amount, isExperience, providerMemberId)`、`Withdrawn`、`Exited` | `ITokenJoin.Join(tokenAddress, round, actionId, address account, amount)`、`Exit(...)` | 改名+改参（`IActionExecutor` 层事件包含完整业务字段；ActionTarget 层发出简化的 `ActionJoined/ActionWithdrawn/ActionExited` 事件） |
-| `ActionRewardMinted(tokenAddress, actionId, round, totalAmount, bytes32 recipientType)` | `IReward.ClaimReward(tokenAddress, round, actionId, address account, mintAmount, burnAmount)` | 改名+改参 |
-| `RewardBurned(tokenAddress, actionId, round, amount, bytes32 reason)` | `IReward.BurnReward(tokenAddress, round, actionId, amount)` | 改名+改参 |
+| `Joined(tokenAddress, actionId, memberId, round, amount)`、`Withdrawn`、`Exited` | `ITokenJoin.Join(tokenAddress, round, actionId, address account, amount)`、`Exit(...)` | 改名+改参（Executor 层事件包含完整业务字段；ActionTarget 层发出简化的 `Joined`/`Exited` 事件） |
+| `MemberRewardMinted(tokenAddress, actionId, memberId, round, mintAmount, burnAmount)` | `IReward.ClaimReward(tokenAddress, round, actionId, address account, mintAmount, burnAmount)` | 改名+改参（`address account` → `uint256 memberId`；**per-member 口径与两个金额分量都沿用**；声明在共用基座 `IActionExecutorEvents`） |
 | 错误 `InsufficientGovRatio()` | `ILp.InsufficientGovRatio()` | 保留 |
-| 错误 `AlreadyInitialized`、`UnauthorizedCallback`、`InvalidParticipationAmount`、`InvalidRound`、`RoundNotStarted`、`NotMemberOwner`、`ProposalNotVoted`、`RewardAlreadyMinted` | 无 | 新增 |
+| 错误 `InvalidParticipationAmount()` | 无 | 新增（本接口与 GroupAction 共用，GroupService 不抛，故保留在各自子接口、不上提基座） |
+| 错误 `AlreadyInitialized`、`UnauthorizedCallback`、`InvalidRound`、`RoundNotStarted`、`NotMemberOwner`、`ProposalNotVoted`、`RewardAlreadyMinted` | 无 | 新增（声明在共用基座 `IActionExecutorErrors`，本接口由继承获得） |
 | 无 | `ITokenJoin.InvalidJoinTokenAddress`、`JoinAmountZero`、`NotJoined`、`NotEnoughWaitingBlocks`；`IReward.AlreadyClaimed` | 删除（`JoinAmountZero` 语义并入 `InvalidParticipationAmount`） |
+
+LP 侧既不声明 `ActionRewardMinted`（在 `IActionTargetEvents`）也不声明 `RewardBurned`：LP 的销毁全部带成员归属（`burnReward = theoreticalReward − mintReward`，见 [LP Executor](../../docs/specs/action/04-lp-executor.md)），已并入 `MemberRewardMinted.burnAmount`，不存在无成员归属的整批销毁。旧 `IReward.BurnReward` 的对应物因此在 LP 侧删去，只在 `IGroupServiceExecutor` 保留（见第 5 节）。
+
+LP 事件数为 **4**（`Joined`、`Withdrawn`、`Exited`，加基座继承的 `MemberRewardMinted`），错误数为 **9**（`InsufficientGovRatio`、`InvalidParticipationAmount` 独有，其余 7 个由基座继承），自身函数 **12**，合计 ABI 36 条。
 
 ---
 
@@ -191,7 +199,7 @@ ActionTarget 不发出 `Withdrawn`：部分撤回不改变加入状态，该事�
 
 旧：`LOVE20TKM/extension-group/src/interface/IGroupAction.sol`、`LOVE20TKM/extension-group/src/interface/IGroupManager.sol`、`LOVE20TKM/extension-group/src/interface/IGroupJoin.sol`、`LOVE20TKM/extension-group/src/interface/IGroupVerify.sol`。四个旧接口合并为一个 Executor。
 
-**继承**：`IGroupActionExecutor is IGroupActionIndexes, IProposalTarget`。因此其完整 ABI = 自身声明的 44 个函数 + 继承的 51 个 `g*` 索引函数（见第 4 节）+ 3 个 `IProposalTarget` 回调，共 98 个。下文表格只列自身声明的部分，`g*` 索引按第 4 节的组名收敛。
+**继承**：`IGroupActionExecutor is IGroupActionIndexes, IActionExecutor, IVerificationInfo, IGroupActionExecutorEvents`。因此其完整函数 ABI = 自身声明的 43 个函数 + 继承的 51 个 `g*` 索引函数（见第 4 节）+ `IActionExecutor` 的 8 个（该 8 个已含 `IProposalTarget` 的 3 个回调），共 105 个。下文表格只列自身声明的部分，`g*` 索引按第 4 节的组名收敛。
 
 四阶段轮次（投票、加入、验证、铸币）。
 
@@ -268,15 +276,15 @@ ActionTarget 不发出 `Withdrawn`：部分撤回不改变加入状态，该事�
 
 | 新 | 旧 | 状态 |
 | --- | --- | --- |
-| `Joined`、`Withdrawn`、`Exited` | `IGroupJoin.Join(...)`、`Exit(...)`（各含 3 个 accountCount 字段） | 改名+改参（`IActionExecutor` 层事件包含完整业务字段；ActionTarget 层发出简化的 `ActionJoined/ActionWithdrawn/ActionExited` 事件） |
+| `Joined`、`Withdrawn`、`Exited` | `IGroupJoin.Join(...)`、`Exit(...)`（各含 3 个 accountCount 字段） | 改名+改参（Executor 层事件包含完整业务字段；ActionTarget 层发出简化的 `Joined`/`Exited` 事件） |
 | `VerificationBatchSubmitted(tokenAddress, actionId, groupId, round, batchIndex, scores[])` | `IGroupVerify.SubmitOriginScores(tokenAddress, round, actionId, groupId, startIndex, count, isComplete)` | 改名+改参（新增 `scores` 明细，去 `isComplete`） |
 | `VerifierApplied`、`VerifierLocked` | 无 | 新增 |
-| `ActionRewardMinted`、`RewardBurned` | 无（旧在 `IReward`） | 新增 |
+| `MemberRewardMinted(tokenAddress, actionId, memberId, round, mintAmount, burnAmount)` | 无（旧在 `IReward`） | 新增（声明在共用基座 `IActionExecutorEvents`；per-member 口径与两个金额分量沿用） |
 | `ActivateGroup`、`DeactivateGroup`、`UpdateGroupInfo` | `IGroupManager.ActivateGroup`、`DeactivateGroup`、`UpdateGroupInfo` | **已补回**（去 `owner` 字段，保留 `stakeAmount`） |
 | 无 | `IGroupJoin.TrialAccountsWaitingUpdated` | 删除 |
 | 无 | `IGroupVerify.SetGroupDelegate`、`DistrustVote` | 删除（验证者委托与不信任投票机制不迁移） |
 
-`IGroupActionExecutor` 已声明 `ActivateGroup`、`DeactivateGroup`、`UpdateGroupInfo` 三个事件，字段与旧 `IGroupManagerEvents` 一致，仅去掉 `owner`（主体改为 memberId，owner 快照不再进事件），保留 `stakeAmount`；事件数为 11。
+`IGroupActionExecutor` 已声明 `ActivateGroup`、`DeactivateGroup`、`UpdateGroupInfo` 三个事件，字段与旧 `IGroupManagerEvents` 一致，仅去掉 `owner`（主体改为 memberId，owner 快照不再进事件），保留 `stakeAmount`；事件数为 10。本接口既不声明 `ActionRewardMinted`（在 `IActionTargetEvents`）也不声明 `RewardBurned`（GroupAction 的成员激励不设治理上限之外的销毁路径，无可归属的销毁量）。
 
 ### 错误
 
@@ -376,10 +384,13 @@ ActionTarget 不发出 `Withdrawn`：部分撤回不改变加入状态，该事�
 
 | 新 | 旧 | 状态 |
 | --- | --- | --- |
-| `ServiceRewardDistributed(serviceTokenAddress, serviceProposalId, actionTokenAddress, memberId, verifierReward, ownerReward, ownerBurned, round)` | `IGroupService.ClaimRewardDistribution(tokenAddress, round, actionId, address account, mintAmount, burnAmount, distributed, remaining)` | 改名+改参 |
+| `ServiceRewardDistributed(serviceTokenAddress, serviceProposalId, actionTokenAddress, memberId, verifierReward, ownerReward, ownerBurned, round)` | `IGroupService.ClaimRewardDistribution(tokenAddress, round, actionId, address account, mintAmount, burnAmount, distributed, remaining)` | 改名+改参（成员级的**追加事件**：基座 `MemberRewardMinted` 记公共口径，本事件追加 `actionTokenAddress` 与角色拆分；须满足 `MemberRewardMinted.mintAmount == verifierReward + ownerReward`、`.burnAmount == ownerBurned`） |
 | `SecondaryDistributionConfigured(sourceTokenAddress, sourceActionId, groupId, round, recipientIds[], ratios[])` | `IGroupRecipients.SetRecipients(tokenAddress, round, actionId, groupId, address account, recipients[], ratios[], remarks[])` | 改名+改参（去 `remarks` 字段） |
-| `RewardBurned` | 无 | 新增 |
+| `RewardBurned` | 无 | 新增（**整批销毁**：服务轮次无可分配源行动时销毁整笔服务激励，无成员归属，因此不并入成员级事件） |
+| `MemberRewardMinted(tokenAddress, actionId, memberId, round, mintAmount, burnAmount)` | 无（旧在 `IReward`） | 新增（声明在共用基座 `IActionExecutorEvents`） |
 | 无 | `IGroupService.DistributeRecipient` | 删除（逐笔分配明细无事件） |
 | 错误 `DistributionOverflow(configured, available)` | `IGroupRecipients.InvalidRatio()` | 改名+改参（语义近似） |
-| 错误 `AlreadyInitialized`、`InvalidRound`、`RoundNotStarted`、`NotMemberOwner`、`ProposalNotVoted`、`UnauthorizedCallback`、`RewardAlreadyMinted` | 无 | 新增 |
+| 错误 `AlreadyInitialized`、`InvalidRound`、`RoundNotStarted`、`NotMemberOwner`、`ProposalNotVoted`、`UnauthorizedCallback`、`RewardAlreadyMinted` | 无 | 新增（声明在共用基座 `IActionExecutorErrors`，本接口由继承获得） |
 | 无 | `IGroupService.NoActiveGroups`、`InvalidExtension`；`IGroupRecipients.TooManyRecipients`、`ZeroAddress`、`ZeroRatio`、`ArrayLengthMismatch`、`DuplicateAddress`、`RecipientCannotBeSelf`、`OnlyGroupOwner` | 删除 9 项 |
+
+GS 事件数为 **6**（`Joined`、`Exited`、`ServiceRewardDistributed`、`SecondaryDistributionConfigured`、`RewardBurned`，加基座继承的 `MemberRewardMinted`），错误数为 **8**（`DistributionOverflow` 独有，其余 7 个由基座继承），自身函数 **11**，合计 ABI 36 条。
