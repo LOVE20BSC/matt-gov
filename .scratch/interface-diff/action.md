@@ -113,7 +113,7 @@ interface IActionExecutor is IProposalTarget, IActionExecutorErrors {
 | `mintedProposalReward(tokenAddress, actionId, round) returns (amount, minted)` | 无 | 新增（铸造信息只读入口；旧无对应，成员自领模式下由 `govRatio(...).claimed` 承担） |
 | `forceExit(tokenAddress, actionId, memberId)` | 无 | 新增（应急登记清理） |
 | `mintProposalReward(tokenAddress, round, proposalId) returns (uint256 amount)` | 无（旧 `IReward` 的整笔领取在实例内部） | 新增（激励中转；保留 proposalId 因为是 Core 调用） |
-| `actionIdsByExecutor(tokenAddress, round, address executor_, offset, limit, reverse) returns (actionIds[], total)` | 无 | 新增（标准分页；某轮某 executor 的行动数） |
+| `actionIdsByExecutor(tokenAddress, round, address executor, offset, limit, reverse) returns (actionIds[], total)` | 无 | 新增（标准分页；某轮某 executor 的行动数） |
 | `actions(tokenAddress, round, offset, limit, reverse) returns (actionIds[], executors[], total)` | 无 | 新增（标准分页；某轮行动数） |
 | 继承 `IProposalTarget` 三回调 | 无（旧由业务合约扫本轮票自我发现） | 新增 |
 | 无 | `IExtensionCenter.registerActionIfNeeded(tokenAddress, actionId)` | 删除（改由 `onProposalCreated` 回调建立关联） |

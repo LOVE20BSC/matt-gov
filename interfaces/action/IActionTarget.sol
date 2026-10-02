@@ -48,7 +48,7 @@ interface IActionTarget is IProposalTarget, IActionTargetEvents, IActionTargetEr
         external view returns (uint256[] memory memberIds, uint256 total);
     function memberIdsByActionIdByRound(address tokenAddress, uint256 actionId, uint256 round, uint256 offset, uint256 limit, bool reverse)
         external view returns (uint256[] memory memberIds, uint256 total);
-    function actionIdsByExecutor(address tokenAddress, uint256 round, address executor_, uint256 offset, uint256 limit, bool reverse)
+    function actionIdsByExecutor(address tokenAddress, uint256 round, address executor, uint256 offset, uint256 limit, bool reverse)
         external view returns (uint256[] memory actionIds, uint256 total);
     function actions(address tokenAddress, uint256 round, uint256 offset, uint256 limit, bool reverse)
         external view returns (uint256[] memory actionIds, address[] memory executors, uint256 total);
