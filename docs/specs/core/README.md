@@ -17,4 +17,4 @@ Core 定义治理、统一身份、时间线和基础子币发射。按编号阅
 
 建议实现顺序：Phase/MemberNFT、Stake、Submit/Vote、Mint、Launch。实现顺序不等于初始化调用顺序，初始化边界见 Launch。
 
-[组织约束](../../../CONTEXT.md) · [迁移差异](../CHANGES-core.md) · [ABI 接口](../../../interfaces/core/)
+[组织约束](../../../CONTEXT.md) · [迁移差异](../CHANGES-core.md) · [ABI 接口](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/)

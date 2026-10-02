@@ -4,4 +4,6 @@
 
 接口按子接口与主接口拆分：事件统一声明在 `I<Name>Events`；`I<Name>Errors` 的有无、以及两个子接口的相对顺序，按旧代码对应接口确定。主接口 `is` 继承已有的子接口。
 
-`core/`、`action/` 和 `group-chat/` 是目标仓库尚未创建时的暂存位置。对应仓库创建后迁移到各自的 `src/interfaces/`，规格正文继续通过相对链接引用同一来源。
+`action/` 和 `group-chat/` 是目标仓库尚未创建时的暂存位置。对应仓库创建后迁移到各自的 `src/interfaces/`，规格正文继续通过相对链接引用同一来源。
+
+`core/` 已迁移完毕并从本仓库移除：Core 的接口以 `core` 代码库的 `src/interfaces/` 为准，规格正文改用指向该仓库的绝对链接。本目录中 Action 自有接口对 Core 的依赖同样写成 `core/src/interfaces/...`，不在本仓库保留副本。

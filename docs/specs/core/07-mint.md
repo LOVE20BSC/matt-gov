@@ -39,7 +39,7 @@ available = maxSupply - totalSupply - reservedAvailable
 
 ## 准备一次
 
-完整 ABI 见 [`IMint.sol`](../../../interfaces/core/IMint.sol)。
+完整 ABI 见 [`IMint.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/IMint.sol)。
 
 首次调用治理或 Proposal 铸造入口时，Mint 在内部准备该 Round；准备逻辑不再作为公开 ABI 暴露。
 
@@ -127,7 +127,7 @@ else:
 
 ## 单轮与批量接口
 
-单轮、批量、查询和激励参数接口均见 [`IMint.sol`](../../../interfaces/core/IMint.sol)。
+单轮、批量、查询和激励参数接口均见 [`IMint.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/IMint.sol)。
 
 `proposalRewardByProposalId` 和 `govRewardByMemberId` 两个查询函数无论轮次是否已准备均能返回金额：
 
@@ -188,7 +188,7 @@ launchCredit -= count * threshold
 
 ## 实现约束
 
-事件与错误定义见 [`IMint.sol`](../../../interfaces/core/IMint.sol)。
+事件与错误定义见 [`IMint.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/IMint.sol)。
 
 - 初始化时拒绝四个依赖地址为零（`InvalidAddress()`）和两项激励比例之和超过 `1000`（`InvalidAmount()`）；校验顺序按 [通用规则](01-common-rules.md#初始化与安全)，先初始化状态、后参数校验。`maxGovBoostRewardMultiplier` 须满足 `0 < x ≤ 1000`（`InvalidAmount()`），上界与千分比体系对齐以防溢出；`proposalRewardMinVotePerThousand` 须在 `0..1000` 范围，超出上界回滚 `InvalidAmount()`。
 - Mint 的内部准备路径只在首次准备时扫描 Vote 本轮有票 Proposal；实现和验收至少覆盖约 300 个 Proposal 的准备交易。准备成功后，`eligibleProposalVotes[tokenAddress][round]` 只读，不得再次读取 Vote 列表或改写。零额事件行为见[事件](#事件)节。

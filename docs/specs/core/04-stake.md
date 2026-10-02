@@ -4,7 +4,7 @@ Stake 按 `tokenAddress + memberId` 维护流动性质押和加速质押，不�
 
 ## 状态
 
-结构体和完整 ABI 见 [`IStake.sol`](../../../interfaces/core/IStake.sol)。
+结构体和完整 ABI 见 [`IStake.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/IStake.sol)。
 
 | 字段 | 含义 |
 | --- | --- |
@@ -136,7 +136,7 @@ Vote 每次投票通过 `Stake.validGovVotes(tokenAddress, memberId)` 读取当�
 
 ## 拒绝条件与错误
 
-各入口按「参数 → 存在性 → 持有 → 账本」的顺序校验，先命中的条件先回滚，同一入口内不重排。事件与错误定义见 [`IStake.sol`](../../../interfaces/core/IStake.sol)。
+各入口按「参数 → 存在性 → 持有 → 账本」的顺序校验，先命中的条件先回滚，同一入口内不重排。事件与错误定义见 [`IStake.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/IStake.sol)。
 
 `tokenAddress` 的有效性统一由 `ILaunch(launchAddress).isLOVE20Token(tokenAddress)` 判定；未由 Launch 登记的地址即使实现了 `parentTokenAddress()` 也无效。需要 Pair 的入口再判 `pairAddress[tokenAddress]` 为零地址。两者都回滚 `InvalidTokenAddress()`。
 
@@ -224,7 +224,7 @@ Vote 每次投票通过 `Stake.validGovVotes(tokenAddress, memberId)` 读取当�
 
 ## 实现约束
 
-事件与错误定义见 [`IStake.sol`](../../../interfaces/core/IStake.sol)。
+事件与错误定义见 [`IStake.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/IStake.sol)。
 
 - 当前质押余额为 `0` 就表示没有质押；只有 RoundHistory 的历史查询需要区分”本轮没有记录”和”本轮明确归零”，直接沿用旧 RoundHistory 的显式记录语义，不新增额外布尔状态。
 - 流动性写操作先按条件表顺序完成参数与权限校验——校验自身允许读取 Factory、代币合约与 MemberNFT 的只读接口——**再发起会改变资产或记账的外部调用**（转入代币、向 Pair 铸出或退出 LP、经 Router 换币），并以这些调用实际返回的数量记账；不设重入锁，一致性由这一顺序保证（与 [通用规则](01-common-rules.md#初始化与安全)的检查—更新—交互顺序的差别在此）。读取 Pair 状态，在任何除法前处理 `pairTotalSupply == 0`、`currentSqrtKOfLp == 0` 和基准未增长；需要 Router、Pair 或 ERC20 调用时，以外部调用成功返回的实际数量计算并更新 `lastWithdrawableLp`、`lastFeeLp`、`lastSqrtKOfLp`、成员份额和社区总份额。任一步失败全部回滚。BSC 不使用 SL/ST 凭证，所有份额和可提取 LP 直接存入 Stake。

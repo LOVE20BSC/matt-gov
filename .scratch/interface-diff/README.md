@@ -1,6 +1,6 @@
 # 新旧接口函数级对比
 
-本目录是迁移分析证据，不是规格。ABI 以 [`interfaces/`](../../interfaces/) 为唯一来源；组件级迁移结论以 `docs/specs/CHANGES-*.md` 为准。本对比只回答一个问题：**新接口的每个函数、事件、错误来自旧代码哪里，或者是新增；旧代码的每个 ABI 去了哪里，或者被删除。**
+本目录是迁移分析证据，不是规格。ABI 以本目录 [`interfaces/`](../../interfaces/) 与 [`core` 仓库的 `src/interfaces/`](https://github.com/LOVE20BSC/core/tree/main/src/interfaces) 为唯一来源；组件级迁移结论以 `docs/specs/CHANGES-*.md` 为准。本对比只回答一个问题：**新接口的每个函数、事件、错误来自旧代码哪里，或者是新增；旧代码的每个 ABI 去了哪里，或者被删除。**
 
 实现前的三层 ABI 开工门槛与未决项见 [`abi-reconciliation.md`](abi-reconciliation.md)。
 
@@ -10,7 +10,7 @@
 
 | 文档 | 范围 |
 | --- | --- |
-| [core.md](core.md) | `interfaces/core/` 10 个接口 vs `LOVE20TKM/core`、`LOVE20TKM/group` |
+| [core.md](core.md) | `core` 仓库 `src/interfaces/` 10 个接口 vs `LOVE20TKM/core`、`LOVE20TKM/group` |
 | [action.md](action.md) | `interfaces/action/` 5 个接口 vs `LOVE20TKM/extension`、`extension-group`、`extension-lp` |
 | [group-chat.md](group-chat.md) | `interfaces/group-chat/` 12 个接口 vs `LOVE20TKM/group-chat`、`LOVE20TKM/group` |
 
@@ -18,11 +18,12 @@
 
 | 侧 | 接口文件 | 接口声明 | 函数 | 事件 | 错误 |
 | --- | --- | --- | --- | --- | --- |
-| 新（`matt-gov/interfaces`） | 27 | 54 | 412 | 69 | 209 |
+| 新（本目录 `interfaces/` + `core` 仓库 `src/interfaces/`） | 27 | 54 | 412 | 69 | 209 |
 | 旧（6 个 LOVE20TKM 仓库） | 52 | 115 | 655 | 100 | 274 |
 
 **统计口径**（三份分层文档的计数均可按此复现）：
 
+- 新侧文件 = 本目录 `interfaces/` 下的 `action`、`group-chat` 两层，加 `core` 仓库 `src/interfaces/` 顶层的 10 个 `core` 接口；Core 的接口以 `core` 仓库为准，本仓库不再保留副本。
 - 旧侧文件 = 6 个 LOVE20TKM 仓库 `LOVE20TKM/<repo>/src` 下 `interface`/`interfaces` 目录内的全部 `.sol`；排除 `LOVE20TKM/group-chat/src/interfaces/external/`（14 个跨仓库镜像，非旧协议自有 ABI）；**包含** `LOVE20TKM/group/src/interfaces/ILOVE20Token.sol`（`core` 同名接口的逐字镜像，仅 import 路径不同）。
 - 函数数按**声明条数**计，不做跨文件去重（同一函数名在不同接口各计一次）。
 - 接口声明数与文件数不同：新侧 27 文件内含 **54 个** `interface` 声明——`group-chat/IGroupChatRules.sol` 含 4 个；`core/ILOVE20Token.sol`、`core/IMemberNFT.sol`、`core/ILaunch.sol`、`core/IPhase.sol` 各含 3 个；15 个文件各含 2 个（`Events` 子接口与主接口）；6 个文件各含 1 个；旧侧 52 文件内含 **115 个** `interface` 声明（去重后 112 个，`ILOVE20Token` 及其两个子接口在 `core` 与 `group` 各声明一次），其中 63 个是 `I<Name>Errors`/`I<Name>Events` 子接口。

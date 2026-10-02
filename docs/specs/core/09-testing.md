@@ -2,7 +2,7 @@
 
 本文件规定验收范围，行为以对应模块为准；证据与发布要求见 [组织验收](../../acceptance.md)。这是待实现的场景清单，不是已通过的测试报告。
 
-事件和错误定义分别位于 [`IMemberNFT.sol`](../../../interfaces/core/IMemberNFT.sol)、[`IPhase.sol`](../../../interfaces/core/IPhase.sol)、[`IStake.sol`](../../../interfaces/core/IStake.sol)、[`ISubmit.sol`](../../../interfaces/core/ISubmit.sol)、[`IVote.sol`](../../../interfaces/core/IVote.sol)、[`IMint.sol`](../../../interfaces/core/IMint.sol)、[`ILaunch.sol`](../../../interfaces/core/ILaunch.sol) 和 [`ILOVE20Token.sol`](../../../interfaces/core/ILOVE20Token.sol)。
+事件和错误定义分别位于 [`IMemberNFT.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/IMemberNFT.sol)、[`IPhase.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/IPhase.sol)、[`IStake.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/IStake.sol)、[`ISubmit.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/ISubmit.sol)、[`IVote.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/IVote.sol)、[`IMint.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/IMint.sol)、[`ILaunch.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/ILaunch.sol) 和 [`ILOVE20Token.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/ILOVE20Token.sol)。
 
 必须拒绝无效成员或非来源控制者、零 Target/Distributor、非法模式、Target Data 长度不等、重复 Proposal/推举、投票超额、Round 未结束、重复铸造/销毁、待解锁时追加或融合、解锁期不足、跨社区次数操作、次数不足或超上限。Mint 在铸造入口内部自动准备未准备的 Round，不把“未准备”作为公开拒绝条件。未冻结专用 selector 的拒绝条件不能冒充已确定 ABI。
 

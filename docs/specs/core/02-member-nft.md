@@ -35,7 +35,7 @@ UTF-8 有效性：拒绝无效起始字节 `0x80-0xC1` 与 `0xF5-0xFF`、过长�
 
 ## 铸造
 
-接口见 [`IMemberNFT.sol`](../../../interfaces/core/IMemberNFT.sol)。
+接口见 [`IMemberNFT.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/IMemberNFT.sol)。
 
 `init` 只允许第一次成功调用；公开 `initialized()` 初始为 `false`，成功后为 `true`，后续调用回滚 `AlreadyInitialized()`。首币地址不得为零。未初始化时，`mint` 和 `calculateMintCost` 因无法从首币读取数据而回滚。
 
@@ -63,9 +63,9 @@ mintCost = byteLength >= bytesThreshold
 
 ## 接口
 
-对外接口见 [`IMemberNFT.sol`](../../../interfaces/core/IMemberNFT.sol)。它沿用旧 `LOVE20Group`，仅去除 group 字样重命名；本合约即 Member 本体，标识符不再重复 member。初始化与铸造接口见 [铸造](#铸造)。
+对外接口见 [`IMemberNFT.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/IMemberNFT.sol)。它沿用旧 `LOVE20Group`，仅去除 group 字样重命名；本合约即 Member 本体，标识符不再重复 member。初始化与铸造接口见 [铸造](#铸造)。
 
-独有函数、事件和错误见 [`IMemberNFT.sol`](../../../interfaces/core/IMemberNFT.sol)；Core 接口继承 `IERC721Enumerable`，实现合约同时继承 `ERC721Enumerable` 和 `IMemberNFT`，由编译器核验接口实现。完整调用 ABI 使用目标合约编译产物，包含 OZ 提供的标准函数、事件和错误。
+独有函数、事件和错误见 [`IMemberNFT.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/IMemberNFT.sol)；Core 接口继承 `IERC721Enumerable`，实现合约同时继承 `ERC721Enumerable` 和 `IMemberNFT`，由编译器核验接口实现。完整调用 ABI 使用目标合约编译产物，包含 OZ 提供的标准函数、事件和错误。
 
 ## 持有人枚举
 

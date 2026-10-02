@@ -35,7 +35,7 @@ Proposal 由合约分配的头部与创建者提供的主体组成，对外以 `
 
 显式销毁可由专用 Target 合约接收后执行，不能用零 Target 隐式销毁。
 
-结构体见 [`ISubmit.sol`](../../../interfaces/core/ISubmit.sol)。
+结构体见 [`ISubmit.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/ISubmit.sol)。
 
 `submitNewProposal` 在一笔交易内完成「创建 + 推举」两步：先保存 Proposal，再写入当前 Round 的推举状态，最后执行创建与推举回调。调用者须持有 `memberId` 且满足 `canSubmit`，并因此消耗本 Round 的推举名额；回调执行时 Proposal 与推举状态都已完整写入，不能通过融合转出来源质押。创建后内容和 Target 不变，重名标题不等于重复 Proposal。
 
@@ -43,7 +43,7 @@ Proposal 由合约分配的头部与创建者提供的主体组成，对外以 `
 
 ## 接口
 
-完整 ABI 见 [`ISubmit.sol`](../../../interfaces/core/ISubmit.sol)。它沿用旧 `LOVE20TKM/core/src/interfaces/ILOVE20Submit.sol` 的 Proposal 创建、推举、枚举和查询职责；旧接口中的行动专属字段已按 BSC 规则移出命名结构，改由不透明的 Target Data 经 `ProposalBody.targetData` 传递，业务主体由地址改为 `memberId`。
+完整 ABI 见 [`ISubmit.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/ISubmit.sol)。它沿用旧 `LOVE20TKM/core/src/interfaces/ILOVE20Submit.sol` 的 Proposal 创建、推举、枚举和查询职责；旧接口中的行动专属字段已按 BSC 规则移出命名结构，改由不透明的 Target Data 经 `ProposalBody.targetData` 传递，业务主体由地址改为 `memberId`。
 
 两个写入口沿用旧接口的动词配对与语义，`submitNewProposal` 就是「提交一个新提案」：创建与推举在同一笔内完成。`submit` 不创建，只把已有 `proposalId` 推举进当前 Round；两个入口都在回调前完成推举状态写入。Proposal 一经创建即长期存在，可在后续每个 Round 各被推举一次，推举者可以是作者以外的人。
 
@@ -134,7 +134,7 @@ Proposal 由合约分配的头部与创建者提供的主体组成，对外以 `
 
 ## 事件与错误
 
-事件与错误定义见 [`ISubmit.sol`](../../../interfaces/core/ISubmit.sol)。
+事件与错误定义见 [`ISubmit.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/ISubmit.sol)。
 
 `ProposalCreated` 由 `submitNewProposal` 的创建段发出，包含 `author`（创建者 `memberId`）、`title`、`details`、`target`、`targetMode`；不含 `round`、不含 `targetData`。
 
@@ -162,7 +162,7 @@ Proposal 由合约分配的头部与创建者提供的主体组成，对外以 `
 
 ## Target 回调
 
-回调接口见 [`IProposalTarget.sol`](../../../interfaces/core/IProposalTarget.sol)。
+回调接口见 [`IProposalTarget.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/IProposalTarget.sol)。
 
 创建和推举分别触发对应回调。创建与推举在同一笔交易内完成时，固定先 `onProposalCreated`、再 `onProposalSubmitted`，任一回调失败都回滚整笔。回调不要求 Target Data 非空；空 `targetData` 仍必须调用回调并传递空数组。创建回调仅接受 Submit；Executor 仅接受 ActionTarget 转发。回调前先写入对应 Proposal 或推举状态，失败则一并回滚。
 

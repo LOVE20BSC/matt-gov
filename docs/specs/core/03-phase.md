@@ -6,7 +6,7 @@ Phase 维护连续的无语义时间片、同步观测和动态校准，不内�
 
 `ORIGIN_BLOCKS`、`ORIGIN_PHASE_BLOCKS`、`TARGET_SECONDS` 为正数；`ADJUST_THRESHOLD` 使用 `1e18` 精度且大于零，`SYNC_OBSERVATION_LIMIT` 为正数。`block.number == ORIGIN_BLOCKS` 时为 Phase 1；不存在有效 Phase 0。`TARGET_SECONDS` 是每个 Phase 的目标自然时长，单位秒，7 天为 `604800`。
 
-构造参数为 `ORIGIN_BLOCKS`、`ORIGIN_PHASE_BLOCKS`、`TARGET_SECONDS`、`ADJUST_THRESHOLD` 和 `SYNC_OBSERVATION_LIMIT`；完整运行时 ABI 见 [`IPhase.sol`](../../../interfaces/core/IPhase.sol)。`SYNC_OBSERVATION_LIMIT` 为正数，用于初始化每轮同步前的快速回溯条数。
+构造参数为 `ORIGIN_BLOCKS`、`ORIGIN_PHASE_BLOCKS`、`TARGET_SECONDS`、`ADJUST_THRESHOLD` 和 `SYNC_OBSERVATION_LIMIT`；完整运行时 ABI 见 [`IPhase.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/IPhase.sol)。`SYNC_OBSERVATION_LIMIT` 为正数，用于初始化每轮同步前的快速回溯条数。
 
 | 接口 | 返回或作用 |
 | --- | --- |
@@ -19,7 +19,7 @@ Phase 维护连续的无语义时间片、同步观测和动态校准，不内�
 
 ## 接口、事件与错误
 
-完整 ABI 见 [`IPhase.sol`](../../../interfaces/core/IPhase.sol)。
+完整 ABI 见 [`IPhase.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/IPhase.sol)。
 
 `Phase` 本身不提供 `init`。未开始或无效 Phase 的具体 selector 以接口文件为准。
 

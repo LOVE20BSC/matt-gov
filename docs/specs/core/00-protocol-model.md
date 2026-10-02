@@ -20,7 +20,7 @@ Core 不解释具体 Proposal 的业务字段，扩展通过 Target 接入。
 
 以下为初始化参数总览；各模块文件给出完整构造函数和 `init` ABI。部署配置中的示例值不等于固定值。除 Phase/LOVE20Token 使用构造函数、MemberNFT 费用参数在构造函数固定外，各合约一次性初始化入口使用 `init`；地址绑定与初始化安全见 [通用规则](01-common-rules.md)，首币流程见 [Launch](08-launch.md#初始化和首个代币)。
 
-可直接用于实现的 ABI 唯一来源是 [`interfaces/core/`](../../../interfaces/core/)。
+可直接用于实现的 ABI 唯一来源是 core 仓库的 [`src/interfaces/`](https://github.com/LOVE20BSC/core/tree/main/src/interfaces)。
 
 | 所属组件 | 参数 | 含义与单位 |
 | --- | --- | --- |
@@ -47,7 +47,7 @@ Core 不解释具体 Proposal 的业务字段，扩展通过 Target 接入。
 | Launch | `tokenSymbolLength` | 子币符号固定字节长度；状态变量和公开 getter 为 `TOKEN_SYMBOL_LENGTH`，沿用旧 Launch 校验 |
 | Launch | `launchAmount`、`maxSupply` | 首批/最大供应量，`Launch.init` 固定；状态变量和公开 getter 为 `LAUNCH_AMOUNT`、`MAX_SUPPLY`；`0 < launchAmount <= maxSupply` |
 
-上表的 Launch 行按含义分组，不表示传参顺序；`Launch.init` 只接受一个 `LaunchInitParams`，实参顺序即结构体字段顺序（依赖地址 → 分发目标 → 经济与符号参数 → 供应量 → 首币元数据），参数表中的名字与字段名一致。结构体定义见 [`ILaunch.sol`](../../../interfaces/core/ILaunch.sol)。
+上表的 Launch 行按含义分组，不表示传参顺序；`Launch.init` 只接受一个 `LaunchInitParams`，实参顺序即结构体字段顺序（依赖地址 → 分发目标 → 经济与符号参数 → 供应量 → 首币元数据），参数表中的名字与字段名一致。结构体定义见 [`ILaunch.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/ILaunch.sol)。
 
 MemberNFT 的首币地址由 `Launch.init` 在创建首币时同步调用 `MemberNFT.init(tokenAddress)` 绑定，不在部署时传入；公开 getter 保持旧名 `LOVE20_TOKEN_ADDRESS()`。MemberNFT 不保存 Launch 地址。Launch 的首币分发地址、名称、符号和供应量配置统一见 [Launch](08-launch.md)。Pair Factory 由 Launch 与 Stake 共用：Launch 在创建代币时创建或复用 Pair，Stake 只在首次质押时读取该 Pair；Router 只属 Stake，用于父币手续费换币。
 

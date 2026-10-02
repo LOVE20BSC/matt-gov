@@ -45,7 +45,7 @@ Vote 管理当前治理 Round 的 Proposal 投票和加速快照。Proposal 的�
 
 ## 接口
 
-完整 ABI 见 [`IVote.sol`](../../../interfaces/core/IVote.sol)。它沿用旧 `LOVE20TKM/core/src/interfaces/ILOVE20Vote.sol` 的投票记录、增量机制和批量查询；BSC 将所有业务主体改为 `memberId`，并增加逐 Proposal 的不透明 Target Data 回调。
+完整 ABI 见 [`IVote.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/IVote.sol)。它沿用旧 `LOVE20TKM/core/src/interfaces/ILOVE20Vote.sol` 的投票记录、增量机制和批量查询；BSC 将所有业务主体改为 `memberId`，并增加逐 Proposal 的不透明 Target Data 回调。
 
 旧接口的三对 `*Count`/`AtIndex` 枚举（共 6 个函数）改为三个分页入口：`votedProposalIds`（本轮有票 Proposal）、`votedProposalIdsByMemberId`（成员本轮投过的 Proposal）、`voterIdsByProposalId`（Proposal 的投票者）。成员本轮所投 Proposal 的票数按页随 id 一起返回（`votesNumsByMemberId`），按指定 id 批量取票数走 `votesNumsByMemberIdByProposalIds`。
 
@@ -53,13 +53,13 @@ Vote 管理当前治理 Round 的 Proposal 投票和加速快照。Proposal 的�
 
 ## 事件与错误
 
-事件与错误定义见 [`IVote.sol`](../../../interfaces/core/IVote.sol)。
+事件与错误定义见 [`IVote.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/IVote.sol)。
 
 错误沿用旧 Vote 的语义；`ProposalNotSubmitted` 对应旧 `ActionNotSubmitted` 的 Proposal 命名调整。未提交 Proposal、票数超额、零票、`targetData` 外层长度不合法或回调失败时，整笔投票回滚；长度错误使用 `InvalidTargetDataLength()`。
 
 ## Target 回调
 
-回调接口见 [`IProposalTarget.sol`](../../../interfaces/core/IProposalTarget.sol)。
+回调接口见 [`IProposalTarget.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/IProposalTarget.sol)。
 
 `votes` 为本次增量，不是累计票数；Target Data 为不透明 `bytes[]`，由 Target 解释。空 Target Data 仍必须触发回调。投票回调仅接受 Vote，Executor 仅接受 ActionTarget 转发；回调前先写入投票状态，失败则一并回滚。
 
