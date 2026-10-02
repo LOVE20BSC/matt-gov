@@ -21,3 +21,5 @@
 | Phase | 当前时间片和业务轮次映射 |
 
 Core 只传递 Proposal 上下文与不透明的 Target Data，不解释候选、链群、LP、托管或服务分配。上述业务由对应 Executor 处理；ActionTarget 不持有参与资产。主体与术语见 [组织上下文](../../../CONTEXT.md)。
+
+加入态与「成员 → 行动」跨类型索引的唯一所有者是 ActionTarget，Executor 不得自建「是否加入」副本。与行动类型无关的参与判定走 ActionTarget，某一行动类型的专属关系（如链群归属）走该 Executor。

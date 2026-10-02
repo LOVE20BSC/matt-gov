@@ -133,7 +133,6 @@ interface IGroupActionExecutor is IGroupActionIndexes, IActionExecutor, IVerific
         external view returns (uint256);
 
     error AlreadyInitialized();
-    error InvalidKVLength();
     error InvalidParticipationAmount();
     error InvalidCandidate();
     error InvalidSplits();

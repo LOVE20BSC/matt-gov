@@ -4,21 +4,27 @@
 
 ## IActionExecutor 通用接口
 
-新增 `IActionExecutor` 作为所有 Executor 的基础接口，定义统一的事件分层和加入/退出契约。
+新增 `IActionExecutor` 作为所有 Executor 的基础接口，定义统一的自证绑定、回调契约、退出接口和 Round 查询。
 
 ```solidity
-interface IActionExecutor is IProposalTarget, IActionExecutorEvents {
-    function join(address tokenAddress, uint256 actionId, uint256 memberId, uint256 amount,
-        string[] calldata verificationInfos) external;
+interface IActionExecutorErrors {
+    error RoundNotStarted();
+}
+
+interface IActionExecutor is IProposalTarget, IActionExecutorErrors {
+    function actionTarget() external view returns (address);
+    function initialized() external view returns (bool);
     function exit(address tokenAddress, uint256 actionId, uint256 memberId) external;
-    function withdraw(address tokenAddress, uint256 actionId, uint256 memberId, uint256 amount) external;
+    function currentVoteRound() external view returns (uint256);
+    function currentJoinRound() external view returns (uint256);
+    function currentMintRound() external view returns (uint256);
 }
 ```
 
 **事件分层**：
 - `IActionExecutor` 定义 `Joined/Withdrawn/Exited` 事件，包含完整业务字段（`amount, isExperience, providerMemberId`）
-- `IActionTarget` 定义 `ActionJoined/ActionWithdrawn/ActionExited` 事件，只包含通用字段（`tokenAddress, actionId, memberId, round`）
-- 两层事件名称不同，各自记录各自层级的信息，不冲突
+- `IActionTarget` 定义 `ActionCreated/Joined/Exited/ForceExited` 事件，只包含通用字段（`tokenAddress, actionId, memberId, round`）
+- 两层事件名可相同（`Joined`/`Exited`）但签名不同，各自记录各自层级的信息，不冲突；ActionTarget 不发 `Withdrawn`
 
 **继承关系**：
 - `ILpExecutor is IActionExecutor, ILpExecutorEvents`
@@ -45,7 +51,7 @@ interface IActionExecutor is IProposalTarget, IActionExecutorEvents {
 
 - 旧实例接口的函数统一补齐 `address tokenAddress, uint256 actionId` 前缀参数。
 - 旧共享接口的 `address extension` 首参替换为 `address tokenAddress, uint256 actionId`。
-- 旧实例上的行动配置 getter（例如 `GOV_RATIO_MULTIPLIER`、`JOIN_TOKEN_ADDRESS`）也补齐 `tokenAddress + actionId`，因为配置改由 Proposal KV 按行动保存。
+- 旧实例上的行动配置 getter（例如 `GOV_RATIO_MULTIPLIER`、`JOIN_TOKEN_ADDRESS`）也补齐 `tokenAddress + actionId`，因为配置改由 Proposal 创建回调的 Target Data 按行动保存。
 - 全部工厂接口删除：`IExtensionFactory`、`ILpFactory`、`IGroupActionFactory`、`IGroupServiceFactory`、`IExtensionGroupActionFactory`、`IExtensionGroupServiceFactory`。
 - `FACTORY_ADDRESS()`、`initialize(address factory_)`、`initializeIfNeeded()`、`initialized()`、`TOKEN_ADDRESS()`、`actionId()` 一律删除，改为各 Executor 的 `init(...)` 一次性依赖注入。
 
@@ -71,10 +77,12 @@ interface IActionExecutor is IProposalTarget, IActionExecutorEvents {
 
 | 接口 | 自身声明 | 继承自 | 完整 ABI |
 | --- | --- | --- | --- |
-| `IActionTarget` | 12 | `IProposalTarget`（3） | 15 |
-| `ILpExecutor` | 16 | `IProposalTarget`（3） | 19 |
-| `IGroupActionExecutor` | 43 | `IGroupActionIndexes`（51）+ `IProposalTarget`（3） | 97 |
-| `IGroupServiceExecutor` | 15 | `IProposalTarget`（3） | 18 |
+| `IActionTarget` | 19 | `IProposalTarget`（3） | 22 |
+| `ILpExecutor` | 16 | `IActionExecutor`（2）+ `IProposalTarget`（3） | 21 |
+| `IGroupActionExecutor` | 43 | `IGroupActionIndexes`（51）+ `IActionExecutor`（2）+ `IProposalTarget`（3） | 99 |
+| `IGroupServiceExecutor` | 15 | `IActionExecutor`（2）+ `IProposalTarget`（3） | 20 |
+
+`IActionTarget` 的自身声明数按 2026-10-02 Review 裁决后的接口重算（补 4 个依赖 getter + `initialized()`，删不可达错误，`join`/`exit` 改名为 `registerJoinState`/`clearJoinState`）。三个 Executor 的自身声明数未随本轮变化；其 `Errors` 子接口拆分（`ILpExecutorErrors` 等）与成员顺序修正在各自 Review 步处理。
 
 旧侧对应情况：旧 `LOVE20TKM/group-chat/src/interfaces/sources/ban/IAdminBanSource.sol`、`LOVE20TKM/group-chat/src/interfaces/sources/scope/IGroupMemberScope.sol`、`LOVE20TKM/group-chat/src/interfaces/sources/scope/IGroupJoinScopeSource.sol`、`LOVE20TKM/group-chat/src/interfaces/sources/ban/IGovVotedBanSource.sol` 均通过 `is IPostBanSource`/`is IPostScopeSource` 继承行为契约（见 [group-chat.md](group-chat.md)）；旧 `LOVE20TKM/extension-group/src/interface/IExtensionGroupActionFactory.sol` 继承 `IGroupActionFactory`、`IExtensionFactory`，随工厂体系一并删除。
 
@@ -84,7 +92,7 @@ interface IActionExecutor is IProposalTarget, IActionExecutorEvents {
 
 旧：`LOVE20TKM/extension/src/interface/IExtensionCenter.sol`、`LOVE20TKM/extension/src/interface/IExtension.sol`。
 
-新 `IActionTarget` 继承 `IProposalTarget`，承担「提案与执行合约关联 + 通用加入/退出登记 + 激励中转」。旧 `ExtensionCenter` 的注册中心、委托和验证信息职责不迁移。
+新 `IActionTarget` 继承 `IProposalTarget`，承担「提案与执行合约关联 + 通用加入/退出登记 + 成员→行动跨类型索引 + 激励中转」。旧 `ExtensionCenter` 的注册中心、委托、验证信息与「每行动一实例」职责不迁移；`addAccount` 的「本轮有票」前置校验改由各 Executor 按其阶段与资格规则判定。
 
 **接口组织**：旧 `IExtensionCenter` 按 `IExtensionCenterEvents` + `IExtensionCenterErrors` + 主接口三部分声明；新 `IActionTarget` 保留相同结构：`IActionTargetEvents` + `IActionTargetErrors` + 主接口。
 
@@ -92,24 +100,26 @@ interface IActionExecutor is IProposalTarget, IActionExecutorEvents {
 
 | 新 | 旧 | 状态 |
 | --- | --- | --- |
+| `memberNFTAddress()`、`submitAddress()`、`voteAddress()`、`mintAddress()` | `IExtensionCenter` 的 9 个依赖 getter | 保留 3 个（submit/vote/mint）、新增 `memberNFTAddress`、删除 6 个（stake/launch/uniswapV2Factory/join/verify/random） |
+| `initialized()` | `IExtension.initialized`（`ExtensionBase.sol:27` 自动 getter） | 保留（与 core 六个接口同形；中转期间曾缺失，本轮补回） |
+| `init(memberNFTAddress, submitAddress, voteAddress, mintAddress)` | 无（旧为构造函数注入） | 新增 |
 | `isJoined(tokenAddress, actionId, uint256 memberId)` | `IExtensionCenter.isAccountJoined(tokenAddress, actionId, address account)` | 改名+改参（去 Account 前缀） |
-| `join(tokenAddress, actionId, uint256 memberId)` | `IExtensionCenter.addAccount(tokenAddress, actionId, address account, verificationInfos[])` | 改名+改参（`verificationInfos` 移入各 Executor 的 `join`；ActionTarget 只记录加入布尔状态） |
-| `exit(tokenAddress, actionId, uint256 memberId)` | `IExtensionCenter.removeAccount(tokenAddress, actionId, address account) returns (bool)` | 改名+改参（去返回值） |
-| `actionIdsByMemberId(tokenAddress, memberId, offset, limit, reverse) returns (actionIds[], total)` | `IExtensionCenter.actionIdsByAccount(tokenAddress, address account, address[] factories)` 部分对应 | 改名+改参（采用标准分页签名 `(offset, limit, reverse) → (列表, 总数)`；删除 factories 参数与 extensions/factories 返回数组） |
+| `isJoinedByRound(tokenAddress, actionId, memberId, round)` | `IExtensionCenter.isAccountJoinedByRound(...)` | 改名+改参（**保留**；旧 `validRound` 回滚 `RoundExceedsJoinRound` 改为按未开始返回 false） |
+| `registerJoinState(tokenAddress, actionId, uint256 memberId)` | `IExtensionCenter.addAccount(tokenAddress, actionId, address account, verificationInfos[])` | 改名+改参（`verificationInfos` 移入各 Executor 的 `join`；幂等，不再回滚 `AccountAlreadyJoined`） |
+| `clearJoinState(tokenAddress, actionId, uint256 memberId)` | `IExtensionCenter.removeAccount(tokenAddress, actionId, address account) returns (bool)` | 改名+改参（去返回值；未加入时返回无操作，不再返回 false） |
+| `actionIdsByMemberId(tokenAddress, memberId, offset, limit, reverse) returns (actionIds[], total)` | `IExtensionCenter.actionIdsByAccount(tokenAddress, address account, address[] factories)` 部分对应 | 改名+改参（标准分页 `(offset, limit, reverse) → (列表, 总数)`；删除 factories 参数与 extensions/factories 返回数组） |
+| `memberIdsByActionId(...)`、`memberIdsByActionIdByRound(...)` | `accounts`/`accountsCount`/`accountsAtIndex`、`accountsByRound`(+`Count`/`AtIndex`) | 改参（全量 + Count + AtIndex 六项合并为两个标准分页函数；**按轮历史保留**，不是删除） |
 | `executor(tokenAddress, actionId)` | `IExtensionCenter.extension(tokenAddress, actionId)` | 改名+改参（proposalId → actionId，Action 层视角） |
+| `mintedProposalReward(tokenAddress, actionId, round) returns (amount, minted)` | 无 | 新增（铸造信息只读入口；旧无对应，成员自领模式下由 `govRatio(...).claimed` 承担） |
 | `forceExit(tokenAddress, actionId, memberId)` | 无 | 新增（应急登记清理） |
-| `mintProposalReward(tokenAddress, round, proposalId) returns (uint256 amount)` | 无 | 新增（激励中转；保留 proposalId 因为是 Core 调用） |
-| `actionIdsByExecutor(tokenAddress, round, address executor_, offset, limit, reverse) returns (actionIds[], total)` | 无 | 新增（标准分页；某轮某 executor 的行动数无界） |
-| `actions(tokenAddress, round, offset, limit, reverse) returns (actionIds[], executors[], total)` | 无 | 新增（标准分页；某轮行动数无界） |
-| `init(memberNFTAddress, submitAddress, voteAddress, mintAddress)` | 无 | 新增 |
-| 继承 `IProposalTarget` 三回调 | 无 | 新增 |
+| `mintProposalReward(tokenAddress, round, proposalId) returns (uint256 amount)` | 无（旧 `IReward` 的整笔领取在实例内部） | 新增（激励中转；保留 proposalId 因为是 Core 调用） |
+| `actionIdsByExecutor(tokenAddress, round, address executor_, offset, limit, reverse) returns (actionIds[], total)` | 无 | 新增（标准分页；某轮某 executor 的行动数） |
+| `actions(tokenAddress, round, offset, limit, reverse) returns (actionIds[], executors[], total)` | 无 | 新增（标准分页；某轮行动数） |
+| 继承 `IProposalTarget` 三回调 | 无（旧由业务合约扫本轮票自我发现） | 新增 |
 | 无 | `IExtensionCenter.registerActionIfNeeded(tokenAddress, actionId)` | 删除（改由 `onProposalCreated` 回调建立关联） |
 | 无 | `IExtensionCenter.factory(tokenAddress, actionId)` | 删除 |
 | 无 | `IExtensionCenter.setExtensionDelegate`、`extensionDelegate`、`extensionTokenActionPair` | 删除 |
-| 无 | `IExtensionCenter.isAccountJoinedByRound(...)` | 删除 |
-| 无 | `IExtensionCenter.accounts`、`accountsCount`、`accountsAtIndex`、`accountsByRound`、`accountsByRoundCount`、`accountsByRoundAtIndex` | 删除（成员枚举下移各 Executor） |
-| 无 | `IExtensionCenter.updateVerificationInfo`、`verificationInfo`、`verificationInfoByRound` | 删除（KV 化） |
-| 无 | `IExtensionCenter.uniswapV2FactoryAddress`、`launchAddress`、`stakeAddress`、`submitAddress`、`voteAddress`、`joinAddress`、`verifyAddress`、`mintAddress`、`randomAddress` | 删除 9 个 getter（新 `init` 只注入 4 个依赖） |
+| 无 | `IExtensionCenter.updateVerificationInfo`、`verificationInfo`、`verificationInfoByRound` | 删除（改由创建回调的 Target Data 传入，落各 Executor） |
 | 无 | `IExtension.joinedAmount()`、`joinedAmountByAccount(account)`、`joinedAmountTokenAddress()` | 删除（金额查询下移各 Executor） |
 
 旧 `IExtension` 另有 4 个错误全部删除：`InvalidTokenAddress`、`ActionIdNotFound`、`MultipleActionIdsFound`、`RoundNotFinished`；1 个事件 `Initialize` 删除（改为 `init` 一次性注入，无事件）。`FACTORY_ADDRESS`、`TOKEN_ADDRESS`、`actionId`、`initializeIfNeeded`、`initialized` 5 个成员按本层开头的实例模型规则删除。
@@ -118,17 +128,19 @@ interface IActionExecutor is IProposalTarget, IActionExecutorEvents {
 
 | 新 | 旧 | 状态 |
 | --- | --- | --- |
-| `ProposalLinked(tokenAddress, proposalId, address executor)` | `IExtensionCenter.RegisterAction(tokenAddress, actionId, extension, factory)` | 改名+改参（去 factory 字段） |
-| `ActionJoined(tokenAddress, actionId, memberId, round)` | `IExtensionCenter.AddAccount(tokenAddress, round, actionId, address account, accountCount)` | 改名+改参（简化为只记录加入状态，删除 accountCount；业务字段由 Executor 层的 `Joined` 事件承载） |
-| `ActionExited(tokenAddress, actionId, memberId, round)` | `IExtensionCenter.RemoveAccount(tokenAddress, round, actionId, address account, accountCount)` | 改名+改参（简化，删除 accountCount） |
-| `ActionWithdrawn(tokenAddress, actionId, memberId, round)`、`ForceExited(tokenAddress, actionId, memberId)` | 无 | 新增 |
+| `ActionCreated(tokenAddress, actionId, address executor)` | `IExtensionCenter.RegisterAction(tokenAddress, actionId, extension, factory)` | 改名+改参（去 factory 字段） |
+| `Joined(tokenAddress, actionId, memberId, round)` | `IExtensionCenter.AddAccount(tokenAddress, round, actionId, address account, accountCount)` | 改名+改参（简化为只记录加入状态，删除 accountCount；业务字段由 Executor 层的 `Joined` 事件承载） |
+| `Exited(tokenAddress, actionId, memberId, round)` | `IExtensionCenter.RemoveAccount(tokenAddress, round, actionId, address account, accountCount)` | 改名+改参（简化，删除 accountCount） |
+| `ForceExited(tokenAddress, actionId, memberId)` | 无 | 新增 |
 | 无 | `IExtensionCenter.SetExtensionDelegate`、`UpdateVerificationInfo`；`IExtension.Initialize` | 删除 |
+
+ActionTarget 不发出 `Withdrawn`：部分撤回不改变加入状态，该事件只由 Executor 层发出（见 [ADR-003](../../docs/adr/003-action-target-interface-simplification.md)）。
 
 ### 错误
 
-新 9 个：`AlreadyInitialized`、`InvalidKVLength`、`InvalidExecutor`、`UnauthorizedCallback`、`NotMemberOwner(memberId)`、`ProposalNotVoted(tokenAddress, proposalId)`、`InvalidRound(round)`、`RewardAlreadyMinted(tokenAddress, actionId, memberId, round)`、`IndexOutOfBounds(length)`。阶段型 Executor 另声明 `RoundNotStarted()`。
+新 7 个：`AlreadyInitialized`、`InvalidExecutor`、`UnauthorizedCallback`、`UnauthorizedExecutor(tokenAddress, actionId)`、`NotMemberOwner(memberId)`、`ProposalNotVoted(tokenAddress, proposalId)`、`AlreadyMinted(tokenAddress, actionId, round)`。阶段型 Executor 另在 `IActionExecutorErrors` 声明 `RoundNotStarted()`。
 
-旧 `IExtensionCenter` 13 个错误全部删除，其中三项有语义继承：`InvalidExtensionAddress`/`InvalidExtensionFactory` → `InvalidExecutor`、`ActionNotVotedInCurrentRound` → `ProposalNotVoted`、`OnlyExtensionOrDelegate`/`OnlyAccountOrExtensionOrDelegate` → `UnauthorizedCallback`。`AccountAlreadyJoined`、`VerificationInfoLengthMismatch`、`RoundExceedsJoinRound`、`ExtensionCreatorMismatch`、`ExtensionTokenAddressMismatch`、`ExtensionActionIdMismatch`、`ActionAlreadyRegisteredToOtherAction`、`InvalidAccountAddress` 无对应声明。
+旧 `IExtensionCenter` 13 个 + `IExtension` 4 个错误全部删除，其中语义继承：`InvalidExtensionAddress`/`InvalidExtensionFactory` → `InvalidExecutor`、`ActionNotVotedInCurrentRound` → `ProposalNotVoted`、`OnlyExtensionOrDelegate`/`OnlyAccountOrExtensionOrDelegate` → `UnauthorizedCallback`；`RoundExceedsJoinRound` 取消（越界不回滚）、`AccountAlreadyJoined` 取消（改为幂等）、`RewardAlreadyMinted` 移出（ActionTarget 侧改为行动级 `AlreadyMinted`）、`IndexOutOfBounds`/`InvalidRound`/`InvalidKVLength` 不再在 ActionTarget 声明（不可达）。
 
 ---
 
@@ -142,7 +154,7 @@ interface IActionExecutor is IProposalTarget, IActionExecutorEvents {
 
 | 新 | 旧 | 状态 |
 | --- | --- | --- |
-| `GOV_RATIO_MULTIPLIER(tokenAddress, actionId)`、`MIN_GOV_RATIO(tokenAddress, actionId)` | `ILp` 同名 | 改参（补单例行动作用域；配置来自行动 KV） |
+| `GOV_RATIO_MULTIPLIER(tokenAddress, actionId)`、`MIN_GOV_RATIO(tokenAddress, actionId)` | `ILp` 同名 | 改参（补单例行动作用域；配置来自创建回调的 Target Data） |
 | `deduction(tokenAddress, actionId, round, memberId) returns (amount, joinBlocks[], joinAmounts[])` | `ILp.deduction(round, address account) returns (deduction, joinBlocks[], joinAmounts[])` | 改参 |
 | `totalDeduction(tokenAddress, actionId, round)` | `ILp.totalDeduction(round)` | 改参 |
 | `govRatio(tokenAddress, actionId, round, memberId) returns (ratio, claimed)` | `ILp.govRatio(round, address account) returns (ratio, claimed)` | 改参 |
@@ -170,7 +182,7 @@ interface IActionExecutor is IProposalTarget, IActionExecutorEvents {
 | `ActionRewardMinted(tokenAddress, actionId, round, totalAmount, bytes32 recipientType)` | `IReward.ClaimReward(tokenAddress, round, actionId, address account, mintAmount, burnAmount)` | 改名+改参 |
 | `RewardBurned(tokenAddress, actionId, round, amount, bytes32 reason)` | `IReward.BurnReward(tokenAddress, round, actionId, amount)` | 改名+改参 |
 | 错误 `InsufficientGovRatio()` | `ILp.InsufficientGovRatio()` | 保留 |
-| 错误 `AlreadyInitialized`、`InvalidKVLength`、`UnauthorizedCallback`、`InvalidParticipationAmount`、`InvalidRound`、`RoundNotStarted`、`NotMemberOwner`、`ProposalNotVoted`、`RewardAlreadyMinted` | 无 | 新增 |
+| 错误 `AlreadyInitialized`、`UnauthorizedCallback`、`InvalidParticipationAmount`、`InvalidRound`、`RoundNotStarted`、`NotMemberOwner`、`ProposalNotVoted`、`RewardAlreadyMinted` | 无 | 新增 |
 | 无 | `ITokenJoin.InvalidJoinTokenAddress`、`JoinAmountZero`、`NotJoined`、`NotEnoughWaitingBlocks`；`IReward.AlreadyClaimed` | 删除（`JoinAmountZero` 语义并入 `InvalidParticipationAmount`） |
 
 ---
@@ -200,7 +212,7 @@ interface IActionExecutor is IProposalTarget, IActionExecutorEvents {
 | `deactivateGroup(tokenAddress, actionId, groupId)` | `IGroupManager.deactivateGroup(extension, groupId)` | 改参 |
 | `updateGroupInfo(tokenAddress, actionId, groupId, GroupConfig)` | `IGroupManager.updateGroupInfo(extension, groupId, newDescription, newMaxCapacity, newMinJoinAmount, newMaxJoinAmount, newMaxAccounts)` | 改参 |
 | `groupInfo(tokenAddress, actionId, groupId) returns (config, active, activatedRound, deactivatedRound)` | `IGroupManager.groupInfo(extension, groupId) returns (GroupInfo)` | 改参 |
-| `JOIN_TOKEN_ADDRESS(tokenAddress, actionId)`、`ACTIVATION_STAKE_AMOUNT(tokenAddress, actionId)`、`MAX_JOIN_AMOUNT_RATIO(tokenAddress, actionId)`、`ACTIVATION_MIN_GOV_RATIO(tokenAddress, actionId)` | `IGroupAction` 同名 | 改参（补单例行动作用域；配置来自行动 KV） |
+| `JOIN_TOKEN_ADDRESS(tokenAddress, actionId)`、`ACTIVATION_STAKE_AMOUNT(tokenAddress, actionId)`、`MAX_JOIN_AMOUNT_RATIO(tokenAddress, actionId)`、`ACTIVATION_MIN_GOV_RATIO(tokenAddress, actionId)` | `IGroupAction` 同名 | 改参（补单例行动作用域；配置来自创建回调的 Target Data） |
 | 无 | `IGroupManager.descriptionByRound`、`activeGroupIdsByOwner`、`activeGroupIds`(+`Count`/`AtIndex`)、`isGroupActive`、`maxJoinAmount`、`stakedByOwner`、`staked`、`totalStaked`、`totalStakedByOwner`、`hasActiveGroups`、`PRECISION` | 删除 11 项 |
 | 无 | `IGroupManager.tokenAddressesByGroupId`(+`Count`/`AtIndex`)、`actionIdsByGroupId`(+`Count`/`AtIndex`)、`actionIds`(+`Count`/`AtIndex`) | 删除（能力由 `IGroupActionIndexes` 的 `g*` 索引覆盖） |
 
@@ -268,11 +280,11 @@ interface IActionExecutor is IProposalTarget, IActionExecutorEvents {
 
 ### 错误
 
-新 **44 个**错误：原有 16 个 + 本轮补齐 28 个。原有 16 个的完整清单：`AlreadyInitialized`、`InvalidKVLength`、`InvalidParticipationAmount`、`InvalidCandidate`、`InvalidSplits`、`ApplicationNotActive`、`InvalidExecutor`、`UnauthorizedCallback`、`NotMemberOwner`、`ProposalNotVoted`、`InvalidRound`、`RoundNotStarted`、`InsufficientExperienceQuota`、`VerifierAlreadyLocked`、`BatchIndexMismatch`、`RewardAlreadyMinted`；补齐的 28 个见本节末表。
+新 **43 个**错误：原有 15 个 + 本轮补齐 28 个。原有 15 个的完整清单：`AlreadyInitialized`、`InvalidParticipationAmount`、`InvalidCandidate`、`InvalidSplits`、`ApplicationNotActive`、`InvalidExecutor`、`UnauthorizedCallback`、`NotMemberOwner`、`ProposalNotVoted`、`InvalidRound`、`RoundNotStarted`、`InsufficientExperienceQuota`、`VerifierAlreadyLocked`、`BatchIndexMismatch`、`RewardAlreadyMinted`；补齐的 28 个见本节末表。
 
 其中 5 个有旧对应：`InvalidParticipationAmount` ← `JoinAmountZero`/`AmountBelowMinimum`、`InvalidCandidate` ← `NotVerifier`、`ApplicationNotActive` ← `GroupNotActive`（语义近似）、`AlreadyInitialized` 保留、`BatchIndexMismatch` ← `InvalidStartIndex`。
 
-本接口独有的 3 个：`InvalidSplits`（`init` 的 `splits` 分成配置校验）、`VerifierAlreadyLocked`（新增的验证者竞选锁定）、`InsufficientExperienceQuota(providerMemberId, required, available)`（覆盖部分旧体验额度校验场景）。其余 7 个是全 action 层共用的样板错误（init/KV/回调权限/成员归属/提案未投票/轮次/重复铸造）。
+本接口独有的 3 个：`InvalidSplits`（`init` 的 `splits` 分成配置校验）、`VerifierAlreadyLocked`（新增的验证者竞选锁定）、`InsufficientExperienceQuota(providerMemberId, required, available)`（覆盖部分旧体验额度校验场景）。其余 6 个是全 action 层共用的样板错误（init、回调权限、成员归属、提案未投票、轮次、重复铸造）。`InvalidKVLength` 已删除——无键 `bytes[]` 下不存在「两数组」，各 Executor 需要项数校验时自行声明。
 
 旧三接口共 **44 条错误声明、40 个不同错误名**（`NotRegisteredExtensionInFactory` 在三个接口各声明一次，`ExtensionNotInitialized`、`OnlyGroupOwner` 各两次）。40 个名字的归处如下，**未归类 0、无杜撰名字**：
 
@@ -282,7 +294,7 @@ interface IActionExecutor is IProposalTarget, IActionExecutorEvents {
 | **已补回** | 28 | 见 `interfaces/action/IGroupActionExecutor.sol` 末尾「自旧 `IGroupJoin`/`IGroupManager`/`IGroupVerify` 补齐」一段，全部按原名补回 |
 | 裁决不补 | 6 | `DistrustVoteExceedsVerifyVotes`、`DistrustVoteZeroAmount`、`InvalidReason`（不信任投票机制整块不迁移）；`NotRegisteredExtensionInFactory`、`ExtensionNotInitialized`、`InvalidFactoryAddress`（extension 工厂体系取消） |
 
-这 28 个错误对应新实现仍需暴露的校验，不能用 `require` 或通用错误替代；加上阶段未开始错误后，接口错误数为 44。见 [README「已确认并落地」](README.md#已确认并落地)。
+这 28 个错误对应新实现仍需暴露的校验，不能用 `require` 或通用错误替代；加上阶段未开始错误并扣除已删的 `InvalidKVLength` 后，接口错误数为 43。见 [README「已确认并落地」](README.md#已确认并落地)。
 
 其中 `TrialAccountNotInWaitingList(address account)` 按主体统一规则改为 `TrialAccountNotInWaitingList(uint256 memberId)`；其余补回错误没有参数。
 
@@ -369,5 +381,5 @@ interface IActionExecutor is IProposalTarget, IActionExecutorEvents {
 | `RewardBurned` | 无 | 新增 |
 | 无 | `IGroupService.DistributeRecipient` | 删除（逐笔分配明细无事件） |
 | 错误 `DistributionOverflow(configured, available)` | `IGroupRecipients.InvalidRatio()` | 改名+改参（语义近似） |
-| 错误 `AlreadyInitialized`、`InvalidKVLength`、`InvalidRound`、`RoundNotStarted`、`NotMemberOwner`、`ProposalNotVoted`、`UnauthorizedCallback`、`RewardAlreadyMinted` | 无 | 新增 |
+| 错误 `AlreadyInitialized`、`InvalidRound`、`RoundNotStarted`、`NotMemberOwner`、`ProposalNotVoted`、`UnauthorizedCallback`、`RewardAlreadyMinted` | 无 | 新增 |
 | 无 | `IGroupService.NoActiveGroups`、`InvalidExtension`；`IGroupRecipients.TooManyRecipients`、`ZeroAddress`、`ZeroRatio`、`ArrayLengthMismatch`、`DuplicateAddress`、`RecipientCannotBeSelf`、`OnlyGroupOwner` | 删除 9 项 |

@@ -8,14 +8,14 @@ GroupAction 使用 MemberNFT 身份，`groupId` 是群主体的 `memberId`，不
 
 参与、群配置和历史查询接口见 [`IGroupActionExecutor.sol`](../../../interfaces/action/IGroupActionExecutor.sol)。
 
-创建 KV 沿用旧行动参数：`joinTokenAddress(address)`、`activationStakeAmount(uint256)`、`maxJoinAmountRatio(uint256)`、`activationMinGovRatio(uint256)`，键取 `keccak256`、值取 `abi.encode`。配置和激活资格、质押退还及容量计算沿用旧 GroupManager；`maxCapacity = 0` 使用理论容量，`maxJoinAmount/maxAccounts = 0` 不另设群级上限，非零最大加入量不得低于最小加入量。
+创建 Target Data 沿用旧行动参数，从第 `1` 项起（第 `0` 项是 ActionTarget 保留的 executor）固定为 `targetData[1] = abi.encode(address joinTokenAddress)`、`targetData[2] = abi.encode(uint256 activationStakeAmount)`、`targetData[3] = abi.encode(uint256 maxJoinAmountRatio)`、`targetData[4] = abi.encode(uint256 activationMinGovRatio)`。配置和激活资格、质押退还及容量计算沿用旧 GroupManager；`maxCapacity = 0` 使用理论容量，`maxJoinAmount/maxAccounts = 0` 不另设群级上限，非零最大加入量不得低于最小加入量。
 
 **验证信息**：`IGroupActionExecutor` 继承 [`IVerificationInfo`](../../../interfaces/action/IVerificationInfo.sol)。验证信息分为两层：
 
 - **Action 级别模板**：由行动创建者在提交提案时定义，通过 `verificationSchema(tokenAddress, actionId)` 查询，返回 `(keys[], descriptions[])`，说明加入者需要提交哪些验证字段（如 `["twitter_handle", "tweet_url"]`）及其含义（如 `["你的推特账号", "转发推文链接"]`）。
 - **Member 级别实例**：由成员在加入行动时提交具体值，通过 `verificationValue(tokenAddress, actionId, memberId, key)` 查询单个字段值，`verificationInfos(tokenAddress, actionId, memberId)` 查询所有字段当前值，`verificationInfosByRound(tokenAddress, actionId, memberId, round)` 查询指定 round 的历史快照。
 
-验证信息模板的 keys 和 descriptions 在 Proposal 创建回调时通过可选 KV 传入，后续不可修改；成员提交的验证信息值在加入时写入，每次修改参与量时可更新。
+验证信息模板的 keys 和 descriptions 在 Proposal 创建回调时通过可选 `targetData[5] = abi.encode(string[] keys, string[] descriptions)` 传入（两数组必须等长，不满足由本 Executor 拒绝），后续不可修改；成员提交的验证信息值在加入时写入，每次修改参与量时可更新。
 
 管理操作要求持有 groupId；自有参与操作要求持有 memberId。同一行动中成员只能归属一个 Group，追加不得改群；换群须先正常退出。`amount` 查询包含自有和体验参与总量。withdraw 只减少自有账本；自有余额归零且体验余额也为零时自动退出。Provider 只能用 trialWithdraw 撤回自己的体验代币；若使总参与量归零，合约自动退出成员。成员调用 exit 时同时结清自有和体验账本，分别返还成员和 Provider。无参与记录返回零元组，历史集合无记录返回空数组。
 
@@ -48,7 +48,7 @@ GroupAction 使用 MemberNFT 身份，`groupId` 是群主体的 `memberId`，不
 
 申请者须持有 memberId 且有该社区有效治理票；比例范围 `0..1e18`。apply 新建或替换当前申请：旧 ID 失效但保留票数，新 ID 单调递增且从零计票。取消只移除当前关联和榜内项，不扫描榜外补位。不存在申请查询回滚；无当前申请 ID 返回 0。
 
-投票 KV 使用 `keccak256("candidateMemberId")` / `abi.encode(uint256)`，对应当前有效 applicationId；每次回调将全部治理票增量记给该候选。候选字段为空时不增加候选票，有字段但申请已失效则回滚。排名增量维护，只保存可开放的前 n 名；榜满时榜外候选必须票数严格超过末位才替换，不因修改旧申请自动转移票数。
+投票 Target Data 不含 executor 保留项，本 Executor 的业务项从第 `0` 项起：`targetData[0] = abi.encode(uint256 candidateMemberId)`，对应当前有效 applicationId；传空数组表示不指定候选，项数多于 `1` 由本 Executor 拒绝。每次回调将全部治理票增量记给该候选。候选字段为空时不增加候选票，有字段但申请已失效则回滚。排名增量维护，只保存可开放的前 n 名；榜满时榜外候选必须票数严格超过末位才替换，不因修改旧申请自动转移票数。
 
 `submitOriginScores` 仅接受当前验证 Round；调用者持有 verifierMemberId，批次数组非空，每项不超过 100，`startIndex` 等于该群已验证数量且不能超出历史成员数。全部校验成功才锁定和计分；同一成员记录只消费一次。未验证的分数查询返回 `(0, false)`，与已验证零分区分。
 

@@ -170,7 +170,7 @@
 - executor 保留项校验正确
 
 ### ActionTarget / Executor 状态边界
-**覆盖要求**：覆盖仅关联 Executor 可调用 ActionTarget.join/exit、当前 MemberNFT 持有人可 `forceExit`、强制退出后 ActionTarget 当前加入查询清除而 Executor 资产及 GroupAction 归属状态不回写，以及后续 Executor 正常调用 exit 不回滚，也不通过旧 Executor 状态自动恢复加入。
+**覆盖要求**：覆盖仅关联 Executor 可调用 `ActionTarget.registerJoinState`/`clearJoinState`、当前 MemberNFT 持有人可 `forceExit`、强制退出后 ActionTarget 当前加入查询清除而 Executor 资产及 GroupAction 归属状态不回写，以及后续 Executor 正常调用 `clearJoinState` 不回滚，也不通过旧 Executor 状态自动恢复加入。
 
 **测试方式**：
 - 单元测试：`action/test/ActionTarget.t.sol` 的 forceExit 场景

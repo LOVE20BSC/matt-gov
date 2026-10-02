@@ -50,7 +50,6 @@ interface IGroupServiceExecutor is IActionExecutor, IGroupServiceExecutorEvents 
         uint256[] memory ratios, uint256[] memory amounts, uint256 ownerAmount);
 
     error AlreadyInitialized();
-    error InvalidKVLength();
     error InvalidRound(uint256 round);
     error NotMemberOwner(uint256 memberId);
     error ProposalNotVoted(address tokenAddress, uint256 proposalId);

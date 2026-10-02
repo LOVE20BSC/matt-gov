@@ -53,7 +53,6 @@ interface ILpExecutor is IActionExecutor, ILpExecutorEvents {
         external view returns (uint256 ratio, bool claimed);
 
     error AlreadyInitialized();
-    error InvalidKVLength();
     error UnauthorizedCallback();
     error InvalidParticipationAmount();
     error InvalidRound(uint256 round);

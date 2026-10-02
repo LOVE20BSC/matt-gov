@@ -8,9 +8,9 @@
 
 完整 ABI 见 [`ILpExecutor.sol`](../../../interfaces/action/ILpExecutor.sol)。
 
-创建 KV 的键为 `keccak256` 后的名称，值用 `abi.encode`：`joinTokenAddress(address)`、`govRatioMultiplier(uint256)`、`minGovRatio(uint256)` 必填；可选 `verificationKeys(string[])` 和 `verificationKeyGuides(string[])` 必须等长。LP 必须是已配置 Pair Factory 登记的交易对，V2 不要求交易对包含激励代币。两个治理比例使用 `1e18` 精度，`minGovRatio <= 1e18`。
+Target Data 是无键数组，按位置读取。第 `0` 项是 ActionTarget 保留的 executor，本 Executor 的项从第 `1` 项起固定为：`targetData[1] = abi.encode(address joinTokenAddress)`、`targetData[2] = abi.encode(uint256 govRatioMultiplier)`、`targetData[3] = abi.encode(uint256 minGovRatio)` 必填；可选 `targetData[4] = abi.encode(string[] verificationKeys, string[] verificationKeyGuides)`，两数组必须等长，不满足时由本 Executor 自己的错误拒绝。项数、位置与校验均由本 Executor 负责，ActionTarget 只原样透传。LP 必须是已配置 Pair Factory 登记的交易对，V2 不要求交易对包含激励代币。两个治理比例使用 `1e18` 精度，`minGovRatio <= 1e18`。
 
-写操作要求调用者持有 memberId；加入/追加金额为正，首次加入满足 `minGovRatio`。LP 从调用者转入 Executor，撤回时转给当前持有人。首次加入时调用 ActionTarget.join，全部退出时调用 ActionTarget.exit；失败全部回滚。激励接口见 [行动铸造](07-minting.md#铸造链路)。
+写操作要求调用者持有 memberId；加入/追加金额为正，首次加入满足 `minGovRatio`。LP 从调用者转入 Executor，撤回时转给当前持有人。首次加入时调用 `ActionTarget.registerJoinState`，全部退出时调用 `ActionTarget.clearJoinState`；失败全部回滚。激励接口见 [行动铸造](07-minting.md#铸造链路)。
 
 ## 时间权重
 

@@ -22,7 +22,7 @@
 
 完整 ABI 见 [`IGroupServiceExecutor.sol`](../../../interfaces/action/IGroupServiceExecutor.sol)。
 
-创建 KV 固定为 `actionTokenAddress(address)` 和 `govRatioMultiplier(uint256)`，键取 keccak256，值取 abi.encode；代币关系在创建时校验。join/exit 校验当前 NFT 持有人，按 RoundHistory 记录服务资格。加入资格仍为有效群 owner 或有效候选，领取只计算该轮实际贡献。共同准备/领取/销毁 ABI 见 [行动铸造](07-minting.md#铸造链路)。
+创建 Target Data 从第 `1` 项起（第 `0` 项是 ActionTarget 保留的 executor）固定为 `targetData[1] = abi.encode(address actionTokenAddress)` 和 `targetData[2] = abi.encode(uint256 govRatioMultiplier)`；代币关系在创建时校验。join/exit 校验当前 NFT 持有人，按 RoundHistory 记录服务资格。加入资格仍为有效群 owner 或有效候选，领取只计算该轮实际贡献。共同准备/领取/销毁 ABI 见 [行动铸造](07-minting.md#铸造链路)。
 
 保留的权重公式：
 
@@ -50,7 +50,7 @@ ownerOverflow(m) = theoreticalOwnerReward(m) - actualOwnerReward(m)
 
 其中 `theoreticalOwnerReward(m)` 使用上节权重公式；治理票读取 `Stake.validGovVotes(actionTokenAddress, m)` 和 `Stake.globalGovVotes(actionTokenAddress)`。每个角色先检查自己的分子，为零只跳过该角色，不影响同一 memberId 的另一角色；两个分子都为零则直接返回。上限启用且总治理票为零时只销毁 owner 理论激励；乘数为零直接关闭上限。结算使用服务铸造时 `actionTokenAddress` 社区最新的有效治理票；已结算的查询返回记录结果，不重新套用后续票权。
 
-`govRatioMultiplier` 来自服务 Proposal 创建时的 KV；owner 超额按每个 owner 单独记入 `ownerBurned`。服务代币已经由 Mint 铸造并转入 Executor 后，销毁直接调用该代币的 `burn(amount)`；不重复修改 Core Mint 的 `rewardBurned`。服务 Proposal 本轮没有激励时由 Mint 的内部 Round 准备逻辑处理，Executor 不重复判断。
+`govRatioMultiplier` 来自服务 Proposal 创建回调的 `targetData[2]`；owner 超额按每个 owner 单独记入 `ownerBurned`。服务代币已经由 Mint 铸造并转入 Executor 后，销毁直接调用该代币的 `burn(amount)`；不重复修改 Core Mint 的 `rewardBurned`。服务 Proposal 本轮没有激励时由 Mint 的内部 Round 准备逻辑处理，Executor 不重复判断。
 
 ## 二次分配
 
