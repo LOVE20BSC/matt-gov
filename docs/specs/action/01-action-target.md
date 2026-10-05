@@ -57,7 +57,7 @@ targetData[0] = abi.encode(executorAddress)
 
 重复加入、重复退出均不改状态、不发重复事件；因此 `forceExit` 后，Executor 正常调用 `clearJoinState` 必须成功且不改状态。重复铸造回滚 `AlreadyMinted(tokenAddress, actionId, round)`。不存在关联时 `executor` 返回零，但写操作拒绝零关联。`isJoined` 与 `isJoinedByRound` 无记录时返回 false。
 
-**铸造信息查询**：`actionReward(tokenAddress, actionId, round)` 返回 `(amount, minted)`——`amount` 为本轮已铸造的金额，`minted` 表示本轮是否已铸造；未铸造与未关联的行动均返回 `(0, false)`，不回滚。前端与索引据此判断某行动某轮是否已铸造，不需要扫描事件；同一笔铸造另由 `ActionRewardMinted(tokenAddress, actionId, round, amount)` 留痕，`amount` 与该查询返回值同源，供历史回溯与审计使用。`burnInfo(tokenAddress, actionId, round)` 返回 `(amount, burned)`——本轮已销毁的金额与是否已销毁，与 `RewardBurned` 事件同源；未销毁与未关联返回 `(0, false)`，不回滚。
+**铸造信息查询**：`actionReward(tokenAddress, actionId, round)` 返回 `(amount, minted)`——`amount` 在已铸造时为本轮实际铸造金额、未铸造时为本轮理论可铸造数量（按 Mint 账本计算，未投票、未达门槛、零额度或已销毁时为 `0`），`minted` 表示本轮是否已铸造；未关联的行动返回 `(0, false)`，已关联但未铸造的行动返回 `(理论数量, false)`，均不回滚。前端与索引据此判断某行动某轮是否已铸造与可铸造数量，不需要扫描事件；同一笔铸造另由 `ActionRewardMinted(tokenAddress, actionId, round, amount)` 留痕，`amount` 与该查询铸造后的返回值同源，供历史回溯与审计使用。`burnInfo(tokenAddress, actionId, round)` 返回 `(amount, burned)`——本轮已销毁的金额与是否已销毁，与 `RewardBurned` 事件同源；未销毁与未关联返回 `(0, false)`，不回滚。
 
 **激励链路对成员不透明**：Executor 每轮经 `mintActionReward` 一次性铸造该行动的整笔激励，去重键 `tokenAddress + actionId + round` 即行动级；铸造后由 Executor 按自身账本分给参与成员。成员只与 Executor 的成员级入口打交道，不需要了解也不依赖 ActionTarget 这一层；ActionTarget 不向成员暴露任何领取入口。
 

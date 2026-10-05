@@ -138,7 +138,7 @@ interface IActionExecutor is IProposalTarget, IActionExecutorEvents, IActionExec
 | `actionIdsByMemberId(tokenAddress, memberId, offset, limit, reverse) returns (actionIds[], total)` | `IExtensionCenter.actionIdsByAccount(tokenAddress, address account, address[] factories)` 部分对应 | 改名+改参（标准分页 `(offset, limit, reverse) → (列表, 总数)`；删除 factories 参数与 extensions/factories 返回数组） |
 | `memberIdsByActionId(tokenAddress, actionId, round, offset, limit, reverse)` | `accounts`/`accountsCount`/`accountsAtIndex`、`accountsByRound`(+`Count`/`AtIndex`) | 改参（全量 + Count + AtIndex 六项合并为一个**按轮**标准分页函数；不带 `round` 的当前态列表不单设，当前态用 `isJoined` 点查或传当前轮读取——同一集合只留一条完整读取路径） |
 | `executor(tokenAddress, actionId)` | `IExtensionCenter.extension(tokenAddress, actionId)` | 改名+改参（proposalId → actionId，Action 层视角） |
-| `actionReward(tokenAddress, actionId, round) returns (amount, minted)` | 无 | 新增（铸造信息只读入口，命名按集合读取规范的标量形态；旧无对应，成员自领模式下由 `govRatio(...).claimed` 承担） |
+| `actionReward(tokenAddress, actionId, round) returns (amount, minted)` | 无 | 新增（铸造信息只读入口：已铸造返回记录值，未铸造返回按 Mint 账本计算的理论可铸造数量，已销毁返回 0；命名按集合读取规范的标量形态；旧无对应，成员自领模式下由 `govRatio(...).minted` 承担） |
 | `forceExit(tokenAddress, actionId, memberId)` | 无 | 新增（应急登记清理） |
 | `mintActionReward(tokenAddress, actionId, round) returns (uint256 amount)` | 无（旧 `IReward` 的整笔领取在实例内部） | 新增（激励中转；只接受已创建关联行动的 `actionId`，与同层查询 `actionReward` 同键序） |
 | `burnRewardIfNeeded(tokenAddress, actionId, round)` | 无（旧整笔销毁在实例内部） | 新增（行动级整笔销毁：Executor 整笔退回后触发，判据经 `IActionExecutor.needBurnReward`，`InvalidRound` 校验已结束轮次） |
