@@ -201,7 +201,7 @@ ActionTarget 发出 `ActionRewardMinted` 而不是让各 Executor 各发一条�
 | `joinedAmount(tokenAddress, actionId, round)`（基座继承） | `IExtension.joinedAmount()`、`ITokenJoin.joinedAmountByRound(round)` | 改参并上提基座（实例作用域 → token + actionId + 加入轮） |
 | `joinedAmountByMemberId(tokenAddress, actionId, round, memberId)`（基座继承） | `IExtension.joinedAmountByAccount(address account)`、`ITokenJoin.joinedAmountByAccountByRound(address account, round)` | 改名+改参并上提基座（ByAccount → ByMemberId） |
 | `currentVoteRound()`、`currentJoinRound()`、`currentMintRound()` | 无 | 新增（阶段映射显式化） |
-| `init(actionTargetAddress, memberNFTAddress, phaseAddress, stakeAddress, pairFactoryAddress)` | 无 | 新增（LP 的预期激励经 `ActionTarget.actionReward` 读取，无 `mintAddress` 依赖） |
+| `init(actionTargetAddress, stakeAddress)` | 无 | 新增（MemberNFT、Phase 与 Pair Factory 从 Stake 派生；LP 的预期激励经 `ActionTarget.actionReward` 读取，无 `mintAddress` 依赖） |
 | 继承 `IProposalTarget` | 无 | 新增 |
 | 无 | `ITokenJoin.JOIN_TOKEN_ADDRESS()` | 删除（LP 场景由 `pairFactoryAddress` 推导） |
 | 无 | `ITokenJoin.WAITING_BLOCKS()` | 删除 |

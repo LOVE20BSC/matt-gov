@@ -4,7 +4,7 @@
 
 ## 配置与接口
 
-部署依赖通过一次性 `init` 绑定；每个行动的配置由创建回调解析，不能放进共享合约的全局 init。
+部署依赖通过一次性 `init` 绑定：ActionTarget 与 Stake；MemberNFT、Phase 与 Pair Factory 从 Stake 派生（`memberNFTAddress()`、`phaseAddress()`、`pairFactoryAddress()`），不重复作为入参。每个行动的配置由创建回调解析，不能放进共享合约的全局 init。
 
 完整 ABI 见 [`ILpExecutor.sol`](../../../interfaces/action/ILpExecutor.sol)。
 
@@ -16,7 +16,7 @@ Target Data 是无键数组，按位置读取。第 `0` 项是 ActionTarget 保�
 
 | 条件 | 回滚错误 |
 | --- | --- |
-| `init` 任一依赖地址为零 | `InvalidAddress()` |
+| `init` 依赖地址（含从 Stake 派生的 MemberNFT、Phase 与 Pair Factory）为零 | `InvalidAddress()` |
 | `targetData` 项数不是 `4` | `InvalidTargetDataLength()` |
 | 投票回调 Target Data 超过保留的 executor 一项（无投票业务项） | `InvalidTargetDataLength()` |
 | `targetData[1]` 为零 | `InvalidJoinTokenAddress()` |
