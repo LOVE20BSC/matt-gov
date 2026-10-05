@@ -140,6 +140,8 @@ else:
 
 `mintGovReward` 与 `mintProposalReward` 在三项和为 0 时拒绝 `NoRewardAvailable`，重复保护使用独立状态位，不能用金额是否大于零判断。
 
+`burnUnmintedProposalReward(tokenAddress, round, proposalId)` 销毁**未铸造**的行动激励，供 ActionTarget 在行动级销毁链路中调用（判据来自绑定 Executor 的 `needBurnReward`）。仅该 Proposal 的注册 Target 可调用（否则 `UnauthorizedCaller`）；只能处理已结束轮次（否则 `RoundNotReadyToMint`）；自动准备后，该 Proposal 已结算回滚 `AlreadyMinted`、激励为零回滚 `NoRewardAvailable`。成功时标记该 Proposal 已结算——此后 `mintProposalReward` 一律回滚 `AlreadyMinted`——`rewardBurned` 按激励量累计（预留份额回流可用量，不改动轮次池与其他 Proposal 的份额），并以 `RewardBurned(tokenAddress, round, amount, proposalRewardUnallocatable)` 留痕，返回销毁量。
+
 `isRewardPrepared` 查询本轮是否已准备；未准备时返回 `false`。
 
 `rewardAvailable` 按 `maxSupply - totalSupply - reservedAvailable` 计算当前可分配额度；`reservedAvailable` 返回 `rewardReserved - rewardMinted - rewardBurned`。

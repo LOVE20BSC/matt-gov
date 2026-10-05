@@ -308,6 +308,7 @@ OZ 5 的标准回滚由固定依赖提供：`IERC721Errors`、`ERC721OutOfBounds
 | `mintGovReward(tokenAddress, memberId, round) returns (voteReward, boostReward, burnReward)` | `mintGovReward(tokenAddress, round) returns (verifyReward, boostReward, burnReward)` | 改参（新增 memberId，首返回改名） |
 | `mintGovRewards(tokenAddress, memberId, rounds[]) returns (voteRewards[], boostRewards[], burnRewards[])` | 无 | 新增（批量原子铸造） |
 | `mintProposalReward(tokenAddress, round, proposalId) returns (uint256 amount)` | `mintActionReward(tokenAddress, round, actionId) returns (uint256)` | 改名 |
+| `burnUnmintedProposalReward(tokenAddress, round, proposalId) returns (uint256 amount)` | 无 | 新增（销毁未铸造的行动激励：仅 Target 可调，标记已结算并累计 `rewardBurned`；供 ActionTarget 行动级销毁链路调用） |
 | `isProposalIdWithReward(tokenAddress, round, proposalId)` | `isActionIdWithReward(tokenAddress, round, actionId)` | 改名 |
 | `proposalReward(tokenAddress, round)` | `actionReward(tokenAddress, round)` | 改名 |
 | `PROPOSAL_REWARD_MIN_VOTE_PER_THOUSAND()` | `ACTION_REWARD_MIN_VOTE_PER_THOUSAND()` | 改名（保留大写配置 getter） |
@@ -333,7 +334,7 @@ OZ 5 的标准回滚由固定依赖提供：`IERC721Errors`、`ERC721OutOfBounds
 | `RewardPrepared(tokenAddress, round, govReward, proposalReward, eligibleProposalVotes, rewardReserved, rewardBurned)` | `PrepareReward(tokenAddress, round, govRewardAmount, actionRewardAmount)` | 改名+改参（2 → 5 数据字段） |
 | `GovernanceRewardMinted(tokenAddress, round, uint256 memberId, voteReward, boostReward, burnReward)` | `MintGovReward(tokenAddress, round, address account, verifyReward, boostReward, burnReward)` | 改名+改参 |
 | `ProposalRewardMinted(tokenAddress, round, proposalId, address target, uint256 amount)` | `MintActionReward(tokenAddress, round, actionId, address account, reward)` | 改名+改参（`account` → `target`） |
-| `RewardBurned(tokenAddress, round, amount, bytes32 reason)` | `BurnActionReward(tokenAddress, round, burnReward)` + `BurnBoostReward(tokenAddress, round, burnReward)` | 两事件合并，用 `reason` 区分 |
+| `RewardBurned(tokenAddress, round, amount, bytes32 reason)` | `BurnActionReward(tokenAddress, round, burnReward)` + `BurnBoostReward(tokenAddress, round, burnReward)` | 两事件合并，用 `reason` 区分；`burnUnmintedProposalReward` 以 `proposalRewardUnallocatable` 复用同一事件 |
 
 ### 错误
 
