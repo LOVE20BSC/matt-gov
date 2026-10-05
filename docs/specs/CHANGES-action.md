@@ -63,6 +63,7 @@
 - **新增**：`actions(tokenAddress, offset, limit, reverse)` 返回 `actionIds[]` 和 `executors[]`（本代币全部已关联行动）
 - **新增**：`actionIdsByExecutor(tokenAddress, executor, offset, limit, reverse)`（某 Executor 名下的行动）
 - **新增**：`votedActions(tokenAddress, round, offset, limit, reverse)` 返回 `actionIds[]` 和 `executors[]`（指定轮有投票的行动）
+- **新增**：`joinedRounds(tokenAddress, actionId, memberIds[])` 批量返回每个成员当前加入状态的加入轮（未加入为 0，与 `JoinStateRegistered` 的 round 同源）
 - **设计**：`actions` / `actionIdsByExecutor` 由创建回调维护的追加写入索引派生（绑定建立后永不删除）；`votedActions` 先从 Vote 的 `votedProposalIds` 逐页读取本轮有票 Proposal，再按映射筛选
 - **分页**：`actionIdsByMemberId` / `memberIdsByActionId` / `actionIdsByExecutor` / `actions` / `votedActions` 全部使用标准分页签名
 - **成员列表按轮读取**：`memberIdsByActionId(tokenAddress, actionId, round, offset, limit, reverse)` 只提供按轮一条完整读取路径；不带 `round` 的当前态列表不单设，当前态用 `isJoined` 点查或传当前轮读取
