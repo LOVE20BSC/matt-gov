@@ -18,7 +18,7 @@
 **非通用部分**（各 Executor 自行定义）：
 - `init` 与配置项 — 各 Executor 依赖不同，配置来自行动创建时的 Target Data
 - `join` — 参数因行动类型而异：
-  - `ILpExecutor`: `join(tokenAddress, actionId, memberId, amount, verificationInfos)`
+  - `ILpExecutor`: `join(tokenAddress, actionId, memberId, amount)`
   - `IGroupActionExecutor`: `join(tokenAddress, actionId, groupId, memberId, amount, verificationInfos)` — 多了 `groupId`
   - `IGroupServiceExecutor`: `join(serviceTokenAddress, serviceProposalId, memberId, verificationInfos)` — 无 `amount`
 - `withdraw` — 部分撤回接口，LP 和 GroupAction 需要，GroupService 不需要

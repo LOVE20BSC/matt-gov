@@ -119,7 +119,7 @@ interface IActionExecutor is IProposalTarget, IActionExecutorEvents, IActionExec
 
 旧：`LOVE20TKM/extension/src/interface/IExtensionCenter.sol`、`LOVE20TKM/extension/src/interface/IExtension.sol`。
 
-新 `IActionTarget` 继承 `IProposalTarget`，承担「提案与执行合约关联 + 通用加入/退出登记 + 成员→行动跨类型索引 + 激励中转」。旧 `ExtensionCenter` 的注册中心、委托、验证信息与「每行动一实例」职责不迁移；`addAccount` 的「本轮有票」前置校验改由各 Executor 按其阶段与资格规则判定。
+新 `IActionTarget` 继承 `IProposalTarget`，承担「提案与执行合约关联 + 通用加入/退出登记 + 成员→行动跨类型索引 + 激励中转」。旧 `ExtensionCenter` 的注册中心、委托、验证信息与「每行动一实例」职责不迁移；`addAccount` 的「本轮有票」前置校验改由各 Executor 按其阶段与资格规则判定：行动创建轮门禁由 `JoinNotOpen` 承担，逐轮奖励由铸造时的 Vote 门禁（`mintActionReward` / Mint）承担，加入本身不要求行动在加入轮有票。
 
 **接口组织**：旧 `IExtensionCenter` 按 `IExtensionCenterEvents` + `IExtensionCenterErrors` + 主接口三部分声明；新 `IActionTarget` 保留相同结构：`IActionTargetEvents` + `IActionTargetErrors` + 主接口。
 
@@ -194,20 +194,20 @@ ActionTarget 发出 `ActionRewardMinted` 而不是让各 Executor 各发一条�
 | `GOV_RATIO_MULTIPLIER(tokenAddress, actionId)`、`MIN_GOV_RATIO(tokenAddress, actionId)` | `ILp` 同名 | 改参（补单例行动作用域；配置来自创建回调的 Target Data） |
 | `deduction(tokenAddress, actionId, round, memberId) returns (amount, joinBlocks[], joinAmounts[])` | `ILp.deduction(round, address account) returns (deduction, joinBlocks[], joinAmounts[])` | 改参 |
 | `totalDeduction(tokenAddress, actionId, round)` | `ILp.totalDeduction(round)` | 改参 |
-| `govRatio(tokenAddress, actionId, round, memberId) returns (ratio, claimed)` | `ILp.govRatio(round, address account) returns (ratio, claimed)` | 改参 |
-| `join(tokenAddress, actionId, memberId, amount, verificationInfos[])` | `ITokenJoin.join(uint256 amount, string[] verificationInfos)` | 改参 |
+| `govRatio(tokenAddress, actionId, round, memberId) returns (ratio, minted)` | `ILp.govRatio(round, address account) returns (ratio, claimed)` | 改参（返回名 `claimed` → `minted`，与基座成员结算标志统一） |
+| `join(tokenAddress, actionId, memberId, amount)` | `ITokenJoin.join(uint256 amount, string[] verificationInfos)` | 改参（去掉 `verificationInfos`：LP 无验证阶段，验证信息落点不迁移） |
 | `exit(tokenAddress, actionId, memberId)` | `ITokenJoin.exit()` | 改参 |
 | `withdraw(tokenAddress, actionId, memberId, amount)` | 无（旧只有全额 `exit`） | 新增（部分撤回） |
 | `joinedAmount(tokenAddress, actionId, round)`（基座继承） | `IExtension.joinedAmount()`、`ITokenJoin.joinedAmountByRound(round)` | 改参并上提基座（实例作用域 → token + actionId + 加入轮） |
 | `joinedAmountByMemberId(tokenAddress, actionId, round, memberId)`（基座继承） | `IExtension.joinedAmountByAccount(address account)`、`ITokenJoin.joinedAmountByAccountByRound(address account, round)` | 改名+改参并上提基座（ByAccount → ByMemberId） |
 | `currentVoteRound()`、`currentJoinRound()`、`currentMintRound()` | 无 | 新增（阶段映射显式化） |
-| `init(actionTargetAddress, memberNFTAddress, phaseAddress, stakeAddress, mintAddress, pairFactoryAddress)` | 无 | 新增 |
+| `init(actionTargetAddress, memberNFTAddress, phaseAddress, stakeAddress, pairFactoryAddress)` | 无 | 新增（LP 的预期激励经 `ActionTarget.actionReward` 读取，无 `mintAddress` 依赖） |
 | 继承 `IProposalTarget` | 无 | 新增 |
 | 无 | `ITokenJoin.JOIN_TOKEN_ADDRESS()` | 删除（LP 场景由 `pairFactoryAddress` 推导） |
 | 无 | `ITokenJoin.WAITING_BLOCKS()` | 删除 |
 | 无 | `ITokenJoin.joinInfo(account) returns (joinedRound, amount, lastJoinedBlock, exitableBlock)` | 删除（LP 无退出等待期） |
-| 无 | `IReward.reward(round)`、`rewardByAccount`、`claimReward`、`claimRewards`、`burnInfo` | 删除（领取模型 → 铸造分发模型；`burnInfo` 以行动级口径回到基座，见 `IActionExecutor`） |
-| 无 | `IReward.burnRewardIfNeeded(round)` | 上提基座（`burnRewardIfNeeded(tokenAddress, actionId, round)`，三 Executor 继承） |
+| 无 | `IReward.reward(round)`、`rewardByAccount`、`claimReward`、`claimRewards`、`burnInfo` | 删除（领取模型 → 铸造分发模型；`burnInfo` 以行动级口径落到 `ActionTarget`，见 `IActionTarget`） |
+| 无 | `IReward.burnRewardIfNeeded(round)` | 上提行动层（判定 = 基座 `needBurnReward`，执行 = `ActionTarget.burnRewardIfNeeded`） |
 
 ### 事件与错误
 
@@ -216,13 +216,19 @@ ActionTarget 发出 `ActionRewardMinted` 而不是让各 Executor 各发一条�
 | `Joined(tokenAddress, actionId, memberId, round, amount)`、`Withdrawn`、`Exited` | `ITokenJoin.Join(tokenAddress, round, actionId, address account, amount)`、`Exit(...)` | 改名+改参（Executor 层事件包含完整业务字段；ActionTarget 层发出简化的 `Joined`/`Exited` 事件） |
 | `MemberRewardMinted(tokenAddress, actionId, memberId, round, mintAmount, burnAmount)` | `IReward.ClaimReward(tokenAddress, round, actionId, address account, mintAmount, burnAmount)` | 改名+改参（`address account` → `uint256 memberId`；**per-member 口径与两个金额分量都沿用**；声明在共用基座 `IActionExecutorEvents`） |
 | 错误 `InsufficientGovRatio()` | `ILp.InsufficientGovRatio()` | 保留 |
-| 错误 `InvalidParticipationAmount()` | 无 | 新增（本接口与 GroupAction 共用，GroupService 不抛，故保留在各自子接口、不上提基座） |
+| 错误 `InvalidJoinTokenAddress()` | `ITokenJoin.InvalidJoinTokenAddress()` | 保留（落点改为创建回调的 `joinTokenAddress` 校验） |
+| 错误 `InvalidJoinTokenFactory()` | `ILpFactory.InvalidJoinTokenFactory()` | 保留（落点改为创建回调的 Factory 登记交易对校验） |
+| 错误 `NotJoined()` | `ITokenJoin.NotJoined()` | 保留（落点改为 `exit` 无加入记录） |
+| 错误 `InvalidParticipationAmount()` | 无 | 新增（本接口与 GroupAction 共用，GroupService 不抛，故保留在各自子接口、不上提基座；承接 `JoinAmountZero`） |
+| 错误 `InvalidTargetDataLength()` | 无 | 新增（Target Data 项数不符，命名同 core `IVoteErrors`） |
+| 错误 `InvalidMinGovRatio()` | 无 | 新增（`minGovRatio > 1e18`） |
+| 错误 `InvalidAddress()` | 无 | 新增（`init` 依赖零地址） |
 | 错误 `AlreadyInitialized`、`UnauthorizedCallback`、`InvalidRound`、`RoundNotStarted`、`NotMemberOwner`、`ProposalNotVoted`、`RewardAlreadyMinted` | 无 | 新增（声明在共用基座 `IActionExecutorErrors`，本接口由继承获得） |
-| 无 | `ITokenJoin.InvalidJoinTokenAddress`、`JoinAmountZero`、`NotJoined`、`NotEnoughWaitingBlocks`；`IReward.AlreadyClaimed` | 删除（`JoinAmountZero` 语义并入 `InvalidParticipationAmount`） |
+| 无 | `ITokenJoin.JoinAmountZero`、`NotEnoughWaitingBlocks()`；`IReward.AlreadyClaimed()` | 删除（`JoinAmountZero` 语义并入 `InvalidParticipationAmount`；退出等待取消，`NotEnoughWaitingBlocks` 不再需要；`AlreadyClaimed` 由基座 `RewardAlreadyMinted` 承接） |
 
 LP 侧既不声明 `ActionRewardMinted`（在 `IActionTargetEvents`）也不声明 `RewardBurned`：LP 的销毁全部带成员归属（`burnReward = theoreticalReward − mintReward`，见 [LP Executor](../../docs/specs/action/04-lp-executor.md)），已并入 `MemberRewardMinted.burnAmount`，不存在无成员归属的整批销毁。旧 `IReward.BurnReward` 的对应物因此在 LP 侧删去，只在 `IGroupServiceExecutor` 保留（见第 5 节）。
 
-LP 事件数为 **4**（`Joined`、`Withdrawn`、`Exited`，加基座继承的 `MemberRewardMinted`），错误数为 **10**（`InsufficientGovRatio`、`InvalidParticipationAmount` 独有，其余 8 个由基座继承），自身函数 **8**（`joinedAmount` 族四条上提基座），合计 ABI 38 条。
+LP 事件数为 **4**（`Joined`、`Withdrawn`、`Exited`，加基座继承的 `MemberRewardMinted`），错误数为 **16**（独有 8：`InvalidAddress`、`InvalidJoinTokenAddress`、`InvalidJoinTokenFactory`、`InvalidTargetDataLength`、`InvalidMinGovRatio`、`InsufficientGovRatio`、`InvalidParticipationAmount`、`NotJoined`；其余 8 个由基座继承），自身函数 **8**（`joinedAmount` 族四条上提基座），合计 ABI 44 条。
 
 ---
 

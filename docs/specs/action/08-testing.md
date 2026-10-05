@@ -13,7 +13,7 @@
 | ActionTarget | 防御路径（桩测试） | 推举/投票回调面对未绑定 Proposal 回滚 `UnboundProposal`（真依赖不可达，另起 `*StubTest`）；`mintActionReward` 在代币 `transfer` 返 false 时回滚 `TransferFailed`（桩代币） |
 | [Executor 基座](00-executor-interface.md) | 批量成员结算、销毁判据、参与量查询 | `mintMemberRewards` 平行数组按下标配对、长度不一致回滚 `BatchLengthMismatch`、任一元素失败整笔回滚、空数组无状态变化；`needBurnReward` 只对已结束轮次且无人有资格铸造的激励返回真；`joinedAmount`/`joinedAmountByMemberId` 返回截止加入轮结束的累计参与量（与各 Executor 参与账本一致，`round` 晚于当前加入轮返回 0），`joinedAmountTokenAddress` 为参与计价代币 |
 | [ActionTarget](01-action-target.md) | 行动级销毁 | 任何人可触发 `burnRewardIfNeeded`：未绑定/已销毁/未铸造/额度为零/`needBurnReward` 为假均无操作，未结束轮次回滚 `InvalidRound`，重复调用无操作；经 Mint 的 `burnUnmintedProposalReward` 核销该行动本轮预留激励（标记该 Proposal 已结算、此后铸造回滚），无代币移动，`RewardBurned`/`burnInfo` 与 Mint 账本同源 |
-| [LP](04-lp-executor.md) | 时间加权、治理上限、部分撤回、完整退出 | 按 V2 聚合扣减结算，结算不超预算，零分母不 panic |
+| [LP](04-lp-executor.md) | 时间加权、治理上限、部分撤回与全额自动退出、完整退出 | 按 V2 聚合扣减结算，结算不超预算，零分母不 panic；轮次与错误映射按 04 表 |
 | [阶段](02-phase-model.md) | LP 冷启动、GroupAction/GroupService 对齐 | 按确认后的三/四阶段映射，未开始回滚 RoundNotStarted |
 | [GroupAction](05-group-action-executor.md) | 激活、配置更新、自有/体验参与 | 按角色权限更新各自账本 |
 | GroupAction | Provider 部分/全部撤回、越权退出、NFT 转移 | 只返还该 Provider 体验代币；剩余自有或其他体验余额时不退出，总参与量归零才自动退出；权限与收款跟随对应 NFT |

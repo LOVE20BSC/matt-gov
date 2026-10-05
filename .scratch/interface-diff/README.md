@@ -18,7 +18,7 @@
 
 | 侧 | 接口文件 | 接口声明 | 函数 | 事件 | 错误 |
 | --- | --- | --- | --- | --- | --- |
-| 新（本目录 `interfaces/` + `core` 仓库 `src/interfaces/`） | 27 | 54 | 412 | 69 | 209 |
+| 新（本目录 `interfaces/` + `core` 仓库 `src/interfaces/`） | 27 | 55 | 412 | 69 | 215 |
 | 旧（6 个 LOVE20TKM 仓库） | 52 | 115 | 655 | 100 | 274 |
 
 **统计口径**（三份分层文档的计数均可按此复现）：
@@ -161,7 +161,7 @@
 | 层 | `Events` 子接口 | `Errors` 子接口 | 待各自迁移时补齐 |
 | --- | --- | --- | --- |
 | core | 8 个：`IMemberNFT`、`ILOVE20Token`、`ILaunch`、`IPhase`、`IMint`、`IStake`、`ISubmit`、`IVote` | 4 个：`IMemberNFT`、`ILOVE20Token`、`ILaunch`、`IPhase` | `IMint`、`IStake`、`ISubmit`、`IVote` 的 `Errors` 子接口 |
-| action | 4 个：`IActionTarget`、`IGroupActionExecutor`、`IGroupServiceExecutor`、`ILpExecutor` | 无 | 各接口的 `Errors` 子接口 |
+| action | 5 个：`IActionTarget`、`IActionExecutor`、`IGroupActionExecutor`、`IGroupServiceExecutor`、`ILpExecutor` | 3 个：`IActionExecutor`、`IActionTarget`、`ILpExecutor` | `IGroupActionExecutor`、`IGroupServiceExecutor` 的 `Errors` 子接口 |
 | group-chat | 8 个：`IActionManager`、`IGovVotedBanSource`、`IGroupAdmin`、`IGroupChat`、`IGroupChatBanList`、`IGroupChatDelegate`、`IGroupMember`、`ITokenManager` | 无 | 各接口的 `Errors` 子接口 |
 
 计数影响：每新增一个子接口声明，`接口声明` 计数 `+1`；函数、事件、错误数不变。

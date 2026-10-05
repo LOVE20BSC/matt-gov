@@ -46,7 +46,7 @@
 - Foundry 覆盖率报告显示相关函数分支覆盖率达 100%
 
 ### LP 行动执行合约
-**覆盖要求**：覆盖旧 `LOVE20TKM/extension-lp` V2 业务在 `action` 中的重写路径，包括 MemberNFT 参与、每笔加入时冻结时间扣减、完整退出、整笔 Proposal 激励铸造后的内部成员结算/溢出销毁和失败回滚；不验收或迁移 V1 LP 实现。LP 手续费结算属于 `core/Stake`，不由 LP 行动 Executor 承担。
+**覆盖要求**：覆盖旧 `LOVE20TKM/extension-lp` V2 业务在 `action` 中的重写路径，包括 MemberNFT 参与、每笔加入时冻结时间扣减、部分撤回与全额撤回自动退出、完整退出、整笔 Proposal 激励铸造后的内部成员结算/溢出销毁和失败回滚；不验收或迁移 V1 LP 实现。LP 手续费结算属于 `core/Stake`，不由 LP 行动 Executor 承担。
 
 **测试方式**：
 - 单元测试：`action/test/LPExecutor.t.sol` 的时间扣减、部分撤回、完整退出、激励结算场景

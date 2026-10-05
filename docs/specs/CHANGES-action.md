@@ -18,7 +18,7 @@
 | 组件 | 状态 | 旧位置 | 新位置 | 核心变化 |
 |------|------|--------|--------|----------|
 | ActionTarget | 重构 | `LOVE20TKM/extension/src/ExtensionCenter.sol` | `action/ActionTarget.sol` | 统一行动 Target，新增 forceExit |
-| LP 行动 | 重构 | `LOVE20TKM/extension-lp/src/ExtensionLp.sol`、`LOVE20TKM/extension-lp/src/ExtensionLpFactoryV2.sol` | `action/LPAction.sol` | 只迁移 V2，支持部分撤出 |
+| LP 行动 | 重构 | `LOVE20TKM/extension-lp/src/ExtensionLp.sol`、`LOVE20TKM/extension-lp/src/ExtensionLpFactoryV2.sol` | `action/LpExecutor.sol` | 只迁移 V2，支持部分撤回 |
 | GroupAction | 修改 | `LOVE20TKM/extension-group/src/ExtensionGroupAction.sol`、`LOVE20TKM/extension-group/src/GroupJoin.sol`、`LOVE20TKM/extension-group/src/GroupVerify.sol` | `action/GroupAction.sol` | 保留群 ID/成员 ID 索引，统一为 MemberNFT，新增公共验证者 |
 | GroupService | 修改 | `LOVE20TKM/extension-group/src/ExtensionGroupService.sol`、`LOVE20TKM/extension-group/src/GroupRecipients.sol` | `action/GroupService.sol` | 保留聚合和 owner 二次分配 |
 
@@ -193,15 +193,25 @@ effectiveRatio = min(effectiveLpRatio, govRatioCap)
 - **旧**：`ExtensionLp` 一次性领取行动激励，再在扩展内按成员结算
 - **新**：Executor 通过 ActionTarget 一次性取得整笔 Proposal 激励，再内部分配
 
+#### 部分撤回（BSC 新增）
+- 撤回只更新当前加入 Round；全额撤回（金额等于当前余额）按退出处理，清空加入状态并调用 `ActionTarget.clearJoinState`，事件记 `Withdrawn`
+- 取消旧 `WAITING_BLOCKS = 1` 的退出等待：加入扣减按加入时点计价，同区块加入即退出不产生有效参与量，等待不再提供额外保护
+
+#### 配置单位
+- `govRatioMultiplier` 由旧的原始倍数（测试用 `2`）改为 `1e18` 精度（同倍数为 `2e18`）；`minGovRatio` 沿用 `1e18` 精度
+
 ### ❌ 删除能力
 - **V1 实现**：不迁移，只迁移 V2
+- **验证信息落点**：LP 无验证阶段，成员 `join` 不再携带 `verificationInfos`，创建 Target Data 不再包含 `verificationKeys`/`verificationKeyGuides`（F-15 裁决：验证信息不再可查）
+- **退出等待**：取消旧退出等待与相关错误
 
 ### 📍 实现参考
 ```
 旧代码：LOVE20TKM/extension-lp/src/ExtensionLp.sol、LOVE20TKM/extension-lp/src/ExtensionLpFactoryV2.sol
 保留：时间权重公式、治理票上限
 修改：主体身份、阶段映射、激励铸造流程
-删除：V1 实现
+新增：部分撤回（含全额自动退出）
+删除：V1 实现、退出等待、验证信息落点
 ```
 
 ---
