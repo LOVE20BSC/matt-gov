@@ -83,11 +83,7 @@ interface IGroupActionExecutor is IGroupActionIndexes, IActionExecutor, IVerific
         external view returns (uint256[] memory);
     function memberIdsByGroupId(address tokenAddress, uint256 actionId, uint256 round, uint256 groupId)
         external view returns (uint256[] memory);
-    function joinedAmountByMemberId(address tokenAddress, uint256 actionId, uint256 round, uint256 memberId)
-        external view returns (uint256);
     function totalJoinedAmountByGroupId(address tokenAddress, uint256 actionId, uint256 round, uint256 groupId)
-        external view returns (uint256);
-    function joinedAmount(address tokenAddress, uint256 actionId, uint256 round)
         external view returns (uint256);
     function trialAccountsWaitingAdd(address tokenAddress, uint256 actionId, uint256 groupId,
         uint256 providerMemberId, uint256[] calldata memberIds, uint256[] calldata amounts) external;

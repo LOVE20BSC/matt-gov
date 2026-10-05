@@ -35,7 +35,7 @@
 ### ✅ 保留逻辑
 - **Proposal → Executor 映射**：参考 `LOVE20TKM/extension/src/ExtensionCenter.sol` 的映射逻辑
 - **加入/退出状态**：参考 `addAccount` / `removeAccount` 逻辑
-- **按轮加入快照**：参考 `_accountsHistory` 的 RoundHistoryAddressSet 用法，对应 `isJoinedByRound` / `memberIdsByActionIdByRound`
+- **按轮加入快照**：参考 `_accountsHistory` 的 RoundHistoryAddressSet 用法，对应 `isJoinedByRound` / `memberIdsByActionId`
 
 ### 🔄 关键变化
 
@@ -47,12 +47,12 @@
 - **保留项位置**：`targetData` 的第 `0` 项固定为 `executor`
 - **最小长度**：`targetData.length` 必须 >= 1，第 0 项为 executor，其余项由 Executor 解释
 - **格式**：`targetData[0] = abi.encode(executorAddress)`
-- **校验**：第 1～3 步依次为「第 0 项存在」「解码后非零且有代码」「`IActionExecutor(executor).actionTarget() == address(this)`」，任一失败回滚 `InvalidExecutor()`
+- **校验**：第 1～3 步依次为「第 0 项存在」「第 0 项恰为 32 字节（`abi.encode(address)` 形态）、解码后非零且有代码」「`IActionExecutor(executor).actionTarget() == address(this)`」，任一失败回滚 `InvalidExecutor()`；第 4 步同一复合键重复创建回滚 `AlreadyCreated(tokenAddress, actionId)`
 
 #### Target Data 位置契约
 - **无键数组**：`targetData` 是 `bytes[]`，没有 keys，只能按位置读取；旧 `ActionBody` 的具名字段与早期设想的 `bytes32[] keys` + `bytes[] values` 写法均作废
 - **归属**：除第 `0` 项 executor 保留项外，项数、每项位置与编码由各 Executor 在自己规格中固定并自行校验；ActionTarget 只原样透传，不设通用项数错误
-- **回调差异**：创建回调把第 `0` 项留给 executor 保留项，业务项从 `1` 起；推举与投票回调不含保留项（ActionTarget 用映射定位 Executor），业务项从 `0` 起
+- **回调差异**：创建与推举回调传入同一份 `body.targetData`（core `Submit.sol:289,296`），第 `0` 项均为 executor 保留项、业务项从 `1` 起；投票回调为投票者提供的数据、不含保留项（ActionTarget 用映射定位 Executor），业务项从 `0` 起
 
 #### 登记入口改名
 - **旧**：`ExtensionCenter.addAccount` / `removeAccount`
@@ -60,22 +60,24 @@
 - **原因**：`IActionExecutor` 保留了旧 `ITokenJoin.exit` 的名字（动本金）；ActionTarget 侧只登记加入状态。二者若同名则 selector 相同、效果不同，集成方会误接
 
 #### 查询接口
-- **新增**：`actionIdsByExecutor(tokenAddress, round, executor, offset, limit, reverse)`
-- **新增**：`actions(tokenAddress, round, offset, limit, reverse)` 返回 `actionIds[]` 和 `executors[]`
-- **设计**：先从 Vote 的 `votedProposalIds` 逐页读取本轮有票 Proposal，再按映射筛选，不维护独立反向索引
-- **分页**：`actionIdsByMemberId` / `memberIdsByActionId` / `memberIdsByActionIdByRound` / `actionIdsByExecutor` / `actions` 全部使用标准分页签名
+- **新增**：`actions(tokenAddress, offset, limit, reverse)` 返回 `actionIds[]` 和 `executors[]`（本代币全部已关联行动）
+- **新增**：`actionIdsByExecutor(tokenAddress, executor, offset, limit, reverse)`（某 Executor 名下的行动）
+- **新增**：`votedActions(tokenAddress, round, offset, limit, reverse)` 返回 `actionIds[]` 和 `executors[]`（指定轮有投票的行动）
+- **设计**：`actions` / `actionIdsByExecutor` 由创建回调维护的追加写入索引派生（绑定建立后永不删除）；`votedActions` 先从 Vote 的 `votedProposalIds` 逐页读取本轮有票 Proposal，再按映射筛选
+- **分页**：`actionIdsByMemberId` / `memberIdsByActionId` / `actionIdsByExecutor` / `actions` / `votedActions` 全部使用标准分页签名
+- **成员列表按轮读取**：`memberIdsByActionId(tokenAddress, actionId, round, offset, limit, reverse)` 只提供按轮一条完整读取路径；不带 `round` 的当前态列表不单设，当前态用 `isJoined` 点查或传当前轮读取
 
 #### 分页顺序契约
-- **声明**：加入态集合（`actionIdsByMemberId` / `memberIdsByActionId` / `memberIdsByActionIdByRound`）的 `offset` **不保证跨调用稳定**——旧 `RoundHistoryAddressSet.remove` 已用 swap-and-pop（`LOVE20TKM/extension/src/lib/RoundHistoryAddressSet.sol:34-59`），新实现沿用该原语，删除时末位元素被搬到被删位置
+- **声明**：加入态集合（`actionIdsByMemberId` / `memberIdsByActionId`）的 `offset` **不保证跨调用稳定**——旧 `RoundHistoryAddressSet.remove` 已用 swap-and-pop（`LOVE20TKM/extension/src/lib/RoundHistoryAddressSet.sol:34-59`），新实现沿用该原语，删除时末位元素被搬到被删位置
 - **调用方影响**：`reverse` 不等于「加入逆序」；前端与索引每次以 `total` 为准重新拉取，不跨调用缓存 `offset`、不增量补页
-- `actionIdsByExecutor` / `actions` 由 Vote 的只追加列表派生，不受此约束
+- `actions` / `actionIdsByExecutor` 由创建回调维护的追加写入索引派生（绑定建立后永不删除，`reverse` 即创建逆序）；`votedActions` 由 Vote 的本轮只追加列表派生，均不受 swap-and-pop 约束
 
 #### 激励领取粒度（成员级 → 行动级）
 - **旧**：成员各自调用 `LOVE20Mint.mintActionReward` 领取自己那一份，去重键含 `msg.sender`（成员级，同一行动各成员互不影响）
-- **新**：Executor 每轮经 `ActionTarget.mintProposalReward` 一次性铸造整笔激励，去重键 `tokenAddress + actionId + round`（行动级，整个行动本轮只能铸一次），再按自身账本分给参与成员
+- **新**：Executor 每轮经 `ActionTarget.mintActionReward` 一次性铸造整笔激励，去重键 `tokenAddress + actionId + round`（行动级，整个行动本轮只能铸一次），再按自身账本分给参与成员
 - **对成员不透明**：成员只与 Executor 的成员级入口交互，不需要了解也不依赖 ActionTarget 这一层；ActionTarget 不向成员暴露领取入口
 - **事件分层**：行动级整笔由 ActionTarget 发出 `ActionRewardMinted(tokenAddress, actionId, round, amount)`；成员级由各 Executor 发出 `MemberRewardMinted(tokenAddress, actionId, memberId, round, mintAmount, burnAmount)`（声明在共用基座 `IActionExecutorEvents`）。成员归属的销毁并入后者的 `burnAmount`；无成员归属的整批销毁才单独立为 `RewardBurned`，只由 `IGroupServiceExecutor` 声明
-- **共用成员上提**：三个 Executor 签名一致的 1 个事件与 7 个错误上提到 `IActionExecutor` 的子接口；只被两家使用的（如 `InvalidParticipationAmount`）留在各自子接口
+- **共用成员上提**：三个 Executor 签名一致的 1 个事件（`MemberRewardMinted`）与 8 个错误上提到 `IActionExecutor` 的子接口；批量成员结算 `mintMemberRewards`、销毁判据 `needBurnReward` 与参与量查询 `joinedAmount` 族同在基座，销毁执行 `burnRewardIfNeeded`/`burnInfo`/事件 `RewardBurned` 在 ActionTarget。只被两家使用的（如 `InvalidParticipationAmount`）留在各自子接口
 
 #### 行为变更（旧回滚 → 新幂等/不回滚）
 - **重复加入**：旧 `ExtensionCenter.sol:187-189` 回滚 `AccountAlreadyJoined`；新 `registerJoinState` 幂等，不改状态、不发事件
@@ -84,19 +86,19 @@
 
 #### 接口完整性补全
 - 补 `initialized()`：与 core 六个接口同形
-- 补四个依赖 getter：`memberNFTAddress()` / `submitAddress()` / `voteAddress()` / `mintAddress()`，供发布前检查脚本核对绑定结果
+- 补四个依赖 getter：`memberNFTAddress()` / `submitAddress()` / `voteAddress()` / `mintAddress()`，供发布前检查脚本核对绑定结果；另补派生的 `phaseAddress()`（init 时从 `IVote(voteAddress).phaseAddress()` 缓存并暴露，当前投票轮直读 Phase）
 - `IActionExecutor` 补 `actionTarget()`（自证绑定）与 `initialized()`
 - 删三个不可达错误：`IndexOutOfBounds`、`InvalidRound`、`InvalidKVLength`（ActionTarget 不做分页越界回滚、不校验业务 Round、不校验 Target Data 的业务项）；`InvalidKVLength` 同时从 `ILpExecutor`、`IGroupActionExecutor`、`IGroupServiceExecutor` 删除——无键 `bytes[]` 下不存在「两数组」，需要项数校验时由各 Executor 在自己的 `Errors` 子接口声明
 - `RewardAlreadyMinted` 离开 ActionTarget：ActionTarget 侧为行动级去重 `AlreadyMinted(tokenAddress, actionId, round)`，成员级去重留在各 Executor
-- 补 `mintedProposalReward(tokenAddress, actionId, round) returns (amount, minted)`：铸造信息只读入口，未铸造与未关联都返回 `(0, false)` 不回滚
-- `mintProposalReward` 权限收紧为该行动**已注册绑定的 Executor**（`executor[tokenAddress][actionId] == msg.sender` 且绑定非零），其他调用者回滚 `UnauthorizedExecutor(tokenAddress, actionId)`
+- 补 `actionReward(tokenAddress, actionId, round) returns (amount, minted)`：铸造信息只读入口，未铸造与未关联都返回 `(0, false)` 不回滚
+- `mintActionReward` 权限收紧为该行动**已注册绑定的 Executor**（`executor[tokenAddress][actionId] == msg.sender` 且绑定非零），其他调用者回滚 `UnauthorizedExecutor(tokenAddress, actionId)`
 
 ### ➕ 新增能力
 
 #### forceExit（应急退出）
 - **入口**：`forceExit(tokenAddress, actionId, memberId)`
 - **权限**：当前 MemberNFT 持有人
-- **行为**：直接清除 ActionTarget 的加入状态并触发事件
+- **行为**：直接清除 ActionTarget 的加入状态并触发 `JoinStateCleared(..., forced = true)`
 - **限制**：不调用 Executor、不转移资产、不承诺资产返还
 - **前端**：默认隐藏，只作为最后兜底
 
@@ -375,7 +377,7 @@ theoreticalOwnerReward(m) = serviceReward × ownerWeightNumerator(m) / (totalGro
 
 核心验收场景见 `action/08-testing.md` 和组织级 `docs/acceptance.md`。关键变更的专项验收：
 
-1. **ActionTarget 映射**：Proposal → Executor 映射正确，查询接口返回本轮有投票的行动
+1. **ActionTarget 映射**：Proposal → Executor 映射正确，`votedActions` 返回本轮有投票的行动，`actions`/`actionIdsByExecutor` 与创建绑定一致
 2. **forceExit**：只清除 ActionTarget 加入状态，不调用 Executor，不返还资产
 3. **LP 3 阶段**：Phase 3 起进入稳态，加入后下一 Phase 即可铸币
 4. **GroupAction 4 阶段**：Phase 4 起进入稳态，验证在加入和铸币之间插入

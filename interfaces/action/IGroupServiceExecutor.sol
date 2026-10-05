@@ -21,8 +21,6 @@ interface IGroupServiceExecutorEvents {
         uint256 ownerBurned, uint256 round);
     event SecondaryDistributionConfigured(address indexed sourceTokenAddress, uint256 indexed sourceActionId,
         uint256 indexed groupId, uint256 round, uint256[] recipientIds, uint256[] ratios);
-    event RewardBurned(address indexed tokenAddress, uint256 indexed actionId, uint256 indexed round,
-        uint256 amount, bytes32 reason);
 }
 
 interface IGroupServiceExecutor is IActionExecutor, IGroupServiceExecutorEvents {
@@ -40,7 +38,6 @@ interface IGroupServiceExecutor is IActionExecutor, IGroupServiceExecutorEvents 
     function serviceRewardByMember(address serviceTokenAddress, uint256 serviceProposalId, uint256 round,
         uint256 memberId) external view returns (uint256 verifierReward, uint256 ownerReward,
         uint256 ownerBurned, bool claimed);
-    function burnRewardIfNeeded(address serviceTokenAddress, uint256 serviceProposalId, uint256 round) external;
     function setRecipients(address sourceTokenAddress, uint256 sourceActionId, uint256 groupId,
         uint256[] calldata recipientIds, uint256[] calldata ratios, string[] calldata remarks) external;
     function recipients(address sourceTokenAddress, uint256 sourceActionId, uint256 groupId, uint256 round)

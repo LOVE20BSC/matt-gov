@@ -90,7 +90,7 @@
 | `LOVE20TKM/group/src/interfaces/IGroupMarket.sol` | 不迁移 | `LOVE20MemberMarket` 未部署且非核心依赖 |
 | `LOVE20TKM/extension/src/interface/IExtensionFactory.sol` | 不迁移 | 取消工厂，Executor 为单例多社区合约 |
 | `LOVE20TKM/extension/src/interface/IJoin.sol` | 语义并入各 Executor 的 `join`/`exit` | 无独立无金额参与接口 |
-| `LOVE20TKM/extension/src/interface/IReward.sol` | 领取模型改为 `ActionTarget.mintProposalReward` 铸造分发 | 激励由协议按规则铸造 |
+| `LOVE20TKM/extension/src/interface/IReward.sol` | 领取模型改为 `ActionTarget.mintActionReward` 铸造分发 | 激励由协议按规则铸造 |
 | `LOVE20TKM/extension-lp/src/interface/ILpFactory.sol` | 不迁移 | 同上，取消工厂 |
 | `LOVE20TKM/extension-group/src/interface/IGroupActionFactory.sol`、`LOVE20TKM/extension-group/src/interface/IGroupServiceFactory.sol`、`LOVE20TKM/extension-group/src/interface/IExtensionGroupActionFactory.sol`、`LOVE20TKM/extension-group/src/interface/IExtensionGroupServiceFactory.sol` | 不迁移 | 同上，取消工厂 |
 | `LOVE20TKM/group-chat/src/interfaces/sources/ban/IBanVoteWeightSource.sol` | 合并进 `IActionManager`、`ITokenManager` | 扁平化 |

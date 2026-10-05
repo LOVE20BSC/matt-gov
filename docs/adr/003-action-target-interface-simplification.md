@@ -4,6 +4,8 @@
 
 已接受 (2026-09-22)
 
+> 2026-10-04 更新：本文代码块保留裁决时点的形状，现行接口以 [`interfaces/action/IActionTarget.sol`](../interfaces/action/IActionTarget.sol) 为准。此后的变化：`join`/`exit` 定名为 `registerJoinState`/`clearJoinState`；事件改为 `JoinStateRegistered`/`JoinStateCleared`（`ForceExited` 并入 `forced` 字段），`ActionCreated` 增 `round`；`actions`/`actionIdsByExecutor` 移除 `round`（追加写入索引派生）并新增 `votedActions`；`mintProposalReward`/`mintedProposalReward` 定名 `mintActionReward`/`actionReward`。
+
 ## 背景
 
 在 ActionTarget 迁移规格与接口 Review 中，发现原接口设计存在以下问题：

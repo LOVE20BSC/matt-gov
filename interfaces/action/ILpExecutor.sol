@@ -34,13 +34,6 @@ interface ILpExecutor is IActionExecutor, ILpExecutorEvents {
     function MIN_GOV_RATIO(address tokenAddress, uint256 actionId) external view returns (uint256);
     function init(address actionTargetAddress, address memberNFTAddress, address phaseAddress,
         address stakeAddress, address mintAddress, address pairFactoryAddress) external;
-    function joinedAmount(address tokenAddress, uint256 actionId) external view returns (uint256);
-    function joinedAmountByMemberId(address tokenAddress, uint256 actionId, uint256 memberId)
-        external view returns (uint256);
-    function joinedAmountByRound(address tokenAddress, uint256 actionId, uint256 round)
-        external view returns (uint256);
-    function joinedAmountByMemberIdByRound(address tokenAddress, uint256 actionId, uint256 memberId, uint256 round)
-        external view returns (uint256);
     function deduction(address tokenAddress, uint256 actionId, uint256 round, uint256 memberId)
         external view returns (uint256 amount, uint256[] memory joinBlocks, uint256[] memory joinAmounts);
     function totalDeduction(address tokenAddress, uint256 actionId, uint256 round)
