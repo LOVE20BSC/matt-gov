@@ -52,7 +52,7 @@
 #### Target Data 位置契约
 - **无键数组**：`targetData` 是 `bytes[]`，没有 keys，只能按位置读取；旧 `ActionBody` 的具名字段与早期设想的 `bytes32[] keys` + `bytes[] values` 写法均作废
 - **归属**：除第 `0` 项 executor 保留项外，项数、每项位置与编码由各 Executor 在自己规格中固定并自行校验；ActionTarget 只原样透传，不设通用项数错误
-- **回调差异**：创建与推举回调传入同一份 `body.targetData`（core `Submit.sol:289,296`），第 `0` 项均为 executor 保留项、业务项从 `1` 起；投票回调为投票者提供的数据、不含保留项（ActionTarget 用映射定位 Executor），业务项从 `0` 起
+- **回调差异**：创建与推举回调传入同一份 `body.targetData`（core `Submit.sol:289,296`），第 `0` 项均为 executor 保留项、业务项从 `1` 起；投票回调为投票者提供的数据，非空时第 `0` 项须为已绑定 Executor（ActionTarget 用映射校验并定位）、其后为业务项，为空时原样透传
 
 #### 登记入口改名
 - **旧**：`ExtensionCenter.addAccount` / `removeAccount`

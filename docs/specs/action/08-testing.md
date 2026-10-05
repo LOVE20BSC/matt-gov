@@ -7,7 +7,7 @@
 | [ActionTarget](01-action-target.md) | 三类回调、executor 握手、映射、重复创建、非授权调用、加入轮校验、行动列表查询 | 只用关联 Executor，回调失败全回滚，当前投票轮不大于创建轮时注册回滚 `JoinNotOpen`，`votedActions` 与本轮投票一致，`actions`/`actionIdsByExecutor` 与创建绑定一致 |
 | ActionTarget | forceExit 后正常退出 | forceExit 只清 Target 加入状态；随后 Executor 仍可返还资产、清理群归属，调用 `clearJoinState` 幂等成功 |
 | ActionTarget | 分页顺序契约 | 按 `01-action-target.md` 顺序契约执行：加入态集合的 `offset` 不保证跨调用稳定，删除（swap-and-pop）后同一 `offset` 的返回内容可变化；`offset` 越界返回空数组与真实总数、`limit = 0` 只返回总数 |
-| ActionTarget | Target Data 位置契约 | 创建与推举回调共用同一份 Target Data：第 `0` 项均为 executor 保留项、业务项从第 `1` 项起；投票回调为投票者提供的数据、不含保留项、业务项从第 `0` 项起；三类回调转发门禁——`targetData` 非空时第 `0` 项必须为已绑定 Executor 地址（否则回滚），投票回调空数据原样透传；项数、位置与编码由各 Executor 自定并自行拒绝 |
+| ActionTarget | Target Data 位置契约 | 创建与推举回调共用同一份 Target Data：第 `0` 项均为 executor 保留项、业务项从第 `1` 项起；投票回调为投票者提供的数据，非空时第 `0` 项为已绑定 Executor、其后为业务项；三类回调转发门禁——`targetData` 非空时第 `0` 项必须为已绑定 Executor 地址（否则回滚），投票回调空数据原样透传；项数、位置与编码由各 Executor 自定并自行拒绝 |
 | ActionTarget | 激励铸造粒度与事件 | Executor 每轮经 `mintActionReward` 铸造整笔一次，`(tokenAddress, actionId, round)` 重复回滚 `AlreadyMinted`，成功时发出行动级 `ActionRewardMinted(tokenAddress, actionId, round, amount)` 且 `amount` 与 `actionReward` 返回值一致；成员不参与该链路，ActionTarget 不暴露成员领取入口 |
 | ActionTarget | 铸造入口权限与查询 | 仅 `(tokenAddress, actionId)` 已注册绑定的 Executor 可调用铸造，其他地址与未注册绑定均回滚 `UnauthorizedExecutor`；`actionReward` 在未铸造/未关联时返回 `(0, false)` 不回滚，铸造后返回 `(amount, true)` |
 | ActionTarget | 防御路径（桩测试） | 推举/投票回调面对未绑定 Proposal 回滚 `UnboundProposal`（真依赖不可达，另起 `*StubTest`）；`mintActionReward` 在代币 `transfer` 返 false 时回滚 `TransferFailed`（桩代币） |

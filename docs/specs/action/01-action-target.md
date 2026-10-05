@@ -21,7 +21,7 @@ targetData[0] = abi.encode(executorAddress)
 
 第 1～3 步任一步失败回滚 `InvalidExecutor()`；第 4 步回滚 `AlreadyCreated(tokenAddress, actionId)`，拒绝同一复合键重复创建，不覆盖已记录映射。
 
-**Target Data 的位置契约**：Target Data 是无键的 `bytes[]`，只能按位置读取。ActionTarget 只读取并校验第 `0` 项（executor 保留项）并原样转发整个数组；其余各项的数量、位置与编码**一律由该 Executor 在自己的规格中固定并在对应回调内自行校验**。**创建与推举回调传入同一份** `body.targetData`（core `Submit.sol:289,296`）：第 `0` 项均为 executor 保留项，业务项从 `1` 起算；投票回调传入投票者在 `vote()` 中提供的该项数据（core `Vote.sol:322`），不含保留项，业务项从 `0` 起算。**转发门禁**：三类回调中 `targetData` 非空时，第 `0` 项必须解码为该行动已绑定的 Executor 地址（创建回调即握手绑定的地址），否则回滚 `InvalidExecutor()`；投票回调的 `targetData` 可为空，为空时原样转发。项数与位置不匹配由各 Executor 用自己的错误拒绝，不在本层设通用错误。
+**Target Data 的位置契约**：Target Data 是无键的 `bytes[]`，只能按位置读取。ActionTarget 只读取并校验第 `0` 项（executor 保留项）并原样转发整个数组；其余各项的数量、位置与编码**一律由该 Executor 在自己的规格中固定并在对应回调内自行校验**。**创建与推举回调传入同一份** `body.targetData`（core `Submit.sol:289,296`）：第 `0` 项均为 executor 保留项，业务项从 `1` 起算；投票回调传入投票者在 `vote()` 中提供的该项数据（core `Vote.sol:322`）：非空时第 `0` 项必须为已绑定 Executor 地址、其后为业务项，为空时不携带业务数据。**转发门禁**：三类回调中 `targetData` 非空时，第 `0` 项必须解码为该行动已绑定的 Executor 地址（创建回调即握手绑定的地址），否则回滚 `InvalidExecutor()`；投票回调的 `targetData` 可为空，为空时原样转发。项数与位置不匹配由各 Executor 用自己的错误拒绝，不在本层设通用错误。
 
 | Core 调用时点 | ActionTarget 行为 |
 | --- | --- |
