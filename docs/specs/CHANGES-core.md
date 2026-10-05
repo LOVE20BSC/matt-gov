@@ -281,7 +281,8 @@
 - **参数**：9 参数 → 8 参数，移除 `stakeAddress`
 - **Selector**：`0xe5ca3ca3` → `0x8187933a`
 - **校验**：新增 `maxGovBoostRewardMultiplier` 上界校验（`0 < x ≤ 1000`），防止溢出；其他参数校验保持不变
-- **函数数量**：28 → 27（移除 `stakeAddress()` getter）
+- **依赖派生**：`phaseAddress` 由 `init` 从 `voteAddress` 派生并缓存（新增 getter），轮次结束判定直读 Phase、语义同 `Vote.isRoundEnded`；`init` 签名与 selector 不变
+- **函数数量**：28 → 27（移除 `stakeAddress()` getter）→ 28（新增 `phaseAddress()` getter）
 - **原因**：原 TKM 版本保留 `stakeAddress` 但未使用；BSC 版本加速数据源改为 Vote 快照，该依赖无消费者，已完全删除。
 
 

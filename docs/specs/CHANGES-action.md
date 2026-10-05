@@ -87,7 +87,8 @@
 
 #### 接口完整性补全
 - 补 `initialized()`：与 core 六个接口同形
-- 补四个依赖 getter：`memberNFTAddress()` / `submitAddress()` / `voteAddress()` / `mintAddress()`，供发布前检查脚本核对绑定结果；另补派生的 `phaseAddress()`（init 时从 `IVote(voteAddress).phaseAddress()` 缓存并暴露，当前投票轮直读 Phase）
+- `init` 收敛为单参数 `init(mintAddress)`：`voteAddress` / `submitAddress` / `memberNFTAddress` / `phaseAddress` 全部从 Mint 派生，派生值零校验后缓存，不再作为入参
+- 补四个依赖 getter：`memberNFTAddress()` / `submitAddress()` / `voteAddress()` / `mintAddress()`，供发布前检查脚本核对绑定结果；另补派生的 `phaseAddress()`（init 时从 `IMint(mintAddress).phaseAddress()` 缓存并暴露，当前投票轮直读 Phase）
 - `IActionExecutor` 补 `actionTarget()`（自证绑定）与 `initialized()`
 - 删三个不可达错误：`IndexOutOfBounds`、`InvalidRound`、`InvalidKVLength`（ActionTarget 不做分页越界回滚、不校验业务 Round、不校验 Target Data 的业务项）；`InvalidKVLength` 同时从 `ILpExecutor`、`IGroupActionExecutor`、`IGroupServiceExecutor` 删除——无键 `bytes[]` 下不存在「两数组」，需要项数校验时由各 Executor 在自己的 `Errors` 子接口声明
 - `RewardAlreadyMinted` 离开 ActionTarget：ActionTarget 侧为行动级去重 `AlreadyMinted(tokenAddress, actionId, round)`，成员级去重留在各 Executor

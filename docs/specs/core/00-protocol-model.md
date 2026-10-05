@@ -35,7 +35,7 @@ Core 不解释具体 Proposal 的业务字段，扩展通过 Target 接入。
 | Submit | `phaseAddress`、`stakeAddress`、`memberNFTAddress` | 时间、质押和身份依赖 |
 | Submit | `submitMinPerThousand` | 推举门槛，千分比，如 `10 = 1%` |
 | Vote | `phaseAddress`、`stakeAddress`、`submitAddress`、`memberNFTAddress` | 时间、票权、提案和身份依赖 |
-| Mint | `voteAddress`、`submitAddress`、`launchAddress`、`memberNFTAddress` | 投票、提案、发射和身份依赖；BSC 版本已移除原 `stakeAddress`（加速数据源改为 Vote 快照） |
+| Mint | `voteAddress`、`submitAddress`、`launchAddress`、`memberNFTAddress` | 投票、提案、发射和身份依赖；BSC 版本已移除原 `stakeAddress`（加速数据源改为 Vote 快照）；`phaseAddress` 由 `init` 从 `voteAddress` 派生缓存，不重复作为入参 |
 | Mint | `proposalRewardMinVotePerThousand` | 提案激励门槛；状态变量和公开 getter 为 `PROPOSAL_REWARD_MIN_VOTE_PER_THOUSAND`，千分比，如 `50 = 5%` |
 | Mint | `roundRewardGovPerThousand`、`roundRewardProposalPerThousand` | 治理池、提案池占可用供应的千分比；状态变量和公开 getter 为 `ROUND_REWARD_GOV_PER_THOUSAND`、`ROUND_REWARD_PROPOSAL_PER_THOUSAND`，如 `30`、`10` |
 | Mint | `maxGovBoostRewardMultiplier` | 加速激励相对投票激励的倍数上限；状态变量和公开 getter 为 `MAX_GOV_BOOST_REWARD_MULTIPLIER`，如 `2` |
@@ -53,7 +53,7 @@ MemberNFT 的首币地址由 `Launch.init` 在创建首币时同步调用 `Membe
 
 ## 实现约束
 
-- Phase 使用构造参数创建；Core 其他合约先部署，再按依赖顺序调用一次 `init`，依赖后部署的地址通过后续 `init` 绑定。
+- Phase 使用构造参数创建；Core 其他合约先部署，再按依赖顺序调用一次 `init`，依赖后部署的地址通过后续 `init` 绑定。能由入参地址 getter 派生的依赖不重复入参，在 `init` 内读取一次并缓存、派生值同样校验非零，被派生依赖须先完成 init（如 Mint 从 Vote 派生 `phaseAddress`，Action 层从 Mint 派生各依赖）。
 - 各合约的 `init` 不设调用者限制、不保存部署者地址；只有 `init` 校验初始化状态，其他写入口不重复校验；部署成功与否由发布前检查脚本核对实际绑定结果判定，见 [通用规则](01-common-rules.md#初始化与安全)。
 - Mint 在准备时读取 Vote 的冻结结果，按 `proposalRewardMinVotePerThousand` 一次性计算并缓存本轮达标 Proposal 总票数；后续 Proposal 激励结算只读取该缓存。
 - 参数有效范围和组合限制以各模块规格为准；表中示例值不是默认部署配置。

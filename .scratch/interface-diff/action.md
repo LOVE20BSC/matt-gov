@@ -128,9 +128,9 @@ interface IActionExecutor is IProposalTarget, IActionExecutorEvents, IActionExec
 | 新 | 旧 | 状态 |
 | --- | --- | --- |
 | `memberNFTAddress()`、`submitAddress()`、`voteAddress()`、`mintAddress()` | `IExtensionCenter` 的 9 个依赖 getter | 保留 3 个（submit/vote/mint）、新增 `memberNFTAddress`、删除 6 个（stake/launch/uniswapV2Factory/join/verify/random） |
-| `phaseAddress()` | 无 | 新增（init 时从 `IVote(voteAddress).phaseAddress()` 派生缓存并暴露；当前投票轮直读 Phase，不经 Vote 二跳） |
+| `phaseAddress()` | 无 | 新增（init 时从 `IMint(mintAddress).phaseAddress()` 派生缓存并暴露；当前投票轮直读 Phase，不经 Mint/Vote 二跳） |
 | `initialized()` | `IExtension.initialized`（`ExtensionBase.sol:27` 自动 getter） | 保留（与 core 六个接口同形；中转期间曾缺失，本轮补回） |
-| `init(memberNFTAddress, submitAddress, voteAddress, mintAddress)` | 无（旧为构造函数注入） | 新增 |
+| `init(mintAddress)` | 无（旧为构造函数注入） | 新增（只收 Mint；`voteAddress`、`submitAddress`、`memberNFTAddress`、`phaseAddress` 全部从 Mint 派生，派生值零校验后缓存） |
 | `isJoined(tokenAddress, actionId, uint256 memberId)` | `IExtensionCenter.isAccountJoined(tokenAddress, actionId, address account)` | 改名+改参（去 Account 前缀） |
 | `isJoinedByRound(tokenAddress, actionId, memberId, round)` | `IExtensionCenter.isAccountJoinedByRound(...)` | 改名+改参（**保留**；旧 `validRound` 回滚 `RoundExceedsJoinRound` 改为按未开始返回 false） |
 | `registerJoinState(tokenAddress, actionId, uint256 memberId)` | `IExtensionCenter.addAccount(tokenAddress, actionId, address account, verificationInfos[])` | 改名+改参（`verificationInfos` 移入各 Executor 的 `join`；幂等，不再回滚 `AccountAlreadyJoined`） |

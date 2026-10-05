@@ -39,7 +39,7 @@
 | Mint | 约 300 个 Proposal 的准备、缓存读取 | 准备阶段一次扫描并缓存达标 Proposal 总票数；后续单项结算不再扫描 Vote 列表，重复准备不改缓存；对应 `MintTest.testPrepareScansProposalsOnceAndCachesResult` |
 | Submit / Vote / Mint | 真实 Core 创建、推举、投票至每轮上限 1,000 个，再领取两类激励 | 冷访问首次准备与治理领取在本地 8,000,000 gas 执行预算内完成；随后 Proposal 领取不重复预留；对应 `ProposalDoSTest.testPrepare1000Proposals`，DEX 为模拟依赖，不替代目标链验收 |
 | Mint | 两种零总量、三段治理结果、批量多轮 | 预留不重加，销毁不重复，任一失败整体回滚；对应 `testBatchMustPreserveMemberOwner`、`testBatchFailureRollsBackRewardsAndLaunchCounts`、`testGovernanceQueryMatchesMintAndBoostBurn` |
-| Mint | init 参数校验、准备期双池取消、零额事件跳过、尘埃留存 | init 拒绝零地址、比例超限、倍数零值与超限；Proposal 门槛 0 和 1000 合法，1001 回滚 `InvalidAmount` 且不初始化；准备期 `totalBoost == 0` 与 `eligibleVotes == 0` 销毁对应池；零额不发 `RewardBurned`；多 Proposal 分配后尾数留存池中；对应 `MintCoverage.t.sol` |
+| Mint | init 参数校验、`phaseAddress` 派生、准备期双池取消、零额事件跳过、尘埃留存 | init 从 Vote 派生 `phaseAddress`（Vote 未初始化时回滚 `InvalidAddress` 且不初始化），拒绝零地址、比例超限、倍数零值与超限；轮次判断直读派生 Phase（round 0 永不结束）；Proposal 门槛 0 和 1000 合法，1001 回滚 `InvalidAmount` 且不初始化；准备期 `totalBoost == 0` 与 `eligibleVotes == 0` 销毁对应池；零额不发 `RewardBurned`；多 Proposal 分配后尾数留存池中；对应 `MintCoverage.t.sol`、`MintEdgeCases.t.sol` |
 | Vote / Mint | 投票时快照为 50，随后追加 30；再次投票或不投票；NFT 转移 | 不投票仍按 50，再投票按 80、总量仅加 30；结算和转移不重算；Vote 快照由 `VoteTest` 覆盖，Mint 结算由 `MintTest.testGovernanceQueryMatchesMintAndBoostBurn` 覆盖 |
 | [Mint](07-mint.md) | 向上取整、跨多个阈值、社区上限 | 余数保留，新增次数不超上限，仅 Mint 可 `addLaunchCount`；对应 `testLaunchCreditMustUseActualPreMintSupply`、`testLaunchThresholdMustRoundUp`、`testLaunchCapRetainsUnconvertedCredit` |
 | [Launch](08-launch.md) | 向非自有 NFT 部分融合、次数消耗、账本上限、非 Mint 调用 `addLaunchCount` | 源扣目标增，不转移额度，已消耗次数不能再次使用；只有 `init` 校验初始化状态，三个写入口不重复校验 |
