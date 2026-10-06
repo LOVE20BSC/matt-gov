@@ -43,9 +43,11 @@
 | Vote / Mint | 投票时快照为 50，随后追加 30；再次投票或不投票；NFT 转移 | 不投票仍按 50，再投票按 80、总量仅加 30；结算和转移不重算；Vote 快照由 `VoteTest` 覆盖，Mint 结算由 `MintTest.testGovernanceQueryMatchesMintAndBoostBurn` 覆盖 |
 | [Mint](07-mint.md) | 向上取整、跨多个阈值、社区上限 | 余数保留，新增次数不超上限，仅 Mint 可 `addLaunchCount`；对应 `testLaunchCreditMustUseActualPreMintSupply`、`testLaunchThresholdMustRoundUp`、`testLaunchCapRetainsUnconvertedCredit` |
 | [Launch](08-launch.md) | 向非自有 NFT 部分融合、次数消耗、账本上限、非 Mint 调用 `addLaunchCount` | 源扣目标增，不转移额度，已消耗次数不能再次使用；只有 `init` 校验初始化状态，三个写入口不重复校验 |
-| Launch.init | 首币、Airdrop、参数校验、任一步失败或重复初始化 | `Launch.init(LaunchInitParams)` 一次完成配置、首币创建和 MemberNFT 初始化，失败全回滚，成功后不能重做；首币发含名称和符号的 `TokenLaunched`（`launcherMemberId = 0`） |
+| Launch.init | 首币、Airdrop、参数校验、任一步失败或重复初始化 | `Launch.init(LaunchInitParams)` 一次完成配置、首币创建（记录 `firstTokenAddress`，getter 与首币地址一致）和 MemberNFT 初始化，失败全回滚，成功后不能重做；首币发含名称和符号的 `TokenLaunched`（`launcherMemberId = 0`） |
 | Launch.init | `launchRatio` 的 0、`1e18`、`1e18 + 1` 边界 | 0 回滚 `ZeroAmount`，`1e18` 合法，`1e18 + 1` 回滚 `InvalidAmount` 且不初始化；对应 `LaunchTest.testInitRejectsZeroAmountParameters`、`testInitLaunchRatioUpperBound` |
-| Launch | 代币列表与子币列表分页、`offset` 越界、符号重复、按代币地址取父币 | `tokens`/`childTokens` 按页返回且包含首币，越界返回空数组与真实总数；施加 `Test` 前缀后的符号重复回滚 `TokenSymbolExists()`；`parentTokenOf` 与 `isLOVE20Token` 对首币、子币与未登记地址的结果一致 |
+| Launch | 代币列表与子币列表分页、`offset` 越界、符号重复、按代币地址取父币 | `tokens`/`childTokens` 按页返回且包含首币，`childTokens(rootParentTokenAddress)` 包含首币与根级同级币，越界返回空数组与真实总数；施加 `Test` 前缀后的符号重复回滚 `TokenSymbolExists()`；`parentTokenOf` 与 `isLOVE20Token` 对首币、子币与未登记地址的结果一致 |
 | Launch | 发射即建池：`init` 首币、`launchToken` 子币、预建正确 Pair、Factory 返回零地址 | `init` 与每次 `launchToken` 都在同一笔内查询 Pair；不存在时调用 `createPair`，已存在的正确 Pair 被复用；创建返回零地址回滚 `InvalidAddress()`；`Stake` 首次质押时读到的正是该 Pair |
+| Launch | 首币次数伴生：1:1 镜像、其他代币不伴生、根父币维度不可直写 | 首币产生 `count` 时根父币维度同 `count` 增加并发第二条 `LaunchCountAdded`；不变式 `issuedLaunchCount(rootParentTokenAddress) == issuedLaunchCount(firstTokenAddress)` 且不超 `MAX_LAUNCH_COUNT`；Mint 直调 `addLaunchCount(rootParentTokenAddress, …)` 回滚 `InvalidTokenAddress()` |
+| Launch | 根级发射与根级融合：父币为根父币、消耗根级次数、命名与前缀 | 同级币与首币平级，登记、`childTokens(rootParentTokenAddress)`、Pair、名称 `tokenSymbol + "@" + 根父币符号` 正确；无根级次数回滚 `NotEnoughLaunchCount()`；根级次数可融合；`Test` 前缀按首币符号判定 |
 
 存在“待确认”的场景必须先确定预期，不得用当前实现结果反推规格。

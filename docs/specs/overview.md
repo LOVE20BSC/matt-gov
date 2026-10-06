@@ -6,7 +6,7 @@ LOVE20 是基于可验证共识行动的社群铸币协议。它通过 MemberNFT
 
 | 层 | 负责内容 |
 | --- | --- |
-| Token Tree | WBNB → 首个 LOVE20 代币 → 子币 |
+| Token Tree | WBNB → 首个 LOVE20 代币与根级同级币 → 子币 |
 | Core | MemberNFT、Stake、Phase、Submit、Vote、Mint、Launch |
 | Action | ActionTarget、LP、GroupAction、GroupService Executor |
 | Group Chat | 群聊配置、消息、资格和 Group Chat Delegate |

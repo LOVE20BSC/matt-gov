@@ -112,9 +112,22 @@
 - NoCallback 不回调，Callback 成功调用且失败回滚
 - 首币发 `TokenLaunched` 且 `launcherMemberId = 0`；一次成功发射只发一个 `TokenLaunched`，不另发消耗事件
 - 只有 `init` 校验初始化状态，`launchToken`、`mergeLaunchCount`、`addLaunchCount` 不重复校验
-- `tokens`/`childTokens` 按创建顺序分页返回且包含首币，`childTokens(rootParentTokenAddress)` 返回首币，`offset` 越界返回空数组与真实总数
+- `tokens`/`childTokens` 按创建顺序分页返回且包含首币，`childTokens(rootParentTokenAddress)` 返回首币与根级同级币，`offset` 越界返回空数组与真实总数
 - 施加 `Test` 前缀后的最终符号重复时回滚 `TokenSymbolExists()`，`tokenAddressBySymbol` 命中已登记符号
-- `parentTokenOf` 对首币返回 `rootParentTokenAddress`、对子币返回其父币、对未登记地址返回零地址；`isLOVE20Token` 与它一致
+- `parentTokenOf` 对首币返回 `rootParentTokenAddress`、对子币（含根级同级币）返回其父币、对未登记地址返回零地址；`isLOVE20Token` 与它一致
+
+### 根级次数与同级币发射
+**覆盖要求**：覆盖首币产生整数次数时 1:1 伴生根级次数（同一笔交易、同 `count`、追加一条 `LaunchCountAdded`、不变式 `issuedLaunchCount(rootParentTokenAddress) == issuedLaunchCount(firstTokenAddress)`）、其他代币不伴生、根级发射创建与首币平级且父币为根父币的同级币（消耗根级次数、登记与 `childTokens` 正确、建池、命名取根父币实际符号）、根级次数不足回滚、根级次数融合、`Test` 前缀按首币符号判定，以及 `firstTokenAddress` getter。
+
+**测试方式**：
+- 单元测试：`core/test/Launch.t.sol` 的伴生、根级发射、融合与前缀场景
+- 集成测试：`core/test/integration/MintRealIntegration.t.sol` 的治理铸造到根级次数、根级发射链路
+- 验收证据：事件日志显示首币与根父币两条 `LaunchCountAdded`、根级同级币登记与 Pair 创建
+
+**判定标准**：
+- 首币次数产生时根级次数同 `count` 增加，其他代币产生次数不伴生
+- 根级累计恒等于首币累计且不超 `MAX_LAUNCH_COUNT`
+- 根级发射的父币、登记、`childTokens`、Pair、命名与次数扣减符合规格；Mint 直调 `addLaunchCount` 不能写根父币维度
 
 ### MemberNFT 转移归属
 **覆盖要求**：覆盖转移前后质押、解锁倒计时、治理激励和行动内部未铸造激励均由当前持有人继续操作；旧持有人不能代铸，历史投票、按 Round 参与历史、已结算激励和事件不回写。

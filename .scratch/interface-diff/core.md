@@ -359,7 +359,7 @@ OZ 5 的标准回滚由固定依赖提供：`IERC721Errors`、`ERC721OutOfBounds
 | `launchCount(tokenAddress, uint256 memberId)` | `remainingLaunchCount(parentTokenAddress, address account)` | 改名+改参（剩余次数 → 累计次数账本） |
 | `enum DistributorMode { NoCallback, Callback }` | 无 | 新增 |
 | `init(LaunchInitParams)` | 无 | 新增（一次完成依赖（含 Pair Factory）、发射参数、供应量配置和首币元数据初始化） |
-| `memberNFTAddress()`、`rootParentTokenAddress()`、`pairFactoryAddress()`、`LAUNCH_RATIO()`、`MAX_LAUNCH_COUNT()`、`LAUNCH_AMOUNT()`、`MAX_SUPPLY()` | 无 | 新增（`pairFactoryAddress()` 承接旧 `ILOVE20TokenFactory.uniswapV2Factory()` 的建池职责） |
+| `memberNFTAddress()`、`rootParentTokenAddress()`、`firstTokenAddress()`、`pairFactoryAddress()`、`LAUNCH_RATIO()`、`MAX_LAUNCH_COUNT()`、`LAUNCH_AMOUNT()`、`MAX_SUPPLY()` | 无 | 新增（`pairFactoryAddress()` 承接旧 `ILOVE20TokenFactory.uniswapV2Factory()` 的建池职责；`firstTokenAddress()` 为首币地址，供根级次数伴生与链下识别） |
 | `initialized()` | 旧实现有 `bool public initialized`（自动 getter 进入合约 ABI，未写进旧接口） | 新增（公开初始化状态，与 `IMemberNFT` 对齐，供发布前检查脚本核对） |
 | `mergeLaunchCount(tokenAddress, sourceMemberId, targetMemberId, count)` | 无 | 新增 |
 | `addLaunchCount(tokenAddress, memberId, count)` | 无 | 新增 |
@@ -381,7 +381,7 @@ OZ 5 的标准回滚由固定依赖提供：`IERC721Errors`、`ERC721OutOfBounds
 | 代币枚举（按发射者或募资状态） | `childTokensByLauncherCount`/`AtIndex`、`launchingTokensCount`/`AtIndex`、`launchedTokensCount`/`AtIndex`、`launchingChildTokensCount`/`AtIndex`、`launchedChildTokensCount`/`AtIndex`、`participatedTokensCount`/`AtIndex`（代币列表、某社区子币列表和符号账本保留为分页查询与 `tokenAddressBySymbol`，见上表；按成员聚合的发射历史由 `TokenLaunched` 的 `launcherMemberId` 链下索引） |
 | 依赖地址 | `submitAddress()`、`tokenFactoryAddress()` |
 
-旧 36 个函数 = 保留 4 + 改参 1 + 改名+改参 1 + 合并 4 + 删除 26；新 21 个 = 保留 4 + 改参 1 + 改名+改参 1 + 合并 2 + 新增 13。`tokensCount`+`tokensAtIndex`、`childTokensCount`+`childTokensAtIndex` 各合成一个分页函数，故旧侧 4 个计数为新侧 2 个。
+旧 36 个函数 = 保留 4 + 改参 1 + 改名+改参 1 + 合并 4 + 删除 26；新 22 个 = 保留 4 + 改参 1 + 改名+改参 1 + 合并 2 + 新增 14。`tokensCount`+`tokensAtIndex`、`childTokensCount`+`childTokensAtIndex` 各合成一个分页函数，故旧侧 4 个计数为新侧 2 个。
 
 `tokenFactoryAddress()` 随 `ILOVE20TokenFactory` 一并消失：新 `Launch` 自己创建代币（`init` 建首币、`launchToken` 建子币），不再有独立工厂。旧 `ILOVE20TokenFactory` 的其余成员去向如下，`AlreadyInitialized()`、`EmptyString(string)`、`InvalidAmount()`、`UnauthorizedCaller()` 四个错误与 `ILaunchErrors` 同名项合并，`ZeroAddress(string parameter)` 统一为 `InvalidAddress()`。
 
