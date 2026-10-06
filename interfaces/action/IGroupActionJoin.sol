@@ -144,14 +144,18 @@ interface IGroupActionJoin is IGroupActionJoinEvents, IGroupActionJoinErrors {
         address tokenAddress,
         uint256 actionId,
         uint256 groupId,
-        uint256 providerMemberId
+        uint256 providerMemberId,
+        uint256 offset,
+        uint256 limit,
+        bool reverse
     )
         external
         view
         returns (
             uint256[] memory memberIds,
             uint256[] memory amounts,
-            uint256[] memory blockNumbers
+            uint256[] memory blockNumbers,
+            uint256 total
         );
 
     function providerAmount(

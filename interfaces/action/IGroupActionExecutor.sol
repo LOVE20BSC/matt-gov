@@ -12,6 +12,7 @@ interface IGroupActionExecutorErrors {
     error InvalidSplits();
     error InvalidTargetDataLength();
     error VerificationInfoLengthMismatch();
+    error DescriptionTooLong();
 }
 
 interface IGroupActionExecutor is
@@ -29,6 +30,8 @@ interface IGroupActionExecutor is
     function MAX_JOIN_AMOUNT_RATIO(address tokenAddress, uint256 actionId) external view returns (uint256);
 
     function ACTIVATION_MIN_GOV_RATIO(address tokenAddress, uint256 actionId) external view returns (uint256);
+
+    function SPLITS() external view returns (uint256[] memory);
 
     function init(
         address actionTargetAddress,

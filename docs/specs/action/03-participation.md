@@ -35,6 +35,6 @@ Provider 额度接口见 [`IGroupActionJoin.sol`](../../../interfaces/action/IGr
 
 额度授予即存入合约：`providerQuotaAdd` 在登记额度的同时把对应代币从 Provider 当前持有人转入合约托管；`providerQuotaRemove` 只退还尚未被 `join` 使用的额度。成员 `join` 使用额度时只扣减可用额度、不再转移代币；`providerWithdraw` 把已投入的部分从合约转回该 Provider 当前持有人。托管资金不按来源隔离存放，额度和已投入部分都由 Executor 按来源账本核算。
 
-`providerWithdraw` 金额须满足 `0 < amount <= 该 Provider 已投入量`，不影响自有或其他 Provider 账本。Provider 身份不授予成员 `exit` 权限，也不授予成员撤回 Provider 额度或 Provider 已投入部分的权限。历史零值按 RoundHistory 记录；无历史额度返回 0，空名单返回等长空数组。`providerAmountsByMemberId` 按标准分页返回某成员当前全部有余额的来源及其金额，`providerAmount` 按来源取单值，供展示与管理使用。
+`providerWithdraw` 金额须满足 `0 < amount <= 该 Provider 已投入量`，不影响自有或其他 Provider 账本。Provider 身份不授予成员 `exit` 权限，也不授予成员撤回 Provider 额度或 Provider 已投入部分的权限。历史零值按 RoundHistory 记录；无历史额度返回 0，空名单返回等长空数组。`providerQuota` 按标准分页返回某 Provider 在某个链群的额度表（成员、额度、登记区块与真实总数），`providerAmountsByMemberId` 按标准分页返回某成员当前全部有余额的来源及其金额，`providerAmount` 按来源取单值，供展示与管理使用。
 
 验收见 [Action 验收](08-testing.md)。

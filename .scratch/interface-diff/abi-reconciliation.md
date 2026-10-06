@@ -8,12 +8,12 @@
 
 | 层 | 新文件/接口 | 新函数 | 新事件 | 新错误 |
 | --- | ---: | ---: | ---: | ---: |
-| Core | 10 / 22 | 136 | 22 | 61 |
-| Action | 10 / 24 | 101 | 22 | 65 |
+| Core | 10 / 26 | 153 | 23 | 77 |
+| Action | 10 / 24 | 100 | 22 | 66 |
 | Group Chat | 12 / 23 | 139 | 23 | 76 |
-| **合计** | **32 / 69** | **376** | **67** | **202** |
+| **合计** | **32 / 73** | **392** | **68** | **219** |
 
-Action 行按当前 `interfaces/action/*.sol` 的自有声明重算（10 个文件、24 个 `interface` 声明、101 个 `function`、22 个 `event`、65 个 `error`，均不展开继承）；该行此前记录的 5 / 9、137 / 24 / 72 是拆分 `IGroupActionExecutorErrors` 与增补 `initialized()`/销毁入口之前的快照，已作废；`IGroupActionIndexes` 由 51 个索引函数收敛为 4 条查询后函数数由 146 降至 97，`IGroupActionExecutor` 再按实现模块拆出 `IGroupActionJoin` / `IGroupActionVerify` / `IGroupActionManager` 三个接口文件（ABI 集合不变）。Core 与 Group Chat 两行沿用原记录，待全层重算后统一冻结。
+Action 行按当前 `interfaces/action/*.sol` 的自有声明重算（10 个文件、24 个 `interface` 声明、100 个 `function`、22 个 `event`、65 个 `error`，均不展开继承）；该行此前记录的 5 / 9、137 / 24 / 72 是拆分 `IGroupActionExecutorErrors` 与增补 `initialized()`/销毁入口之前的快照，已作废；`IGroupActionIndexes` 由 51 个索引函数收敛为 4 条查询后函数数由 146 降至 97，`IGroupActionExecutor` 再按实现模块拆出 `IGroupActionJoin` / `IGroupActionVerify` / `IGroupActionManager` 三个接口文件（ABI 集合不变）。Core 行按 `core/src/interfaces/` 顶层 10 个文件的声明条数重算；Group Chat 行按 `interfaces/group-chat/` 重算。三层同法重算后合计为 32 文件 / 73 接口声明 / 392 函数 / 68 事件 / 219 错误，取代此前的 27 / 55 / 412 / 69 / 215 一版。
 
 旧侧按仓库原始接口目录统计如下（去除 `group-chat` 的 external 镜像和 `core` 的 Uniswap V2 外部接口）：
 

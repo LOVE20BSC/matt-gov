@@ -11,14 +11,14 @@
 | 文档 | 范围 |
 | --- | --- |
 | [core.md](core.md) | `core` 仓库 `src/interfaces/` 10 个接口 vs `LOVE20TKM/core`、`LOVE20TKM/group` |
-| [action.md](action.md) | `interfaces/action/` 5 个接口 vs `LOVE20TKM/extension`、`extension-group`、`extension-lp` |
+| [action.md](action.md) | `interfaces/action/` 10 个接口 vs `LOVE20TKM/extension`、`extension-group`、`extension-lp` |
 | [group-chat.md](group-chat.md) | `interfaces/group-chat/` 12 个接口 vs `LOVE20TKM/group-chat`、`LOVE20TKM/group` |
 
 ## 规模对比
 
 | 侧 | 接口文件 | 接口声明 | 函数 | 事件 | 错误 |
 | --- | --- | --- | --- | --- | --- |
-| 新（本目录 `interfaces/` + `core` 仓库 `src/interfaces/`） | 27 | 55 | 412 | 69 | 215 |
+| 新（本目录 `interfaces/` + `core` 仓库 `src/interfaces/`） | 32 | 73 | 392 | 68 | 219 |
 | 旧（6 个 LOVE20TKM 仓库） | 52 | 115 | 655 | 100 | 274 |
 
 **统计口径**（三份分层文档的计数均可按此复现）：
@@ -26,7 +26,7 @@
 - 新侧文件 = 本目录 `interfaces/` 下的 `action`、`group-chat` 两层，加 `core` 仓库 `src/interfaces/` 顶层的 10 个 `core` 接口；Core 的接口以 `core` 仓库为准，本仓库不再保留副本。
 - 旧侧文件 = 6 个 LOVE20TKM 仓库 `LOVE20TKM/<repo>/src` 下 `interface`/`interfaces` 目录内的全部 `.sol`；排除 `LOVE20TKM/group-chat/src/interfaces/external/`（14 个跨仓库镜像，非旧协议自有 ABI）；**包含** `LOVE20TKM/group/src/interfaces/ILOVE20Token.sol`（`core` 同名接口的逐字镜像，仅 import 路径不同）。
 - 函数数按**声明条数**计，不做跨文件去重（同一函数名在不同接口各计一次）。
-- 接口声明数与文件数不同：新侧 27 文件内含 **54 个** `interface` 声明——`group-chat/IGroupChatRules.sol` 含 4 个；`core/ILOVE20Token.sol`、`core/IMemberNFT.sol`、`core/ILaunch.sol`、`core/IPhase.sol` 各含 3 个；15 个文件各含 2 个（`Events` 子接口与主接口）；6 个文件各含 1 个；旧侧 52 文件内含 **115 个** `interface` 声明（去重后 112 个，`ILOVE20Token` 及其两个子接口在 `core` 与 `group` 各声明一次），其中 63 个是 `I<Name>Errors`/`I<Name>Events` 子接口。
+- 接口声明数与文件数不同：新侧 32 文件内含 **73 个** `interface` 声明（Core 10 / 26、Action 10 / 24、Group Chat 12 / 23）——多数文件同时声明 `Events`/`Errors` 子接口与主接口，`group-chat/IGroupChatRules.sol` 含 4 个；旧侧 52 文件内含 **115 个** `interface` 声明（去重后 112 个，`ILOVE20Token` 及其两个子接口在 `core` 与 `group` 各声明一次），其中 63 个是 `I<Name>Errors`/`I<Name>Events` 子接口。
 - **简写约定**（用于按名检索时的展开规则）：`X`(+`Count`/`AtIndex`) 表示 `X`、`XCount`、`XAtIndex` 三个函数；`aCount`/`AtIndex` 表示 `aCount` 与 `aAtIndex` 两个函数。旧协议大量使用「全量数组 + 长度 + 逐项读取」三件套，逐条列出会淹没差异，故按组名收敛。需要精确 ABI 时按此规则展开即可。
 
 旧侧统计含 `IGroupMarket`、`ILOVE20SLToken`、`ILOVE20STToken` 等已裁决不迁移的接口。函数数下降主要来自三处：地址/ID 双路径合并、`extension` 实例模型改为单例多社区模型、公平发射募资与不信任投票等整块业务不迁移。
