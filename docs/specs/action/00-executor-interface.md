@@ -39,17 +39,17 @@ ActionTarget 不发出 `Withdrawn`：部分撤回不改变加入状态，该事�
 
 **Executor 层事件示例**（业务细节记录，各 Executor 字段不同）：
 
-- **ILpExecutor.Joined**: 包含 `amount`（LP 无体验资产，字段更简洁）
+- **ILpExecutor.Joined**: 包含 `amount`（LP 无 Provider 额度来源，字段更简洁）
 ```solidity
 event Joined(address indexed tokenAddress, uint256 indexed actionId, 
     uint256 indexed memberId, uint256 round, uint256 amount);
 ```
 
-- **IGroupActionExecutor.Joined**: 包含 `amount, isExperience, providerMemberId, groupId`
+- **IGroupActionExecutor.Joined**: 包含 `amount, providerMemberId, groupId`
 ```solidity
 event Joined(address indexed tokenAddress, uint256 indexed actionId, 
     uint256 indexed memberId, uint256 round, uint256 amount, 
-    bool isExperience, uint256 providerMemberId, uint256 groupId);
+    uint256 providerMemberId, uint256 groupId);
 ```
 
 两层事件名称不同（ActionTarget 层为加入态登记事件 `JoinStateRegistered`/`JoinStateCleared`，Executor 层为业务事件 `Joined`/`Exited`），各自记录各自层级的信息。参见 [ADR-003](../../adr/003-action-target-interface-simplification.md)。

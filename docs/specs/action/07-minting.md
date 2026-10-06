@@ -16,7 +16,7 @@ executor -> ActionTarget -> Mint -> ActionTarget -> executor
 
 Core 的预留、铸造和取消额度账本见 [Mint](../core/07-mint.md)，不能把 Executor 内部转账再次计作 Core 铸造。
 
-事件和错误定义分别见 [`IActionTarget.sol`](../../../interfaces/action/IActionTarget.sol)、[`IActionExecutor.sol`](../../../interfaces/action/IActionExecutor.sol)、[`ILpExecutor.sol`](../../../interfaces/action/ILpExecutor.sol)、[`IGroupActionExecutor.sol`](../../../interfaces/action/IGroupActionExecutor.sol) 和 [`IGroupServiceExecutor.sol`](../../../interfaces/action/IGroupServiceExecutor.sol)。每个接口只声明自身合约实际拥有的事件和错误：三个 Executor 共用且签名一致的 1 个事件（`MemberRewardMinted`）与 8 个错误（`AlreadyInitialized`、`UnauthorizedCallback`、`InvalidRound`、`RoundNotStarted`、`NotMemberOwner`、`ProposalNotVoted`、`RewardAlreadyMinted`、`BatchLengthMismatch`）声明在基座 `IActionExecutor` 的子接口中，由三个 Executor 继承；`ActionRewardMinted` 与 `RewardBurned` 只由 ActionTarget 发出，声明在 `IActionTargetEvents`，各 Executor 不声明。只被两家使用的成员（如 `InvalidParticipationAmount`）留在各自子接口，不上提基座。
+事件和错误定义分别见 [`IActionTarget.sol`](../../../interfaces/action/IActionTarget.sol)、[`IActionExecutor.sol`](../../../interfaces/action/IActionExecutor.sol)、[`ILpExecutor.sol`](../../../interfaces/action/ILpExecutor.sol)、[`IGroupActionExecutor.sol`](../../../interfaces/action/IGroupActionExecutor.sol) 与按业务模块拆分的 [`IGroupActionVerify.sol`](../../../interfaces/action/IGroupActionVerify.sol)、[`IGroupActionJoin.sol`](../../../interfaces/action/IGroupActionJoin.sol)、[`IGroupActionManager.sol`](../../../interfaces/action/IGroupActionManager.sol)、[`IGroupActionIndexes.sol`](../../../interfaces/action/IGroupActionIndexes.sol) 和 [`IGroupServiceExecutor.sol`](../../../interfaces/action/IGroupServiceExecutor.sol)。每个接口只声明自身合约实际拥有的事件和错误：三个 Executor 共用且签名一致的 1 个事件（`MemberRewardMinted`）与 8 个错误（`AlreadyInitialized`、`UnauthorizedCallback`、`InvalidRound`、`RoundNotStarted`、`NotMemberOwner`、`ProposalNotVoted`、`RewardAlreadyMinted`、`BatchLengthMismatch`）声明在基座 `IActionExecutor` 的子接口中，由三个 Executor 继承；`ActionRewardMinted` 与 `RewardBurned` 只由 ActionTarget 发出，声明在 `IActionTargetEvents`，各 Executor 不声明。跨模块共用的错误（如 `InvalidParticipationAmount` 只由加入与额度使用，留在 `IGroupActionJoinErrors`；创建回调与投票回调用到的 `InvalidTargetDataLength` 留在 Executor 自身的错误子接口），不上提基座。
 
 事件按 BSC 业务主体使用 `memberId`；事件中的地址仅表示代币、合约或调用审计地址。行动级事件（`ActionCreated`、`ActionRewardMinted`、`RewardBurned`）不含 `memberId`，它们的主体是行动或服务提案本身。
 
@@ -36,12 +36,13 @@ Core 的预留、铸造和取消额度账本见 [Mint](../core/07-mint.md)，不
 | `TransferFailed(tokenAddress, to, amount)` | ActionTarget 向 Executor 转出整笔激励失败 |
 | `InvalidRound(round)` | Round 已开始但不在对应操作的有效阶段 |
 | `RoundNotStarted()` | 对应阶段的 Round 小于 1 |
-| `InsufficientExperienceQuota(providerMemberId, required, available)` | 体验额度不足 |
+| `InsufficientProviderQuota(providerMemberId, required, available)` | Provider 额度不足 |
+| `GroupNotActive()` | 在未激活链群上执行群管理操作（停用、更新配置） |
 | `VerifierAlreadyLocked(tokenAddress, actionId, round)` | 锁定后更换验证者 |
 | `BatchIndexMismatch(expected, actual)` | 验证批次跳跃、重复或乱序 |
 | `RewardAlreadyMinted(tokenAddress, actionId, memberId, round)` | 重复成员结算（Executor 层；ActionTarget 层见 `AlreadyMinted` 行） |
 | `DistributionOverflow(configured, available)` | 配置比例总和超过 `1e18` 时拒绝；正好 `1e18` 合法 |
 
-Target Data 的项数、每项位置与编码由各 Executor 在自己的规格中固定，并在对应回调内自行校验，错误也声明在各自的 `Errors` 子接口；ActionTarget 只解析创建回调的第 `0` 项 executor。`InvalidParticipationAmount` 拒绝零值或超出配置范围的参与量；`InvalidCandidate` 拒绝候选人或申请版本无效；`InvalidSplits` 拒绝分割线不严格递增或超出范围；`ApplicationNotActive` 拒绝使用已失效申请。以上错误均在对应外层交易中回滚。
+Target Data 的项数、每项位置与编码由各 Executor 在自己的规格中固定，并在对应回调内自行校验，错误也声明在各自的 `Errors` 子接口；ActionTarget 只解析创建回调的第 `0` 项 executor。`InvalidParticipationAmount` 拒绝零值或超出配置范围的参与量；`InvalidCandidate` 拒绝候选人或申请版本无效；`InvalidSplits` 拒绝分割线不严格递增或超出范围；`ApplicationNotActive` 拒绝使用已失效申请；`InvalidTargetDataLength` 拒绝 Target Data 项数超出约定；`VerificationInfoLengthMismatch` 拒绝验证信息 schema 两数组不等长或成员值项数与 schema 不符；`GroupNotActive` 拒绝在未激活链群上执行群管理操作，加入类操作改由 `CannotJoinInactiveGroup` 拒绝。以上错误均在对应外层交易中回滚。
 
 验收见 [Action 验收](08-testing.md)。

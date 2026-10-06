@@ -155,20 +155,21 @@
 - ASCII 大小写不敏感
 - 自转账不破坏持有人统计
 
-### GroupAction 全局索引与 Group Chat 主体
-**覆盖要求**：覆盖 GroupAction Executor 的 17 组 Group ID、Token Address、Action ID、Member ID 索引及每组全量数组/`Count`/`AtIndex` 一致性；覆盖同一成员跨社区、跨行动参与，退出一个行动但仍有其他关系时不得提前删除上层索引，最后一个关系退出后逐层清理，以及 `forceExit` 不修改这些业务索引。覆盖四类 typed Manager、普通 owner 管理型 Chat、规则槽位、插件、消息与分页行为；覆盖成员、管理员、委托、发言、提及、黑名单目标和黑名单投票者均按 `memberId` 运行，并确认不存在默认 MemberNFT 映射、默认身份发言入口、地址黑名单/投票/查询或其他地址主体接口。治理黑名单覆盖代币治理票与行动 Proposal 投票两类票权、全社区治理票分母、支持票严格超过反对票 `10` 倍且达到 `0.3%` 的双阈值、撤票和任何人刷新。Group Chat 的群组资格以成员名单或 GroupAction 当前归属为任一满足；最后一个 GroupAction 归属正常退出后，才失去归属分支；ActionTarget 的 `forceExit` 不单独改变资格。owner 快照及消息/事件调用地址只用于 NFT 转移有效性和审计，不得成为业务主体。
+### GroupAction 参与索引与 Group Chat 主体
+**覆盖要求**：覆盖 `isGroupMember` 的归属计数与五条 `g*` 索引（`gGroupIds`、`gGroupIdsByMemberId`、`gTokenAddressesByGroupIdByMemberId`、`gMemberIds`、`gMemberIdsByGroupId`）的标准分页语义（`offset` 越界返回空数组与真实总数、`limit` 超剩余按剩余返回、`reverse` 逆序、`limit = 0` 只取总数）与 `total` 一致性，以及 `isGroupMember` 与 `gTokenAddressesByGroupIdByMemberId` 的同源一致性；覆盖按轮历史两读（`groupIds`、`memberIdsByGroupId`）返回目标轮快照且加入阶段结束后稳定；覆盖同一成员跨社区、跨行动参与，退出一个行动但仍有其他关系时归属不变，最后一个关系退出后 `isGroupMember` 才返回假，以及 `forceExit` 不修改这些业务索引。覆盖四类 typed Manager、普通 owner 管理型 Chat、规则槽位、插件、消息与分页行为；覆盖成员、管理员、委托、发言、提及、黑名单目标和黑名单投票者均按 `memberId` 运行，并确认不存在默认 MemberNFT 映射、默认身份发言入口、地址黑名单/投票/查询或其他地址主体接口。治理黑名单覆盖代币治理票与行动 Proposal 投票两类票权、全社区治理票分母、支持票严格超过反对票 `10` 倍且达到 `0.3%` 的双阈值、撤票和任何人刷新。Group Chat 的群组资格以成员名单或 `isGroupMember` 为任一满足；最后一个 GroupAction 归属正常退出后，才失去归属分支；ActionTarget 的 `forceExit` 不单独改变资格。owner 快照及消息/事件调用地址只用于 NFT 转移有效性和审计，不得成为业务主体。
 
 **测试方式**：
-- 单元测试：`action/test/GroupActionExecutor.t.sol` 的17组索引一致性场景
+- 单元测试：`action/test/GroupActionExecutor.t.sol` 的参与索引分页与归属计数场景
 - 单元测试：`group-chat/test/GroupChat.t.sol` 的成员、委托、黑名单场景
 - 集成测试：跨行动参与、`forceExit` 后索引和资格状态
 - 验收证据：索引查询日志、Group Chat 资格判断日志
 
 **判定标准**：
-- 17组索引 Count 与 AtIndex 一致
+- 三条分页查询的 `offset` / `limit` / `reverse` / `total` 语义符合标准分页契约
+- 归属计数在最后一个关系退出后才归零
 - forceExit 不修改 Executor 业务索引
 - Group Chat 无地址主体接口
-- Executor 归属判断使用正确的索引查询
+- Executor 归属判断使用 `isGroupMember`
 
 ### Target 组合与幂等性
 **覆盖要求**：覆盖 `NoCallback`/`Callback` 与 EOA/合约的合法组合、Callback + EOA 拒绝、缺少 executor 保留项的行动创建 Target Data 拒绝、仅 executor 项可创建，以及同一 `tokenAddress + proposalId` 重复创建回调回滚。
@@ -211,7 +212,7 @@
 - 参数透传无丢失
 
 ### 公共验证者与 Round 历史
-**覆盖要求**：覆盖加入、追加、体验加入、部分撤回和全部退出逐笔更新当前 Round；Provider 只能撤回自己的体验代币，不能代成员退出；体验撤回使成员总参与量归零时自动退出。覆盖同轮多次变更、显式零值退出、最后成员退出移除 Group、无交互 Round 继承最近历史，以及加入阶段结束后不能回写。验证阶段无需前置状态准备交易即可读取目标 Round 历史；验证提交按成员历史顺序使用连续游标。每个成员的 `finalScore = participationAmount × originScore`，再用全行动总 `finalScore` 分配激励，不因所属 Group 不同而改变相同参与量/得分的权重。首个验证批次永久锁定后验证者停止提交时，本轮行动层激励保持为 `0`，底层 Proposal 激励仍可按规则铸造或销毁，且不允许未经授权的其他候选人接管。
+**覆盖要求**：覆盖自有来源与 Provider 额度来源的加入、追加、部分撤回和全部退出逐笔更新当前 Round；成员可在同一行动混合多个来源，未使用的 Provider 额度留存合约内可退还；Provider 额度授予即存入合约，成员 `join` 只扣减额度。Provider 只能撤回自己提供的那部分，且只有该 Provider 当前持有人可撤回，不能代成员退出；撤回使成员总参与量归零时自动退出。**成员退出按资金归属处理：自有资产返还成员，Provider 来源恢复为该 Provider 对该成员的可用额度、不转出合约**，成员可再次用同一额度加入。覆盖同轮多次变更、显式零值退出、最后成员退出移除 Group、无交互 Round 继承最近历史，以及加入阶段结束后不能回写。单个撤回操作只发出其来源的 `Withdrawn`，成员退出时按来源逐条发出 `Withdrawn` 后再发 `Exited`；代币量只由 `Joined`/`Withdrawn` 承载，`Exited` 不带金额。验证阶段无需前置状态准备交易即可读取目标 Round 历史，验证集合只由目标 Round 历史决定，加入轮结束后停用、恢复或新增链群都不改变该轮验证集合；验证提交按成员历史顺序使用连续游标，每个成员每轮只产生一次新的冷写入。零票申请不进入排名，替换或撤销申请时旧申请从排名移除且不从榜外补位。每个成员的 `finalScore = participationAmount × originScore`，再用全行动总 `finalScore` 分配激励，不因所属 Group 不同而改变相同参与量/得分的权重；目标轮未完成验证时行动层分配查询返回 `0`。首个验证批次永久锁定后验证者停止提交时，本轮行动层激励保持为 `0`，底层 Proposal 激励仍可按规则铸造或销毁，且不允许未经授权的其他候选人接管。
 
 **测试方式**：
 - 单元测试：`action/test/GroupActionExecutor.t.sol` 的 Round 历史、验证场景
@@ -220,6 +221,8 @@
 
 **判定标准**：
 - Round 历史按加入阶段操作正确记录
+- 停用链群的入选轮验证不被阻断
+- 未完成验证时行动层分配查询为 `0`
 - 验证者锁定后行动层激励为0
 - 底层 Proposal 激励独立处理
 

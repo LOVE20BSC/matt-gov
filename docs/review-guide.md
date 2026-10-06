@@ -191,8 +191,8 @@ rg -n 'core\.md|action\.md|group-chat\.md|launchFirstToken|initializeGenesis|TOD
 - [ ] `executor` 保留项在第 `0` 项、其余 Target Data 项由各 Executor 自定并校验、编码位置固定
 - [ ] `proposalId == actionId` 的别名边界清楚
 - [ ] LP、Group Action、Service 的阶段映射分别可推导
-- [ ] 加入、追加、体验资产、部分撤回、退出的账本互不抵扣
-- [ ] Group Action 17 组索引的加入、删除、最后关系清理闭合
+- [ ] 加入、追加、Provider 额度资产、部分撤回、退出的账本互不抵扣
+- [ ] Group Action 参与索引的加入、退出、归属计数在最后一个关系退出后归零
 - [ ] Round 历史的懒继承不会把退出状态错误继承
 - [ ] 候选排名、分割线、批次游标和永久锁定规则可执行
 - [ ] 验证不完整时行动层激励为零，底层 Proposal 激励仍可独立处理
@@ -265,7 +265,7 @@ LOVE20TKM/<repo>/<path>[#<function-or-symbol>]
 - [ ] 所有代币转移前后余额守恒
 - [ ] 供应上限、预留、铸造、销毁不会重复计算
 - [ ] LP 手续费增量不会被错误分配给旧质押者
-- [ ] 体验资产、二次分配和失败回滚不会锁死资金
+- [ ] Provider 额度、二次分配和失败回滚不会锁死资金
 
 ### Gas 与可运维性
 

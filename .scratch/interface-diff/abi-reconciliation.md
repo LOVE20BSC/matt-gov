@@ -9,9 +9,11 @@
 | 层 | 新文件/接口 | 新函数 | 新事件 | 新错误 |
 | --- | ---: | ---: | ---: | ---: |
 | Core | 10 / 22 | 136 | 22 | 61 |
-| Action | 5 / 9 | 137 | 24 | 72 |
+| Action | 10 / 24 | 101 | 22 | 65 |
 | Group Chat | 12 / 23 | 139 | 23 | 76 |
-| **合计** | **27 / 54** | **412** | **69** | **209** |
+| **合计** | **32 / 69** | **376** | **67** | **202** |
+
+Action 行按当前 `interfaces/action/*.sol` 的自有声明重算（10 个文件、24 个 `interface` 声明、101 个 `function`、22 个 `event`、65 个 `error`，均不展开继承）；该行此前记录的 5 / 9、137 / 24 / 72 是拆分 `IGroupActionExecutorErrors` 与增补 `initialized()`/销毁入口之前的快照，已作废；`IGroupActionIndexes` 由 51 个索引函数收敛为 4 条查询后函数数由 146 降至 97，`IGroupActionExecutor` 再按实现模块拆出 `IGroupActionJoin` / `IGroupActionVerify` / `IGroupActionManager` 三个接口文件（ABI 集合不变）。Core 与 Group Chat 两行沿用原记录，待全层重算后统一冻结。
 
 旧侧按仓库原始接口目录统计如下（去除 `group-chat` 的 external 镜像和 `core` 的 Uniswap V2 外部接口）：
 
@@ -32,7 +34,7 @@
 | 层 | 函数 | 事件 | 错误 | 结构体/枚举 | 状态 |
 | --- | --- | --- | --- | --- | --- |
 | Core | 每个旧声明均有保留、改名、改参、删除或新增去向；分层统计仅计自有声明，完整 ABI 另展开标准继承成员 | 字段级差异已列 | 三个 Submit selector 已保留，其余已列 | `Action*` → `Proposal*`、Stake 账本重构 | **已完成** |
-| Action | 单例作用域、`memberId` 化和 17 组索引已列 | Executor 事件已列 | 旧 GroupJoin/Manager/Verify 错误已列 | GroupConfig、VerifierApplication 已列 | 已完成 |
+| Action | 单例作用域、`memberId` 化和参与索引改标准分页已列 | Executor 事件已列 | 旧 GroupJoin/Manager/Verify 错误已列 | GroupConfig、VerifierApplication 已列 | 已完成 |
 | Group Chat | 地址主体删除、管理器合并和索引保留已列 | 审计地址与 memberId 差异已列 | 三个 scope/ban 适配接口已补回 | ChatInfo、Message、RoundSpan 已列 | 已完成 |
 
 ## Submit selector 裁决

@@ -48,13 +48,13 @@ interface IActionExecutor is IProposalTarget, IActionExecutorEvents, IActionExec
 ```
 
 **事件分层**：
-- `IActionExecutor` 只定义 `MemberRewardMinted` 事件（成员级结算留痕）；各 Executor 自行声明业务事件 `Joined`/`Withdrawn`/`Exited`（完整业务字段 `amount, isExperience, providerMemberId`）
+- `IActionExecutor` 只定义 `MemberRewardMinted` 事件（成员级结算留痕）；各 Executor 自行声明业务事件 `Joined`/`Withdrawn`/`Exited`（完整业务字段 `amount, providerMemberId`）
 - `IActionTarget` 定义 `ActionCreated/JoinStateRegistered/JoinStateCleared/ActionRewardMinted` 事件；加入态事件与登记函数同名系，`JoinStateCleared` 带 `forced` 区分正常清理与 forceExit，`ActionCreated` 带 `round`
 - 两层事件名称不同、各记录各层级的信息；ActionTarget 不发 `Withdrawn`
 
 **继承关系**：
 - `ILpExecutor is IActionExecutor, ILpExecutorEvents`
-- `IGroupActionExecutor is IGroupActionIndexes, IActionExecutor, IGroupActionExecutorEvents`
+- `IGroupActionExecutor is IGroupActionIndexes, IActionExecutor, IGroupActionJoin, IGroupActionVerify, IGroupActionManager, IGroupActionExecutorErrors`
 - `IGroupServiceExecutor is IActionExecutor, IGroupServiceExecutorEvents`
 
 各 Executor 根据业务需要扩展或覆盖 `join` 签名：
@@ -93,7 +93,7 @@ interface IActionExecutor is IProposalTarget, IActionExecutorEvents, IActionExec
 **非通用部分**各 Executor 自行定义：
 - `join` 参数因行动类型而异（LP 需要 amount，GroupAction 需要 groupId，GroupService 不需要 amount）
 - `withdraw` 签名虽类似但语义不同（LP 和 GroupAction 是部分撤回，GroupService 可能不需要）
-- 事件字段不同（LP 的 Joined 只包含 amount，GroupAction 还包含 isExperience/providerMemberId/groupId）
+- 事件字段不同（LP 的 Joined 只包含 amount，GroupAction 还包含 providerMemberId/groupId）
 
 完整接口见 [`IActionExecutor.sol`](../../interfaces/action/IActionExecutor.sol) 和 [规格文档](../../docs/specs/action/00-executor-interface.md)。
 
@@ -106,10 +106,10 @@ interface IActionExecutor is IProposalTarget, IActionExecutorEvents, IActionExec
 | `IActionTarget` | 22 | `IProposalTarget`（3） | 25 |
 | `IActionExecutor` | 13 | `IProposalTarget`（3） | 16 |
 | `ILpExecutor` | 8 | `IActionExecutor`（13）+ `IProposalTarget`（3） | 24 |
-| `IGroupActionExecutor` | 37 | `IGroupActionIndexes`（51）+ `IActionExecutor`（13）+ `IProposalTarget`（3） | 104 |
+| `IGroupActionExecutor` | 7 | `IGroupActionIndexes`（6）+ `IGroupActionJoin`（12）+ `IGroupActionVerify`（14）+ `IGroupActionManager`（4）+ `IActionExecutor`（13）+ `IProposalTarget`（3）+ `IVerificationInfo`（4） | 63 |
 | `IGroupServiceExecutor` | 10 | `IActionExecutor`（13）+ `IProposalTarget`（3） | 26 |
 
-本表只统计**函数**；事件与错误见各节。`IActionTarget` 的自身声明数按 2026-10-02 Review 裁决后的接口重算（补 4 个依赖 getter + `initialized()`，删不可达错误，`join`/`exit` 改名为 `registerJoinState`/`clearJoinState`，另加派生的 `phaseAddress()` 与行动级销毁 `burnRewardIfNeeded`/`burnInfo`）。`IActionExecutor` 的行按成员级奖励、批量结算、行动级销毁判据与参与量查询裁决后重算：自身 13 个函数（`actionTarget`、`initialized`、`exit`、`mintMemberReward`、`mintMemberRewards`、`needBurnReward`、`currentVoteRound`、`currentJoinRound`、`currentMintRound`、`memberReward`、`joinedAmount`、`joinedAmountByMemberId`、`joinedAmountTokenAddress`），另有 8 个错误与 1 个事件。三个 Executor 的自身声明数不随共用基座的变化而变；其 `Errors` 子接口拆分与成员顺序修正在各自 Review 步处理。
+本表只统计**函数**；事件与错误见各节。`IActionTarget` 的自身声明数按 2026-10-02 Review 裁决后的接口重算（补 4 个依赖 getter + `initialized()`，删不可达错误，`join`/`exit` 改名为 `registerJoinState`/`clearJoinState`，另加派生的 `phaseAddress()` 与行动级销毁 `burnRewardIfNeeded`/`burnInfo`）。`IActionExecutor` 的行按成员级奖励、批量结算、行动级销毁判据与参与量查询裁决后重算：自身 13 个函数（`actionTarget`、`initialized`、`exit`、`mintMemberReward`、`mintMemberRewards`、`needBurnReward`、`currentVoteRound`、`currentJoinRound`、`currentMintRound`、`memberReward`、`joinedAmount`、`joinedAmountByMemberId`、`joinedAmountTokenAddress`），另有 8 个错误与 1 个事件。三个 Executor 的自身声明数不随共用基座的变化而变；`IGroupActionExecutor` 的 `Errors` 子接口拆分已在对应 Review 步完成。
 
 旧侧对应情况：旧 `LOVE20TKM/group-chat/src/interfaces/sources/ban/IAdminBanSource.sol`、`LOVE20TKM/group-chat/src/interfaces/sources/scope/IGroupMemberScope.sol`、`LOVE20TKM/group-chat/src/interfaces/sources/scope/IGroupJoinScopeSource.sol`、`LOVE20TKM/group-chat/src/interfaces/sources/ban/IGovVotedBanSource.sol` 均通过 `is IPostBanSource`/`is IPostScopeSource` 继承行为契约（见 [group-chat.md](group-chat.md)）；旧 `LOVE20TKM/extension-group/src/interface/IExtensionGroupActionFactory.sol` 继承 `IGroupActionFactory`、`IExtensionFactory`，随工厂体系一并删除。
 
@@ -236,7 +236,13 @@ LP 事件数为 **4**（`Joined`、`Withdrawn`、`Exited`，加基座继承的 `
 
 旧：`LOVE20TKM/extension-group/src/interface/IGroupAction.sol`、`LOVE20TKM/extension-group/src/interface/IGroupManager.sol`、`LOVE20TKM/extension-group/src/interface/IGroupJoin.sol`、`LOVE20TKM/extension-group/src/interface/IGroupVerify.sol`。四个旧接口合并为一个 Executor。
 
-**继承**：`IGroupActionExecutor is IGroupActionIndexes, IActionExecutor, IVerificationInfo, IGroupActionExecutorEvents`。因此其完整函数 ABI = 自身声明的 43 个函数 + 继承的 51 个 `g*` 索引函数（见第 4 节）+ `IActionExecutor` 的 8 个（该 8 个已含 `IProposalTarget` 的 3 个回调），共 105 个。下文表格只列自身声明的部分，`g*` 索引按第 4 节的组名收敛。
+**继承**：`IGroupActionExecutor is IGroupActionIndexes, IActionExecutor, IGroupActionJoin, IGroupActionVerify, IGroupActionManager, IGroupActionExecutorErrors`。接口按**实现模块**拆成文件（与库一一对应），`IGroupActionExecutor` 自身只声明 Executor 本地实现的 7 个成员。因此其完整函数 ABI = 自身的 7 个 + `IGroupActionIndexes` 的 6 条索引查询 + `IGroupActionJoin` 的 12 个（含两条按轮历史读）+ `IGroupActionVerify` 的 14 个（另经 `IGroupActionVerify` 继承 `IVerificationInfo` 的 4 个）+ `IGroupActionManager` 的 4 个 + `IActionExecutor` 的 16 个（含 `IProposalTarget` 的 3 个回调），共 63 个。下文表格只列各成员的声明归属。
+
+**文件次序与格式**：三个模块接口文件的成员顺序沿用旧文件次序（`IGroupActionJoin` ← `IGroupJoin`、`IGroupActionVerify` ← `IGroupVerify`、`IGroupActionManager` ← `IGroupManager`），删除成员的位置留空不补位，新增成员就近插入或成组追加在末尾；声明格式沿用旧文件与 `ILpExecutor` 的多行风格（参数每行一个、成员之间空行、多返回值折行 `returns (...)`），便于把新文件与旧文件并排逐段比对。`IGroupActionExecutor` 自身按下述次序：配置 getter → `init` → `currentVerifyRound` → `generatedActionRewardByGroupId`。
+
+模块间次序核对（旧文件里存活的成员按原次序出现在新文件中）：`IGroupJoin` 的 `join`、`trialExit`→`providerWithdraw`、`joinInfo`、`totalJoinedAmountByGroupId`、`trialAccountsWaitingAdd/Remove`→`providerQuotaAdd/Remove`、`trialAccountsWaiting`→`providerQuota` 依次对应；`IGroupVerify` 的 `submitOriginScores`、`originScoreByAccount`→`originScore`、`accountScore`→`finalScore`、`totalGroupScore`→`totalFinalScore`、`verifiedAccountCount`→`verifiedMemberCount`、`isVerified`→`isRoundVerified`、`verifiers`→`lockedVerifierId` 依次对应；`IGroupManager` 的 `activateGroup`、`deactivateGroup`、`updateGroupInfo`、`groupInfo` 依次对应且中间无删除。
+
+结构体随模块走：`GroupConfig` 在 `IGroupActionManager.sol`、`VerifierApplication` 在 `IGroupActionVerify.sol`。35 个自有错误分列在四个错误子接口中（Join 15 / Verify 9 / Manager 7 / Executor 4）。
 
 四阶段轮次（投票、加入、验证、铸币）。
 
@@ -259,25 +265,26 @@ LP 事件数为 **4**（`Joined`、`Withdrawn`、`Exited`，加基座继承的 `
 | `groupInfo(tokenAddress, actionId, groupId) returns (config, active, activatedRound, deactivatedRound)` | `IGroupManager.groupInfo(extension, groupId) returns (GroupInfo)` | 改参 |
 | `JOIN_TOKEN_ADDRESS(tokenAddress, actionId)`、`ACTIVATION_STAKE_AMOUNT(tokenAddress, actionId)`、`MAX_JOIN_AMOUNT_RATIO(tokenAddress, actionId)`、`ACTIVATION_MIN_GOV_RATIO(tokenAddress, actionId)` | `IGroupAction` 同名 | 改参（补单例行动作用域；配置来自创建回调的 Target Data） |
 | 无 | `IGroupManager.descriptionByRound`、`activeGroupIdsByOwner`、`activeGroupIds`(+`Count`/`AtIndex`)、`isGroupActive`、`maxJoinAmount`、`stakedByOwner`、`staked`、`totalStaked`、`totalStakedByOwner`、`hasActiveGroups`、`PRECISION` | 删除 11 项 |
-| 无 | `IGroupManager.tokenAddressesByGroupId`(+`Count`/`AtIndex`)、`actionIdsByGroupId`(+`Count`/`AtIndex`)、`actionIds`(+`Count`/`AtIndex`) | 删除（能力由 `IGroupActionIndexes` 的 `g*` 索引覆盖） |
+| 无 | `IGroupManager.tokenAddressesByGroupId`(+`Count`/`AtIndex`)、`actionIdsByGroupId`(+`Count`/`AtIndex`)、`actionIds`(+`Count`/`AtIndex`) | 删除（改为按需走 `groupIds` / `groupIdsByMemberId` / `memberIdsByGroupId` 分页查询） |
 
-### 参与与体验资产
+### 参与与 Provider 额度
 
 | 新 | 旧 | 状态 |
 | --- | --- | --- |
-| `join(tokenAddress, actionId, groupId, memberId, amount, verificationInfos[])` | `IGroupJoin.join(extension, groupId, amount, verificationInfos[])` | 改参 |
+| `join(tokenAddress, actionId, groupId, memberId, amount, providerMemberId, verificationInfos[])` | `IGroupJoin.join(extension, groupId, amount, verificationInfos[])`、`IGroupJoin.trialJoin(extension, groupId, address provider, verificationInfos[])` | 改参（合并自有与体验入口：`providerMemberId` 为 `0` 表示自有、非零表示 Provider 额度；重复调用为按来源追加） |
 | `exit(tokenAddress, actionId, memberId)` | `IGroupJoin.exit(extension)` | 改参 |
-| `withdraw(tokenAddress, actionId, memberId, amount)` | 无 | 新增（部分撤回） |
-| `joinInfo(tokenAddress, actionId, round, memberId) returns (joinedRound, amount, groupId)` | `IGroupJoin.joinInfo(extension, round, address account) returns (joinedRound, amount, groupId, address provider)` | 改参（去 `provider` 返回） |
+| `withdraw(tokenAddress, actionId, memberId, amount)` | 无 | 新增（部分撤回，仅自有账本） |
+| `joinInfo(tokenAddress, actionId, round, memberId) returns (joinedRound, amount, groupId)` | `IGroupJoin.joinInfo(extension, round, address account) returns (joinedRound, amount, groupId, address provider)` | 改参（去 `provider` 返回；`amount` 为全部来源合计） |
 | `memberIdsByGroupId(tokenAddress, actionId, round, groupId)` | `IGroupJoin.accountsByGroupId(extension, round, groupId)` | 改名+改参 |
 | `joinedAmountByMemberId(tokenAddress, actionId, round, memberId)`（基座继承） | `IGroupJoin.joinedAmountByAccount(extension, round, address account)` | 改名+改参（上提基座） |
 | `groupIds(tokenAddress, actionId, round)` | `IGroupVerify.groupIds(extension, round)` | 改参 |
-| `trialJoin(tokenAddress, actionId, groupId, memberId, providerMemberId, verificationInfos[])` | `IGroupJoin.trialJoin(extension, groupId, address provider, verificationInfos[])` | 改参 |
-| `trialWithdraw(tokenAddress, actionId, memberId, providerMemberId, amount)` | `IGroupJoin.trialExit(extension, address account)` | 改名+改参（全额退出 → 按额撤回） |
-| `trialAccountsWaitingAdd(tokenAddress, actionId, groupId, providerMemberId, uint256[] memberIds, uint256[] amounts)` | `IGroupJoin.trialAccountsWaitingAdd(extension, groupId, address[] trialAccounts, uint256[] trialAmounts)` | 改参 |
-| `trialAccountsWaitingRemove(tokenAddress, actionId, groupId, providerMemberId, uint256[] memberIds)` | `IGroupJoin.trialAccountsWaitingRemove(extension, groupId, address[] trialAccounts)` | 改参 |
-| `trialAccountsWaiting(tokenAddress, actionId, groupId, providerMemberId) returns (memberIds[], amounts[], blockNumbers[])` | `IGroupJoin.trialAccountsWaiting(extension, groupId, address provider) returns (accounts[], trialAmounts[], blockNumbers[])` | 改参 |
-| `trialAmount(tokenAddress, actionId, round, memberId, providerMemberId)` | 无 | 新增 |
+| `providerWithdraw(tokenAddress, actionId, memberId, providerMemberId, amount)` | `IGroupJoin.trialExit(extension, address account)` | 改名+改参（全额退出 → 按额撤回，仅减指定 Provider 账本，仅该 Provider 当前持有人可调） |
+| `providerQuotaAdd(tokenAddress, actionId, groupId, providerMemberId, uint256[] memberIds, uint256[] amounts)` | `IGroupJoin.trialAccountsWaitingAdd(extension, groupId, address[] trialAccounts, uint256[] trialAmounts)` | 改名+改参（名单语义改为 Provider 额度：授予即存入合约；重复授予是追加，不再回滚） |
+| `providerQuotaRemove(tokenAddress, actionId, groupId, providerMemberId, uint256[] memberIds)` | `IGroupJoin.trialAccountsWaitingRemove(extension, groupId, address[] trialAccounts)` | 改名+改参（收回未使用额度并按额退还） |
+| `providerQuota(tokenAddress, actionId, groupId, providerMemberId) returns (memberIds[], amounts[], blockNumbers[])` | `IGroupJoin.trialAccountsWaiting(extension, groupId, address provider) returns (accounts[], trialAmounts[], blockNumbers[])` | 改名+改参 |
+| `providerAmount(tokenAddress, actionId, round, memberId, providerMemberId)` | 无 | 新增（按来源取单值） |
+| `providerAmountsByMemberId(tokenAddress, actionId, round, memberId, offset, limit, reverse) returns (providerMemberIds[], amounts[], total)` | 无 | 新增（标准分页；某成员全部有余额的来源及金额，供展示与管理） |
+| 无 | `IGroupJoin.trialJoin(extension, groupId, address provider, verificationInfos[])` | 合并进 `join`（见上） |
 | 无 | `IGroupJoin.trialAccountsWaitingRemoveAll`、`trialAccountsWaitingCount`、`trialAccountsWaitingAtIndex`、`trialAccountsJoined`(+`Count`/`AtIndex`) | 删除 6 项 |
 | 无 | `IGroupJoin.groupIdByAccount` | 删除（`joinInfo` 返回 `groupId`） |
 | `totalJoinedAmountByGroupId(tokenAddress, actionId, round, groupId)` | `IGroupJoin.totalJoinedAmountByGroupId(extension, round, groupId)` | **已补回**（改参：新增 `actionId`，单例多行动模型） |
@@ -303,7 +310,7 @@ LP 事件数为 **4**（`Joined`、`Withdrawn`、`Exited`，加基座继承的 `
 | `currentApplicationId`、`verifierApplication`、`verifierApplicationsCount`、`verifierApplicationAtIndex`、`rankedApplicationIds` | 无 | 新增 5 项 |
 | `generatedActionRewardByGroupId(tokenAddress, actionId, round, groupId)` | `IGroupAction.generatedActionRewardByGroupId(round, groupId)` | 改参 |
 | 无 | `IGroupAction.generatedActionRewardByVerifier(address verifier, round)` | 删除（旧参数实际表示链群 owner 地址；BSC 以 `groupId` 作为链群主体，使用 `generatedActionRewardByGroupId`） |
-| `init(actionTargetAddress, memberNFTAddress, phaseAddress, stakeAddress, mintAddress, uint256[] splits)` | `IGroupManager.initialize(factory_)`、`IGroupJoin.initialize(factory_)`、`IGroupVerify.initialize(factory_)` | 改名+改参（三处初始化合并为一处） |
+| `init(actionTargetAddress, stakeAddress, uint256[] splits)` | `IGroupManager.initialize(factory_)`、`IGroupJoin.initialize(factory_)`、`IGroupVerify.initialize(factory_)` | 改名+改参（三处初始化合并为一处；`memberNFTAddress`/`phaseAddress`/`voteAddress` 从 `stakeAddress` 派生，不收 `mintAddress`） |
 | 无 | `IGroupVerify.setGroupDelegate`、`delegateByGroupId`、`canVerify`、`verifierByGroupId`、`submitterByGroupId` | 删除（验证者由竞选锁定，不再按链群委托） |
 | 无 | `IGroupVerify.distrustVote`、`distrustVotesByGroupOwner`、`distrustVotesByVoterByGroupOwner`、`distrustReason`、`distrustVotersByGroupOwner`(+`Count`/`AtIndex`)、`distrustGroupOwners`(+`Count`/`AtIndex`)、`distrustRateByGroupId` | 删除 11 项（不信任投票机制整块不迁移） |
 | 无 | `IGroupVerify.groupIdsByVerifier`(+`Count`/`AtIndex`)、`actionIdsByVerifier`(+`Count`/`AtIndex`)、`actionIds`(+`Count`/`AtIndex`)、`groupIdsCount`/`groupIdsAtIndex` | 删除 11 项 |
@@ -313,7 +320,7 @@ LP 事件数为 **4**（`Joined`、`Withdrawn`、`Exited`，加基座继承的 `
 
 | 新 | 旧 | 状态 |
 | --- | --- | --- |
-| `Joined`、`Withdrawn`、`Exited` | `IGroupJoin.Join(...)`、`Exit(...)`（各含 3 个 accountCount 字段） | 改名+改参（Executor 层事件包含完整业务字段；ActionTarget 层发出简化的 `Joined`/`Exited` 事件） |
+| `Joined`、`Withdrawn`、`Exited` | `IGroupJoin.Join(...)`、`Exit(...)`（各含 3 个 accountCount 字段） | 改名+改参（Executor 层事件包含完整业务字段：`Joined` 带 `providerMemberId`/`groupId`，`Withdrawn` 带 `providerMemberId`，`Exited` 不带金额；代币量只由 `Joined`/`Withdrawn` 承载；ActionTarget 层发出简化的 `Joined`/`Exited` 事件） |
 | `VerificationBatchSubmitted(tokenAddress, actionId, groupId, round, batchIndex, scores[])` | `IGroupVerify.SubmitOriginScores(tokenAddress, round, actionId, groupId, startIndex, count, isComplete)` | 改名+改参（新增 `scores` 明细，去 `isComplete`） |
 | `VerifierApplied`、`VerifierLocked` | 无 | 新增 |
 | `MemberRewardMinted(tokenAddress, actionId, memberId, round, mintAmount, burnAmount)` | 无（旧在 `IReward`） | 新增（声明在共用基座 `IActionExecutorEvents`；per-member 口径与两个金额分量沿用） |
@@ -325,64 +332,54 @@ LP 事件数为 **4**（`Joined`、`Withdrawn`、`Exited`，加基座继承的 `
 
 ### 错误
 
-新 **43 个**错误：原有 15 个 + 本轮补齐 28 个。原有 15 个的完整清单：`AlreadyInitialized`、`InvalidParticipationAmount`、`InvalidCandidate`、`InvalidSplits`、`ApplicationNotActive`、`InvalidExecutor`、`UnauthorizedCallback`、`NotMemberOwner`、`ProposalNotVoted`、`InvalidRound`、`RoundNotStarted`、`InsufficientExperienceQuota`、`VerifierAlreadyLocked`、`BatchIndexMismatch`、`RewardAlreadyMinted`；补齐的 28 个见本节末表。
+四个子接口共声明 **35 个**错误（另有 8 个共用基座错误由 `IActionExecutorErrors` 继承，完整错误 ABI 为 43），按实现模块归属：`IGroupActionJoinErrors` 15 个、`IGroupActionVerifyErrors` 9 个、`IGroupActionManagerErrors` 7 个、`IGroupActionExecutorErrors` 4 个（`InvalidAddress`、`InvalidSplits`、`InvalidTargetDataLength`、`VerificationInfoLengthMismatch`——后两个被创建回调与投票回调共用，归 Executor 自身）。其中 24 个自旧接口补齐/改名，见本节末表。
 
-其中 5 个有旧对应：`InvalidParticipationAmount` ← `JoinAmountZero`/`AmountBelowMinimum`、`InvalidCandidate` ← `NotVerifier`、`ApplicationNotActive` ← `GroupNotActive`（语义近似）、`AlreadyInitialized` 保留、`BatchIndexMismatch` ← `InvalidStartIndex`。
+其中 5 个有旧对应：`InvalidParticipationAmount` ← `JoinAmountZero`/`AmountBelowMinimum`、`InvalidCandidate` ← `NotVerifier`、`GroupNotActive` 保留原名（旧 `IGroupManager` 的群未激活错误，改由群管理路径抛出，不再映射到 `ApplicationNotActive`）、`BatchIndexMismatch` ← `InvalidStartIndex`、`InvalidAddress` ← 旧构造函数的零地址校验。
 
-本接口独有的 3 个：`InvalidSplits`（`init` 的 `splits` 分成配置校验）、`VerifierAlreadyLocked`（新增的验证者竞选锁定）、`InsufficientExperienceQuota(providerMemberId, required, available)`（覆盖部分旧体验额度校验场景）。其余 6 个是全 action 层共用的样板错误（init、回调权限、成员归属、提案未投票、轮次、重复铸造）。`InvalidKVLength` 已删除——无键 `bytes[]` 下不存在「两数组」，各 Executor 需要项数校验时自行声明。
+四个子接口独有的 6 个：`InvalidSplits`（`init` 的 `splits` 分割线校验，`IGroupActionExecutorErrors`）、`InvalidTargetDataLength`（创建与投票回调的 Target Data 项数，`IGroupActionExecutorErrors`）、`VerificationInfoLengthMismatch`（验证信息 schema 与成员值长度，`IGroupActionExecutorErrors`）、`ApplicationNotActive`（当前申请不存在或已失效，`IGroupActionVerifyErrors`）、`VerifierAlreadyLocked`（验证者竞选锁定，`IGroupActionVerifyErrors`）、`InsufficientProviderQuota(providerMemberId, required, available)`（Provider 额度不足，`IGroupActionJoinErrors`）。阶段未开始、回调权限、成员归属、提案未投票、轮次、重复铸造等 6 个样板错误由基座承担。`InvalidKVLength` 已删除——无键 `bytes[]` 下不存在「两数组」，各 Executor 需要项数校验时自行声明。
 
 旧三接口共 **44 条错误声明、40 个不同错误名**（`NotRegisteredExtensionInFactory` 在三个接口各声明一次，`ExtensionNotInitialized`、`OnlyGroupOwner` 各两次）。40 个名字的归处如下，**未归类 0、无杜撰名字**：
 
 | 归类 | 数量 | 错误名 |
 | --- | --- | --- |
-| 已被现有新声明覆盖 | 6 | `JoinAmountZero`、`AmountBelowMinimum`（→ `InvalidParticipationAmount`）、`NotVerifier`（→ `InvalidCandidate`）、`GroupNotActive`（→ `ApplicationNotActive`）、`AlreadyInitialized`（保留）、`InvalidStartIndex`（→ `BatchIndexMismatch`） |
-| **已补回** | 28 | 见 `interfaces/action/IGroupActionExecutor.sol` 末尾「自旧 `IGroupJoin`/`IGroupManager`/`IGroupVerify` 补齐」一段，全部按原名补回 |
-| 裁决不补 | 6 | `DistrustVoteExceedsVerifyVotes`、`DistrustVoteZeroAmount`、`InvalidReason`（不信任投票机制整块不迁移）；`NotRegisteredExtensionInFactory`、`ExtensionNotInitialized`、`InvalidFactoryAddress`（extension 工厂体系取消） |
+| 已被现有新声明覆盖 | 5 | `JoinAmountZero`、`AmountBelowMinimum`（→ `InvalidParticipationAmount`）、`NotVerifier`（→ `InvalidCandidate`）、`AlreadyInitialized`（保留）、`InvalidStartIndex`（→ `BatchIndexMismatch`） |
+| **已补回（原名）** | 20 | `GroupNotActive`（`IGroupActionManagerErrors`）与按原名补回的 19 个，分散在 `IGroupActionJoinErrors`、`IGroupActionVerifyErrors`、`IGroupActionManagerErrors` 三个模块子接口 |
+| 改名（Provider 额度词汇） | 5 | `TrialArrayLengthMismatch` → `QuotaArrayLengthMismatch`、`TrialAccountZero` → `QuotaMemberZero`、`TrialAccountIsProvider` → `QuotaMemberIsProvider`、`TrialAmountZero` → `QuotaAmountZero`、`TrialAccountNotInWaitingList(address account)` → `QuotaNotGranted(uint256 memberId)` |
+| 裁决不补 | 10 | `AlreadyJoined`、`TrialAlreadyJoined`、`TrialAccountAlreadyAdded`、`TrialProviderMismatch`（统一 `join` 后重复加入与重复授予是追加，不再是错误）；`DistrustVoteExceedsVerifyVotes`、`DistrustVoteZeroAmount`、`InvalidReason`（不信任投票机制整块不迁移）；`NotRegisteredExtensionInFactory`、`ExtensionNotInitialized`、`InvalidFactoryAddress`（extension 工厂体系取消） |
 
-这 28 个错误对应新实现仍需暴露的校验，不能用 `require` 或通用错误替代；加上阶段未开始错误并扣除已删的 `InvalidKVLength` 后，接口错误数为 44（36 自有 + 基座 8，基座本轮增补 `BatchLengthMismatch`）。见 [README「已确认并落地」](README.md#已确认并落地)。
+补回与改名的 25 个错误对应新实现仍需暴露的校验，不能用 `require` 或通用错误替代；加上阶段未开始错误并扣除已删的 `InvalidKVLength` 后，接口错误数为 43（35 自有 + 基座 8）。见 [README「已确认并落地」](README.md#已确认并落地)。
 
-其中 `TrialAccountNotInWaitingList(address account)` 按主体统一规则改为 `TrialAccountNotInWaitingList(uint256 memberId)`；其余补回错误没有参数。
+其中 `TrialAccountNotInWaitingList(address account)` 按主体统一规则改为 `uint256 memberId`，并随额度词汇一并改名为 `QuotaNotGranted`；其余补回错误没有参数。
 
 - **`IGroupJoin`（23 个）**：`JoinAmountZero`、`AlreadyInOtherGroup`、`NotJoinedAction`、`AmountBelowMinimum`、`ExceedsActionMaxJoinAmount`、`ExceedsGroupMaxJoinAmount`、`GroupCapacityExceeded`、`GroupAccountsFull`、`CannotJoinInactiveGroup`、`NotRegisteredExtensionInFactory`、`ExtensionNotInitialized`、`InvalidGroupId`、`AlreadyJoined`、`TrialAlreadyJoined`、`TrialArrayLengthMismatch`、`TrialAccountIsProvider`、`TrialAccountZero`、`TrialAmountZero`、`TrialAccountAlreadyAdded`、`TrialAccountNotInWaitingList(address account)`、`TrialProviderMismatch`、`AlreadyInitialized`、`InvalidFactoryAddress`。
 - **`IGroupManager`（8 个）**：`GroupAlreadyActivated`、`GroupNotActive`、`InvalidMinMaxJoinAmount`、`CannotDeactivateInActivatedRound`、`OnlyGroupOwner`、`NotRegisteredExtensionInFactory`、`InsufficientActivationMinGovRatio`、`NoGovVotes`。
 - **`IGroupVerify`（13 个）**：`OriginScoresEmpty`、`NotVerifier`、`ScoreExceedsMax`、`AlreadyVerified`、`InvalidStartIndex`、`ScoresExceedAccountCount`、`VerifyVotesZero`、`DistrustVoteExceedsVerifyVotes`、`InvalidReason`、`DistrustVoteZeroAmount`、`OnlyGroupOwner`、`NotRegisteredExtensionInFactory`、`ExtensionNotInitialized`。
 
-按语义分组：容量校验（`GroupCapacityExceeded`、`GroupAccountsFull`、`ExceedsActionMaxJoinAmount`、`ExceedsGroupMaxJoinAmount`）、归属校验（`AlreadyInOtherGroup`、`AlreadyJoined`、`NotJoinedAction`）、体验资产校验（`TrialAlreadyJoined`、`TrialArrayLengthMismatch`、`TrialAccountIsProvider`、`TrialAccountZero`、`TrialAmountZero`、`TrialAccountAlreadyAdded`、`TrialAccountNotInWaitingList`、`TrialProviderMismatch`）、权限与初始化校验（`OnlyGroupOwner`、`NotRegisteredExtensionInFactory`、`ExtensionNotInitialized`、`InvalidFactoryAddress`）、不信任投票（`DistrustVoteExceedsVerifyVotes`、`DistrustVoteZeroAmount`、`InvalidReason`）。其中体验额度类场景由新接口的 `InsufficientExperienceQuota(providerMemberId, required, available)` 部分覆盖。
+按语义分组：容量校验（`GroupCapacityExceeded`、`GroupAccountsFull`、`ExceedsActionMaxJoinAmount`、`ExceedsGroupMaxJoinAmount`）、归属校验（`AlreadyInOtherGroup`、`NotJoinedAction`）、Provider 额度校验（`QuotaArrayLengthMismatch`、`QuotaMemberIsProvider`、`QuotaMemberZero`、`QuotaAmountZero`、`QuotaNotGranted`、`InsufficientProviderQuota`）、群管理校验（`GroupNotActive`、`CannotJoinInactiveGroup`、`InvalidGroupId`、`GroupAlreadyActivated`、`InvalidMinMaxJoinAmount`、`CannotDeactivateInActivatedRound`、`OnlyGroupOwner`、`InsufficientActivationMinGovRatio`、`NoGovVotes`）、权限与初始化校验（`NotRegisteredExtensionInFactory`、`ExtensionNotInitialized`、`InvalidFactoryAddress`）、不信任投票（`DistrustVoteExceedsVerifyVotes`、`DistrustVoteZeroAmount`、`InvalidReason`）。
 
 ---
 
 ## 4. IGroupActionIndexes vs IGroupJoin 的 g* 索引
 
-旧：`LOVE20TKM/extension-group/src/interface/IGroupJoin.sol#g*`。17 组索引、51 个函数（每组 3 个：`数组()` / `Count()` / `AtIndex(index)`），一一对应，无增删。
+旧：`LOVE20TKM/extension-group/src/interface/IGroupJoin.sol#g*`。17 组索引、51 个函数（每组 3 个：`数组()` / `Count()` / `AtIndex(index)`）。
 
-函数命名规则：每组 `<组名>` 派生三个函数 `<组名>(...)`（返回全量数组）、`<组名>Count(...)`（长度）、`<组名>AtIndex(..., index)`（逐项读取）。上表的「新/旧」列写的是**组名**，实际 ABI 是组名 + 这三类后缀。例如第 14 组对应 `gMemberIds` / `gMemberIdsCount` / `gMemberIdsAtIndex`（旧为 `gAccounts` / `gAccountsCount` / `gAccountsAtIndex`）。全文按组名列举是为了可读性，函数级核对请按此规则展开为 51 个。
+**本轮裁决：保留 5 组、收敛为按真实问题组织的查询**（51 → 5 条分页 + 1 条布尔）。理由：17 组全是**无界集合的全量数组读取**，违反 [集合读取函数的设计原则](../../docs/migration-standards.md#集合读取函数的设计原则)；逐条核对后只有第 9 组有具名调用方（group-chat 的链群归属判据），其余 16 组在规格中没有任何消费方。协议与 Group Chat 均未部署，改动无兼容负担。保留的 5 组正好是「一跳维度」的五个方向，丢掉的是全部两跳组合与反向维度。
 
-变化只有两条规则：
-
-1. 命名中的 `Account` → `MemberId`。
-2. 参数与返回中的 `address account` → `uint256 memberId`。
-
-| 索引组 | 新 | 旧 |
+| 新 | 旧 | 状态 |
 | --- | --- | --- |
-| 1 | `gGroupIds` | 同名 |
-| 2 | `gGroupIdsByMemberId` | `gGroupIdsByAccount` |
-| 3 | `gGroupIdsByTokenAddress` | 同名 |
-| 4 | `gGroupIdsByTokenAddressByMemberId` | `gGroupIdsByTokenAddressByAccount` |
-| 5 | `gGroupIdsByTokenAddressByActionId` | 同名 |
-| 6 | `gTokenAddresses` | 同名 |
-| 7 | `gTokenAddressesByMemberId` | `gTokenAddressesByAccount` |
-| 8 | `gTokenAddressesByGroupId` | 同名 |
-| 9 | `gTokenAddressesByGroupIdByMemberId` | `gTokenAddressesByGroupIdByAccount` |
-| 10 | `gActionIdsByTokenAddress` | 同名 |
-| 11 | `gActionIdsByTokenAddressByMemberId` | `gActionIdsByTokenAddressByAccount` |
-| 12 | `gActionIdsByTokenAddressByGroupId` | 同名 |
-| 13 | `gActionIdsByTokenAddressByGroupIdByMemberId` | `gActionIdsByTokenAddressByGroupIdByAccount` |
-| 14 | `gMemberIds` | `gAccounts` |
-| 15 | `gMemberIdsByGroupId` | `gAccountsByGroupId` |
-| 16 | `gMemberIdsByTokenAddress` | `gAccountsByTokenAddress` |
-| 17 | `gMemberIdsByTokenAddressByGroupId` | `gAccountsByTokenAddressByGroupId` |
+| `isGroupMember(uint256 groupId, uint256 memberId) returns (bool)` | `gTokenAddressesByGroupIdByMemberIdCount(uint256 groupId, uint256 memberId) > 0`（第 9 组） | 新增（同一份存储的存在性布尔读；调用方见 [group-chat](group-chat.md)） |
+| `gGroupIds(uint256 offset, uint256 limit, bool reverse) returns (uint256[], uint256)` | `gGroupIds`（第 1 组，全量 + `Count` + `AtIndex`） | 改参（三件套合并为一个标准分页查询，名称不变） |
+| `gGroupIdsByMemberId(uint256 memberId, uint256 offset, uint256 limit, bool reverse) returns (uint256[], uint256)` | `gGroupIdsByAccount`（第 2 组） | 改名+改参（`Account` → `MemberId`；三件套合并为分页） |
+| `gTokenAddressesByGroupIdByMemberId(uint256 groupId, uint256 memberId, uint256 offset, uint256 limit, bool reverse) returns (address[], uint256)` | `gTokenAddressesByGroupIdByAccount`（第 9 组） | 改名+改参（同上） |
+| `gMemberIds(uint256 offset, uint256 limit, bool reverse) returns (uint256[], uint256)` | `gAccounts`（第 14 组） | 改名+改参（同上） |
+| `gMemberIdsByGroupId(uint256 groupId, uint256 offset, uint256 limit, bool reverse) returns (uint256[], uint256)` | `gAccountsByGroupId`（第 15 组） | 改名+改参（同上） |
+| 无 | 其余 12 组共 36 个函数 | 删除（无具名调用方；无界集合不再提供全量读取） |
 
-第 9 组的 `gTokenAddressesByGroupIdByMemberIdCount(groupId, memberId) > 0` 是 group-chat 判断链群归属的约定入口（见 [CONTEXT.md](../../CONTEXT.md)）。
+旧侧 51 个函数的去向逐条闭合：第 1、2、9、14、15 组各 3 个函数合并为 1 条分页查询（共 15 → 5），另加第 9 组的伴生布尔 `isGroupMember`；其余 12 组（第 3、4、5、6、7、8、10、11、12、13、16、17 组，36 个函数）随本裁决删除。`g*` 记号在新接口中保留，含义是「由参与事实维护、跨全部社区的当前索引」——只有真的有人参与过才会入榜，与本合约既有的「群激活」（`GroupNotActive`）不是一回事。
+
+加入阶段写入的按轮历史另提供两条读，不属本接口：`groupIds(tokenAddress, actionId, round, offset, limit, reverse)` 与该轮某链群的 `memberIdsByGroupId(...)`。前者旧在 `IGroupVerify`（旧实现由**验证提交时登记**该轮链群），新设计的验证集合改由加入阶段形成，故随实现归属移入 `IGroupActionJoin.sol`；后者对应旧 `IGroupJoin.accountsByGroupId`，本就在加入侧，名称与位置不变。
+
+删除的 12 组：Group ID 维度的按社区、跨社区按行动、跨社区按成员枚举（第 3、4、5 组），Token Address 维度的全部（第 6–8 组），Action ID 维度的全部（第 10–13 组），Member ID 维度的按社区与按社区按链群枚举（第 16、17 组）。需要时按同一分页签名新增单条查询，不再维护维度组合。
 
 ---
 
@@ -405,7 +402,7 @@ LP 事件数为 **4**（`Joined`、`Withdrawn`、`Exited`，加基座继承的 `
 | `joinInfo(serviceTokenAddress, serviceProposalId, round, memberId) returns (bool joined)` | 旧由 `ITokenJoin.joinInfo(address account)` 提供（返回 `joinedRound, amount, lastJoinedBlock, exitableBlock`） | 跨接口迁移+改参（返回值简化为是否参与） |
 | `serviceRewardByMember(serviceTokenAddress, serviceProposalId, round, memberId) returns (verifierReward, ownerReward, ownerBurned, claimed)` | 无 | 新增 |
 | `currentVoteRound`、`currentJoinRound`、`currentVerifyRound`、`currentMintRound` | 无 | 新增 |
-| `init(actionTargetAddress, memberNFTAddress, phaseAddress, stakeAddress, mintAddress, groupActionExecutorAddress)` | 无 | 新增 |
+| `init(actionTargetAddress, stakeAddress, groupActionExecutorAddress)` | 无 | 新增（`memberNFTAddress`/`phaseAddress`/`voteAddress` 从 `stakeAddress` 派生，不收 `mintAddress`） |
 | 继承 `IProposalTarget` | 无 | 新增 |
 | 无 | `IGroupService.GROUP_ACTION_FACTORY_ADDRESS()` | 删除（取消工厂） |
 | 无 | `IGroupService.rewardByRecipient(verifier, round, actionId, groupId, recipient)` | 删除 |

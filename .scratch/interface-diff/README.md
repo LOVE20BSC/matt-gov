@@ -54,8 +54,11 @@
 | --- | --- | --- |
 | `action/IActionTarget.sol` | `LOVE20TKM/extension/src/interface/IExtensionCenter.sol`、`LOVE20TKM/extension/src/interface/IExtension.sol` | 重写 |
 | `action/ILpExecutor.sol` | `LOVE20TKM/extension-lp/src/interface/ILp.sol`、`LOVE20TKM/extension/src/interface/ITokenJoin.sol`、`LOVE20TKM/extension/src/interface/IReward.sol` | 重写 |
-| `action/IGroupActionExecutor.sol` | `LOVE20TKM/extension-group/src/interface/IGroupAction.sol`、`LOVE20TKM/extension-group/src/interface/IGroupManager.sol`、`LOVE20TKM/extension-group/src/interface/IGroupJoin.sol`、`LOVE20TKM/extension-group/src/interface/IGroupVerify.sol` | 重写 |
-| `action/IGroupActionIndexes.sol` | `LOVE20TKM/extension-group/src/interface/IGroupJoin.sol#g*` | 改名迁移 |
+| `action/IGroupActionJoin.sol` | `LOVE20TKM/extension-group/src/interface/IGroupJoin.sol` | 重写 |
+| `action/IGroupActionVerify.sol` | `LOVE20TKM/extension-group/src/interface/IGroupVerify.sol` | 重写 |
+| `action/IGroupActionManager.sol` | `LOVE20TKM/extension-group/src/interface/IGroupManager.sol` | 重写 |
+| `action/IGroupActionExecutor.sol` | `LOVE20TKM/extension-group/src/interface/IGroupAction.sol` | 重写（只声明 Executor 本地实现的成员，其余继承三个模块接口） |
+| `action/IGroupActionIndexes.sol` | `LOVE20TKM/extension-group/src/interface/IGroupJoin.sol#g*` | 重写（51 个索引函数收敛为 4 条查询） |
 | `action/IGroupServiceExecutor.sol` | `LOVE20TKM/extension-group/src/interface/IGroupService.sol`、`LOVE20TKM/extension-group/src/interface/IGroupRecipients.sol` | 重写 |
 
 ### group-chat
@@ -133,7 +136,8 @@
 | --- | --- | --- |
 | `core/IProposalTarget.sol` | Proposal 创建/推举/投票三回调 | 无；旧协议无 Target 回调 |
 | `core/ILaunchDistributor.sol` | 子币发射后回调 `distributor` | 无；旧协议按认购比例直接领取 |
-| `action/IGroupActionIndexes.sol` | 17 组可枚举全局索引独立成文件 | 旧内嵌在 `IGroupJoin` |
+| `action/IGroupActionJoin.sol`、`IGroupActionVerify.sol`、`IGroupActionManager.sol` | 按实现模块拆分的接口：声明归属与库一一对应 | 旧 `IGroupJoin` / `IGroupVerify` / `IGroupManager` 各自独立成文件 |
+| `action/IGroupActionIndexes.sol` | 参与归属与集合读取（归属布尔 + 三条标准分页查询） | 旧 17 组全量索引内嵌在 `IGroupJoin` |
 
 ## 跨层结构变化
 

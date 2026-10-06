@@ -9,7 +9,7 @@
 1. **身份统一**：所有参与主体统一使用 MemberNFT 的 `memberId`
 2. **时间灵活**：使用 Core Phase 作为时间基础，各 Executor 按自身固定规格映射业务阶段
 3. **职责分离**：ActionTarget 只做框架，业务逻辑由各 Executor 实现
-4. **随 NFT 转移**：体验资产和行动加入状态归属于 `memberId`，随 MemberNFT 转移
+4. **随 NFT 转移**：Provider 额度资产和行动加入状态归属于 `memberId`，随 MemberNFT 转移
 
 ---
 
@@ -227,20 +227,22 @@ effectiveRatio = min(effectiveLpRatio, govRatioCap)
 
 ### ✅ 保留逻辑
 
-#### 17 组全局索引
-**完全保留**：参考 `LOVE20TKM/extension-group/src/GroupJoin.sol` 的全局索引结构
+#### 参与索引
+**重构**：旧 `LOVE20TKM/extension-group/src/GroupJoin.sol` 的 17 组「全量数组 + `Count` + `AtIndex`」全局索引不迁移。该组接口为无界集合提供全量读取，违反 [集合读取函数的设计原则](../migration-standards.md#集合读取函数的设计原则)，且其中 16 组没有具名调用方。改为 `isGroupMember` 加五条按真实问题组织的索引（`g*` 记号即指这一族：只有真的有人参与过才会入榜）：
 
-- Group ID：`gGroupIds`、`gGroupIdsByMemberId`、`gGroupIdsByTokenAddress`、`gGroupIdsByTokenAddressByMemberId`、`gGroupIdsByTokenAddressByActionId`
-- Token Address：`gTokenAddresses`、`gTokenAddressesByMemberId`、`gTokenAddressesByGroupId`、`gTokenAddressesByGroupIdByMemberId`
-- Action ID：`gActionIdsByTokenAddress`、`gActionIdsByTokenAddressByMemberId`、`gActionIdsByTokenAddressByGroupId`、`gActionIdsByTokenAddressByGroupIdByMemberId`
-- Member ID：`gMemberIds`、`gMemberIdsByGroupId`、`gMemberIdsByTokenAddress`、`gMemberIdsByTokenAddressByGroupId`
+- `isGroupMember(groupId, memberId)`：Group Chat 的链上归属判据，跨全部社区和行动聚合
+- `gGroupIds`：当前有归属成员的链群
+- `gGroupIdsByMemberId`：某成员当前归属的链群
+- `gTokenAddressesByGroupIdByMemberId`：某成员在某链群下的归属涉及哪些社区
+- `gMemberIds`：当前有归属的成员
+- `gMemberIdsByGroupId`：某链群当前的成员
 
-每组索引都提供 `全量数组`、`Count`、`AtIndex` 查询。
+五条索引使用与 core 同一套标准签名 `(offset, limit, reverse) → (列表, 真实总数)`。加入阶段写入的按轮历史另提供两条读（`groupIds`、`memberIdsByGroupId`），见下节。
 
 #### 按 Round 参与历史
 **保留逻辑**：参考 `LOVE20TKM/extension-group/src/GroupJoin.sol` 的历史快照机制
 
-GroupAction Executor 通过加入阶段内逐笔发生的加入、追加、体验加入、部分撤回和全部退出交易，自然形成每轮参与快照。同一 Round 内的多笔交易持续更新该 Round 的最终值，不为同一 Round 重复创建版本；退出写入显式零值，供后续 RoundHistory 识别终止点。
+GroupAction Executor 通过加入阶段内逐笔发生的加入、追加、部分撤回和全部退出交易，自然形成每轮参与快照。同一 Round 内的多笔交易持续更新该 Round 的最终值，不为同一 Round 重复创建版本；退出写入显式零值，供后续 RoundHistory 识别终止点。
 
 #### 公共验证者机制
 **BSC 新增**：旧 `LOVE20TKM/extension-group/src/GroupVerify.sol` 只作为连续批次和原始分校验的参考；候选申请、排名和分割线开放不沿用旧机制。
@@ -274,8 +276,8 @@ memberReward(memberId) = floor(proposalReward × finalScore(memberId) / totalFin
 ### 📍 实现参考
 ```
 旧代码：LOVE20TKM/extension-group/src/ExtensionGroupAction.sol、LOVE20TKM/extension-group/src/GroupVerify.sol
-保留：17 组索引、Round 历史、连续验证和原始分校验
-修改：统一 MemberNFT、公共验证者、阶段映射、激励分配
+保留：Round 历史、连续验证和原始分校验
+修改：统一 MemberNFT、公共验证者、阶段映射、激励分配、参与索引改分页
 ```
 
 ---
@@ -333,18 +335,31 @@ theoreticalOwnerReward(m) = serviceReward × ownerWeightNumerator(m) / (totalGro
 
 ---
 
-## 6. 体验资产（修改）
+## 6. 体验资产（重构为 Provider 额度）
 
 ### ✅ 保留逻辑
-- 体验资产按 `tokenAddress + memberId + actionId + providerMemberId` 独立记账
-- 成员正常退出时，体验代币返还 Provider 当前持有人
-- 自有资产和体验资产可以同时存在
+- Provider 额度资产按 `tokenAddress + actionId + memberId + providerMemberId` 独立记账，归 Provider
+- 成员正常退出时，Provider 代币返还其当前持有人
+- 自有资产与 Provider 额度资产可以同时存在
 
 ### 🔄 关键变化
 
+#### 资产来源统一
+- **旧**：`join` 只收自有资产、`trialJoin` 只收体验资产，两者互斥且按双向禁止校验
+- **新**：`join` 增加 `providerMemberId`，`0` 为自有代币、非零为指定 Provider 已授予的额度；`trialJoin` 删除。同一成员可混合多个来源，重复 `join` 按来源分别追加，不再有「已加入不得再体验」之类的方向限制
+
+#### 体验资产只是额度
+- **旧**：待体验名单在名单操作时锁定额度，成员以名单内固定额度整笔加入
+- **新**：Provider 授予、追加或收回额度（`providerQuotaAdd`/`providerQuotaRemove`），成员在额度内自行决定使用多少并可在后续轮次追加未使用部分；额度授予即把代币存入合约，`join` 只扣减额度、不再转移代币，`providerWithdraw` 把已投入部分退回 Provider 当前持有人。`providerAmountsByMemberId` 按成员分页枚举全部来源及金额
+
+#### 错误落点收敛
+- **旧**：重复加入、重复加入体验、重复登记名单成员都是错误
+- **新**：重复加入与重复授予在统一模型下是追加，`AlreadyJoined`、`TrialAlreadyJoined`、`TrialAccountAlreadyAdded`、`TrialProviderMismatch` 不再迁移；额度类校验统一改名到 `Quota*` 词汇，额度不足由 `InsufficientProviderQuota` 表达
+
 #### 部分撤回边界
 - **旧**：只支持全部退出
-- **新**：LP 和 GroupAction 均支持自有资产部分撤回；按各自聚合账本更新当前 Round，LP 的 `deduction` 按撤回比例向下取整，全额撤回沿用 V2 的 `exit` 清理。Provider 只能撤回体验代币；若该成员总参与量归零，合约自动触发该成员退出
+- **新**：LP 和 GroupAction 均支持自有资产部分撤回；按各自聚合账本更新当前 Round，LP 的 `deduction` 按撤回比例向下取整，全额撤回沿用 V2 的 `exit` 清理。撤回只能撤回自己那份：`withdraw` 减自有账本、`providerWithdraw` 减指定 Provider 账本；若该成员总参与量归零，合约自动触发该成员退出
+- **退出按资金归属处理**：成员 `exit` 时自有资产返还成员，Provider 来源不转出合约，恢复为该 Provider 对该成员的可用额度（旧代码直接返还 Provider，退出后需 Provider 重新授权才能再次加入）。代币量只由 `Joined`/`Withdrawn` 承载，`exit` 按来源逐条发出 `Withdrawn` 后再发 `Exited`，`Exited` 不带金额
 
 #### forceExit 不处理资产
 - **新增**：`forceExit` 只清除 ActionTarget 加入状态，不返还体验资产
@@ -354,7 +369,7 @@ theoreticalOwnerReward(m) = serviceReward × ownerWeightNumerator(m) / (totalGro
 ```
 旧代码：LOVE20TKM/extension-group/src/GroupJoin.sol（体验资产逻辑）
 保留：独立记账、归属 Provider
-修改：撤回边界、forceExit 边界
+修改：统一 join 入口、额度语义、撤回边界、forceExit 边界
 ```
 
 ---
@@ -377,7 +392,7 @@ theoreticalOwnerReward(m) = serviceReward × ownerWeightNumerator(m) / (totalGro
 - [ ] 创建 Target Data 的第 `0` 项固定为 `executor`，其余项由各 Executor 自定并自行校验
 - [ ] LP 行动使用 3 阶段映射
 - [ ] GroupAction 和 GroupService 使用 4 阶段映射
-- [ ] 保留 GroupAction 的 17 组全局索引
+- [ ] 参与索引按标准分页收敛为 `isGroupMember` 加五条 `g*`，按轮历史两读归入 Round 历史
 - [ ] 按 Round 参与历史自然形成，不重复创建版本
 - [ ] forceExit 只清除加入状态，不调用 Executor
 - [ ] GroupService 仅 owner 激励受治理上限和二次分配
@@ -393,7 +408,7 @@ theoreticalOwnerReward(m) = serviceReward × ownerWeightNumerator(m) / (totalGro
 2. **forceExit**：只清除 ActionTarget 加入状态，不调用 Executor，不返还资产
 3. **LP 3 阶段**：Phase 3 起进入稳态，加入后下一 Phase 即可铸币
 4. **GroupAction 4 阶段**：Phase 4 起进入稳态，验证在加入和铸币之间插入
-5. **17 组全局索引**：跨社区和跨行动查询正确，全量/Count/AtIndex 一致性
+5. **参与索引**：跨社区和跨行动查询正确，分页 `offset` 越界返回空数组与真实总数，归属计数在最后一个关系退出后才归零
 6. **Round 历史**：同轮多次变更持续更新该 Round 最终值，空轮继承上一轮
 7. **公共验证者**：排名平票、分割线开放、NFT 转移续验
 8. **服务聚合**：跨整个社区聚合，同币/父币服务，100% 二次分配安全收敛

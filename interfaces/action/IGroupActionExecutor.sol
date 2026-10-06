@@ -2,166 +2,46 @@
 pragma solidity =0.8.37;
 
 import {IGroupActionIndexes} from "./IGroupActionIndexes.sol";
+import {IGroupActionJoin} from "./IGroupActionJoin.sol";
+import {IGroupActionVerify} from "./IGroupActionVerify.sol";
+import {IGroupActionManager} from "./IGroupActionManager.sol";
 import {IActionExecutor} from "./IActionExecutor.sol";
-import {IVerificationInfo} from "./IVerificationInfo.sol";
 
-struct GroupConfig {
-    string description;
-    uint256 maxCapacity;
-    uint256 minJoinAmount;
-    uint256 maxJoinAmount;
-    uint256 maxAccounts;
-}
-
-struct VerifierApplication {
-    uint256 applicationId;
-    uint256 memberId;
-    string description;
-    uint256 ratioForPublicVerifier;
-    uint256 votes;
-    bool active;
-}
-
-interface IGroupActionExecutorEvents {
-    event Joined(
-        address indexed tokenAddress,
-        uint256 indexed actionId,
-        uint256 indexed memberId,
-        uint256 round,
-        uint256 amount,
-        bool isExperience,
-        uint256 providerMemberId,
-        uint256 groupId
-    );
-    event Withdrawn(
-        address indexed tokenAddress,
-        uint256 indexed actionId,
-        uint256 indexed memberId,
-        uint256 round,
-        uint256 amount
-    );
-    event Exited(
-        address indexed tokenAddress,
-        uint256 indexed actionId,
-        uint256 indexed memberId,
-        uint256 round
-    );
-    event VerifierApplied(address indexed tokenAddress, uint256 indexed actionId, uint256 indexed memberId,
-        uint256 round, uint256 applicationId);
-    event VerificationBatchSubmitted(address indexed tokenAddress, uint256 indexed actionId, uint256 indexed groupId,
-        uint256 round, uint256 batchIndex, uint256[] scores);
-    event VerifierLocked(address indexed tokenAddress, uint256 indexed actionId, uint256 indexed round,
-        uint256 memberId);
-    event ActivateGroup(address indexed tokenAddress, uint256 indexed actionId, uint256 round,
-        uint256 indexed groupId, uint256 stakeAmount);
-    event DeactivateGroup(address indexed tokenAddress, uint256 indexed actionId, uint256 round,
-        uint256 indexed groupId, uint256 stakeAmount);
-    event UpdateGroupInfo(address indexed tokenAddress, uint256 indexed actionId, uint256 round,
-        uint256 indexed groupId, string description, uint256 maxCapacity, uint256 minJoinAmount,
-        uint256 maxJoinAmount, uint256 maxAccounts);
-}
-
-interface IGroupActionExecutor is IGroupActionIndexes, IActionExecutor, IVerificationInfo, IGroupActionExecutorEvents {
-    function JOIN_TOKEN_ADDRESS(address tokenAddress, uint256 actionId) external view returns (address);
-    function ACTIVATION_STAKE_AMOUNT(address tokenAddress, uint256 actionId) external view returns (uint256);
-    function MAX_JOIN_AMOUNT_RATIO(address tokenAddress, uint256 actionId) external view returns (uint256);
-    function ACTIVATION_MIN_GOV_RATIO(address tokenAddress, uint256 actionId) external view returns (uint256);
-    function init(address actionTargetAddress, address memberNFTAddress, address phaseAddress,
-        address stakeAddress, address mintAddress, uint256[] calldata splits) external;
-    function currentVerifyRound() external view returns (uint256);
-    function activateGroup(address tokenAddress, uint256 actionId, uint256 groupId, GroupConfig calldata config) external;
-    function deactivateGroup(address tokenAddress, uint256 actionId, uint256 groupId) external;
-    function updateGroupInfo(address tokenAddress, uint256 actionId, uint256 groupId, GroupConfig calldata config) external;
-    function groupInfo(address tokenAddress, uint256 actionId, uint256 groupId)
-        external view returns (GroupConfig memory config, bool active, uint256 activatedRound, uint256 deactivatedRound);
-    function join(address tokenAddress, uint256 actionId, uint256 groupId, uint256 memberId,
-        uint256 amount, string[] calldata verificationInfos) external;
-    function withdraw(address tokenAddress, uint256 actionId, uint256 memberId, uint256 amount) external;
-    function joinInfo(address tokenAddress, uint256 actionId, uint256 round, uint256 memberId)
-        external view returns (uint256 joinedRound, uint256 amount, uint256 groupId);
-    function groupIds(address tokenAddress, uint256 actionId, uint256 round)
-        external view returns (uint256[] memory);
-    function memberIdsByGroupId(address tokenAddress, uint256 actionId, uint256 round, uint256 groupId)
-        external view returns (uint256[] memory);
-    function totalJoinedAmountByGroupId(address tokenAddress, uint256 actionId, uint256 round, uint256 groupId)
-        external view returns (uint256);
-    function trialAccountsWaitingAdd(address tokenAddress, uint256 actionId, uint256 groupId,
-        uint256 providerMemberId, uint256[] calldata memberIds, uint256[] calldata amounts) external;
-    function trialAccountsWaitingRemove(address tokenAddress, uint256 actionId, uint256 groupId,
-        uint256 providerMemberId, uint256[] calldata memberIds) external;
-    function trialJoin(address tokenAddress, uint256 actionId, uint256 groupId, uint256 memberId,
-        uint256 providerMemberId, string[] calldata verificationInfos) external;
-    function trialWithdraw(address tokenAddress, uint256 actionId, uint256 memberId,
-        uint256 providerMemberId, uint256 amount) external;
-    function trialAccountsWaiting(address tokenAddress, uint256 actionId, uint256 groupId, uint256 providerMemberId)
-        external view returns (uint256[] memory memberIds, uint256[] memory amounts, uint256[] memory blockNumbers);
-    function trialAmount(address tokenAddress, uint256 actionId, uint256 round, uint256 memberId,
-        uint256 providerMemberId) external view returns (uint256);
-    function applyForVerifier(address tokenAddress, uint256 actionId, uint256 memberId,
-        string calldata description, uint256 ratioForPublicVerifier) external returns (uint256 applicationId);
-    function cancelVerifierApplication(address tokenAddress, uint256 actionId, uint256 memberId) external;
-    function currentApplicationId(address tokenAddress, uint256 actionId, uint256 round, uint256 memberId)
-        external view returns (uint256);
-    function verifierApplication(address tokenAddress, uint256 actionId, uint256 round, uint256 applicationId)
-        external view returns (VerifierApplication memory);
-    function verifierApplicationsCount(address tokenAddress, uint256 actionId, uint256 round)
-        external view returns (uint256);
-    function verifierApplicationAtIndex(address tokenAddress, uint256 actionId, uint256 round, uint256 index)
-        external view returns (VerifierApplication memory);
-    function rankedApplicationIds(address tokenAddress, uint256 actionId, uint256 round)
-        external view returns (uint256[] memory);
-    function submitOriginScores(address tokenAddress, uint256 actionId, uint256 round,
-        uint256 verifierMemberId, uint256 groupId, uint256 startIndex, uint256[] calldata originScores) external;
-    function verifiedMemberCount(address tokenAddress, uint256 actionId, uint256 round, uint256 groupId)
-        external view returns (uint256);
-    function lockedVerifierId(address tokenAddress, uint256 actionId, uint256 round) external view returns (uint256);
-    function isRoundVerified(address tokenAddress, uint256 actionId, uint256 round) external view returns (bool);
-    function originScore(address tokenAddress, uint256 actionId, uint256 round, uint256 memberId)
-        external view returns (uint256 score, bool verified);
-    function finalScore(address tokenAddress, uint256 actionId, uint256 round, uint256 memberId)
-        external view returns (uint256);
-    function totalFinalScore(address tokenAddress, uint256 actionId, uint256 round) external view returns (uint256);
-    function generatedActionRewardByGroupId(address tokenAddress, uint256 actionId, uint256 round, uint256 groupId)
-        external view returns (uint256);
-
-    error InvalidParticipationAmount();
-    error InvalidCandidate();
+interface IGroupActionExecutorErrors {
+    error InvalidAddress();
     error InvalidSplits();
-    error ApplicationNotActive();
-    error InvalidExecutor();
-    error InsufficientExperienceQuota(uint256 providerMemberId, uint256 required, uint256 available);
-    error VerifierAlreadyLocked(address tokenAddress, uint256 actionId, uint256 round);
-    error BatchIndexMismatch(uint256 expected, uint256 actual);
+    error InvalidTargetDataLength();
+    error VerificationInfoLengthMismatch();
+}
 
-    // The 28 errors below are restored from the legacy IGroupJoin / IGroupManager / IGroupVerify;
-    // the corresponding checks still exist in the new implementation. The 6 errors that went away
-    // with the no-confidence vote and the extension factory mechanism are excluded.
-    error AlreadyInOtherGroup();
-    error NotJoinedAction();
-    error ExceedsActionMaxJoinAmount();
-    error ExceedsGroupMaxJoinAmount();
-    error GroupCapacityExceeded();
-    error GroupAccountsFull();
-    error CannotJoinInactiveGroup();
-    error InvalidGroupId();
-    error AlreadyJoined();
-    error TrialAlreadyJoined();
-    error TrialArrayLengthMismatch();
-    error TrialAccountIsProvider();
-    error TrialAccountZero();
-    error TrialAmountZero();
-    error TrialAccountAlreadyAdded();
-    error TrialAccountNotInWaitingList(uint256 memberId);
-    error TrialProviderMismatch();
-    error GroupAlreadyActivated();
-    error InvalidMinMaxJoinAmount();
-    error CannotDeactivateInActivatedRound();
-    error OnlyGroupOwner();
-    error InsufficientActivationMinGovRatio();
-    error NoGovVotes();
-    error OriginScoresEmpty();
-    error ScoreExceedsMax();
-    error AlreadyVerified();
-    error ScoresExceedAccountCount();
-    error VerifyVotesZero();
+interface IGroupActionExecutor is
+    IGroupActionIndexes,
+    IGroupActionJoin,
+    IGroupActionVerify,
+    IGroupActionManager,
+    IActionExecutor,
+    IGroupActionExecutorErrors
+{
+    function JOIN_TOKEN_ADDRESS(address tokenAddress, uint256 actionId) external view returns (address);
+
+    function ACTIVATION_STAKE_AMOUNT(address tokenAddress, uint256 actionId) external view returns (uint256);
+
+    function MAX_JOIN_AMOUNT_RATIO(address tokenAddress, uint256 actionId) external view returns (uint256);
+
+    function ACTIVATION_MIN_GOV_RATIO(address tokenAddress, uint256 actionId) external view returns (uint256);
+
+    function init(
+        address actionTargetAddress,
+        address stakeAddress,
+        uint256[] calldata splits
+    ) external;
+
+    function currentVerifyRound() external view returns (uint256);
+
+    function generatedActionRewardByGroupId(
+        address tokenAddress,
+        uint256 actionId,
+        uint256 round,
+        uint256 groupId
+    ) external view returns (uint256);
 }

@@ -24,8 +24,7 @@ interface IGroupServiceExecutorEvents {
 }
 
 interface IGroupServiceExecutor is IActionExecutor, IGroupServiceExecutorEvents {
-    function init(address actionTargetAddress, address memberNFTAddress, address phaseAddress,
-        address stakeAddress, address mintAddress, address groupActionExecutorAddress) external;
+    function init(address actionTargetAddress, address stakeAddress, address groupActionExecutorAddress) external;
     function currentVerifyRound() external view returns (uint256);
     function totalGroupActionReward(address actionTokenAddress, uint256 round)
         external view returns (uint256 reward, bool cached);

@@ -31,6 +31,6 @@
 
 服务 Proposal 面向整个 `actionTokenAddress` 社区的 GroupAction，不只绑定一个行动。服务在 Phase `N + 3` 结算 Round N，逐项读取 GroupAction 在 Phase `N + 2` 的同一 Round N 激励。
 
-每个 GroupAction 的激励查询已包含源行动的验证和激励条件，GroupService 不重复筛选。不要求 GroupAction 先完成铸币，也不在 GroupService 内执行验证。聚合与分配公式见 [服务 Executor](06-service-executor.md)。
+每个 GroupAction 的激励查询已包含源行动的验证和激励条件，GroupService 不重复筛选。行动层激励查询按轮次读取，目标轮未完成验证时返回 0，不返回部分结果；服务与链群行动阶段划分相同，Round N 的验证在 Phase `N + 2`、结算在 Phase `N + 3`，服务读取的轮次此时已经完成验证，正常不会命中该分支。不要求 GroupAction 先完成铸币，也不在 GroupService 内执行验证。聚合与分配公式见 [服务 Executor](06-service-executor.md)。
 
 实现与组织上下文一致：LP 为三阶段，GroupAction 和 GroupService 为四阶段。

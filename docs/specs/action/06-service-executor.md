@@ -24,6 +24,8 @@
 
 创建 Target Data 从第 `1` 项起（第 `0` 项是 ActionTarget 保留的 executor）固定为 `targetData[1] = abi.encode(address actionTokenAddress)` 和 `targetData[2] = abi.encode(uint256 govRatioMultiplier)`；代币关系在创建时校验。join/exit 校验当前 NFT 持有人，按 RoundHistory 记录服务资格。加入资格仍为有效群 owner 或有效候选，铸造只计算该轮实际贡献。共同准备/铸造/销毁 ABI 见 [行动铸造](07-minting.md#铸造链路)。
 
+`init(actionTargetAddress, stakeAddress, groupActionExecutorAddress)` 只收 ActionTarget、Stake 和 GroupAction Executor：`memberNFTAddress`、`phaseAddress`、`voteAddress` 在 init 内从 `stakeAddress` 的 getter 读取一次并缓存，任一为零回滚 `InvalidAddress`；激励经 `ActionTarget` 读取，不注入 Mint。
+
 保留的权重公式：
 
 ```text

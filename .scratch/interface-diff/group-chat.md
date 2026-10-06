@@ -207,7 +207,7 @@ group-chat 保留旧群聊全部业务行为，只作三类系统性改造：
 
 保留的 10 个错误：`ManagerAddressHasNoCode`、`AlreadyManaged`、`RecentRoundsZero`、`ManagerGroupNameUnavailable`、`ManagerMintCostChanged`、`ManagerPaymentFailed`、`ManagerApprovalFailed`、`TokenNotLOVE20`、`UnexpectedManagerERC721Received`、`ActionIdNotExist`。
 
-`canPost` 的实现依据从旧 `ExtensionCenter` 的参与登记改为 action 层的链群归属索引（`IGroupActionIndexes.gTokenAddressesByGroupIdByMemberIdCount(groupId, memberId) > 0`），这是实现变化而非 ABI 变化。
+`canPost` 的实现依据从旧 `ExtensionCenter` 的参与登记改为 action 层的链群归属查询（`IGroupActionIndexes.isGroupMember(groupId, memberId)`），这是实现变化而非 ABI 变化。
 
 ---
 
