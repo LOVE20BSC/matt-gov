@@ -19,7 +19,7 @@
 | [GroupAction](05-group-action-executor.md) | 激活、配置更新、自有/Provider 额度参与 | 按角色权限更新各自账本；`join` 的 `providerMemberId` 决定来源，同一成员可混合多个来源并逐次追加 |
 | GroupAction | Provider 部分/全部撤回、越权调用、NFT 转移 | 只有该 Provider 当前持有人可 `providerWithdraw` 且只返还其代币；成员不能撤回 Provider 额度或 Provider 已投入部分；剩余自有或其他 Provider 余额时不退出，总参与量归零才自动退出；权限与收款跟随对应 NFT |
 | GroupAction | Provider 额度授予、部分使用、追加、收回、枚举 | 授予即把代币存入合约；`join` 只扣减额度、不转移代币；成员只使用部分额度时其余额度保留；重复 `join` 与重复授予是追加不回滚；`providerQuotaRemove` 只退还未使用额度；`providerAmountsByMemberId` 分页结果与 `providerAmount` 逐项一致 |
-| GroupAction | 部署体积与拆分边界 | `forge build --sizes` 下 Executor 与四个业务库（`GroupActionVerifyLib`/`JoinLib`/`ManagerLib`/`MintLib`）的 runtime 均不超过 24,576 字节；库调用只出现在函数级、不入循环、库之间不互相调用；链上被其他合约调用的接口（`isGroupMember`、`generatedActionRewardByGroupId`、`needBurnReward`、基座 Round 与参与量查询）实现在 Executor 本地而非转发库；地址与 ABI 不变 |
+| GroupAction | 部署体积与拆分边界 | `forge build --sizes` 下 Executor 与三个业务库（`GroupActionVerify`/`GroupActionJoin`/`GroupActionManager`）的 runtime 均不超过 24,576 字节；库调用只出现在函数级、不入循环、库之间不互相调用；链上被其他合约调用的接口（`isGroupMember`、`generatedActionRewardByGroupId`、`needBurnReward`、基座 Round 与参与量查询）实现在 Executor 本地而非转发库；地址与 ABI 不变 |
 | GroupAction | 退出恢复 Provider 额度、不转出合约 | 成员 `exit` 后自有资产返还成员、Provider 来源回到可用额度且合约余额不变（除自有部分）；Provider 用 `providerQuotaRemove` 仍可取回；成员可用同一额度再次加入 |
 | GroupAction | 验证的每成员写入次数 | 每个成员每轮只产生一次新的冷写入（原始分与已验证标志合并存储）；组级累计量走轮级累加器；`originScore` 仍返回 `(score, verified)` 且未验证与已验证零分可区分 |
 | GroupAction | 代币量事件出口 | 代币量只由 `Joined`/`Withdrawn` 承载；单笔 `withdraw`/`providerWithdraw` 各发一条带 `providerMemberId` 的 `Withdrawn`；`exit` 按来源逐条发出（自有来源为 0，每个有余额的 Provider 一条）后再发 `Exited`，`Withdrawn` 金额之和等于实际返还总额，`Exited` 不带金额 |

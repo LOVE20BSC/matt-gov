@@ -48,7 +48,7 @@ LOVE20BSC 当前统一使用以下编译和依赖基线：
 - Solidity `0.8.37`；LOVE20BSC 自有合约、接口和测试使用精确 pragma `=0.8.37`。
 - Foundry `1.8.1` 或更高版本，并在 `foundry.toml` 显式设置 `evm_version = "osaka"`。显式锁定 EVM 目标，避免未来编译器默认目标变化；部署前仍需在目标 BSC 网络和测试环境验证该目标。
 - **不使用 `via_ir`**：`via_ir` 会显著增加编译时间、影响调试体验，且与覆盖率工具不兼容；标准优化器（`optimizer = true` + `optimizer_runs = 200`）已足够。若遇栈深问题，优先重构函数拆分或减少局部变量，而非开启 `via_ir`。
-- **单合约 24KB 上限**：EIP-170 限制部署字节码不超过 24,576 字节。单体超过时，把实现体按**业务模块**拆进 `public` 库（经 DELEGATECALL 执行，库自身同受该上限约束），保留原合约的地址、ABI 与状态；不得靠删减已定稿的 ABI 或调整 `optimizer_runs` 绕过。库函数可直接接收 `storage` 指针读写调用方状态：**状态集中在一个根 Layout struct 里**，库函数只收该 struct 的 storage 指针加业务参数，状态增减不改库的函数签名。拆分边界：业务模块各自成库；**会被其他合约链上调用的接口把实现留在主合约**（这类调用本身便宜，跨库的固定开销会让一次读取翻倍）；只被钱包或前端读取的查询随业务库走、经 `eth_call` 不计 gas。库调用不得出现在循环体内。含业务语义的库放业务仓 `src/libraries/`，无业务语义的通用库按「复用优先」放 `libs`。`forge build --sizes` 的上限纳入实现门禁。
+- **单合约 24KB 上限**：EIP-170 限制部署字节码不超过 24,576 字节。单体超过时，把实现体按**业务模块**拆进 `public` 库（经 DELEGATECALL 执行，库自身同受该上限约束），保留原合约的地址、ABI 与状态；不得靠删减已定稿的 ABI 或调整 `optimizer_runs` 绕过。库函数可直接接收 `storage` 指针读写调用方状态：**状态集中在一个根 Layout struct 里**，库函数只收该 struct 的 storage 指针加业务参数，状态增减不改库的函数签名。拆分边界：业务模块各自成库；**会被其他合约链上调用的接口把实现留在主合约**（这类调用本身便宜，跨库的固定开销会让一次读取翻倍）；只被钱包或前端读取的查询随业务库走、经 `eth_call` 不计 gas。库调用不得出现在循环体内。含业务语义的库放业务仓 `src/`，无业务语义的通用库按「复用优先」放 `libs`。`forge build --sizes` 的上限纳入实现门禁。
 - OpenZeppelin Contracts 通过 Git submodule 引入并固定 ref；不得与同路径的 vendored OpenZeppelin 源码并存。
 - `LOVE20BSC/libs` 通过 Git submodule 引入，其 Solidity 与 EVM 基线与 Core 对齐。
 
