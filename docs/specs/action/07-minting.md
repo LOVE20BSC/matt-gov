@@ -40,9 +40,10 @@ Core 的预留、铸造和取消额度账本见 [Mint](../core/07-mint.md)，不
 | `GroupNotActive()` | 在未激活链群上执行群管理操作（停用、更新配置） |
 | `VerifierAlreadyLocked(tokenAddress, actionId, round)` | 锁定后更换验证者 |
 | `StartIndexMismatch(expected, actual)` | 验证批次跳跃、重复或乱序；`expected` 为该群当前已验证数量，`actual` 为调用者传入的 `startIndex` |
+| `VerificationBatchTooLarge()` | 验证批次项数超过协议级上界 100（对应常量 `MAX_VERIFICATION_BATCH`） |
 | `RewardAlreadyMinted(tokenAddress, actionId, memberId, round)` | 重复成员结算（Executor 层；ActionTarget 层见 `AlreadyMinted` 行） |
 | `DistributionOverflow(configured, available)` | 配置比例总和超过 `1e18` 时拒绝；正好 `1e18` 合法 |
 
-Target Data 的项数、每项位置与编码由各 Executor 在自己的规格中固定，并在对应回调内自行校验，错误也声明在各自的 `Errors` 子接口；ActionTarget 只解析创建回调的第 `0` 项 executor。`InvalidParticipationAmount` 拒绝零值或超出配置范围的参与量；`InvalidCandidate` 拒绝候选人或申请版本无效；`InvalidSplits` 拒绝分割线不严格递增或超出范围；`ApplicationNotActive` 拒绝使用已失效申请；`InvalidTargetDataLength` 拒绝 Target Data 项数超出约定；`VerificationInfoLengthMismatch` 拒绝验证信息 schema 两数组不等长或成员值项数与 schema 不符；`GroupNotActive` 拒绝在未激活链群上执行群管理操作，加入类操作改由 `CannotJoinInactiveGroup` 拒绝。以上错误均在对应外层交易中回滚。
+Target Data 的项数、每项位置与编码由各 Executor 在自己的规格中固定，并在对应回调内自行校验，错误也声明在各自的 `Errors` 子接口；ActionTarget 只解析创建回调的第 `0` 项 executor。`InvalidParticipationAmount` 拒绝零值或超出配置范围的参与量；`InvalidCandidate` 拒绝候选人或申请版本无效；`InvalidSplits` 拒绝分割线不严格递增或超出范围；`InvalidRatio` 拒绝创建回调中 `maxJoinAmountRatio` 或 `activationMinGovRatio` 超出 `1e18`；`ApplicationNotActive` 拒绝使用已失效申请；`InvalidTargetDataLength` 拒绝 Target Data 项数超出约定；`VerificationInfoLengthMismatch` 拒绝验证信息 schema 两数组不等长或成员值项数与 schema 不符；`GroupNotActive` 拒绝在未激活链群上执行群管理操作，加入类操作改由 `CannotJoinInactiveGroup` 拒绝。以上错误均在对应外层交易中回滚。
 
 验收见 [Action 验收](08-testing.md)。
