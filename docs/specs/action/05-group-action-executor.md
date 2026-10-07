@@ -56,7 +56,7 @@ GroupAction 使用 MemberNFT 身份，`groupId` 是群主体的 `memberId`，不
 
 `submitOriginScores` 只作用于当前验证轮（不收 `round` 入参）；调用者持有 verifierId，批次数组非空，每项不超过 100、单批项数超过协议上界 100 回滚 `VerificationBatchTooLarge`，`startIndex` 等于该群已验证数量且不能超出历史成员数。全部校验成功才锁定和计分；同一成员记录只消费一次。未验证的分数查询返回 `(0, false)`，与已验证零分区分。
 
-原始分与「已验证」标志合并写入同一个存储槽（原始分上限 100，高位作标志位），使每个成员每轮只产生一次新的冷写入；查询接口仍按 `(score, verified)` 返回。每组的轮级累计量用累加器，不按成员二次写。
+存储记「扣分」而非原始分：已验证成员仅当原始分低于 100 时写一次 `100 − 原始分` 的冷槽，满分零写入（沿用旧 `GroupVerify.sol` 的 gas 记法）；「已验证」不占存储位，由成员在目标 Round 群集合中的位置早于该群已验证游标推导。查询接口仍按 `(score, verified)` 返回，读路径增加一次群归属与集合定位查询。每组的轮级累计量用累加器，不按成员二次写。原始分上限 100 仍由 `ScoreExceedsMax` 在写入前显式校验，减法记法的下溢不是校验手段。
 
 第 1 名在验证阶段起点开放，后续排名按下式开放：
 
@@ -103,7 +103,7 @@ Executor 是单例，全部逻辑落在一个地址上会超过 EIP-170 的 24,5
 
 | 库 | 接口文件 | 对应旧文件 | 内容 |
 | --- | --- | --- | --- |
-| `GroupActionVerify` | `IGroupActionVerify.sol`（`is IVerificationInfo`） | `GroupVerify.sol` | 验证提交与连续游标、原始分与「已验证」标志合槽写入、`finalScore`/`totalFinalScore` 汇总、验证者申请/撤销与排名查询、验证信息查询、投票回调的候选记账 |
+| `GroupActionVerify` | `IGroupActionVerify.sol`（`is IVerificationInfo`） | `GroupVerify.sol` | 验证提交与连续游标、扣分写入（满分免写）与位置化已验证推导、`finalScore`/`totalFinalScore` 汇总、验证者申请/撤销与排名查询、验证信息查询、投票回调的候选记账 |
 | `GroupActionJoin` | `IGroupActionJoin.sol` | `GroupJoin.sol` | `join`、`withdraw`、`exit`、Provider 额度五件、Round 历史读写、参与索引与归属计数维护、成员验证信息值写入、`joinInfo`、`totalJoinedAmountByGroupId` |
 | `GroupActionManager` | `IGroupActionManager.sol` | `GroupManager.sol` | `activateGroup`、`deactivateGroup`、`updateGroupConfig`、`groupInfo`，以及创建回调写入行动配置、验证信息模板与创建轮；群集合/质押/描述快照查询（`activeGroupIds` 族、`staked` 族、`tokenAddressesByGroupId`、`actionIds` 族、`descriptionByRound`、`hasActiveGroups`、`maxJoinAmount`——沿用旧 GroupManager 口径，按当前加入轮读取行动票占比与 joinToken 当前 `totalSupply`）；推举回调当前只校验调用者，无状态写入 |
 
@@ -121,7 +121,7 @@ Executor 是单例，全部逻辑落在一个地址上会超过 EIP-170 的 24,5
 
 两条硬规则：库调用不得出现在循环体内——成员批量结算与验证批次的循环必须整体位于同一侧，不得按元素跨库；库只承载逻辑，不声明状态变量。
 
-验证是本协议 gas 占比最高的路径（每轮、每群、每成员都要写一次分数），优化优先级高于其余部分：每个成员每轮只允许一次新的冷写入（分数与标志合槽），批次内其余状态用轮级累加器；跨库跳转只落在冷路径上，一次批量提交的跨库开销相对批量本身可忽略。
+验证是本协议 gas 占比最高的路径（每轮、每群、每成员都要处理一次分数），优化优先级高于其余部分：每个成员每轮至多一次新的冷写入（非满分写扣分、满分零写入），批次内其余状态用轮级累加器；跨库跳转只落在冷路径上，一次批量提交的跨库开销相对批量本身可忽略。
 
 部署脚本按「先部署各库、再链接部署 Executor」执行，库地址与链接关系记入 `script/network/<net>/`；`forge build --sizes` 的 24,576 上限纳入实现门禁。实现对账时按库分别核对 runtime 上限，任一库超限则继续按业务边界细分。
 

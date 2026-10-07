@@ -21,7 +21,7 @@
 | GroupAction | Provider 额度授予、部分使用、追加、收回、枚举 | 授予即把代币存入合约；`join` 只扣减额度、不转移代币；成员只使用部分额度时其余额度保留；重复 `join` 与重复授予是追加不回滚；`providerQuotaRemove` 只退还未使用额度；`providerQuota` 与 `providerAmountsByMemberId` 的分页结果分别与额度表、逐来源账本一致；批量授予/收回对每个成员各发一条 `ProviderQuotaAdded`/`ProviderQuotaRemoved`，金额与账本变动一致 |
 | GroupAction | 部署体积与拆分边界 | `forge build --sizes` 下 Executor 与三个业务库（`GroupActionVerify`/`GroupActionJoin`/`GroupActionManager`）的 runtime 均不超过 24,576 字节；库调用只出现在函数级、不入循环、库之间不互相调用；链上被其他合约调用的接口（`isGroupMember`、`generatedActionRewardByGroupId`、`needBurnReward`、基座 Round 与参与量查询）实现在 Executor 本地而非转发库；地址与 ABI 不变 |
 | GroupAction | 退出恢复 Provider 额度、不转出合约 | 成员 `exit` 后自有资产返还成员、Provider 来源回到可用额度且合约余额不变（除自有部分）；Provider 用 `providerQuotaRemove` 仍可取回；成员可用同一额度再次加入 |
-| GroupAction | 验证的每成员写入次数 | 每个成员每轮只产生一次新的冷写入（原始分与已验证标志合并存储）；组级累计量走轮级累加器；`originScore`/`finalScore` 仍返回 `(score, verified)` 且未验证与已验证零分可区分 |
+| GroupAction | 验证的每成员写入次数 | 每个成员每轮至多产生一次新的冷写入（非满分写扣分、满分零写入）；组级累计量走轮级累加器；`originScore`/`finalScore` 仍返回 `(score, verified)` 且未验证与已验证零分可区分 |
 | GroupAction | 代币量事件出口 | 代币量只由 `Joined`/`Withdrawn` 承载；单笔 `withdraw`/`providerWithdraw` 各发一条带 `providerId` 的 `Withdrawn`；`exit` 按来源逐条发出（自有来源为 0，每个有余额的 Provider 一条）后再发 `Exited`，`Withdrawn` 金额之和等于实际返还总额，`Exited` 带链群 `groupId`、不带金额 |
 | GroupAction | `init` 派生依赖与零校验 | `memberNFTAddress`/`phaseAddress`/`voteAddress` 从 `stakeAddress` 读取一次并缓存，任一为零回滚 `InvalidAddress`；不接收 `mintAddress` |
 | GroupAction | 创建数据与验证信息长度 | Target Data 项数超出约定回滚 `InvalidTargetDataLength`；schema 两数组不等长、成员值项数与 schema 不符回滚 `VerificationInfoLengthMismatch` |
