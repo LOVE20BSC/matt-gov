@@ -8,7 +8,7 @@ interface IGroupActionJoinEvents {
         uint256 indexed memberId,
         uint256 round,
         uint256 amount,
-        uint256 providerMemberId,
+        uint256 providerId,
         uint256 groupId
     );
     event Withdrawn(
@@ -17,13 +17,31 @@ interface IGroupActionJoinEvents {
         uint256 indexed memberId,
         uint256 round,
         uint256 amount,
-        uint256 providerMemberId
+        uint256 providerId,
+        uint256 groupId
     );
     event Exited(
         address indexed tokenAddress,
         uint256 indexed actionId,
         uint256 indexed memberId,
-        uint256 round
+        uint256 round,
+        uint256 groupId
+    );
+    event ProviderQuotaAdded(
+        address indexed tokenAddress,
+        uint256 indexed actionId,
+        uint256 indexed groupId,
+        uint256 providerId,
+        uint256 memberId,
+        uint256 amount
+    );
+    event ProviderQuotaRemoved(
+        address indexed tokenAddress,
+        uint256 indexed actionId,
+        uint256 indexed groupId,
+        uint256 providerId,
+        uint256 memberId,
+        uint256 amount
     );
 }
 
@@ -42,7 +60,7 @@ interface IGroupActionJoinErrors {
     error QuotaMemberZero();
     error QuotaAmountZero();
     error QuotaNotGranted(uint256 memberId);
-    error InsufficientProviderQuota(uint256 providerMemberId, uint256 required, uint256 available);
+    error InsufficientProviderQuota(uint256 providerId, uint256 required, uint256 available);
 }
 
 interface IGroupActionJoin is IGroupActionJoinEvents, IGroupActionJoinErrors {
@@ -52,7 +70,7 @@ interface IGroupActionJoin is IGroupActionJoinEvents, IGroupActionJoinErrors {
         uint256 groupId,
         uint256 memberId,
         uint256 amount,
-        uint256 providerMemberId,
+        uint256 providerId,
         string[] calldata verificationInfos
     ) external;
 
@@ -67,7 +85,7 @@ interface IGroupActionJoin is IGroupActionJoinEvents, IGroupActionJoinErrors {
         address tokenAddress,
         uint256 actionId,
         uint256 memberId,
-        uint256 providerMemberId,
+        uint256 providerId,
         uint256 amount
     ) external;
 
@@ -82,7 +100,9 @@ interface IGroupActionJoin is IGroupActionJoinEvents, IGroupActionJoinErrors {
         returns (
             uint256 joinedRound,
             uint256 amount,
-            uint256 groupId
+            uint256 groupId,
+            uint256 ownAmount,
+            uint256 providerAmount
         );
 
     function totalJoinedAmountByGroupId(
@@ -127,7 +147,7 @@ interface IGroupActionJoin is IGroupActionJoinEvents, IGroupActionJoinErrors {
         address tokenAddress,
         uint256 actionId,
         uint256 groupId,
-        uint256 providerMemberId,
+        uint256 providerId,
         uint256[] calldata memberIds,
         uint256[] calldata amounts
     ) external;
@@ -136,7 +156,7 @@ interface IGroupActionJoin is IGroupActionJoinEvents, IGroupActionJoinErrors {
         address tokenAddress,
         uint256 actionId,
         uint256 groupId,
-        uint256 providerMemberId,
+        uint256 providerId,
         uint256[] calldata memberIds
     ) external;
 
@@ -144,7 +164,7 @@ interface IGroupActionJoin is IGroupActionJoinEvents, IGroupActionJoinErrors {
         address tokenAddress,
         uint256 actionId,
         uint256 groupId,
-        uint256 providerMemberId,
+        uint256 providerId,
         uint256 offset,
         uint256 limit,
         bool reverse
@@ -158,14 +178,6 @@ interface IGroupActionJoin is IGroupActionJoinEvents, IGroupActionJoinErrors {
             uint256 total
         );
 
-    function providerAmount(
-        address tokenAddress,
-        uint256 actionId,
-        uint256 round,
-        uint256 memberId,
-        uint256 providerMemberId
-    ) external view returns (uint256);
-
     function providerAmountsByMemberId(
         address tokenAddress,
         uint256 actionId,
@@ -178,7 +190,7 @@ interface IGroupActionJoin is IGroupActionJoinEvents, IGroupActionJoinErrors {
         external
         view
         returns (
-            uint256[] memory providerMemberIds,
+            uint256[] memory providerIds,
             uint256[] memory amounts,
             uint256 total
         );

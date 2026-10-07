@@ -473,8 +473,8 @@ MemberNFT 的配置 getter 同样遵循大写命名；`MAX_NAME_LENGTH()` 仅去
 | `stakedAmountOfVerifiers(tokenAddress, round)` | `IVote.stakedAmountOfVoters(tokenAddress, round)` |
 | `score`、`scoreWithReward`、`abstentionScoreWithReward`、`scoreByActionId`、`scoreByActionIdByAccount`、`scoreByVerifier`、`scoreByVerifierByActionId`、`scoreByVerifierByActionIdByAccount` | `action` 层 `originScore`/`finalScore`/`totalFinalScore`（维度重构，非一一对应） |
 | `firstTokenAddress`、`randomAddress`、`stakeAddress`、`voteAddress`、`joinAddress`、`RANDOM_SEED_UPDATE_MIN_PER_TEN_THOUSAND` | 删除 |
-| 事件 `Verify` | `action` 层 `VerificationBatchSubmitted` |
-| 错误 `ScoresAndAccountsLengthMismatch`、`ScoresExceedVotesNum`、`ScoresMustIncrease` | 删除；`action` 层新增 `BatchIndexMismatch` |
+| 事件 `Verify` | `action` 层 `OriginScoresSubmitted` |
+| 错误 `ScoresAndAccountsLengthMismatch`、`ScoresExceedVotesNum`、`ScoresMustIncrease` | 删除；`action` 层新增 `StartIndexMismatch` |
 
 弃权分（`abstentionScore`）机制在新 action 层接口中无对应字段。
 

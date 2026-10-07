@@ -23,7 +23,11 @@ interface IGroupServiceExecutorEvents {
         uint256 indexed groupId, uint256 round, uint256[] recipientIds, uint256[] ratios);
 }
 
-interface IGroupServiceExecutor is IActionExecutor, IGroupServiceExecutorEvents {
+interface IGroupServiceExecutorErrors {
+    error DistributionOverflow(uint256 configured, uint256 available);
+}
+
+interface IGroupServiceExecutor is IActionExecutor, IGroupServiceExecutorEvents, IGroupServiceExecutorErrors {
     function init(address actionTargetAddress, address stakeAddress, address groupActionExecutorAddress) external;
     function currentVerifyRound() external view returns (uint256);
     function totalGroupActionReward(address actionTokenAddress, uint256 round)
@@ -34,6 +38,8 @@ interface IGroupServiceExecutor is IActionExecutor, IGroupServiceExecutorEvents 
         external view returns (bool joined);
     function actionTokenAddress(address serviceTokenAddress, uint256 serviceProposalId)
         external view returns (address);
+    function ratioForPublicVerifier(address serviceTokenAddress, uint256 serviceProposalId)
+        external view returns (uint256);
     function serviceRewardByMember(address serviceTokenAddress, uint256 serviceProposalId, uint256 round,
         uint256 memberId) external view returns (uint256 verifierReward, uint256 ownerReward,
         uint256 ownerBurned, bool claimed);
@@ -44,6 +50,4 @@ interface IGroupServiceExecutor is IActionExecutor, IGroupServiceExecutorEvents 
     function rewardDistribution(address serviceTokenAddress, uint256 serviceProposalId, uint256 round,
         uint256 sourceActionId, uint256 groupId) external view returns (uint256[] memory recipientIds,
         uint256[] memory ratios, uint256[] memory amounts, uint256 ownerAmount);
-
-    error DistributionOverflow(uint256 configured, uint256 available);
 }

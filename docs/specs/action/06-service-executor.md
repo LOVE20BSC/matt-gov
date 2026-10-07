@@ -9,7 +9,7 @@
 | 符号 | 含义 |
 | --- | --- |
 | `A[a]` | 源 GroupAction a 的总激励 |
-| `r[a]` / `ratioForPublicVerifier` | 行动 a 的公共验证者比例，`1e18` 精度 |
+| `r[a]` / `ratioForPublicVerifier` | 行动 a 的公共验证者比例，`1e18` 精度；2026-10-07 起按服务 Proposal 绑定（不再由候选在申请时自报），各源行动统一取该 Proposal 的绑定值 |
 | `totalGroupActionReward` | `actionTokenAddress` 社区本轮全部 GroupAction 的总激励，首次计算时缓存为本服务轮次分母 |
 | `publicVerifierId[a]` | 行动 a 锁定的公共验证者 memberId |
 | `m` | 结算主体 memberId；作为群 owner 时也是 groupId |
@@ -22,7 +22,7 @@
 
 完整 ABI 见 [`IGroupServiceExecutor.sol`](../../../interfaces/action/IGroupServiceExecutor.sol)。
 
-创建 Target Data 从第 `1` 项起（第 `0` 项是 ActionTarget 保留的 executor）固定为 `targetData[1] = abi.encode(address actionTokenAddress)` 和 `targetData[2] = abi.encode(uint256 govRatioMultiplier)`；代币关系在创建时校验。join/exit 校验当前 NFT 持有人，按 RoundHistory 记录服务资格。加入资格仍为有效群 owner 或有效候选，铸造只计算该轮实际贡献。共同准备/铸造/销毁 ABI 见 [行动铸造](07-minting.md#铸造链路)。
+创建 Target Data 从第 `1` 项起（第 `0` 项是 ActionTarget 保留的 executor）固定为 `targetData[1] = abi.encode(address actionTokenAddress)`、`targetData[2] = abi.encode(uint256 govRatioMultiplier)` 和 `targetData[3] = abi.encode(uint256 ratioForPublicVerifier)`；代币关系在创建时校验。公共验证者比例绑定到 `serviceProposalId`，经 `ratioForPublicVerifier(serviceTokenAddress, serviceProposalId)` 读取。join/exit 校验当前 NFT 持有人，按 RoundHistory 记录服务资格；加入时以 GroupAction Executor 的 `hasActiveGroups(actionTokenAddress, memberId)` 一次判定该成员在该代币社区是否有激活链群。加入资格仍为有效群 owner 或有效候选，铸造只计算该轮实际贡献。共同准备/铸造/销毁 ABI 见 [行动铸造](07-minting.md#铸造链路)。
 
 `init(actionTargetAddress, stakeAddress, groupActionExecutorAddress)` 只收 ActionTarget、Stake 和 GroupAction Executor：`memberNFTAddress`、`phaseAddress`、`voteAddress` 在 init 内从 `stakeAddress` 的 getter 读取一次并缓存，任一为零回滚 `InvalidAddress`；激励经 `ActionTarget` 读取，不注入 Mint。
 
@@ -52,7 +52,7 @@ ownerOverflow(m) = theoreticalOwnerReward(m) - actualOwnerReward(m)
 
 其中 `theoreticalOwnerReward(m)` 使用上节权重公式；治理票读取 `Stake.validGovVotes(actionTokenAddress, m)` 和 `Stake.globalGovVotes(actionTokenAddress)`。每个角色先检查自己的分子，为零只跳过该角色，不影响同一 memberId 的另一角色；两个分子都为零则直接返回。上限启用且总治理票为零时只销毁 owner 理论激励；乘数为零直接关闭上限。结算使用服务铸造时 `actionTokenAddress` 社区最新的有效治理票；已结算的查询返回记录结果，不重新套用后续票权。
 
-`govRatioMultiplier` 来自服务 Proposal 创建回调的 `targetData[2]`；owner 超额按每个 owner 单独记入 `ownerBurned`。服务代币已经由 Mint 铸造并转入 Executor 后，销毁直接调用该代币的 `burn(amount)`；不重复修改 Core Mint 的 `rewardBurned`。服务 Proposal 本轮没有激励时由 Mint 的内部 Round 准备逻辑处理，Executor 不重复判断。
+`govRatioMultiplier` 来自服务 Proposal 创建回调的 `targetData[2]`，`ratioForPublicVerifier` 来自 `targetData[3]`；owner 超额按每个 owner 单独记入 `ownerBurned`。服务代币已经由 Mint 铸造并转入 Executor 后，销毁直接调用该代币的 `burn(amount)`；不重复修改 Core Mint 的 `rewardBurned`。服务 Proposal 本轮没有激励时由 Mint 的内部 Round 准备逻辑处理，Executor 不重复判断。
 
 成员级结清每次结算发出两条事件：基座的 `MemberRewardMinted(tokenAddress, actionId, memberId, round, mintAmount, burnAmount)` 记公共口径，本接口的 `ServiceRewardDistributed(...)` 追加角色细分。两者必须满足 `MemberRewardMinted.mintAmount == verifierReward + ownerReward` 且 `.burnAmount == ownerBurned`，因此基座的「可铸造」在本接口是**聚合值**（服务轮次的可铸造量不是标量，公共验证者与 owner 两部分独立计算），逐个角色的金额仍读 `serviceRewardByMember`。
 

@@ -36,10 +36,10 @@ Core 的预留、铸造和取消额度账本见 [Mint](../core/07-mint.md)，不
 | `TransferFailed(tokenAddress, to, amount)` | ActionTarget 向 Executor 转出整笔激励失败 |
 | `InvalidRound(round)` | Round 已开始但不在对应操作的有效阶段 |
 | `RoundNotStarted()` | 对应阶段的 Round 小于 1 |
-| `InsufficientProviderQuota(providerMemberId, required, available)` | Provider 额度不足 |
+| `InsufficientProviderQuota(providerId, required, available)` | Provider 额度不足 |
 | `GroupNotActive()` | 在未激活链群上执行群管理操作（停用、更新配置） |
 | `VerifierAlreadyLocked(tokenAddress, actionId, round)` | 锁定后更换验证者 |
-| `BatchIndexMismatch(expected, actual)` | 验证批次跳跃、重复或乱序 |
+| `StartIndexMismatch(expected, actual)` | 验证批次跳跃、重复或乱序；`expected` 为该群当前已验证数量，`actual` 为调用者传入的 `startIndex` |
 | `RewardAlreadyMinted(tokenAddress, actionId, memberId, round)` | 重复成员结算（Executor 层；ActionTarget 层见 `AlreadyMinted` 行） |
 | `DistributionOverflow(configured, available)` | 配置比例总和超过 `1e18` 时拒绝；正好 `1e18` 合法 |
 

@@ -7,21 +7,26 @@ struct VerifierApplication {
     uint256 applicationId;
     uint256 memberId;
     string description;
-    uint256 ratioForPublicVerifier;
-    uint256 votes;
-    bool active;
 }
 
 interface IGroupActionVerifyEvents {
-    event VerificationBatchSubmitted(
+    event OriginScoresSubmitted(
         address indexed tokenAddress,
         uint256 indexed actionId,
         uint256 indexed groupId,
         uint256 round,
-        uint256 batchIndex,
+        uint256 verifierId,
+        uint256 startIndex,
         uint256[] scores
     );
-    event VerifierApplied(
+    event VerifierApplicationSubmitted(
+        address indexed tokenAddress,
+        uint256 indexed actionId,
+        uint256 indexed memberId,
+        uint256 round,
+        uint256 applicationId
+    );
+    event VerifierApplicationCancelled(
         address indexed tokenAddress,
         uint256 indexed actionId,
         uint256 indexed memberId,
@@ -41,7 +46,7 @@ interface IGroupActionVerifyErrors {
     error InvalidCandidate();
     error ScoreExceedsMax();
     error AlreadyVerified();
-    error BatchIndexMismatch(uint256 expected, uint256 actual);
+    error StartIndexMismatch(uint256 expected, uint256 actual);
     error ScoresExceedAccountCount();
     error VerifyVotesZero();
     error ApplicationNotActive();
@@ -52,8 +57,7 @@ interface IGroupActionVerify is IVerificationInfo, IGroupActionVerifyEvents, IGr
     function submitOriginScores(
         address tokenAddress,
         uint256 actionId,
-        uint256 round,
-        uint256 verifierMemberId,
+        uint256 verifierId,
         uint256 groupId,
         uint256 startIndex,
         uint256[] calldata originScores
@@ -77,7 +81,7 @@ interface IGroupActionVerify is IVerificationInfo, IGroupActionVerifyEvents, IGr
         uint256 actionId,
         uint256 round,
         uint256 memberId
-    ) external view returns (uint256);
+    ) external view returns (uint256 score, bool verified);
 
     function totalFinalScore(
         address tokenAddress,
@@ -104,12 +108,11 @@ interface IGroupActionVerify is IVerificationInfo, IGroupActionVerifyEvents, IGr
         uint256 round
     ) external view returns (uint256);
 
-    function applyForVerifier(
+    function submitVerifierApplication(
         address tokenAddress,
         uint256 actionId,
         uint256 memberId,
-        string calldata description,
-        uint256 ratioForPublicVerifier
+        string calldata description
     ) external returns (uint256 applicationId);
 
     function cancelVerifierApplication(
@@ -118,17 +121,15 @@ interface IGroupActionVerify is IVerificationInfo, IGroupActionVerifyEvents, IGr
         uint256 memberId
     ) external;
 
-    function currentApplicationId(
+    function verifierApplication(
         address tokenAddress,
         uint256 actionId,
-        uint256 round,
         uint256 memberId
-    ) external view returns (uint256);
+    ) external view returns (VerifierApplication memory application);
 
     function verifierApplications(
         address tokenAddress,
         uint256 actionId,
-        uint256 round,
         uint256 offset,
         uint256 limit,
         bool reverse
@@ -140,9 +141,16 @@ interface IGroupActionVerify is IVerificationInfo, IGroupActionVerifyEvents, IGr
             uint256 total
         );
 
+    function votesByVerifierIds(
+        address tokenAddress,
+        uint256 actionId,
+        uint256 round,
+        uint256[] calldata verifierIds
+    ) external view returns (uint256[] memory votes);
+
     function topVerifiers(
         address tokenAddress,
         uint256 actionId,
         uint256 round
-    ) external view returns (VerifierApplication[] memory applications);
+    ) external view returns (uint256[] memory verifierIds, uint256[] memory votes);
 }

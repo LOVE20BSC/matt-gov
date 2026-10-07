@@ -8,7 +8,7 @@ GroupAction 使用 MemberNFT 身份，`groupId` 是群主体的 `memberId`，不
 
 参与、群配置和历史查询接口见 [`IGroupActionExecutor.sol`](../../../interfaces/action/IGroupActionExecutor.sol)。
 
-创建 Target Data 沿用旧行动参数，从第 `1` 项起（第 `0` 项是 ActionTarget 保留的 executor）固定为 `targetData[1] = abi.encode(address joinTokenAddress)`、`targetData[2] = abi.encode(uint256 activationStakeAmount)`、`targetData[3] = abi.encode(uint256 maxJoinAmountRatio)`、`targetData[4] = abi.encode(uint256 activationMinGovRatio)`。配置和激活资格、质押退还及容量计算沿用旧 GroupManager；`maxCapacity = 0` 使用理论容量，`maxJoinAmount/maxAccounts = 0` 不另设群级上限，非零最大加入量不得低于最小加入量；群描述 `GroupConfig.description` 与候选人申请说明同受 1024 字节上限约束，超出回滚 `DescriptionTooLong`。项数超出约定项回滚 `InvalidTargetDataLength`。
+创建 Target Data 沿用旧行动参数，从第 `1` 项起（第 `0` 项是 ActionTarget 保留的 executor）固定为 `targetData[1] = abi.encode(address joinTokenAddress)`、`targetData[2] = abi.encode(uint256 activationStakeAmount)`、`targetData[3] = abi.encode(uint256 maxJoinAmountRatio)`、`targetData[4] = abi.encode(uint256 activationMinGovRatio)`。配置和激活资格、质押退还及容量计算沿用旧 GroupManager；`maxCapacity = 0` 使用理论容量，`maxJoinAmount/maxAccounts = 0` 不另设群级上限，非零最大加入量不得低于最小加入量；群描述 `GroupConfig.description` 与候选人申请说明同受 1024 字节上限约束，超出回滚 `DescriptionTooLong`。群描述的按轮快照用 `descriptionByRound(tokenAddress, actionId, round, groupId)` 读取（RoundHistory 懒继承：无记录继承最近历史，从未设置返回空串）。项数超出约定项回滚 `InvalidTargetDataLength`。
 
 **验证信息**：由 [`IGroupActionVerify.sol`](../../../interfaces/action/IGroupActionVerify.sol) 继承 [`IVerificationInfo`](../../../interfaces/action/IVerificationInfo.sol)，`IGroupActionExecutor` 再继承 `IGroupActionVerify`。验证信息分为两层：
 
@@ -17,7 +17,7 @@ GroupAction 使用 MemberNFT 身份，`groupId` 是群主体的 `memberId`，不
 
 验证信息模板的 keys 和 descriptions 在 Proposal 创建回调时通过可选 `targetData[5] = abi.encode(string[] keys, string[] descriptions)` 传入，后续不可修改；两数组不等长回滚 `VerificationInfoLengthMismatch`。成员提交的验证信息值在加入时写入，项数与模板 keys 不符同样回滚 `VerificationInfoLengthMismatch`，每次修改参与量时可更新。
 
-管理操作要求持有 groupId；自有参与操作要求持有 memberId。同一行动中成员只能归属一个 Group，追加不得改群；换群须先正常退出。`join` 的资产来源由 `providerMemberId` 决定：`0` 表示成员自有代币，非零表示从该 Provider 已存入合约的额度中扣减。同一成员可在同一行动上混合多个来源，重复 `join` 按来源分别追加；`joinInfo`、`amount` 查询、`joinedAmountByMemberId` 与 `totalJoinedAmountByGroupId` 都包含全部来源。`withdraw` 只减少自有账本，`providerWithdraw` 只减少指定 Provider 账本，两者不互相抵扣；成员总参与量（自有 + 全部 Provider）归零时自动退出。`providerWithdraw` 由该 Provider 当前持有人调用，代币始终返还该 Provider 当前持有人；Provider 身份不授予成员 `exit`、额度管理或撤回 Provider 已投入部分的权限。成员调用 `exit` 时结清全部来源：自有资产返还成员，Provider 来源恢复为该 Provider 对该成员的可用额度、不转出合约（Provider 仍可用 `providerQuotaRemove` 取回）。代币量只由 `Joined` 与 `Withdrawn` 承载：`exit` 按来源逐条发出 `Withdrawn`（自有来源为 `0`，每个有余额的 Provider 一条），`Exited` 只表示退出状态、不带金额。无参与记录返回零元组，历史集合无记录返回空数组。
+管理操作要求持有 groupId；自有参与操作要求持有 memberId。`groupId` 即群主体的 memberId，同一成员在同一行动上至多激活一个链群：行动内是否激活用 `isGroupActive(tokenAddress, actionId, groupId)` 直查，不设行动维度的按 owner 激活列表与质押查询。跨行动的社区级判定与聚合保留（主体为 memberId，与全员身份模型一致）：`hasActiveGroups(tokenAddress, memberId)` 一次判定该成员在本代币社区是否有激活链群（GroupService 加入资格判据），`totalStakedByMemberId(tokenAddress, memberId)` 返回其全部激活链群的累计质押（各行动 `ACTIVATION_STAKE_AMOUNT(tokenAddress, actionId)` 可能不同且激活行动数未知，不展开为按行动遍历）。同一行动中成员只能归属一个 Group，追加不得改群；换群须先正常退出。`join` 的资产来源由 `providerId` 决定：`0` 表示成员自有代币，非零表示从该 Provider 已存入合约的额度中扣减。同一成员可在同一行动上混合多个来源，重复 `join` 按来源分别追加；`joinInfo`（含 `ownAmount`/`providerAmount` 聚合）、`joinedAmountByMemberId` 与 `totalJoinedAmountByGroupId` 都包含全部来源。`withdraw` 只减少自有账本，`providerWithdraw` 只减少指定 Provider 账本，两者不互相抵扣；成员总参与量（自有 + 全部 Provider）归零时自动退出。`providerWithdraw` 由该 Provider 当前持有人调用，代币始终返还该 Provider 当前持有人；Provider 身份不授予成员 `exit`、额度管理或撤回 Provider 已投入部分的权限。成员调用 `exit` 时结清全部来源：自有资产返还成员，Provider 来源恢复为该 Provider 对该成员的可用额度、不转出合约（Provider 仍可用 `providerQuotaRemove` 取回）。代币量只由 `Joined` 与 `Withdrawn` 承载：`exit` 按来源逐条发出 `Withdrawn`（自有来源为 `0`，每个有余额的 Provider 一条），`Exited` 只表示退出状态（带链群 `groupId`）、不带金额。无参与记录返回零元组，历史集合无记录返回空数组。
 
 ## 当前归属与索引
 
@@ -38,7 +38,7 @@ GroupAction 使用 MemberNFT 身份，`groupId` 是群主体的 `memberId`，不
 
 ## Round 历史
 
-加入阶段每笔加入、追加、部分撤回及退出（含 Provider 额度来源的加入），都更新当轮参与记录。同一 Round 多次操作只保留该轮最终值，不新增多个版本；无人交互的 Round 继承最近历史，不逐轮复制或同步。同一批历史同时给出两条**按轮读取**：`groupIds(tokenAddress, actionId, round, offset, limit, reverse)` 是该轮有参与成员的链群，`memberIdsByGroupId(tokenAddress, actionId, round, groupId, offset, limit, reverse)` 是该轮某链群的成员历史顺序；两者与 `g*` 同用标准分页签名，越界返回空数组与真实总数。
+加入阶段每笔加入、追加、部分撤回及退出（含 Provider 额度来源的加入），都更新当轮参与记录。同一 Round 多次操作只保留该轮最终值，不新增多个版本；无人交互的 Round 继承最近历史，不逐轮复制或同步。同一批历史同时给出两条**按轮读取**：`groupIds(tokenAddress, actionId, round, offset, limit, reverse)` 是该轮有参与成员的链群，验证者据此逐个验证链群；`memberIdsByGroupId(tokenAddress, actionId, round, groupId, offset, limit, reverse)` 是该轮某链群的成员历史顺序。两者与 `g*` 同用标准分页签名，越界返回空数组与真实总数。
 
 加入结束后不得回写目标 Round。验证直接读取该轮 Group 和成员历史，不需要前置准备交易；验证集合只由目标 Round 历史决定，与验证阶段链群当前的激活状态无关——加入轮结束后停用、恢复或新增链群都不改变该轮验证集合。该轮集合在加入阶段结束后不再写入，因此按 `offset` 连续翻页等价于连续游标；验证按历史成员顺序使用连续游标，不能重复、跳过或乱序。
 
@@ -50,11 +50,11 @@ GroupAction 使用 MemberNFT 身份，`groupId` 是群主体的 `memberId`，不
 
 验证者、验证和激励查询接口见 [`IGroupActionExecutor.sol`](../../../interfaces/action/IGroupActionExecutor.sol)。
 
-申请者须持有 memberId 且有该社区有效治理票；比例范围 `0..1e18`；`description` 以字节计不超过 1024，超出回滚 `DescriptionTooLong`。apply 新建或替换当前申请：旧 ID 失效但保留票数，新 ID 单调递增且从零计票。取消只移除当前关联和榜内项，不扫描榜外补位。不存在申请查询回滚；无当前申请 ID 返回 0。申请与撤销以创建轮为作用域（`currentPhase() != createdRound` 回滚 `InvalidRound`）；行动只在其创建轮产出参与与激励，该模型下创建轮即当前投票轮。完整申请记录按轮读取：`verifierApplications` 用标准分页签名直接回该轮全部申请记录与总数。这是本接口唯一直接回含变长字段记录体的分页查询——申请记录带变长 `description`，按集合读取原则本应只回 id 再加按 id 批量，但该查询的消费方只有链下展示，且按 id 批量入口会与它构成同一集合的第二条路径；若日后出现链上调用方，须改为「只回 id + 按 id 批量」。`currentApplicationId` 返回该成员当前关联的申请（无则 0）；`topVerifiers` 按排名顺序返回当前榜上的**完整申请记录**——榜的容量是前 `n + 1`（有界），元素与成员一一对应（每个成员至多一个当前申请），记录里已含 `memberId`、`applicationId`、`description`、`ratioForPublicVerifier` 与 `votes`，读取方一次调用即可拿到名单及其票数、比例与说明。其余索引与列表查询按标准分页语义越界返回空数组与真实总数、不回滚。
+申请者须持有 memberId 且有该社区有效治理票；`description` 以字节计不超过 1024，超出回滚 `DescriptionTooLong`。公共验证者比例 `ratioForPublicVerifier` 不再属于申请流程，移至 GroupService 按服务 Proposal 绑定（见 [Service Executor](06-service-executor.md)）。`submitVerifierApplication` 新建或替换当前申请：旧 ID 失效但保留票数，新 ID 单调递增且从零计票。`cancelVerifierApplication` 只移除当前关联和榜内项，不扫描榜外补位。无当前申请时 `verifierApplication` 返回零值结构体（`applicationId = 0`）。申请与撤销以创建轮为作用域（`currentPhase() != createdRound` 回滚 `InvalidRound`）；行动只在其创建轮产出参与与激励，该模型下创建轮即当前投票轮。当前有效申请（已取消的不算）按标准分页读取：`verifierApplications` 直接回申请记录与总数，这是本接口唯一直接回含变长字段记录体的分页查询——申请记录带变长 `description`（结构体仅含 `applicationId`、`memberId`、`description`），按集合读取原则本应只回 id 再加按 id 批量，但该查询的消费方只有链下展示；若日后出现链上调用方，须改为「只回 id + 按 id 批量」。`topVerifiers` 按票数高到低返回榜内 `verifierIds[]` 与对应 `votes[]` 两个定长数组（下标对齐；榜的容量是前 `n` 名，元素与成员一一对应），榜内成员的申请说明用 `verifierApplication` 另取；当轮任意验证者的票数用 `votesByVerifierIds(tokenAddress, actionId, round, verifierIds[])` 按下标对齐批量读取，无票回 `0`、不回滚。其余索引与列表查询按标准分页语义越界返回空数组与真实总数、不回滚。
 
 投票 Target Data 为空表示不指定候选；非空时第 `0` 项为已绑定 Executor（ActionTarget 转发门禁），本 Executor 的业务项从第 `1` 项起：`targetData[1] = abi.encode(uint256 candidateMemberId)`，对应当前有效 applicationId，项数多于 `2` 回滚 `InvalidTargetDataLength`。每次回调将全部治理票增量记给该候选。候选字段为空时不增加候选票，有字段但申请已失效则回滚。排名增量维护，只保存可开放的前 n 名；榜满时榜外候选必须票数严格超过末位才替换，不因修改旧申请自动转移票数。
 
-`submitOriginScores` 仅接受当前验证 Round；调用者持有 verifierMemberId，批次数组非空，每项不超过 100，`startIndex` 等于该群已验证数量且不能超出历史成员数。全部校验成功才锁定和计分；同一成员记录只消费一次。未验证的分数查询返回 `(0, false)`，与已验证零分区分。
+`submitOriginScores` 只作用于当前验证轮（不收 `round` 入参）；调用者持有 verifierId，批次数组非空，每项不超过 100，`startIndex` 等于该群已验证数量且不能超出历史成员数。全部校验成功才锁定和计分；同一成员记录只消费一次。未验证的分数查询返回 `(0, false)`，与已验证零分区分。
 
 原始分与「已验证」标志合并写入同一个存储槽（原始分上限 100，高位作标志位），使每个成员每轮只产生一次新的冷写入；查询接口仍按 `(score, verified)` 返回。每组的轮级累计量用累加器，不按成员二次写。
 
@@ -88,10 +88,10 @@ Executor 先按 [统一铸造链路](07-minting.md#铸造链路) 取得整笔激
 - 退出零值与无记录继续使用旧 RoundHistory 的显式记录语义；不得通过清空 mapping 伪造退出。
 - `candidateCount = n` 表示最大可开放排名数，不是本轮总申请人数；`n = splits.length + 1`。分割线严格递增且在 `(0, 1e18)` 内，空数组只开放第 1 名。投票结束后排名自然冻结，不增加冻结交易。
 - 候选竞选是 BSC 新逻辑；旧 `LOVE20TKM/extension-group/src/GroupVerify.sol` 的 `submitOriginScores` 仅作为连续批次和原始分校验的参考，不是候选机制来源。
-- 链群未激活的错误落点：`deactivateGroup`、`updateGroupInfo` 回滚 `GroupNotActive`；`join`、`providerQuotaAdd` 回滚 `CannotJoinInactiveGroup`。验证路径不检查链群当前激活状态。
-- Provider 额度的授予、调整与枚举见 [共同模型](03-participation.md#provider-额度接口)；额度授予即存入合约，`join` 只按使用量扣减额度、不再转移代币。
+- 链群未激活的错误落点：`deactivateGroup`、`updateGroupConfig` 回滚 `GroupNotActive`；`join`、`providerQuotaAdd` 回滚 `CannotJoinInactiveGroup`。验证路径不检查链群当前激活状态。
+- Provider 额度的授予、调整与枚举见 [共同模型](03-participation.md#provider-额度接口)；额度授予即存入合约，`join` 只按使用量扣减额度、不再转移代币；划转量由 `ProviderQuotaAdded`/`ProviderQuotaRemoved` 逐成员发出。
 - 三个协议级上界是**编译期常量**，不进 `init`、不设 getter：原始分上限 100、单个验证批次项数上限 100、描述字段 1024 字节（`DescriptionTooLong`）。它们对所有部署、所有社区、所有行动一致，属协议语义的一部分；本协议没有管理员身份（`init` 不保存部署者、不授予特权），做成配置项同样写入即不可改，只会增加部署参数与错配面。
-- 代币量只由 `Joined` 与 `Withdrawn` 记录：`Joined` 带 `amount` 与来源键 `providerMemberId`，`Withdrawn` 带 `amount` 与来源键，`Exited` 不带金额。
+- 代币量只由 `Joined` 与 `Withdrawn` 记录：`Joined` 带 `amount` 与来源键 `providerId`，`Withdrawn` 带 `amount`、来源键与链群 `groupId`，`Exited` 带 `groupId`、不带金额。
 
 ## 部署体积与拆分
 
@@ -104,8 +104,8 @@ Executor 是单例，全部逻辑落在一个地址上会超过 EIP-170 的 24,5
 | 库 | 接口文件 | 对应旧文件 | 内容 |
 | --- | --- | --- | --- |
 | `GroupActionVerify` | `IGroupActionVerify.sol`（`is IVerificationInfo`） | `GroupVerify.sol` | 验证提交与连续游标、原始分与「已验证」标志合槽写入、`finalScore`/`totalFinalScore` 汇总、验证者申请/撤销与排名查询、验证信息查询、投票回调的候选记账 |
-| `GroupActionJoin` | `IGroupActionJoin.sol` | `GroupJoin.sol` | `join`、`withdraw`、`exit`、Provider 额度六件、Round 历史读写、参与索引与归属计数维护、成员验证信息值写入、`joinInfo`、`totalJoinedAmountByGroupId` |
-| `GroupActionManager` | `IGroupActionManager.sol` | `GroupManager.sol` | `activateGroup`、`deactivateGroup`、`updateGroupInfo`、`groupInfo`，以及创建回调写入行动配置、验证信息模板与创建轮；推举回调当前只校验调用者，无状态写入 |
+| `GroupActionJoin` | `IGroupActionJoin.sol` | `GroupJoin.sol` | `join`、`withdraw`、`exit`、Provider 额度五件、Round 历史读写、参与索引与归属计数维护、成员验证信息值写入、`joinInfo`、`totalJoinedAmountByGroupId` |
+| `GroupActionManager` | `IGroupActionManager.sol` | `GroupManager.sol` | `activateGroup`、`deactivateGroup`、`updateGroupConfig`、`groupInfo`，以及创建回调写入行动配置、验证信息模板与创建轮；群集合/质押/描述快照查询（`activeGroupIds` 族、`staked` 族、`tokenAddressesByGroupId`、`actionIds` 族、`descriptionByRound`、`hasActiveGroups`、`maxJoinAmount`）；推举回调当前只校验调用者，无状态写入 |
 
 成员级激励铸造不单独成库：它只有约 1.6KB，且成员结算三件（`mintMemberReward`/`mintMemberRewards`/`memberReward`）声明在基座 `IActionExecutor`，留在 Executor 实现即可，也省掉每笔结算的跨库开销。
 

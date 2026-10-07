@@ -12,14 +12,14 @@
 - `mintMemberReward(...)` / `memberReward(...)` 与事件 `MemberRewardMinted` — 成员级奖励的铸造与查询，签名三家一致（成员级奖励裁决）
 - `mintMemberRewards(...)` — 批量成员结算（平行数组按下标配对，任一元素失败整笔回滚）
 - `needBurnReward(...)` — 行动级销毁判据：本轮整笔激励是否无法分配（bool），供 ActionTarget 的 `burnRewardIfNeeded` 取用
-- `joinedAmount(...)` / `joinedAmountByMemberId(...)` / `joinedAmountTokenAddress(...)` — 截止加入轮 `round` 结束的累计参与量、按成员累计量与参与计价代币（`round` 大于当前加入轮时按未开始返回 0；计价代币与轮次无关，故 `joinedAmountTokenAddress` 不带 `round`；口径由各 Executor 规格固定）
+- `joinedAmount(...)` / `joinedAmountByMemberId(...)` / `joinedAmountTokenAddress(...)` — 截止加入轮 `round` 结束的累计参与量、按成员累计量与参与计价代币（`round` 大于当前加入轮时按未开始返回 0；计价代币与轮次无关，故 `joinedAmountTokenAddress` 不带 `round`；口径由各 Executor 规格固定）。与 GroupAction 的 `joinInfo` 快照（另含 `joinedRound`、`groupId` 与 `ownAmount`/`providerAmount`）同键同值为**有意并存**：基座是跨 Executor 的统一聚合口径，`joinInfo` 是成员记录快照入口
 - `currentVoteRound()` / `currentJoinRound()` / `currentMintRound()` — 从 `Phase.currentPhase()` 推导的三阶段 Round；未开始回滚 `RoundNotStarted`
 
 **非通用部分**（各 Executor 自行定义）：
 - `init` 与配置项 — 各 Executor 依赖不同，配置来自行动创建时的 Target Data
 - `join` — 参数因行动类型而异：
   - `ILpExecutor`: `join(tokenAddress, actionId, memberId, amount)`
-  - `IGroupActionExecutor`: `join(tokenAddress, actionId, groupId, memberId, amount, verificationInfos)` — 多了 `groupId`
+  - `IGroupActionExecutor`: `join(tokenAddress, actionId, groupId, memberId, amount, providerId, verificationInfos)` — 多了 `groupId` 与 `providerId`
   - `IGroupServiceExecutor`: `join(serviceTokenAddress, serviceProposalId, memberId, verificationInfos)` — 无 `amount`
 - `withdraw` — 部分撤回接口，LP 和 GroupAction 需要，GroupService 不需要
 - 事件 — 各 Executor 的业务字段不同，各自声明 `Joined/Withdrawn/Exited` 事件
@@ -45,11 +45,11 @@ event Joined(address indexed tokenAddress, uint256 indexed actionId,
     uint256 indexed memberId, uint256 round, uint256 amount);
 ```
 
-- **IGroupActionExecutor.Joined**: 包含 `amount, providerMemberId, groupId`
+- **IGroupActionExecutor.Joined**: 包含 `amount, providerId, groupId`
 ```solidity
 event Joined(address indexed tokenAddress, uint256 indexed actionId, 
     uint256 indexed memberId, uint256 round, uint256 amount, 
-    uint256 providerMemberId, uint256 groupId);
+    uint256 providerId, uint256 groupId);
 ```
 
 两层事件名称不同（ActionTarget 层为加入态登记事件 `JoinStateRegistered`/`JoinStateCleared`，Executor 层为业务事件 `Joined`/`Exited`），各自记录各自层级的信息。参见 [ADR-003](../../adr/003-action-target-interface-simplification.md)。

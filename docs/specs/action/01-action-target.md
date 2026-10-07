@@ -37,7 +37,7 @@ targetData[0] = abi.encode(executorAddress)
 
 **唯一写入者**：ActionTarget 是加入态的唯一所有者。Executor 判定「首次加入」必须读 `isJoined(tokenAddress, actionId, memberId)`，不得用自己的资产账本判定；成员全部退出时调用 `clearJoinState`。与行动类型无关的参与判定走 ActionTarget；某一行动类型的专属关系（如链群归属）走该 Executor。加入/退出是否满足阶段与资格条件由 Executor 判定，ActionTarget 只做登记。
 
-**事件分层设计**：ActionTarget 发出加入态登记事件 `JoinStateRegistered` / `JoinStateCleared`（与登记函数同名系，只包含 `tokenAddress, actionId, memberId, round`；`JoinStateCleared` 另带 `forced` 字段，区分 Executor 正常清理与 `forceExit` 应急清理），记录通用加入状态；各 Executor（如 `ILpExecutor`、`IGroupActionExecutor`）在自己的合约中发出包含完整业务字段（`amount, isExperience, providerMemberId` 等）的业务事件（`Joined`、`Exited`）。两层事件名称不同，各自记录各自层级的信息。ActionTarget 不发出 `Withdrawn` 事件，因为 withdraw 不改变加入状态。
+**事件分层设计**：ActionTarget 发出加入态登记事件 `JoinStateRegistered` / `JoinStateCleared`（与登记函数同名系，只包含 `tokenAddress, actionId, memberId, round`；`JoinStateCleared` 另带 `forced` 字段，区分 Executor 正常清理与 `forceExit` 应急清理），记录通用加入状态；各 Executor（如 `ILpExecutor`、`IGroupActionExecutor`）在自己的合约中发出包含完整业务字段（`amount, providerId, groupId` 等）的业务事件（`Joined`、`Exited`）。两层事件名称不同，各自记录各自层级的信息。ActionTarget 不发出 `Withdrawn` 事件，因为 withdraw 不改变加入状态。
 
 同一分层适用于激励，但两条事件的**名字与参数都不同**，因为层级与主体不同：行动级的整笔铸造由 ActionTarget 的 `ActionRewardMinted(tokenAddress, actionId, round, amount)` 记录，成员级的 `MemberRewardMinted(tokenAddress, actionId, memberId, round, mintAmount, burnAmount)` 由各 Executor 记录（见 [铸造链路](07-minting.md#铸造链路)）。`ActionRewardMinted` 的四个字段全部取自 `mintActionReward` 这一笔调用本身，不需要额外状态。
 

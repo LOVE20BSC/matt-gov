@@ -58,7 +58,7 @@
 | `action/IGroupActionVerify.sol` | `LOVE20TKM/extension-group/src/interface/IGroupVerify.sol` | 重写 |
 | `action/IGroupActionManager.sol` | `LOVE20TKM/extension-group/src/interface/IGroupManager.sol` | 重写 |
 | `action/IGroupActionExecutor.sol` | `LOVE20TKM/extension-group/src/interface/IGroupAction.sol` | 重写（只声明 Executor 本地实现的成员，其余继承三个模块接口） |
-| `action/IGroupActionIndexes.sol` | `LOVE20TKM/extension-group/src/interface/IGroupJoin.sol#g*` | 重写（51 个索引函数收敛为 4 条查询） |
+| `action/IGroupActionIndexes.sol` | `LOVE20TKM/extension-group/src/interface/IGroupJoin.sol#g*` | 重写（51 个索引函数收敛为 1 个存在性布尔 + 5 条标准分页查询） |
 | `action/IGroupServiceExecutor.sol` | `LOVE20TKM/extension-group/src/interface/IGroupService.sol`、`LOVE20TKM/extension-group/src/interface/IGroupRecipients.sol` | 重写 |
 
 ### group-chat
@@ -137,13 +137,13 @@
 | `core/IProposalTarget.sol` | Proposal 创建/推举/投票三回调 | 无；旧协议无 Target 回调 |
 | `core/ILaunchDistributor.sol` | 子币发射后回调 `distributor` | 无；旧协议按认购比例直接领取 |
 | `action/IGroupActionJoin.sol`、`IGroupActionVerify.sol`、`IGroupActionManager.sol` | 按实现模块拆分的接口：声明归属与库一一对应 | 旧 `IGroupJoin` / `IGroupVerify` / `IGroupManager` 各自独立成文件 |
-| `action/IGroupActionIndexes.sol` | 参与归属与集合读取（归属布尔 + 三条标准分页查询） | 旧 17 组全量索引内嵌在 `IGroupJoin` |
+| `action/IGroupActionIndexes.sol` | 参与归属与集合读取（归属布尔 + 五条标准分页查询） | 旧 17 组全量索引内嵌在 `IGroupJoin` |
 
 ## 跨层结构变化
 
 以下四点影响所有接口，各分层文档不再重复：
 
-1. **主体从地址改为 memberId**。旧 `address account` / `address voter` / `address verifier` 等业务主体参数统一改为 `uint256 memberId` 及其派生名（`voterId`、`submitterId`、`verifierMemberId`、`providerMemberId`、`senderId`）。仅 ERC20/ERC721 标准接口、`distributor`、`target`、`executor`、事件中的 owner 快照和审计地址保留 `address`。
+1. **主体从地址改为 memberId**。旧 `address account` / `address voter` / `address verifier` 等业务主体参数统一改为 `uint256 memberId` 及其派生名（`voterId`、`submitterId`、`verifierId`、`providerId`、`senderId`）。仅 ERC20/ERC721 标准接口、`distributor`、`target`、`executor`、事件中的 owner 快照和审计地址保留 `address`。
 2. **事件与错误拆分子接口**。旧代码普遍使用 `I<Name>Errors` / `I<Name>Events` 子接口再继承（如 `ILOVE20Stake is ILOVE20StakeErrors, ILOVE20StakeEvents, IPhase`）；规范要求保留旧文件的拆分结构、声明顺序和文件布局，并统一把事件放进 `I<Name>Events`——旧文件没有该子接口时也要拆出（如 `IPhase`）。先例为：`ILOVE20Launch` 与 `IPhase` 是 `Errors` 在前，`ILOVE20Group` 与 `ILOVE20Token` 是 `Events` 在前；各接口按旧文件保留相对顺序。尚未拆分的接口见[接口组织偏差登记](#接口组织偏差登记)。
 3. **不再继承 IPhase**。旧 `ILOVE20Stake`、`ILOVE20Submit`、`ILOVE20Vote`、`ILOVE20Verify`、`ILOVE20Join`、`ILOVE20Random` 都 `is IPhase`，因此隐式暴露 `currentRound()`、`roundByBlockNumber()`。新接口改为 `init(phaseAddress, ...)` 依赖注入，各接口只按需自行声明 `currentRound()`（`ISubmit`、`IVote`、`IGroupChat`）或分阶段轮次（`currentVoteRound`/`currentJoinRound`/`currentVerifyRound`/`currentMintRound`）。
 4. **配置常量逐项审查**。迁移规范要求固定配置直接使用大写 `public` 状态变量及其自动 getter；只有协议语义改变时才改名，或明确删除 getter 并仅保留 `init` 参数。Launch 的 `LAUNCH_AMOUNT`、`MAX_SUPPLY`、MemberNFT 的 `BASE_DIVISOR` 等保留旧命名；部分参数因作用域/语义变化改名，部分参数按决议删除 getter，逐项列在各分层文档。
@@ -153,7 +153,7 @@
 以下五条经确认属于**新协议接口需要补齐的缺口**，不是文档缺陷。**五条均已落地到 `interfaces/` 并经 Solidity 0.8.37 编译通过**，各条括号中为实现结果。
 
 1. **action 层错误声明需补齐**。旧三接口（`IGroupJoin`/`IGroupManager`/`IGroupVerify`）共 **44 条错误声明、40 个不同错误名**，其中 6 个已有新语义对应，6 个随删除机制一并删除，其余 28 个保留并补入 `IGroupActionExecutor`；另补充阶段未开始错误，接口错误数为 44，逐名核对见 [action.md §3「错误」](action.md)。
-2. **链群配置变更事件**。`IGroupActionExecutor` 已声明 `ActivateGroup`、`DeactivateGroup`、`UpdateGroupInfo`，仅去掉 `owner`（主体改为 memberId，owner 快照不再进事件）、保留 `stakeAmount`；事件数为 11，供前端索引与通知。
+2. **链群配置变更事件**。`IGroupActionExecutor` 已声明 `GroupActivated`、`GroupDeactivated`、`GroupConfigUpdated`（原 `ActivateGroup`/`DeactivateGroup`/`UpdateGroupInfo`，2026-10-07 按事件完成时态原则改名，`updateGroupInfo` 同步定名 `updateGroupConfig`），仅去掉 `owner`（主体改为 memberId，owner 快照不再进事件）、保留 `stakeAmount`；同日按事件设计原则补齐 `ProviderQuotaAdded`/`ProviderQuotaRemoved` 与 `VerifierApplicationSubmitted`/`VerifierApplicationCancelled`，自有事件数 12（另继承基座 `MemberRewardMinted`），供前端索引与通知。
 3. **group-chat scope/ban 适配接口**。已补回 `IAdminBanSource.sol`、`IGroupMemberScope.sol` 和 `IGroupJoinScopeSource.sol`。三者声明地址 getter，行为契约分别来自 `IPostBanSource.isBanned` 或 `IPostScopeSource.canPost`；`IGroupJoinScopeSource` 使用 `GROUP_ACTION_EXECUTOR_ADDRESS()` 指向 action 层单例 Executor，并保留 `GROUP_MEMBER_ADDRESS()`。
 4. **Mint 依赖地址 getter需补回，激励计算查询保持精简**。旧 `ILOVE20Mint` 提供 `voteAddress`/`verifyAddress`/`stakeAddress`，新版退化为仅 `init` 入参。确认结论：**补回 4 个常用依赖 getter**（前端与其他合约发现依赖的常用入口）；`memberNFTAddress` 仅通过 `init` 注入，不单独暴露 getter。`govVerifyReward`/`govBoostReward`/`calculateRoundGovReward`/`calculateRoundActionReward` 等激励计算查询**确认不补**，由调用方自行计算。注意 `verifyAddress` 对应的验证阶段已取消，补回时按新版实际依赖（`voteAddress`/`stakeAddress`/`submitAddress`/`launchAddress`）取用。**已落地**：`IMint` 补回上述 4 个 getter，函数数 19 → 23；4 个激励计算查询确认不补。
 5. **链群维度汇总查询需补回**。旧 `IGroupJoin.totalJoinedAmountByGroupId`、`joinedAmount`、`totalJoinedAmountByGroupOwner` 在新接口没有对应，新版只有 `joinedAmountByMemberId` 与 `memberIdsByGroupId`，只能遍历成员累加。确认结论：**补回汇总查询**，遍历累加在成员规模大时不可用。**已落地**：补回 `totalJoinedAmountByGroupId(tokenAddress, actionId, round, groupId)` 与 `joinedAmount(tokenAddress, actionId, round)`（相对旧版新增 `actionId` 参数，单例多行动模型）；`totalJoinedAmountByGroupOwner` 按裁决不补（群归属改为链群维度，不再按 owner 地址聚合）。
@@ -197,6 +197,6 @@
 | `IGroupMemberScope` | 0 → 2 | 0 | 0 → 1 | 3 |
 | `IGroupJoinScopeSource` | 0 → 3 | 0 | 0 → 1 | 3 |
 
-其余 21 个接口 ABI 逐字节未变。带 `*` 的行函数数量未变但参数签名已改变；左列为**完整 ABI 口径**（含继承成员，例如 `IGroupActionExecutor` = 自身 44 + `IGroupActionIndexes` 51 + `IProposalTarget` 3 = 98），与第 1 层的「自有声明」口径不同，两者都对。
+其余 21 个接口 ABI 逐字节未变。带 `*` 的行函数数量未变但参数签名已改变；左列为**完整 ABI 口径**（含继承成员，例如 `IGroupActionExecutor` = 自身 44 + `IGroupActionIndexes` 51 + `IProposalTarget` 3 = 98），与第 1 层的「自有声明」口径不同，两者都对。（本节与第 6 层差分表为 2026-10-06 评审轮次快照；2026-10-07 批次二至五后的计数重算未在本文件更新，见 action.md 批次记录。）
 
 两处有意的收敛（非遗漏）：`IGroupActionIndexes` 的 51 个 g\* 索引按 17 个组名列举；整块不迁移的旧接口只给规模与代表成员，不逐一列举——两者都在本文件中写明了展开规则或规模账。

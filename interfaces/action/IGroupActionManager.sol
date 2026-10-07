@@ -10,21 +10,21 @@ struct GroupConfig {
 }
 
 interface IGroupActionManagerEvents {
-    event ActivateGroup(
+    event GroupActivated(
         address indexed tokenAddress,
         uint256 indexed actionId,
         uint256 round,
         uint256 indexed groupId,
         uint256 stakeAmount
     );
-    event DeactivateGroup(
+    event GroupDeactivated(
         address indexed tokenAddress,
         uint256 indexed actionId,
         uint256 round,
         uint256 indexed groupId,
         uint256 stakeAmount
     );
-    event UpdateGroupInfo(
+    event GroupConfigUpdated(
         address indexed tokenAddress,
         uint256 indexed actionId,
         uint256 round,
@@ -61,7 +61,7 @@ interface IGroupActionManager is IGroupActionManagerEvents, IGroupActionManagerE
         uint256 groupId
     ) external;
 
-    function updateGroupInfo(
+    function updateGroupConfig(
         address tokenAddress,
         uint256 actionId,
         uint256 groupId,
@@ -81,4 +81,93 @@ interface IGroupActionManager is IGroupActionManagerEvents, IGroupActionManagerE
             uint256 activatedRound,
             uint256 deactivatedRound
         );
+
+    function descriptionByRound(
+        address tokenAddress,
+        uint256 actionId,
+        uint256 round,
+        uint256 groupId
+    ) external view returns (string memory);
+
+    function activeGroupIds(
+        address tokenAddress,
+        uint256 actionId,
+        uint256 offset,
+        uint256 limit,
+        bool reverse
+    )
+        external
+        view
+        returns (
+            uint256[] memory groupIds,
+            uint256 total
+        );
+
+    function isGroupActive(
+        address tokenAddress,
+        uint256 actionId,
+        uint256 groupId
+    ) external view returns (bool);
+
+    function maxJoinAmount(
+        address tokenAddress,
+        uint256 actionId
+    ) external view returns (uint256);
+
+    function staked(
+        address tokenAddress,
+        uint256 actionId
+    ) external view returns (uint256);
+
+    function totalStaked(address tokenAddress) external view returns (uint256);
+
+    function totalStakedByMemberId(
+        address tokenAddress,
+        uint256 memberId
+    ) external view returns (uint256);
+
+    function tokenAddressesByGroupId(
+        uint256 groupId,
+        uint256 offset,
+        uint256 limit,
+        bool reverse
+    )
+        external
+        view
+        returns (
+            address[] memory tokenAddresses,
+            uint256 total
+        );
+
+    function actionIdsByGroupId(
+        address tokenAddress,
+        uint256 groupId,
+        uint256 offset,
+        uint256 limit,
+        bool reverse
+    )
+        external
+        view
+        returns (
+            uint256[] memory actionIds,
+            uint256 total
+        );
+
+    function actionIds(
+        address tokenAddress,
+        uint256 offset,
+        uint256 limit,
+        bool reverse
+    )
+        external
+        view
+        returns (
+            uint256[] memory actionIds,
+            uint256 total
+        );
+
+    function hasActiveGroups(
+        address tokenAddress,
+        uint256 memberId
+    ) external view returns (bool);
 }

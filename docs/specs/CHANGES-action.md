@@ -338,19 +338,18 @@ theoreticalOwnerReward(m) = serviceReward × ownerWeightNumerator(m) / (totalGro
 ## 6. 体验资产（重构为 Provider 额度）
 
 ### ✅ 保留逻辑
-- Provider 额度资产按 `tokenAddress + actionId + memberId + providerMemberId` 独立记账，归 Provider
-- 成员正常退出时，Provider 代币返还其当前持有人
+- Provider 额度资产按 `tokenAddress + actionId + groupId + providerId + memberId` 独立记账，归 Provider
 - 自有资产与 Provider 额度资产可以同时存在
 
 ### 🔄 关键变化
 
 #### 资产来源统一
 - **旧**：`join` 只收自有资产、`trialJoin` 只收体验资产，两者互斥且按双向禁止校验
-- **新**：`join` 增加 `providerMemberId`，`0` 为自有代币、非零为指定 Provider 已授予的额度；`trialJoin` 删除。同一成员可混合多个来源，重复 `join` 按来源分别追加，不再有「已加入不得再体验」之类的方向限制
+- **新**：`join` 增加 `providerId`，`0` 为自有代币、非零为指定 Provider 已授予的额度；`trialJoin` 删除。同一成员可混合多个来源，重复 `join` 按来源分别追加，不再有「已加入不得再体验」之类的方向限制
 
 #### 体验资产只是额度
-- **旧**：待体验名单在名单操作时锁定额度，成员以名单内固定额度整笔加入
-- **新**：Provider 授予、追加或收回额度（`providerQuotaAdd`/`providerQuotaRemove`），成员在额度内自行决定使用多少并可在后续轮次追加未使用部分；额度授予即把代币存入合约，`join` 只扣减额度、不再转移代币，`providerWithdraw` 把已投入部分退回 Provider 当前持有人。`providerAmountsByMemberId` 按成员分页枚举全部来源及金额
+- **旧**：待体验名单在名单操作时锁定额度，成员以名单内固定额度整笔加入；`trialExit` 把全部退出金额直接转回 Provider 当前持有人
+- **新**：Provider 授予、追加或收回额度（`providerQuotaAdd`/`providerQuotaRemove`），成员在额度内自行决定使用多少并可在后续轮次追加未使用部分；额度授予即把代币存入合约，`join` 只扣减额度、不再转移代币，`providerWithdraw` 把已投入部分退回 Provider 当前持有人；成员 `exit` 时 Provider 来源**不转出合约**，已投入按资金归属恢复为该 Provider 对该成员的可用额度，只有 `providerQuotaRemove` 把可用额度退回 Provider 当前持有人。`providerAmountsByMemberId` 按成员分页枚举全部来源及金额
 
 #### 错误落点收敛
 - **旧**：重复加入、重复加入体验、重复登记名单成员都是错误
