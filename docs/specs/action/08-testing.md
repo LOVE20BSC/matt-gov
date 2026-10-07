@@ -22,6 +22,7 @@
 | GroupAction | 部署体积与拆分边界 | `forge build --sizes` 下 Executor 与三个业务库（`GroupActionVerify`/`GroupActionJoin`/`GroupActionManager`）的 runtime 均不超过 24,576 字节；库调用只出现在函数级、不入循环、库之间不互相调用；链上被其他合约调用的接口（`isGroupMember`、`generatedActionRewardByGroupId`、`needBurnReward`、基座 Round 与参与量查询）实现在 Executor 本地而非转发库；地址与 ABI 不变 |
 | GroupAction | 退出恢复 Provider 额度、不转出合约 | 成员 `exit` 后自有资产返还成员、Provider 来源回到可用额度且合约余额不变（除自有部分）；Provider 用 `providerQuotaRemove` 仍可取回；成员可用同一额度再次加入 |
 | GroupAction | 验证的每成员写入次数 | 每个成员每轮至多产生一次新的冷写入（非满分写扣分、满分零写入）；组级累计量走轮级累加器；`originScore`/`finalScore` 仍返回 `(score, verified)` 且未验证与已验证零分可区分 |
+| GroupAction | 位置化已验证推导的跨轮稳定性 | 目标轮计分后，后续轮集合变动（含成员退出引起的位移）不改变该轮解码；同轮加入→退出→再加入按该轮最终排列计分与解码；部分批次时余量保持未验证；集合定位失配（槽位与成员不符）按未验证返回、不误判已验证 |
 | GroupAction | 代币量事件出口 | 代币量只由 `Joined`/`Withdrawn` 承载；单笔 `withdraw`/`providerWithdraw` 各发一条带 `providerId` 的 `Withdrawn`；`exit` 按来源逐条发出（自有来源为 0，每个有余额的 Provider 一条）后再发 `Exited`，`Withdrawn` 金额之和等于实际返还总额，`Exited` 带链群 `groupId`、不带金额 |
 | GroupAction | `init` 派生依赖与零校验 | `memberNFTAddress`/`phaseAddress`/`voteAddress` 从 `stakeAddress` 读取一次并缓存，任一为零回滚 `InvalidAddress`；不接收 `mintAddress` |
 | GroupAction | 创建数据与验证信息长度 | Target Data 项数超出约定回滚 `InvalidTargetDataLength`；schema 两数组不等长、成员值项数与 schema 不符回滚 `VerificationInfoLengthMismatch` |
