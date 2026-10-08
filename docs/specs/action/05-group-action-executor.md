@@ -105,7 +105,7 @@ Executor 是单例，全部逻辑落在一个地址上会超过 EIP-170 的 24,5
 | --- | --- | --- | --- |
 | `GroupActionVerify` | `IGroupActionVerify.sol`（`is IVerificationInfo`） | `GroupVerify.sol` | 验证提交与连续游标、扣分写入（满分免写）与位置化已验证推导、`finalScore`/`totalFinalScore` 汇总、验证者申请/撤销与排名查询、验证信息查询、投票回调的候选记账 |
 | `GroupActionJoin` | `IGroupActionJoin.sol` | `GroupJoin.sol` | `join`、`withdraw`、`exit`、Provider 额度五件、Round 历史读写、参与索引与归属计数维护、成员验证信息值写入、`joinInfo`、`totalJoinedAmountByGroupId` |
-| `GroupActionManager` | `IGroupActionManager.sol` | `GroupManager.sol` | `activateGroup`、`deactivateGroup`、`updateGroupConfig`、`groupInfo`，以及创建回调写入行动配置、验证信息模板与创建轮；群集合/质押/描述快照查询（`activeGroupIds` 族、`staked` 族、`tokenAddressesByGroupId`、`actionIds` 族、`descriptionByRound`、`hasActiveGroups`、`maxJoinAmount`——沿用旧 GroupManager 口径，按当前加入轮读取行动票占比与 joinToken 当前 `totalSupply`）；推举回调当前只校验调用者，无状态写入 |
+| `GroupActionManager` | `IGroupActionManager.sol` | `GroupManager.sol` | `activateGroup`、`deactivateGroup`、`updateGroupConfig`、`groupInfo`，以及创建回调写入行动配置、验证信息模板与创建轮；群集合/质押/描述快照查询（`activeGroupIds` 族、`staked` 族、`tokenAddressesByGroupId`、`actionIds` 族、`descriptionByRound`、`hasActiveGroups`、`maxJoinAmount`——实现即在此；沿用旧 GroupManager 口径，按当前加入轮读取行动票占比与 joinToken 当前 `totalSupply`）；推举回调当前只校验调用者，无状态写入 |
 
 成员级激励铸造不单独成库：它只有约 1.6KB，且成员结算三件（`mintMemberReward`/`mintMemberRewards`/`memberReward`）声明在基座 `IActionExecutor`，留在 Executor 实现即可，也省掉每笔结算的跨库开销。
 
@@ -113,7 +113,7 @@ Executor 是单例，全部逻辑落在一个地址上会超过 EIP-170 的 24,5
 
 **库不能继承接口**（Solidity 不允许），所以「接口文件 ↔ 库」是**声明归属的映射**，编译期唯一强制的契约是 Executor 继承全部接口、其包装函数再调用对应库：接口签名漂移在 Executor 编译不过，库侧签名漂移则在该调用点编译不过。
 
-**库之间不互相调用**：跨模块共享的状态通过同一个根 Layout 直接读写（创建回调写验证信息模板、验证写分数、分配读分数），不引入库到库的跳转，也没有循环依赖。
+**共享状态与共享规则都只留一份，运行时依赖图保持星型**：跨模块共享的状态通过同一个根 Layout 直接读写（创建回调写验证信息模板、验证写分数、分配读分数），库之间不产生 DELEGATECALL、没有循环依赖——判据是各业务库的 `linkReferences` 不含其他业务库；源级依赖只允许指向规则属主模块、单向、不成环。跨模块的**规则**按属主落位——有单一属主的（`maxJoinAmount` 属 `GroupActionManager`）实现留在属主模块，其他模块以 `internal` 函数**编译期内联**复用，当前唯一一条源级依赖是 `GroupActionJoin` → `GroupActionManager`；无属主且被两个以上模块消费的留在 `GroupActionStorage`，即 `currentJoinRound`（`GroupActionJoin`、`GroupActionManager`）、`requireMemberOwner`（`GroupActionJoin`、`GroupActionVerify`、Executor 本地）、`memberAmountAt`（`GroupActionVerify`、Executor 本地）与只由 Executor 基座查询使用的 `joinRound`。属主模块持有的规则不进 `GroupActionStorage`。
 
 **除业务库之外留在 Executor 的两类**：一是**会被其他合约链上调用的接口**——`IGroupActionIndexes` 的查询（Group Chat 链上读 `isGroupMember`；五条 `g*` 分页查询随业务库走）、`generatedActionRewardByGroupId`（Group Service 读取）、`needBurnReward`（ActionTarget 销毁判据）与基座 `IActionExecutor` 的 Round、参与量查询：这类函数本身很便宜，跨库会让一次读取的固定开销（约 2,600 gas 冷访问）翻倍；只被钱包与前端读取的查询走 `eth_call`、不计 gas，随业务库走。二是**成员级激励铸造**（见上表下方说明）。
 
