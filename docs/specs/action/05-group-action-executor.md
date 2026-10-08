@@ -79,7 +79,7 @@ totalFinalScore = sum(finalScore across all groups)
 memberReward(memberId) = floor(proposalReward * finalScore(memberId) / totalFinalScore)
 ```
 
-所有 Group 使用同一原始得分和最终得分规则；按目标 Round 已确认参与数据汇总全行动的 `totalFinalScore` 后直接分配。`totalFinalScore` 为零时不除零，行动层激励为零；群 owner 的聚合份额由其成员最终激励之和得到，不在 Group 内再次按比例分配。
+所有 Group 使用同一原始得分和最终得分规则；按目标 Round 已确认参与数据汇总全行动的 `totalFinalScore` 后直接分配。`totalFinalScore` 为零时不除零，行动层激励为零；群 owner 的聚合份额由其成员最终激励之和得到，不在 Group 内再次按比例分配。成员结算无可分配量（目标轮未完成验证、`finalScore` 为零或行动激励为零）时回滚 `NoRewardAvailable`，不置位已结算、不发事件，验证完成后可重试。
 
 Executor 先按 [统一铸造链路](07-minting.md#铸造链路) 取得整笔激励，再内部分配。
 
