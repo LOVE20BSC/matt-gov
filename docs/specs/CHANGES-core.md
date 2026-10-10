@@ -327,10 +327,10 @@
 
 ### ✅ 保留的旧行为
 
-旧 `LOVE20TKM/core/src/LOVE20Launch.sol` 中真正被完整保留的只有四项：
+旧 `LOVE20TKM/core/src/LOVE20Launch.sol` 中保留的旧行为：
 
 - `isLOVE20Token` 的登记判定
-- `tokenSymbol` 的长度与字符集校验
+- `tokenSymbol` 的字节长度口径（UTF-8 字节数等于配置长度；字符集在本版扩展出汉字，见「符号字符集扩展」）
 - `tokenSymbol + "@" + parentTokenSymbol` 名称拼法，以及父币符号前 4 字节为 `Test` 时施加的测试网前缀（校验之后施加，实际符号可超出配置长度）
 - `launchToken` 的“检查—创建—登记”外部调用骨架
 
@@ -366,15 +366,19 @@
 - `Launch.init` 任一步失败则整笔回滚；成功后不得再次初始化或创建第二个首个代币
 - Airdrop 来源和 Burn 追溯证据按部署记录保存
 
+#### 符号字符集扩展
+- **旧**：`tokenSymbol` 只允许 ASCII，首字符 `A-Z`，其余 `A-Z`、`0-9`
+- **新**：在旧字符集上扩展 CJK 统一表意文字基本区 `U+4E00`–`U+9FFF`（三字节 UTF-8 编码）；首字符为 ASCII `A-Z` 或汉字，其余为 ASCII `A-Z`、`0-9` 或汉字；字节长度口径不变
+
 #### 不迁移的业务
 公平发射募资与认购领取整块不迁移：`contribute`、`withdraw`、`claim`、`claimInfo`、`LaunchInfo` 的其余 10 个字段、`CLAIM_DELAY_BLOCKS` 全部删除。按发射者或募资状态划分的枚举（`childTokensByLauncher*`、`launching*`、`launched*`、`participatedTokens*`）也删除；代币列表与某社区子币列表保留为分页查询（`tokens`、`childTokens`），符号到地址账本保留为 `tokenAddressBySymbol`（子币符号全局唯一，`TokenSymbolExists`），代币地址到父币地址保留为 `parentTokenOf`。
 
 ### 📍 实现参考
 ```
 旧代码：LOVE20TKM/core/src/LOVE20Launch.sol
-保留：isLOVE20Token、符号校验、名称拼法与 Test 前缀、launchToken 骨架
+保留：isLOVE20Token、符号的字节长度口径、名称拼法与 Test 前缀、launchToken 骨架
 新增：阈值换算与额度结转（见 07-mint）、社区上限、次数融合、分发模式
-修改：地址 → memberId，删除 submitAddress 与 canSubmit 门槛
+修改：地址 → memberId，删除 submitAddress 与 canSubmit 门槛；符号字符集扩展出汉字
 ```
 
 ---

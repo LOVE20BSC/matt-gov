@@ -105,7 +105,7 @@ Launch 只保存“成员可用整数次数”和“社区累计已产生次数�
 
 `memberId` 必须由调用者当前持有；不用地址默认 NFT 映射。发射只检查账本余量和 NFT 当前所有权，不要求推举资格：旧 `remainingLaunchCount` 中的 `Submit.canSubmit` 门槛已取消，`submitAddress` 依赖同步删除。名称沿用旧 Launch 的 `tokenSymbol + "@" + parentTokenSymbol` 生成方式。
 
-`tokenSymbol` 的合法性沿用旧实现：长度必须等于部署配置的符号长度；首字符必须为 ASCII `A-Z`；其余字符必须为 ASCII `A-Z` 或 `0-9`。不满足时回滚 `InvalidTokenSymbol()`。
+`tokenSymbol` 按 UTF-8 字节校验：字节长度必须等于部署配置的 `TOKEN_SYMBOL_LENGTH`；首字符必须为 ASCII `A-Z` 或汉字；其余字符必须为 ASCII `A-Z`、`0-9` 或汉字。汉字限定为 CJK 统一表意文字基本区 `U+4E00`–`U+9FFF` 的三字节编码；中英数字可混排，纯汉字符号要求配置长度为 3 的倍数（如配置 6 对应两个汉字）。长度口径与旧实现一致（UTF-8 字节数），字符集在旧实现的 ASCII 基础上扩展出汉字。其余任何字节序列——其他多字节字符、不完整的 UTF-8、超出基本区的码点——都回滚 `InvalidTokenSymbol()`。
 
 测试网前缀沿用旧实现：先按配置长度校验 `tokenSymbol`，再读取前缀判定符号——父币为根父币的根级发射取 `firstTokenAddress` 的符号，其余发射取 `parentTokenAddress` 的符号；判定符号前 4 字节等于 `Test` 时给符号加上 `Test` 前缀，然后生成名称。该前缀施加在校验之后，因此测试网子币的实际符号可以超出配置长度；首币不施加该前缀。根级发射改用首币符号判定，因为根父币符号跨网络共用，不能标记测试网。
 
@@ -167,6 +167,6 @@ LOVE20Token 使用构造函数接收 `name`、`symbol`、`initialSupply`、`maxS
 - `MemberNFT.init(firstToken)` 由 `Launch.init` 在创建首币时同步调用完成；MemberNFT 不保存 Launch 地址，费用代币地址是唯一外部地址依赖。
 - `mintAddress` 在 `init` 后不可变更，并作为此后每个 LOVE20Token 的 `minter`。升级 Mint 需要连同 `Launch` 一起重部署，已发射代币的 `minter` 不会随之改写。
 
-旧来源 `LOVE20TKM/core/src/LOVE20Launch.sol`（提交见[旧代码基线](../../repositories.md#旧代码基线)）已逐项核对。BSC 版**保留**的旧行为：`isLOVE20Token` 的登记判定、`tokenSymbol` 的长度与字符集校验、`tokenSymbol + "@" + parentTokenSymbol` 名称拼法与测试网 `Test` 前缀、`launchToken` 的“检查—创建—登记”外部调用骨架、代币列表与某社区子币列表的链上枚举（旧 `tokensCount`/`tokensAtIndex`、`childTokensCount`/`childTokensAtIndex` 改为分页查询）、符号到地址账本（旧 `tokenAddressBySymbol` 与 `TokenSymbolExists` 唯一性校验），以及代币地址到父币地址（旧 `LaunchInfo.parentTokenAddress`）。其余整块删除：公平发射募资与认购领取（`contribute`/`withdraw`/`claim`/`claimInfo`）、`LaunchInfo` 的其余 10 个字段、`CLAIM_DELAY_BLOCKS`，以及按发射者或募资状态划分的其余枚举（`childTokensByLauncher*`、`launching*`、`launched*`、`participatedTokens*`）。次数阈值换算、额度余数结转、社区上限、次数融合和根级次数伴生都不在旧实现中，属新设计，见 [Mint 的发射额度](07-mint.md#发射额度的生成) 与[根级次数与伴生规则](#根级次数与伴生规则)。
+旧来源 `LOVE20TKM/core/src/LOVE20Launch.sol`（提交见[旧代码基线](../../repositories.md#旧代码基线)）已逐项核对。BSC 版**保留**的旧行为：`isLOVE20Token` 的登记判定、`tokenSymbol` 的字节长度口径（字符集在本版扩展出汉字，见[普通发射](#普通发射)）、`tokenSymbol + "@" + parentTokenSymbol` 名称拼法与测试网 `Test` 前缀、`launchToken` 的“检查—创建—登记”外部调用骨架、代币列表与某社区子币列表的链上枚举（旧 `tokensCount`/`tokensAtIndex`、`childTokensCount`/`childTokensAtIndex` 改为分页查询）、符号到地址账本（旧 `tokenAddressBySymbol` 与 `TokenSymbolExists` 唯一性校验），以及代币地址到父币地址（旧 `LaunchInfo.parentTokenAddress`）。其余整块删除：公平发射募资与认购领取（`contribute`/`withdraw`/`claim`/`claimInfo`）、`LaunchInfo` 的其余 10 个字段、`CLAIM_DELAY_BLOCKS`，以及按发射者或募资状态划分的其余枚举（`childTokensByLauncher*`、`launching*`、`launched*`、`participatedTokens*`）。次数阈值换算、额度余数结转、社区上限、次数融合和根级次数伴生都不在旧实现中，属新设计，见 [Mint 的发射额度](07-mint.md#发射额度的生成) 与[根级次数与伴生规则](#根级次数与伴生规则)。
 
 验收见 [Core 验收](09-testing.md)。

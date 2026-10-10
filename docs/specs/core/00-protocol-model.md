@@ -44,7 +44,7 @@ Core 不解释具体 Proposal 的业务字段，扩展通过 Target 接入。
 | Launch | `distributor`、`name`、`symbol` | 首币分发目标、名称和符号；首币固定使用 `NoCallback`，`distributor` 非零 |
 | Launch | `launchRatio` | 发射阈值比例；状态变量和公开 getter 为 `LAUNCH_RATIO`，`1e18` 精度，如 `1e16 = 1%` |
 | Launch | `maxLaunchCount` | 每社区累计次数上限；状态变量和公开 getter 为 `MAX_LAUNCH_COUNT`，如 `100` |
-| Launch | `tokenSymbolLength` | 子币符号固定字节长度；状态变量和公开 getter 为 `TOKEN_SYMBOL_LENGTH`，沿用旧 Launch 校验 |
+| Launch | `tokenSymbolLength` | 子币符号固定 UTF-8 字节长度，汉字占 3 字节；状态变量和公开 getter 为 `TOKEN_SYMBOL_LENGTH`，长度与字符集校验见 [Launch](08-launch.md#普通发射) |
 | Launch | `launchAmount`、`maxSupply` | 首批/最大供应量，`Launch.init` 固定；状态变量和公开 getter 为 `LAUNCH_AMOUNT`、`MAX_SUPPLY`；`0 < launchAmount <= maxSupply` |
 
 上表的 Launch 行按含义分组，不表示传参顺序；`Launch.init` 只接受一个 `LaunchInitParams`，实参顺序即结构体字段顺序（依赖地址 → 分发目标 → 经济与符号参数 → 供应量 → 首币元数据），参数表中的名字与字段名一致。结构体定义见 [`ILaunch.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/ILaunch.sol)。
