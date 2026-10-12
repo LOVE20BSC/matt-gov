@@ -23,13 +23,14 @@
 | GroupAction | 退出恢复 Provider 额度、不转出合约 | 成员 `exit` 后自有资产返还成员、Provider 来源回到可用额度且合约余额不变（除自有部分）；Provider 用 `providerQuotaRemove` 仍可取回；成员可用同一额度再次加入 |
 | GroupAction | 验证的每成员写入次数 | 每个成员每轮至多产生一次新的冷写入（非满分写扣分、满分零写入）；组级累计量走轮级累加器；`originScore`/`finalScore` 仍返回 `(score, verified)` 且未验证与已验证零分可区分 |
 | GroupAction | 位置化已验证推导的跨轮稳定性 | 目标轮计分后，后续轮集合变动（含成员退出引起的位移）不改变该轮解码；同轮加入→退出→再加入按该轮最终排列计分与解码；部分批次时余量保持未验证；集合定位失配（槽位与成员不符）按未验证返回、不误判已验证 |
-| GroupAction | 代币量事件出口 | 代币量只由 `Joined`/`Withdrawn` 承载；单笔 `withdraw`/`providerWithdraw` 各发一条带 `providerId` 的 `Withdrawn`；`exit` 按来源逐条发出（自有来源为 0，每个有余额的 Provider 一条）后再发 `Exited`，`Withdrawn` 金额之和等于实际返还总额，`Exited` 带链群 `groupId`、不带金额 |
+| GroupAction | 代币量事件出口 | 参与代币量只由 `Joined`/`Withdrawn` 承载；单笔 `withdraw`/`providerWithdraw` 各发一条带 `providerId` 的 `Withdrawn`；`exit` 按来源逐条发出（自有来源为 0，每个有余额的 Provider 一条）后再发 `Exited`，`Withdrawn` 金额之和等于实际返还总额，`Exited` 带链群 `groupId`、不带金额 |
 | GroupAction | `init` 派生依赖与零校验 | `memberNFTAddress`/`phaseAddress`/`voteAddress` 从 `stakeAddress` 读取一次并缓存，任一为零回滚 `InvalidAddress`；不接收 `mintAddress` |
-| GroupAction | 创建数据与验证信息长度 | Target Data 项数超出约定回滚 `InvalidTargetDataLength`；schema 两数组不等长、成员值项数与 schema 不符回滚 `VerificationInfoLengthMismatch` |
+| GroupAction | 创建数据与验证信息长度 | Target Data 项数不为 `6`（无验证信息）或 `7`（含验证信息）回滚 `InvalidTargetDataLength`；schema 两数组不等长、成员值项数与 schema 不符回滚 `VerificationInfoLengthMismatch` |
 | GroupAction | 参与索引分页与归属计数 | 五条 `g*` 分页查询的 `offset`/`limit`/`reverse`/`total` 符合标准分页契约；`isGroupMember` 与 `gTokenAddressesByGroupIdByMemberId` 同源一致，且都在最后一个关系退出后才归零；`forceExit` 不改动 |
 | GroupAction | 按轮历史两读 | `groupIds`、`memberIdsByGroupId` 按目标轮历史返回，分页契约同 `g*`；`groupIds` 与验证游标衔接，加入阶段结束后该轮结果稳定，`offset` 连续翻页等价于验证游标 |
 | GroupAction | 逐笔 Round 历史、同轮多次变更、空轮继承 | 验证读取冻结历史，退出状态不复活 |
 | GroupAction | 申请版本、平票、前 n 开放 | 零票申请不入榜；替换或撤销把旧申请从排名移除且不补位；榜满严格超过末位才替换；`topVerifiers` 按票数降序回 `verifierIds[]`/`votes[]` 且与 `votesByVerifierIds`、`verifierApplications` 一致；`verifierApplication` 无申请回零值结构体，已取消申请不再出现在 `verifierApplications` |
+| GroupAction | 验证者押金（申请划转、撤销退还、唯一退还路径） | `verifierStakeAmount = 0` 时申请与撤销都不转账；首次申请按配置额划转、替换申请不重复划转且不发新的押金事件；撤销把全部押金退还给 memberId 当前持有人，退款跟随 NFT 转移后的新持有人；无治理票、说明超长（1025 字节回滚、正好 1024 字节通过并划转）与创建轮之外的申请、无申请的撤销都不产生划转；多成员各自独立，一人撤销不影响他人押金；同一社区不同行动各自配置与独立，一个行动撤销不影响另一个行动的押金与配置；押金不按成员记账，`verifierStake` 与「持有当前申请」一致（持有申请返回配置额，撤销后为 0）；创建轮结束后撤销回滚且押金留在合约；余额或授权不足时整笔回滚、不留下申请；押金不进 `staked`/`totalStaked`/`totalStakedByMemberId`，不改变 `hasActiveGroups`；`VerifierStakeDeposited`/`VerifierStakeRefunded` 的金额与代币划转一致 |
 | GroupAction | 描述字段长度上限 | 候选人申请说明与群描述 `GroupConfig.description` 超过 1024 字节均回滚 `DescriptionTooLong`；正好 1024 字节通过 |
 | GroupAction | 开放区块与容量查询 | `SPLITS()` 回 init 传入的分割线且只读；用它与 `IPhase.phaseInfo(round + 2)` 算出的开放区块与合约判定一致，可开放人数为 `SPLITS().length + 1` |
 | GroupAction | 连续批次、NFT 转移续验、无候选/失联 | 无跳跃或重复，不换锁定身份；未完成行动层激励为零 |

@@ -250,6 +250,7 @@ GroupAction Executor 通过加入阶段内逐笔发生的加入、追加、部�
 - 候选申请只在投票阶段新增、撤销或修改
 - 排名按累计候选票降序、`applicationId` 升序
 - 分割线开放：`openBlock = verifyPhaseStartBlock + ceil(verifyPhaseBlocks × splits[rank - 2] / 1e18)`
+- 验证者押金：候选**首次**申请按行动配置 `verifierStakeAmount` 从成员当前持有人转入执行合约，替换申请不重复划转，撤销申请时全额退还；押金独立于链群激活质押与治理票账本
 
 #### 激励计算
 **BSC 调整**：所有成员按同一原始得分规则计算，全行动共用分母，不在 Group 内二次按比例分配：
