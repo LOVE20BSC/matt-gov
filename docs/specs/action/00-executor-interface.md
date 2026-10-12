@@ -20,7 +20,7 @@
 - `join` — 参数因行动类型而异：
   - `ILpExecutor`: `join(tokenAddress, actionId, memberId, amount)`
   - `IGroupActionExecutor`: `join(tokenAddress, actionId, groupId, memberId, amount, providerId, verificationInfos)` — 多了 `groupId` 与 `providerId`
-  - `IGroupServiceExecutor`: `join(serviceTokenAddress, serviceProposalId, memberId, verificationInfos)` — 无 `amount`
+  - `IGroupServiceExecutor`: `join(serviceTokenAddress, serviceActionId, memberId)` — 无 `amount` 与 `verificationInfos`
 - `withdraw` — 部分撤回接口，LP 和 GroupAction 需要，GroupService 不需要
 - 事件 — 各 Executor 的业务字段不同，各自声明 `Joined/Withdrawn/Exited` 事件
 - `currentVerifyRound()` — 仅 GroupAction / GroupService 的四阶段流水线提供；LP 不声明

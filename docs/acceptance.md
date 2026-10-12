@@ -270,9 +270,9 @@
 - 失败场景正确回滚
 
 ### GroupService 结算
-**覆盖要求**：覆盖服务代币与行动代币相同或为其直接父币、非直接关系拒绝；覆盖只有当轮已加入服务 Proposal 的群 owner/公共验证者候选 MemberNFT 才能按人结算、未加入角色份额不重分配、所有 GroupAction 总激励作为分母且首次计算后缓存、源行动激励查询自行处理验证条件、公共验证者按工作量直接分配，以及按确认后的 owner 治理票占比处理超额销毁；同时覆盖 `1e18` 乘数精度和 100% 二次分配不下溢。
+**覆盖要求**：覆盖服务代币与行动代币相同或为其直接父币、非直接关系拒绝；覆盖只有当轮已加入服务 Proposal 的群 owner/公共验证者候选 MemberNFT 才能按人结算、未加入角色份额不重分配、所有 GroupAction 总激励作为分母且首次计算后缓存、源行动激励查询自行处理验证条件、公共验证者按工作量直接分配，以及按确认后的 owner 治理票占比处理超额销毁；同时覆盖加入资格两类分支（社区激活链群 / 服务轮社区行动集内有效候选申请）、`1e18` 乘数精度、100% 二次分配不下溢，以及逐笔付款与销毁事件可还原全部资产变化。
 
-`totalGroupActionReward == 0` 时不执行除法；覆盖轮次结束后任何地址调用 `burnRewardIfNeeded(serviceTokenAddress, serviceProposalId, round)`，由 Executor 直接调用服务代币 `burn` 的销毁和重复调用幂等行为。
+`totalGroupActionReward == 0` 时不执行除法；覆盖轮次结束后任何地址调用 `burnRewardIfNeeded(serviceTokenAddress, serviceActionId, round)`：`D == 0` 时经 ActionTarget 核销整笔预留激励（无代币移动、`RewardBurned` 留痕、重复调用无操作），owner 超额销毁由 Executor 直接调用服务代币 `burn`，两条销毁路径互斥。
 
 **测试方式**：
 - 单元测试：`action/test/GroupServiceExecutor.t.sol` 的服务结算场景
@@ -282,6 +282,7 @@
 - 服务代币关系校验正确
 - 未加入角色不参与分配
 - 二次分配精度无损失
+- 事件流与结算、销毁的资产变化一致
 
 ### 外部依赖兼容性
 **覆盖要求**：`compatibility` 必须分别对本地 Uniswap V2/WETH9 参考实现和每个准备部署的目标网络 profile 的 WBNB、Uniswap V2 兼容 DEX（如 PancakeSwap）的 Factory/Pair/Router 执行测试，覆盖接口返回值、Pair 创建和 LP 铸造/销毁、Swap 手续费与储备变化、Router 报价和实际输出、Token 顺序、失败回滚及协议计算所需的 `sqrt(k)` 数据；测试记录目标链、合约地址、区块高度和提交，任何未验证的外部地址不得进入对应 BSC 部署配置。

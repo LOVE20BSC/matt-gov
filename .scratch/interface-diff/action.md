@@ -392,25 +392,27 @@ LP 事件数为 **4**（`Joined`、`Withdrawn`、`Exited`，加基座继承的 `
 
 | 新 | 旧 | 状态 |
 | --- | --- | --- |
-| `actionTokenAddress(serviceTokenAddress, serviceProposalId)` | `IGroupService.GROUP_ACTION_TOKEN_ADDRESS()` | 改名+改参（部署常量 → 按提案查询） |
+| `ACTION_TOKEN_ADDRESS(serviceTokenAddress, serviceActionId)` | `IGroupService.GROUP_ACTION_TOKEN_ADDRESS()` | 改名+改参（部署常量 → 按提案查询；2026-10-12 复核改大写族） |
+| `RATIO_FOR_PUBLIC_VERIFIER(serviceTokenAddress, serviceActionId)` | 无（旧由候选在申请时自报） | 新增（2026-10-07 引入、2026-10-12 复核改大写族；不再由候选自报） |
+| `GOV_RATIO_MULTIPLIER(serviceTokenAddress, serviceActionId)` | `IGroupService.GOV_RATIO_MULTIPLIER()` | 改名+改参（部署常量 → 按提案查询；2026-10-12 复核补回读取 getter） |
 | `totalGroupActionReward(actionTokenAddress, round) returns (reward, cached)` | `IGroupService.generatedActionReward(round)` | 改名+改参（新增 `cached` 返回） |
-| `rewardDistribution(serviceTokenAddress, serviceProposalId, round, sourceActionId, groupId) returns (recipientIds[], ratios[], amounts[], ownerAmount)` | `IGroupService.rewardDistribution(address verifier, round, actionId, groupId) returns (addrs[], ratios[], amounts[], ownerAmount)` | 改参（`verifier` → 服务提案定位，`addrs` → `recipientIds`） |
+| `rewardDistribution(serviceTokenAddress, serviceActionId, round, sourceActionId, groupId) returns (recipientIds[], ratios[], amounts[], ownerAmount)` | `IGroupService.rewardDistribution(address verifier, round, actionId, groupId) returns (addrs[], ratios[], amounts[], ownerAmount)` | 改参（`verifier` → 服务提案定位，`addrs` → `recipientIds`） |
 | `setRecipients(sourceTokenAddress, sourceActionId, groupId, uint256[] recipientIds, ratios[], remarks[])` | `IGroupRecipients.setRecipients(tokenAddress, actionId, groupId, address[] addrs, ratios[], remarks[])` | 改参 |
 | `recipients(sourceTokenAddress, sourceActionId, groupId, round) returns (recipientIds[], ratios[], remarks[])` | `IGroupRecipients.recipients(address groupOwner, tokenAddress, actionId, groupId, round) returns (addrs[], ratios[], remarks[])` | 改参（去 `groupOwner` 参数） |
 | `burnRewardIfNeeded(tokenAddress, actionId, round)`（落在 ActionTarget，GS 经 `needBurnReward` 提供判据） | `IReward.burnRewardIfNeeded(round)` | 改参并跨层（单例服务 Proposal 作用域 → token + actionId） |
-| `join(serviceTokenAddress, serviceProposalId, memberId, verificationInfos[])` | 旧 `IGroupService` 未声明，由 `ITokenJoin.join(uint256 amount, string[] verificationInfos)` 提供 | 跨接口迁移（补齐 `tokenAddress`/`proposalId` 前缀，去掉独立 `amount`） |
-| `exit(serviceTokenAddress, serviceProposalId, memberId)` | 旧由 `ITokenJoin.exit()` / `IJoin.exit()` 提供 | 跨接口迁移 |
-| `joinInfo(serviceTokenAddress, serviceProposalId, round, memberId) returns (bool joined)` | 旧由 `ITokenJoin.joinInfo(address account)` 提供（返回 `joinedRound, amount, lastJoinedBlock, exitableBlock`） | 跨接口迁移+改参（返回值简化为是否参与） |
-| `serviceRewardByMember(serviceTokenAddress, serviceProposalId, round, memberId) returns (verifierReward, ownerReward, ownerBurned, claimed)` | 无 | 新增 |
+| `join(serviceTokenAddress, serviceActionId, memberId)` | 旧 `IGroupService` 未声明，由 `ITokenJoin.join(uint256 amount, string[] verificationInfos)` 提供 | 跨接口迁移（补齐 `tokenAddress`/Action ID 前缀，去掉独立 `amount` 与 `verificationInfos`） |
+| `exit(serviceTokenAddress, serviceActionId, memberId)` | 旧由 `ITokenJoin.exit()` / `IJoin.exit()` 提供 | 跨接口迁移 |
+| `joinInfo(serviceTokenAddress, serviceActionId, round, memberId) returns (bool joined)` | 旧由 `ITokenJoin.joinInfo(address account)` 提供（返回 `joinedRound, amount, lastJoinedBlock, exitableBlock`） | 跨接口迁移+改参（返回值简化为是否参与；转发 `ActionTarget.isJoinedByRound`，不自建 RoundHistory） |
+| `serviceRewardByMember(serviceTokenAddress, serviceActionId, round, memberId) returns (verifierReward, ownerReward, ownerBurned, claimed)` | 无 | 新增 |
 | `currentVoteRound`、`currentJoinRound`、`currentVerifyRound`、`currentMintRound` | 无 | 新增 |
-| `init(actionTargetAddress, stakeAddress, groupActionExecutorAddress)` | 无 | 新增（`memberNFTAddress`/`phaseAddress`/`voteAddress` 从 `stakeAddress` 派生，不收 `mintAddress`） |
+| `init(actionTargetAddress, stakeAddress, groupActionExecutorAddress)` | 无 | 新增（`memberNFTAddress`/`phaseAddress`/`launchAddress` 从 `stakeAddress` 派生，不收 `mintAddress`，不派生 `voteAddress`） |
 | 继承 `IProposalTarget` | 无 | 新增 |
 | 无 | `IGroupService.GROUP_ACTION_FACTORY_ADDRESS()` | 删除（取消工厂） |
 | 无 | `IGroupService.rewardByRecipient(verifier, round, actionId, groupId, recipient)` | 删除 |
-| 无 | `IGroupService.hasActiveGroups(address owner)` | 删除 |
+| 无（读 GroupAction Executor 的 `hasActiveGroups`） | `IGroupService.hasActiveGroups(address owner)` | 跨合约迁移（2026-10-12 复核：判据 = 成员自身作为链群在社区存在激活行动） |
 | 无 | `IGroupService.generatedActionRewardByVerifier(verifier, round)` | 删除（链群主激励改由 `generatedActionRewardByGroupId` 按 groupId 查询） |
 | 无 | `IGroupService.govRatio(round, address account)` | 删除（保留在 `ILpExecutor`） |
-| 无 | `IGroupService.PRECISION()`、`GOV_RATIO_MULTIPLIER()` | 删除 getter |
+| 无 | `IGroupService.PRECISION()` | 删除 getter（`GOV_RATIO_MULTIPLIER` 已按提案恢复为读取入口，见上表） |
 | 无 | `IGroupRecipients.getDistribution(groupOwner, tokenAddress, actionId, groupId, groupReward, round)` | 删除（合并进 `rewardDistribution`） |
 | 无 | `IGroupRecipients.actionIdsWithRecipients`、`groupIdsByActionIdWithRecipients` | 删除 |
 | 无 | `IGroupRecipients.PRECISION()`、`DEFAULT_MAX_RECIPIENTS()` | 删除 getter |
@@ -419,16 +421,32 @@ LP 事件数为 **4**（`Joined`、`Withdrawn`、`Exited`，加基座继承的 `
 
 | 新 | 旧 | 状态 |
 | --- | --- | --- |
-| `ServiceRewardDistributed(serviceTokenAddress, serviceProposalId, actionTokenAddress, memberId, verifierReward, ownerReward, ownerBurned, round)` | `IGroupService.ClaimRewardDistribution(tokenAddress, round, actionId, address account, mintAmount, burnAmount, distributed, remaining)` | 改名+改参（成员级的**追加事件**：基座 `MemberRewardMinted` 记公共口径，本事件追加 `actionTokenAddress` 与角色拆分；须满足 `MemberRewardMinted.mintAmount == verifierReward + ownerReward`、`.burnAmount == ownerBurned`） |
+| `ServiceRewardDistributed(serviceTokenAddress, serviceActionId, actionTokenAddress, memberId, verifierReward, ownerReward, ownerBurned, round)` | `IGroupService.ClaimRewardDistribution(tokenAddress, round, actionId, address account, mintAmount, burnAmount, distributed, remaining)` | 改名+改参（成员级的**追加事件**：基座 `MemberRewardMinted` 记公共口径，本事件追加 `actionTokenAddress` 与角色拆分；须满足 `MemberRewardMinted.mintAmount == verifierReward + ownerReward`、`.burnAmount == ownerBurned`） |
 | `SecondaryDistributionConfigured(sourceTokenAddress, sourceActionId, groupId, round, recipientIds[], ratios[])` | `IGroupRecipients.SetRecipients(tokenAddress, round, actionId, groupId, address account, recipients[], ratios[], remarks[])` | 改名+改参（去 `remarks` 字段） |
-| `RewardBurned` | 无 | 新增（**整批销毁**：服务轮次无可分配源行动时销毁整笔服务激励，无成员归属，因此不并入成员级事件） |
+| `RewardBurned` | 无 | 跨层迁移（**整批销毁**：服务轮次无可分配源行动时销毁整笔服务激励，无成员归属；声明在 `IActionTargetEvents`、由 ActionTarget 发出，GS 不声明——2026-10-12 复核修正） |
 | `MemberRewardMinted(tokenAddress, actionId, memberId, round, mintAmount, burnAmount)` | 无（旧在 `IReward`） | 新增（声明在共用基座 `IActionExecutorEvents`） |
-| 无 | `IGroupService.DistributeRecipient` | 删除（逐笔分配明细无事件） |
+| `SecondaryRewardDistributed(serviceTokenAddress, serviceActionId, groupId, sourceActionId, recipientId, amount, round)` | `IGroupService.DistributeRecipient(tokenAddress, round, actionId, groupId, account, recipient, amount)` | 改名+改参（逐笔付款留痕、主体改 memberId；2026-10-12 复核裁决恢复，事件流可完整还原结算资产变化） |
 | 错误 `DistributionOverflow(configured, available)` | `IGroupRecipients.InvalidRatio()` | 改名+改参（语义近似） |
-| 错误 `AlreadyInitialized`、`InvalidRound`、`RoundNotStarted`、`NotMemberOwner`、`ProposalNotVoted`、`UnauthorizedCallback`、`RewardAlreadyMinted` | 无 | 新增（声明在共用基座 `IActionExecutorErrors`，本接口由继承获得） |
-| 无 | `IGroupService.NoActiveGroups`、`InvalidExtension`；`IGroupRecipients.TooManyRecipients`、`ZeroAddress`、`ZeroRatio`、`ArrayLengthMismatch`、`DuplicateAddress`、`RecipientCannotBeSelf`、`OnlyGroupOwner` | 删除 9 项 |
+| 错误 `AlreadyInitialized`、`UnauthorizedCallback`、`InvalidRound`、`RoundNotStarted`、`NotMemberOwner`、`ProposalNotVoted`、`RewardAlreadyMinted`、`NoRewardAvailable`、`BatchLengthMismatch` | 无 | 新增（声明在共用基座 `IActionExecutorErrors`，本接口由继承获得） |
+| 错误 `NoActiveGroups`、`TooManyRecipients`、`ZeroRatio`、`ArrayLengthMismatch`、`RecipientCannotBeSelf` | `IGroupService.NoActiveGroups`；`IGroupRecipients.TooManyRecipients`、`ZeroRatio`、`ArrayLengthMismatch`、`RecipientCannotBeSelf` | 保留（`NoActiveGroups` 语义含候选分支；2026-10-12 复核修正此前「删除 9 项」） |
+| 错误 `DuplicateRecipient(uint256 memberId)` | `IGroupRecipients.DuplicateAddress()` | 改名+改参（主体改 memberId） |
+| 错误 `NotJoined`、`AlreadyJoined` | `IJoin.NotJoined`、`AlreadyJoined` | 跨接口迁移 |
+| 错误 `InvalidAddress`、`InvalidTargetDataLength`、`InvalidParentToken`、`InvalidRatio` | 无 | 新增（`InvalidParentToken` 复用 core `ILaunchErrors` 词汇） |
+| 无 | `IGroupService.InvalidExtension`；`IGroupRecipients.ZeroAddress`、`OnlyGroupOwner` | 删除/上提（`OnlyGroupOwner` → 基座 `NotMemberOwner(memberId)`） |
 
-GS 事件数为 **5**（`Joined`、`Exited`、`ServiceRewardDistributed`、`SecondaryDistributionConfigured`，加基座继承的 `MemberRewardMinted`），错误数为 **9**（`DistributionOverflow` 独有，其余 8 个由基座继承），自身函数 **11**（2026-10-07 增 `ratioForPublicVerifier`），合计 ABI 41 条。
+GS 事件数为 **6**（`Joined`、`Exited`、`ServiceRewardDistributed`、`SecondaryDistributionConfigured`、`SecondaryRewardDistributed`，加基座继承的 `MemberRewardMinted`），错误数为 **22**（13 个自有，其余 9 个由基座继承），自身函数 **12**（2026-10-12 增 `GOV_RATIO_MULTIPLIER`），合计 ABI **56** 条。
+
+## 2026-10-12 接口修订批次七（GroupService 第 1 步复核裁决落地）
+
+本批次按第 1 步复核汇总（`.scratch/review-2026-10-12-group-service-executor-step1-consolidation.md`）的裁决执行，覆盖前文各表对应行：
+
+- **命名**：绑定 Executor 的 Proposal ID 在 Action 层统一称 Action ID——服务提案的 `serviceProposalId` 全量改名 `serviceActionId`；按提案配置读取改大写族 `ACTION_TOKEN_ADDRESS`/`RATIO_FOR_PUBLIC_VERIFIER`/`GOV_RATIO_MULTIPLIER`。
+- **`join`**：删除 `verificationInfos` 参数（只进不出；LP F-15 先例）。
+- **错误集**：补 `InvalidAddress`、`InvalidTargetDataLength`、`InvalidParentToken`、`InvalidRatio`；恢复 `NoActiveGroups`（含候选分支）、`NotJoined`、`AlreadyJoined`、`TooManyRecipients`、`ZeroRatio`、`ArrayLengthMismatch`、`RecipientCannotBeSelf`；`DuplicateAddress` 改名 `DuplicateRecipient(uint256)`；删除/上提 `InvalidExtension`、`ZeroAddress`、`OnlyGroupOwner`。
+- **事件**：新增 `SecondaryRewardDistributed` 逐笔付款留痕（事件流可完整还原结算资产变化）；`RewardBurned` 修正为跨层声明（`IActionTargetEvents`、ActionTarget 发出，GS 不声明）。
+- **`init` 派生**：补 `launchAddress`（父币校验）、删 `voteAddress`（无消费者）。
+- **`hasActiveGroups`**：GA 实现修为「成员自身作为链群在社区存在激活行动」（`actionIdsByGroupId[token][memberId].count() != 0`），与旧 GroupManager 口径、票据一致。
+- **规格同步**：`06-service-executor.md` 重写（枚举/门控/全精度公式链/两类资格/事件链）；`05-group-action-executor.md`、`08-testing.md`、`CHANGES-action.md`、`docs/acceptance.md`、`docs/migration-standards.md`（Action ID 命名规则）同步。
 
 ## 2026-10-07 接口修订批次二（事件设计原则落地 + 旧接口覆盖补齐）
 

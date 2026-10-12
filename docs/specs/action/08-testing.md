@@ -37,8 +37,12 @@
 | GroupAction | 停用链群继续目标轮验证 | 加入轮结束后停用、恢复或新增链群都不改变该轮验证集合，目标轮验证仍可完成，不因当前激活状态阻断 |
 | GroupAction | 未完成验证时的行动层查询 | `generatedActionRewardByGroupId` 与分配查询按轮次返回 0，部分批次已计入不产生正值，`totalFinalScore` 为零时不除零 |
 | GroupAction | 完整验证后的成员和群激励 | 符合权重与舍入公式 |
-| [GroupService](06-service-executor.md) | 全社区聚合、同币/直接父币、非直接关系 | 全部 GroupAction 激励作分母；源行动查询自行处理验证条件；非法代币关系拒绝 |
-| GroupService | `init` 派生依赖与零校验 | `memberNFTAddress`/`phaseAddress`/`voteAddress` 从 `stakeAddress` 读取一次并缓存，任一为零回滚 `InvalidAddress`；不接收 `mintAddress` |
-| GroupService | 验证者比例（按服务 Proposal 绑定）、owner 治理上限、100% 二次分配 | 验证者按工作量直接分配；owner 超额销毁；分配不超预算、不下溢；`ratioForPublicVerifier` 按 `serviceProposalId` 读取并与权重计算一致 |
+| [GroupService](06-service-executor.md) | 全社区聚合、同币/直接父币、非直接关系 | 分母按 `votedActions` 枚举并过滤 `executor == groupActionExecutorAddress`、逐行动求和；源行动查询自行处理验证条件；非法代币关系回滚 `InvalidParentToken`；`ratioForPublicVerifier > 1e18` 回滚 `InvalidRatio` |
+| GroupService | `init` 派生依赖与零校验 | `memberNFTAddress`/`phaseAddress`/`launchAddress` 从 `stakeAddress` 读取一次并缓存，任一为零回滚 `InvalidAddress`；不接收 `mintAddress`；不派生 `voteAddress` |
+| GroupService | 加入资格两类分支与 join/exit 边界 | owner 分支 = 成员自身作为链群在社区存在激活行动（`hasActiveGroups`）；候选分支 = 服务轮社区行动集内存在有效验证者申请；均不满足回滚 `NoActiveGroups`；重复 `join` 回滚 `AlreadyJoined`、未加入 `exit` 回滚 `NotJoined`；`joinInfo` 转发 `isJoinedByRound`，退出不追回已发生轮 |
+| GroupService | 分母缓存、销毁与 `needBurnReward` | 首次成功结算时缓存分母；零分母不落缓存、`needBurnReward` 每次重算；`D == 0` 时 `burnRewardIfNeeded` 经 ActionTarget 核销整笔激励，事件为 `IActionTargetEvents.RewardBurned`（4 参） |
+| GroupService | 验证者比例（按服务 Proposal 绑定）、owner 治理上限、100% 二次分配 | 验证者按工作量直接分配；owner 超额销毁；分配不超预算、不下溢；`RATIO_FOR_PUBLIC_VERIFIER` 按 `serviceActionId` 读取并与权重计算一致；上限判定用交叉相乘，未触发时无取整粉尘销毁 |
+| GroupService | 公式全精度与旧版回归 | 中间量不提前截断（`Math.mulDiv`）；旧版最小复现（`S=3, T=3, G=2, g=2`）不再下溢；`Σ 转账 + 销毁 ≤ serviceReward` 恒成立；100% 配置合法且 owner 无下溢 |
+| GroupService | 事件可还原资产变化 | `SecondaryRewardDistributed` 逐笔记录接收者金额与来源行动；它与 `MemberRewardMinted`、`ServiceRewardDistributed`、`RewardBurned` 一起可完整还原结算与销毁的全部资产变化 |
 
 各模块“待确认”项仍需先确定预期；不得把旧用例运行成功当成新规格无冲突。

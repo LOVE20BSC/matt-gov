@@ -77,7 +77,7 @@
 - **旧**：成员各自调用 `LOVE20Mint.mintActionReward` 领取自己那一份，去重键含 `msg.sender`（成员级，同一行动各成员互不影响）
 - **新**：Executor 每轮经 `ActionTarget.mintActionReward` 一次性铸造整笔激励，去重键 `tokenAddress + actionId + round`（行动级，整个行动本轮只能铸一次），再按自身账本分给参与成员
 - **对成员不透明**：成员只与 Executor 的成员级入口交互，不需要了解也不依赖 ActionTarget 这一层；ActionTarget 不向成员暴露领取入口
-- **事件分层**：行动级整笔由 ActionTarget 发出 `ActionRewardMinted(tokenAddress, actionId, round, amount)`；成员级由各 Executor 发出 `MemberRewardMinted(tokenAddress, actionId, memberId, round, mintAmount, burnAmount)`（声明在共用基座 `IActionExecutorEvents`）。成员归属的销毁并入后者的 `burnAmount`；无成员归属的整批销毁才单独立为 `RewardBurned`，只由 `IGroupServiceExecutor` 声明
+- **事件分层**：行动级整笔由 ActionTarget 发出 `ActionRewardMinted(tokenAddress, actionId, round, amount)`；成员级由各 Executor 发出 `MemberRewardMinted(tokenAddress, actionId, memberId, round, mintAmount, burnAmount)`（声明在共用基座 `IActionExecutorEvents`）。成员归属的销毁并入后者的 `burnAmount`；无成员归属的整批销毁才单独立为 `RewardBurned`，声明在 `IActionTargetEvents`、由 ActionTarget 发出，各 Executor 不声明
 - **共用成员上提**：三个 Executor 签名一致的 1 个事件（`MemberRewardMinted`）与 8 个错误上提到 `IActionExecutor` 的子接口；批量成员结算 `mintMemberRewards`、销毁判据 `needBurnReward` 与参与量查询 `joinedAmount` 族同在基座，销毁执行 `burnRewardIfNeeded`/`burnInfo`/事件 `RewardBurned` 在 ActionTarget。只被两家使用的（如 `InvalidParticipationAmount`）留在各自子接口
 
 #### 行为变更（旧回滚 → 新幂等/不回滚）
@@ -308,7 +308,7 @@ theoreticalVerifierReward(m) = serviceReward × verifierWeightNumerator(m) / (to
 theoreticalOwnerReward(m) = serviceReward × ownerWeightNumerator(m) / (totalGroupActionReward × 1e18)
 ```
 
-`totalGroupActionReward` 统计 `actionTokenAddress` 社区本轮全部 GroupAction 激励，首次按 `actionTokenAddress + round` 计算并缓存。各角色分子为零时直接返回，不执行除法；分母为零时由 `burnRewardIfNeeded(serviceTokenAddress, serviceProposalId, round)` 销毁整笔服务激励。
+`totalGroupActionReward` 统计 `actionTokenAddress` 社区本轮全部 GroupAction 激励，首次按 `actionTokenAddress + round` 计算并缓存。各角色分子为零时直接返回，不执行除法；分母为零时由 `burnRewardIfNeeded(serviceTokenAddress, serviceActionId, round)` 销毁整笔服务激励。
 
 #### 二次分配
 **保留逻辑**：groupId 当前持有人可以按 `sourceTokenAddress + sourceActionId + groupId + round` 配置 `recipientIds[]` 和 `ratios[]`；查询轮次没有配置时沿用不晚于该轮的最近配置。
@@ -323,6 +323,11 @@ theoreticalOwnerReward(m) = serviceReward × ownerWeightNumerator(m) / (totalGro
 #### owner 二次分配
 - **旧、新**：配置比例总和超过 `1e18` 时拒绝，正好 `1e18` 合法；逐项向下取整，舍入余数归 owner
 - **新**：只分配 owner 激励；公共验证者激励直接给锁定的公共验证者
+- **新**：逐笔付款由 `SecondaryRewardDistributed` 留痕，事件流可完整还原结算的资产变化
+
+#### 加入资格与行动 ID
+- **新**：加入资格为两类分支——该成员自身作为链群在社区存在激活行动，或服务轮社区行动集内存在有效公共验证者竞选申请；均不满足回滚 `NoActiveGroups`；结算资格按轮快照由 `ActionTarget.isJoinedByRound` 持有
+- **新**：服务 Proposal 在 Action 层以 `serviceActionId` 称呼（Action ID 别名）
 
 #### 同币或父币服务
 - **旧、新**：支持 `serviceTokenAddress == actionTokenAddress`，或 `serviceTokenAddress` 是 `actionTokenAddress` 的直接父币
