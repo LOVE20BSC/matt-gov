@@ -42,7 +42,8 @@
 | GroupService | 加入资格两类分支与 join/exit 边界 | owner 分支 = 成员自身作为链群在社区存在激活行动（`hasActiveGroups`）；候选分支 = 服务轮社区行动集内存在有效验证者申请；均不满足回滚 `NoActiveGroups`；重复 `join` 回滚 `AlreadyJoined`、未加入 `exit` 回滚 `NotJoined`；`joinInfo` 转发 `isJoinedByRound`，退出不追回已发生轮 |
 | GroupService | 分母缓存、销毁与 `needBurnReward` | 首次成功结算时缓存分母；零分母不落缓存、`needBurnReward` 每次重算；`D == 0` 时 `burnRewardIfNeeded` 经 ActionTarget 核销整笔激励，事件为 `IActionTargetEvents.RewardBurned`（4 参） |
 | GroupService | 验证者比例（按服务 Proposal 绑定）、owner 治理上限、100% 二次分配 | 验证者按工作量直接分配；owner 超额销毁；分配不超预算、不下溢；`RATIO_FOR_PUBLIC_VERIFIER` 按 `serviceActionId` 读取并与权重计算一致；上限判定用交叉相乘，未触发时无取整粉尘销毁 |
-| GroupService | 公式全精度与旧版回归 | 中间量不提前截断（`Math.mulDiv`）；旧版最小复现（`S=3, T=3, G=2, g=2`）不再下溢；`Σ 转账 + 销毁 ≤ serviceReward` 恒成立；100% 配置合法且 owner 无下溢 |
-| GroupService | 事件可还原资产变化 | `SecondaryRewardDistributed` 逐笔记录接收者金额与来源行动；它与 `MemberRewardMinted`、`ServiceRewardDistributed`、`RewardBurned` 一起可完整还原结算与销毁的全部资产变化 |
+| GroupService | 公式全精度与旧版回归 | 中间量不提前截断（`Math.mulDiv`）；旧版最小复现（`S=3, T=3, G=2, g=2`）不再下溢；`Σ 转账 + 销毁 ≤ serviceReward` 恒成立；100% 配置合法且 owner 无下溢；恒有 `ownerReward == ownerDistributed + ownerRemaining` |
+| GroupService | 事件可还原资产变化 | `DistributeRecipient` 逐笔记录接收者金额与来源行动；`ServiceRewardDistributed` 含 owner 份额的已分配/自留拆分（`ownerDistributed`/`ownerRemaining`）；它与 `MemberRewardMinted`、`RewardBurned` 一起可完整还原结算与销毁的全部资产变化 |
+| GroupService | 二次分配配置枚举与试算 | `actionIdsWithRecipients` 按轮分页枚举已配置源行动（懒继承、显式清空移除、越界返回空 + 真实总数）；`getDistribution` 对任意金额按同规则试算（逐项 floor、余数归 owner、100% 不下溢）；`rewardByRecipient` 单接收者投影（`recipientId == groupId` 回 owner 自留额、非接收者回 0） |
 
 各模块“待确认”项仍需先确定预期；不得把旧用例运行成功当成新规格无冲突。

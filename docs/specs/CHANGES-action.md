@@ -20,7 +20,7 @@
 | ActionTarget | 重构 | `LOVE20TKM/extension/src/ExtensionCenter.sol` | `action/ActionTarget.sol` | 统一行动 Target，新增 forceExit |
 | LP 行动 | 重构 | `LOVE20TKM/extension-lp/src/ExtensionLp.sol`、`LOVE20TKM/extension-lp/src/ExtensionLpFactoryV2.sol` | `action/LpExecutor.sol` | 只迁移 V2，支持部分撤回 |
 | GroupAction | 修改 | `LOVE20TKM/extension-group/src/ExtensionGroupAction.sol`、`LOVE20TKM/extension-group/src/GroupJoin.sol`、`LOVE20TKM/extension-group/src/GroupVerify.sol` | `action/GroupAction.sol` | 保留群 ID/成员 ID 索引，统一为 MemberNFT，新增公共验证者 |
-| GroupService | 修改 | `LOVE20TKM/extension-group/src/ExtensionGroupService.sol`、`LOVE20TKM/extension-group/src/GroupRecipients.sol` | `action/GroupService.sol` | 保留聚合和 owner 二次分配 |
+| GroupService | 修改 | `LOVE20TKM/extension-group/src/ExtensionGroupService.sol`、`LOVE20TKM/extension-group/src/GroupRecipients.sol` | `action/GroupServiceExecutor.sol`、`action/GroupRecipients.sol` | 保留聚合和 owner 二次分配 |
 
 行动阶段与 Round 是 Action 的共享概念，见 [阶段模型](action/02-phase-model.md)，不是独立组件或合约。
 
@@ -323,7 +323,7 @@ theoreticalOwnerReward(m) = serviceReward × ownerWeightNumerator(m) / (totalGro
 #### owner 二次分配
 - **旧、新**：配置比例总和超过 `1e18` 时拒绝，正好 `1e18` 合法；逐项向下取整，舍入余数归 owner
 - **新**：只分配 owner 激励；公共验证者激励直接给锁定的公共验证者
-- **新**：逐笔付款由 `SecondaryRewardDistributed` 留痕，事件流可完整还原结算的资产变化
+- **新**：逐笔付款由 `DistributeRecipient` 留痕，事件流可完整还原结算的资产变化
 
 #### 加入资格与行动 ID
 - **新**：加入资格为两类分支——该成员自身作为链群在社区存在激活行动，或服务轮社区行动集内存在有效公共验证者竞选申请；均不满足回滚 `NoActiveGroups`；结算资格按轮快照由 `ActionTarget.isJoinedByRound` 持有

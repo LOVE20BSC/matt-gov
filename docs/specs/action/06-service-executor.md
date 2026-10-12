@@ -31,7 +31,7 @@ theoreticalOwnerReward(m)    = mulDiv(serviceReward, (1e18 - r) * ownerWeightNum
 
 首次成功结算某服务轮次时，按 `actionTokenAddress + round` 计算并缓存分母；查询不能写状态，未缓存时只计算返回，后续结算读取缓存。零分母不产生缓存写：结算在缓存写入前因零额回滚，销毁路径不写状态；`needBurnReward` 每次按需计算。分母缓存是内部状态，不属于对外 ABI。
 
-完整 ABI 见 [`IGroupServiceExecutor.sol`](../../../interfaces/action/IGroupServiceExecutor.sol)。
+完整 ABI 见 [`IGroupServiceExecutor.sol`](../../../interfaces/action/IGroupServiceExecutor.sol)（继承 [`IGroupRecipients.sol`](../../../interfaces/action/IGroupRecipients.sol) 的二次分配配置面）。
 
 创建 Target Data 从第 `1` 项起（第 `0` 项是 ActionTarget 保留的 executor）固定为 `targetData[1] = abi.encode(address actionTokenAddress)`、`targetData[2] = abi.encode(uint256 govRatioMultiplier)` 和 `targetData[3] = abi.encode(uint256 ratioForPublicVerifier)`，项数恰为 `4`；超出回滚 `InvalidTargetDataLength`，`ratioForPublicVerifier > 1e18` 回滚 `InvalidRatio`（否则 `1e18 - r` 下溢），代币关系不满足回滚 `InvalidParentToken`。`ACTION_TOKEN_ADDRESS`、`GOV_RATIO_MULTIPLIER`、`RATIO_FOR_PUBLIC_VERIFIER` 均按 `serviceTokenAddress + serviceActionId` 读取。投票回调没有业务项，`targetData.length > 1` 回滚 `InvalidTargetDataLength`。
 
@@ -64,15 +64,17 @@ ownerOverflow(m) = theoreticalOwnerReward(m) - actualOwnerReward(m)
 
 `GOV_RATIO_MULTIPLIER` 与 `RATIO_FOR_PUBLIC_VERIFIER` 来自服务 Proposal 创建回调的 `targetData[2]`、`targetData[3]`；owner 超额按每个 owner 单独记入 `ownerBurned`。服务代币已经由 Mint 铸造并转入 Executor 后，销毁直接调用该代币的 `burn(amount)`；不重复修改 Core Mint 的 `rewardBurned`。服务 Proposal 本轮没有激励时由 Mint 的内部 Round 准备逻辑处理，Executor 不重复判断。
 
-成员级结清每次结算发出两条事件：基座的 `MemberRewardMinted(tokenAddress, actionId, memberId, round, mintAmount, burnAmount)` 记公共口径，本接口的 `ServiceRewardDistributed(...)` 追加角色细分。两者必须满足 `MemberRewardMinted.mintAmount == verifierReward + ownerReward` 且 `.burnAmount == ownerBurned`，因此基座的「可铸造」在本接口是**聚合值**（服务轮次的可铸造量不是标量，公共验证者与 owner 两部分独立计算），逐个角色的金额仍读 `serviceRewardByMember`。
+成员级结清每次结算发出两条事件：基座的 `MemberRewardMinted(tokenAddress, actionId, memberId, round, mintAmount, burnAmount)` 记公共口径，本接口的 `ServiceRewardDistributed(...)` 追加角色细分。两者必须满足 `MemberRewardMinted.mintAmount == verifierReward + ownerReward` 且 `.burnAmount == ownerBurned`，因此基座的「可铸造」在本接口是**聚合值**（服务轮次的可铸造量不是标量，公共验证者与 owner 两部分独立计算），逐个角色的金额仍读 `serviceRewardByMember`。`ServiceRewardDistributed` 与 `serviceRewardByMember` 同时给出 owner 份额的拆分：`ownerDistributed` 为实际转给二次分配接收者的总额（逐笔见 `DistributeRecipient`），`ownerRemaining` 为留在 owner 手中的部分（含无配置行动的整份切片与逐项取整余数），恒有 `ownerReward == ownerDistributed + ownerRemaining`。
 
 ## 二次分配
 
 groupId 的当前 NFT 持有人按 `sourceTokenAddress + sourceActionId + groupId + round` 配置 `recipientIds[]`、`ratios[]`；查询指定 `round` 没有配置时，回退到不晚于该轮的最近配置，不使用未来轮次；不存在更早配置时视为未配置。所有对同一源行动提供激励的服务 Proposal 复用该配置。接收者为 memberId，比例使用 `1e18` 精度。owner 部分先按各源行动权重拆分，再应用对应配置：`slice(a, m) = mulDiv(actualOwnerReward(m), groupReward(a, m), ownerWeightNumerator(m))`（该 owner 权重为零时无此路径）；公共验证者部分直接给锁定验证者，不参与二次分配。
 
-二次分配接口见 [`IGroupServiceExecutor.sol`](../../../interfaces/action/IGroupServiceExecutor.sol)。
+二次分配配置接口见 [`IGroupRecipients.sol`](../../../interfaces/action/IGroupRecipients.sol)（含配置枚举 `actionIdsWithRecipients` 与任意金额试算 `getDistribution`）；结算结果查询 `rewardDistribution` 与单接收者投影 `rewardByRecipient` 见 [`IGroupServiceExecutor.sol`](../../../interfaces/action/IGroupServiceExecutor.sol)（后者返回指定接收者的分配额，`recipientId` 等于 `groupId` 时返回 owner 自留额，非接收者返回 0）。
 
-setRecipients 沿用旧 GroupRecipients：只写当前验证 Round，不允许指定已结束轮次；同轮更新覆盖该轮配置。三数组等长回滚 `ArrayLengthMismatch`、最多 10 项回滚 `TooManyRecipients`（协议级编译期常量）、逐项比例为正回滚 `ZeroRatio`、接收 NFT 有效（无效由 `IMemberNFT.ownerOf` 回滚）、不得重复回滚 `DuplicateRecipient(memberId)`、不得等于 groupId 回滚 `RecipientCannotBeSelf`；非 groupId 当前持有人调用回滚 `NotMemberOwner(groupId)`。全部传空表示显式清空，该轮及后续回退到空配置，不能重新找到清空前配置。没有配置时 owner 保留全部该项预算。付款使用结算时接收 NFT 当前持有人。
+setRecipients 沿用旧 GroupRecipients：只写当前验证 Round，不允许指定已结束轮次；同轮更新覆盖该轮配置。三数组等长回滚 `ArrayLengthMismatch`、最多 10 项回滚 `TooManyRecipients`（协议级编译期常量）、逐项比例为正回滚 `ZeroRatio`、接收 NFT 有效（无效由 `IMemberNFT.ownerOf` 回滚）、不得重复回滚 `DuplicateMemberId(memberId)`、不得等于 groupId 回滚 `RecipientCannotBeSelf`；非 groupId 当前持有人调用回滚 `NotMemberOwner(groupId)`。全部传空表示显式清空，该轮及后续回退到空配置，不能重新找到清空前配置。没有配置时 owner 保留全部该项预算。付款使用结算时接收 NFT 当前持有人。
+
+配置按 `sourceTokenAddress + groupId` 维护按轮枚举：本轮非空写入登记源行动、显式清空移除，`actionIdsWithRecipients(sourceTokenAddress, groupId, round, offset, limit, reverse)` 分页返回该轮有效的已配置源行动与真实总数（懒继承到不晚于该轮的最近记录；同轮配置更新会重写该轮快照，调用方不得跨调用缓存 `offset`）。`getDistribution(sourceTokenAddress, sourceActionId, groupId, groupReward, round)` 对任意金额按同规则试算（逐项向下取整、余数归 owner，100% 不下溢）。
 
 配置比例总和不得超过 `1e18`，超过回滚 `DistributionOverflow(configured, available)`；正好 100% 合法。金额逐步向下取整：
 
@@ -82,13 +84,14 @@ amount[i] = mulDiv(slice(a, m), ratios[i], 1e18)
 
 各项取整后的总支出不得超过对应预算，`slice` 层与 owner 总量层的舍入余数都归 owner；100% 分配不得下溢。旧版两处双重 floor 曾使「单链群理论激励之和」超过可铸造量，100% 分配时 `mintReward - distributed` 下溢、整笔铸造回滚；本版全部中间量不提前截断，**`Σ 转账 + 销毁 ≤ serviceReward` 为承重不变量**，回归用例见 [Action 验收](08-testing.md)。
 
-逐笔付款由 `SecondaryRewardDistributed(serviceTokenAddress, serviceActionId, groupId, sourceActionId, recipientId, amount, round)` 留痕；事件流连同 `MemberRewardMinted`、`RewardBurned` 可完整还原结算的全部资产变化。
+逐笔付款由 `DistributeRecipient(serviceTokenAddress, round, serviceActionId, groupId, sourceActionId, recipientId, amount)` 留痕；事件流连同 `MemberRewardMinted`、`RewardBurned` 可完整还原结算的全部资产变化。
 
 ## 实现约束
 
 - `DistributionOverflow` 在配置比例总和超过 `1e18` 时触发；正好 `1e18` 合法。
 - 二次分配配置键为 `sourceTokenAddress + sourceActionId + groupId + round`；分配事件另带服务 Proposal 上下文。
-- ownerBurned 按 `serviceTokenAddress + serviceActionId + round + memberId` 保存实际销毁量，不影响源行动缓存；铸造与销毁失败时标记、转账和代币 burn 全部回滚。
+- 二次分配配置面单独声明接口 `IGroupRecipients.sol`（沿用旧文件名，由 `IGroupServiceExecutor` 继承），实现落在独立业务库 `GroupRecipients`：与单体 Executor 合并会超过 24,576 字节部署上限。
+- ownerBurned 按 `serviceTokenAddress + serviceActionId + round + memberId` 保存实际销毁量，`ownerDistributed`/`ownerRemaining` 按同一键记录（恒有 `ownerReward = ownerDistributed + ownerRemaining`），不影响源行动缓存；铸造与销毁失败时标记、转账和代币 burn 全部回滚。
 - 来源为旧 `LOVE20TKM/extension-group/src/ExtensionGroupService.sol`、`LOVE20TKM/extension-group/src/GroupRecipients.sol` 与 `LOVE20TKM/extension/src/ExtensionBaseReward.sol`。公共验证者份额及全社区分母以本文件 BSC 规则为准。
 
 铸造见 [统一链路](07-minting.md#铸造链路)，验收见 [Action 验收](08-testing.md)。
