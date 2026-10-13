@@ -41,7 +41,7 @@ targetData[0] = abi.encode(executorAddress)
 
 同一分层适用于激励，但两条事件的**名字与参数都不同**，因为层级与主体不同：行动级的整笔铸造由 ActionTarget 的 `ActionRewardMinted(tokenAddress, actionId, round, amount)` 记录，成员级的 `MemberRewardMinted(tokenAddress, actionId, memberId, round, mintAmount, burnAmount)` 由各 Executor 记录（见 [铸造链路](07-minting.md#铸造链路)）。`ActionRewardMinted` 的四个字段全部取自 `mintActionReward` 这一笔调用本身，不需要额外状态。
 
-**集合读取**：成员的行动列表是无界集合（由成员加入次数决定），采用标准分页签名 `actionIdsByMemberId(tokenAddress, memberId, offset, limit, reverse) returns (actionIds[], total)`。行动的成员列表同样是无界集合，但只保留一条完整读取路径——按轮读取 `memberIdsByActionId(tokenAddress, actionId, round, offset, limit, reverse) returns (memberIds[], total)`（指定 `round` 时的成员列表）；不带 `round` 的当前态列表不单设，当前态用 `isJoined` 点查或传当前轮读取。参数语义：越界返回空数组与真实总数、不回滚；`limit` 超剩余按剩余返回；`limit = 0` 只返回总数；`reverse` 为 true 时逆序遍历当前存储顺序。符合[集合读取设计原则](../../migration-standards.md#集合读取函数的设计原则)。
+**集合读取**：成员的行动列表是无界集合（由成员加入次数决定），采用标准分页签名 `actionIdsByMemberId(tokenAddress, memberId, offset, limit, reverse) returns (actionIds[], total)`。行动的成员列表同样是无界集合，但只保留一条完整读取路径——按轮读取 `memberIdsByActionId(tokenAddress, actionId, round, offset, limit, reverse) returns (memberIds[], total)`（指定 `round` 时的成员列表）；不带 `round` 的当前态列表不单设，当前态用 `isJoined` 点查或传当前轮读取。参数语义：越界返回空数组与真实总数、不回滚；`limit` 超剩余按剩余返回；`limit = 0` 只返回总数；`reverse` 为 true 时逆序遍历当前存储顺序。符合[集合读取设计原则](../../dev-standards.md#43-集合读取函数)。
 
 **历史查询**：提供按 round 的历史快照查询，`isJoinedByRound(tokenAddress, actionId, memberId, round)` 检查指定 round 时的加入状态，`memberIdsByActionId(tokenAddress, actionId, round, offset, limit, reverse)` 返回指定 round 时的成员列表（分页）。round 的口径是**加入轮**（= 当前投票轮 - 1，加入在投票后一个阶段开放，见 [阶段模型](02-phase-model.md)），与三个 Executor 的加入 Round 同轴；加入态事件与按轮快照同源，事件中的 round 也是加入轮。快照不会落在创建轮之前——该不变式由 `registerJoinState` 的 `JoinNotOpen` 入口校验保证（见写操作权限）；`ActionCreated` 的 round 即创建投票轮，也是该行动的首个加入轮，因此以它查询成员列表可得首个加入窗口的成员。round 大于当前加入轮时按未开始处理：`isJoinedByRound` 返回 false，列表返回空数组与 `total = 0`。按轮快照的读法随共享原语：查询的 `round` 上没有写入时，返回该轮之前最近一次记录的状态（空缺轮继承先前状态）；早于首次写入返回未加入 / 空列表。同一加入轮内的多次写入（加入、退出、再加入）在该轮只保留最后一次写入的值——事件仍按发生顺序逐条记录；两者并用时，以事件顺序还原过程，以快照读取该轮结束状态。
 
@@ -51,7 +51,7 @@ targetData[0] = abi.encode(executorAddress)
 
 `actions`、`actionIdsByExecutor` 由创建回调维护的**追加写入、从不删除**的索引派生，`reverse` 即创建逆序；`votedActions` 由 Vote 的本轮只追加列表派生，顺序随 Vote。三者的 `offset` 语义同样按上面执行。
 
-完整 ABI 见 [`IActionTarget.sol`](../../../interfaces/action/IActionTarget.sol)。
+完整 ABI 见 [`IActionTarget.sol`](https://github.com/LOVE20BSC/action/blob/main/src/interfaces/IActionTarget.sol)。
 
 `init` 只接收 Mint 地址：重复调用回滚 `AlreadyInitialized()`；`mintAddress` 为零，或从 Mint 派生出的 `voteAddress`、`submitAddress`、`memberNFTAddress`、`phaseAddress` 任一为零，回滚 `InvalidAddress()`；不设调用者限制、不保存部署者。四项派生依赖在 init 内各读取一次并缓存，经同名 getter 暴露，供发布前检查脚本核对与 Mint 绑定一致；Mint 须先完成 init，不把「部署后立即初始化」当作防抢跑保证。`phaseAddress` 由 Mint 从 Vote 派生后再由 ActionTarget 读取，ActionTarget 因此与投票轴共享同一 Phase，当前投票轮直读 `IPhase.currentPhase()`，不经 Mint 或 Vote 二跳。
 
@@ -65,7 +65,7 @@ targetData[0] = abi.encode(executorAddress)
 
 ## forceExit
 
-`forceExit` 接口见 [`IActionTarget.sol`](../../../interfaces/action/IActionTarget.sol)。
+`forceExit` 接口见 [`IActionTarget.sol`](https://github.com/LOVE20BSC/action/blob/main/src/interfaces/IActionTarget.sol)。
 
 Executor 失效时，成员 NFT 当前持有人可清除加入状态并触发 `JoinStateCleared(..., forced = true)`，与 Executor 正常清理的唯一区别是该字段。该操作不调用 Executor、不转资产、不承诺返还资产；前端默认隐藏，并需说明与正常退出的区别。
 

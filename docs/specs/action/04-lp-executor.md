@@ -6,7 +6,7 @@
 
 部署依赖通过一次性 `init` 绑定：ActionTarget 与 Stake；MemberNFT、Phase 与 Pair Factory 从 Stake 派生（`memberNFTAddress()`、`phaseAddress()`、`pairFactoryAddress()`），不重复作为入参。每个行动的配置由创建回调解析，不能放进共享合约的全局 init。
 
-完整 ABI 见 [`ILpExecutor.sol`](../../../interfaces/action/ILpExecutor.sol)。
+完整 ABI 见 [`ILpExecutor.sol`](https://github.com/LOVE20BSC/action/blob/main/src/interfaces/ILpExecutor.sol)。
 
 Target Data 是无键数组，按位置读取。第 `0` 项是 ActionTarget 保留的 executor，本 Executor 的项从第 `1` 项起固定为：`targetData[1] = abi.encode(address joinTokenAddress)`、`targetData[2] = abi.encode(uint256 govRatioMultiplier)`、`targetData[3] = abi.encode(uint256 minGovRatio)`，项数必须为 `4`。项数、位置与校验均由本 Executor 负责，ActionTarget 只原样透传。LP 必须是已配置 Pair Factory 登记的交易对，V2 不要求交易对包含激励代币。两个治理比例使用 `1e18` 精度，`minGovRatio <= 1e18`。LP 无验证阶段，验证信息不迁移。
 

@@ -22,6 +22,7 @@
 - [LOVE20BSC 跨仓库验收标准](docs/acceptance.md)
 - [规格文档撰写指南](docs/spec-writing-guide.md)
 - [规格文档审查指南](docs/review-guide.md)
+- [合约开发规范](docs/dev-standards.md)
 - [代码迁移规范](docs/migration-standards.md)
 
 组织根目录 `LOVE20BSC` 只是工作区，不作为 Git 仓库维护。

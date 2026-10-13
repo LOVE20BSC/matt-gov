@@ -29,7 +29,7 @@ Provider 提供的是额度：Provider 授予、追加或收回额度，成员�
 
 以下属于 GroupAction Executor，沿用旧 `LOVE20TKM/extension-group/src/GroupJoin.sol` 的名单与 Provider 授权逻辑，语义改为 Provider 额度；不强制 LP 实现 Provider 额度业务。
 
-Provider 额度接口见 [`IGroupActionJoin.sol`](../../../interfaces/action/IGroupActionJoin.sol)。
+Provider 额度接口见 [`IGroupActionJoin.sol`](https://github.com/LOVE20BSC/action/blob/main/src/interfaces/IGroupActionJoin.sol)。
 
 额度按 `tokenAddress + actionId + groupId + providerId + memberId` 记录，只有 Provider 当前持有人可改；成员身份须存在且不同于 Provider，两个数组等长，额度为正；同一成员重复授予是追加额度，不再回滚。批量接口没有协议固定长度上限，调用方按区块 Gas 分批操作，单笔失败整笔回滚。
 

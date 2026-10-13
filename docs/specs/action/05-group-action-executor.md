@@ -6,11 +6,11 @@ GroupAction 使用 MemberNFT 身份，`groupId` 是群主体的 `memberId`，不
 
 旧 `LOVE20TKM/extension-group/src/GroupManager.sol` / `LOVE20TKM/extension-group/src/GroupJoin.sol` 的 extension 地址改为 `tokenAddress + actionId`；不为每个 Proposal 部署 Executor。部署依赖通过 init 绑定，业务配置由 Proposal 创建回调写入。`init(actionTargetAddress, stakeAddress, splits)` 只收 ActionTarget、Stake 和验证阶段分割线：`memberNFTAddress`、`phaseAddress`、`voteAddress` 在 init 内从 `stakeAddress` 的 getter 读取一次并缓存，任一为零回滚 `InvalidAddress`；激励经 `ActionTarget` 读取，不注入 Mint。分割线由 `SPLITS()` 暴露，只读。
 
-参与、群配置和历史查询接口见 [`IGroupActionExecutor.sol`](../../../interfaces/action/IGroupActionExecutor.sol)。
+参与、群配置和历史查询接口见 [`IGroupActionExecutor.sol`](https://github.com/LOVE20BSC/action/blob/main/src/interfaces/IGroupActionExecutor.sol)。
 
 创建 Target Data 沿用旧行动参数，从第 `1` 项起（第 `0` 项是 ActionTarget 保留的 executor）固定为 `targetData[1] = abi.encode(address joinTokenAddress)`、`targetData[2] = abi.encode(uint256 activationStakeAmount)`、`targetData[3] = abi.encode(uint256 maxJoinAmountRatio)`、`targetData[4] = abi.encode(uint256 activationMinGovRatio)`、`targetData[5] = abi.encode(uint256 verifierStakeAmount)`；两个比例均以 `1e18` 为满值，超出回滚 `InvalidRatio`；`verifierStakeAmount = 0` 表示候选申请不要求押金。配置和激活资格、质押退还及容量计算沿用旧 GroupManager；`maxCapacity = 0` 使用理论容量，`maxJoinAmount/maxAccounts = 0` 不另设群级上限，非零最大加入量不得低于最小加入量；群描述 `GroupConfig.description` 与候选人申请说明同受 1024 字节上限约束，超出回滚 `DescriptionTooLong`。群描述的按轮快照用 `descriptionByRound(tokenAddress, actionId, round, groupId)` 读取（RoundHistory 懒继承：无记录继承最近历史，从未设置返回空串）。项数不为 `6`（无验证信息）或 `7`（含验证信息）回滚 `InvalidTargetDataLength`。
 
-**验证信息**：由 [`IGroupActionVerify.sol`](../../../interfaces/action/IGroupActionVerify.sol) 继承 [`IVerificationInfo`](../../../interfaces/action/IVerificationInfo.sol)，`IGroupActionExecutor` 再继承 `IGroupActionVerify`。验证信息分为两层：
+**验证信息**：由 [`IGroupActionVerify.sol`](https://github.com/LOVE20BSC/action/blob/main/src/interfaces/IGroupActionVerify.sol) 继承 [`IVerificationInfo`](https://github.com/LOVE20BSC/action/blob/main/src/interfaces/IVerificationInfo.sol)，`IGroupActionExecutor` 再继承 `IGroupActionVerify`。验证信息分为两层：
 
 - **Action 级别模板**：由行动创建者在提交提案时定义，通过 `verificationSchema(tokenAddress, actionId)` 查询，返回 `(keys[], descriptions[])`，说明加入者需要提交哪些验证字段（如 `["twitter_handle", "tweet_url"]`）及其含义（如 `["你的推特账号", "转发推文链接"]`）。
 - **Member 级别实例**：由成员在加入行动时提交具体值，通过 `verificationValue(tokenAddress, actionId, memberId, key)` 查询单个字段值，`verificationInfos(tokenAddress, actionId, memberId)` 查询所有字段当前值，`verificationInfosByRound(tokenAddress, actionId, memberId, round)` 查询指定 round 的历史快照。
@@ -21,7 +21,7 @@ GroupAction 使用 MemberNFT 身份，`groupId` 是群主体的 `memberId`，不
 
 ## 当前归属与索引
 
-事实关系为 `tokenAddress + actionId + groupId + memberId`。跨本 Executor 的全部社区与行动维护一小组**由参与事实驱动**的索引（`g*` 记号即指这一族：只有真的有人参与过才会入榜），读取按 [集合读取函数的设计原则](../../migration-standards.md#集合读取函数的设计原则) 收敛，不为每个维度组合维护全量索引：
+事实关系为 `tokenAddress + actionId + groupId + memberId`。跨本 Executor 的全部社区与行动维护一小组**由参与事实驱动**的索引（`g*` 记号即指这一族：只有真的有人参与过才会入榜），读取按 [集合读取函数的设计原则](../../dev-standards.md#43-集合读取函数) 收敛，不为每个维度组合维护全量索引：
 
 | 查询 | 语义 |
 | --- | --- |
@@ -48,7 +48,7 @@ GroupAction 使用 MemberNFT 身份，`groupId` 是群主体的 `memberId`，不
 
 候选只在投票阶段新增、撤销或修改；排序按 `votes` 降序、`applicationId` 升序，平票时较早申请优先。候选只在收到新投票时才按规则进入或更新当前排名；替换或撤销申请时，旧申请从当前排名中移除，其票数只保留供历史查询，不由榜外申请自动补位。
 
-验证者、验证和激励查询接口见 [`IGroupActionExecutor.sol`](../../../interfaces/action/IGroupActionExecutor.sol)。
+验证者、验证和激励查询接口见 [`IGroupActionExecutor.sol`](https://github.com/LOVE20BSC/action/blob/main/src/interfaces/IGroupActionExecutor.sol)。
 
 申请者须持有 memberId 且有该社区有效治理票；`description` 以字节计不超过 1024，超出回滚 `DescriptionTooLong`。公共验证者比例 `RATIO_FOR_PUBLIC_VERIFIER` 不再属于申请流程，移至 GroupService 按服务 Proposal 绑定（见 [Service Executor](06-service-executor.md)）。`submitVerifierApplication` 新建或替换当前申请：旧 ID 失效但保留票数，新 ID 单调递增且从零计票。`cancelVerifierApplication` 只移除当前关联和榜内项，不扫描榜外补位。无当前申请时 `verifierApplication` 返回零值结构体（`applicationId = 0`）。申请与撤销以创建轮为作用域（`currentPhase() != createdRound` 回滚 `InvalidRound`）；行动只在其创建轮产出参与与激励，该模型下创建轮即当前投票轮。当前有效申请（已取消的不算）按标准分页读取：`verifierApplications` 直接回申请记录与总数，这是本接口唯一直接回含变长字段记录体的分页查询——申请记录带变长 `description`（结构体仅含 `applicationId`、`memberId`、`description`），按集合读取原则本应只回 id 再加按 id 批量，但该查询的消费方只有链下展示；若日后出现链上调用方，须改为「只回 id + 按 id 批量」。`topVerifiers` 按票数高到低返回榜内 `verifierIds[]` 与对应 `votes[]` 两个定长数组（下标对齐；榜的容量是前 `n` 名，元素与成员一一对应），榜内成员的申请说明用 `verifierApplication` 另取；当轮任意验证者的票数用 `votesByVerifierIds(tokenAddress, actionId, round, verifierIds[])` 按下标对齐批量读取，无票回 `0`、不回滚；任一申请（含被替换、撤销的旧申请）的累计票数用 `votesByApplicationId(tokenAddress, actionId, applicationId)` 直查——票记在申请上，读历史票数不受当前申请状态影响。其余索引与列表查询按标准分页语义越界返回空数组与真实总数、不回滚。
 

@@ -27,7 +27,7 @@
 
 ## 与 ActionTarget 的事件分层
 
-**ActionTarget 层事件**（加入态登记，与登记函数同名系；完整定义见 [`IActionTargetEvents`](../../../interfaces/action/IActionTarget.sol)）：
+**ActionTarget 层事件**（加入态登记，与登记函数同名系；完整定义见 [`IActionTargetEvents`](https://github.com/LOVE20BSC/action/blob/main/src/interfaces/IActionTarget.sol)）：
 ```solidity
 event ActionCreated(address indexed tokenAddress, uint256 indexed actionId, address indexed executor, uint256 round);
 event JoinStateRegistered(address indexed tokenAddress, uint256 indexed actionId, uint256 indexed memberId, uint256 round);
@@ -93,4 +93,4 @@ Executor 不使用加密调用 `ActionTarget` 上同名的 `join`/`exit`：Actio
 
 - [ActionTarget 规格](01-action-target.md)
 - [ADR-003: ActionTarget 接口简化设计](../../adr/003-action-target-interface-simplification.md)
-- [`IActionExecutor.sol`](../../../interfaces/action/IActionExecutor.sol)
+- [`IActionExecutor.sol`](https://github.com/LOVE20BSC/action/blob/main/src/interfaces/IActionExecutor.sol)

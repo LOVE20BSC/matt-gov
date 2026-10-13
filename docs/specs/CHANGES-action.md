@@ -228,7 +228,7 @@ effectiveRatio = min(effectiveLpRatio, govRatioCap)
 ### ✅ 保留逻辑
 
 #### 参与索引
-**重构**：旧 `LOVE20TKM/extension-group/src/GroupJoin.sol` 的 17 组「全量数组 + `Count` + `AtIndex`」全局索引不迁移。该组接口为无界集合提供全量读取，违反 [集合读取函数的设计原则](../migration-standards.md#集合读取函数的设计原则)，且其中 16 组没有具名调用方。改为 `isGroupMember` 加五条按真实问题组织的索引（`g*` 记号即指这一族：只有真的有人参与过才会入榜）：
+**重构**：旧 `LOVE20TKM/extension-group/src/GroupJoin.sol` 的 17 组「全量数组 + `Count` + `AtIndex`」全局索引不迁移。该组接口为无界集合提供全量读取，违反 [集合读取函数的设计原则](../dev-standards.md#43-集合读取函数)，且其中 16 组没有具名调用方。改为 `isGroupMember` 加五条按真实问题组织的索引（`g*` 记号即指这一族：只有真的有人参与过才会入榜）：
 
 - `isGroupMember(groupId, memberId)`：Group Chat 的链上归属判据，跨全部社区和行动聚合
 - `gGroupIds`：当前有归属成员的链群

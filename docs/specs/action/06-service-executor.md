@@ -31,7 +31,7 @@ theoreticalOwnerReward(m)    = mulDiv(serviceReward, (1e18 - r) * ownerWeightNum
 
 首次成功结算某服务轮次时，按 `actionTokenAddress + round` 计算并缓存分母；查询不能写状态，未缓存时只计算返回，后续结算读取缓存。零分母不产生缓存写：结算在缓存写入前因零额回滚，销毁路径不写状态；`needBurnReward` 每次按需计算。分母缓存是内部状态，不属于对外 ABI。
 
-完整 ABI 见 [`IGroupServiceExecutor.sol`](../../../interfaces/action/IGroupServiceExecutor.sol)（继承 [`IGroupRecipients.sol`](../../../interfaces/action/IGroupRecipients.sol) 的二次分配配置面）。
+完整 ABI 见 [`IGroupServiceExecutor.sol`](https://github.com/LOVE20BSC/action/blob/main/src/interfaces/IGroupServiceExecutor.sol)（继承 [`IGroupRecipients.sol`](https://github.com/LOVE20BSC/action/blob/main/src/interfaces/IGroupRecipients.sol) 的二次分配配置面）。
 
 创建 Target Data 从第 `1` 项起（第 `0` 项是 ActionTarget 保留的 executor）固定为 `targetData[1] = abi.encode(address actionTokenAddress)`、`targetData[2] = abi.encode(uint256 govRatioMultiplier)` 和 `targetData[3] = abi.encode(uint256 ratioForPublicVerifier)`，项数恰为 `4`；超出回滚 `InvalidTargetDataLength`，`ratioForPublicVerifier > 1e18` 回滚 `InvalidRatio`（否则 `1e18 - r` 下溢），代币关系不满足回滚 `InvalidParentToken`。`ACTION_TOKEN_ADDRESS`、`GOV_RATIO_MULTIPLIER`、`RATIO_FOR_PUBLIC_VERIFIER` 均按 `serviceTokenAddress + serviceActionId` 读取。投票回调没有业务项，`targetData.length > 1` 回滚 `InvalidTargetDataLength`。
 
@@ -70,7 +70,7 @@ ownerOverflow(m) = theoreticalOwnerReward(m) - actualOwnerReward(m)
 
 groupId 的当前 NFT 持有人按 `sourceTokenAddress + sourceActionId + groupId + round` 配置 `recipientIds[]`、`ratios[]`；查询指定 `round` 没有配置时，回退到不晚于该轮的最近配置，不使用未来轮次；不存在更早配置时视为未配置。所有对同一源行动提供激励的服务 Proposal 复用该配置。接收者为 memberId，比例使用 `1e18` 精度。owner 部分先按各源行动权重拆分，再应用对应配置：`slice(a, m) = mulDiv(actualOwnerReward(m), groupReward(a, m), ownerWeightNumerator(m))`（该 owner 权重为零时无此路径）；公共验证者部分直接给锁定验证者，不参与二次分配。
 
-二次分配配置接口见 [`IGroupRecipients.sol`](../../../interfaces/action/IGroupRecipients.sol)（含配置枚举 `actionIdsWithRecipients` 与任意金额试算 `getDistribution`）；结算结果查询 `rewardDistribution` 与单接收者投影 `rewardByRecipient` 见 [`IGroupServiceExecutor.sol`](../../../interfaces/action/IGroupServiceExecutor.sol)（后者返回指定接收者的分配额，`recipientId` 等于 `groupId` 时返回 owner 自留额，非接收者返回 0）。
+二次分配配置接口见 [`IGroupRecipients.sol`](https://github.com/LOVE20BSC/action/blob/main/src/interfaces/IGroupRecipients.sol)（含配置枚举 `actionIdsWithRecipients` 与任意金额试算 `getDistribution`）；结算结果查询 `rewardDistribution` 与单接收者投影 `rewardByRecipient` 见 [`IGroupServiceExecutor.sol`](https://github.com/LOVE20BSC/action/blob/main/src/interfaces/IGroupServiceExecutor.sol)（后者返回指定接收者的分配额，`recipientId` 等于 `groupId` 时返回 owner 自留额，非接收者返回 0）。
 
 setRecipients 沿用旧 GroupRecipients：只写当前验证 Round，不允许指定已结束轮次；同轮更新覆盖该轮配置。三数组等长回滚 `ArrayLengthMismatch`、最多 10 项回滚 `TooManyRecipients`（协议级编译期常量）、逐项比例为正回滚 `ZeroRatio`、接收 NFT 有效（无效由 `IMemberNFT.ownerOf` 回滚）、不得重复回滚 `DuplicateMemberId(memberId)`、不得等于 groupId 回滚 `RecipientCannotBeSelf`；非 groupId 当前持有人调用回滚 `NotMemberOwner(groupId)`。全部传空表示显式清空，该轮及后续回退到空配置，不能重新找到清空前配置。没有配置时 owner 保留全部该项预算。付款使用结算时接收 NFT 当前持有人。
 

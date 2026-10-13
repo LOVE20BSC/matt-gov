@@ -18,4 +18,4 @@ Action 实现社群行动 Proposal 类型，包括 LP、GroupAction 和 GroupSer
 
 [组织约束](../../../CONTEXT.md) · [迁移差异](../CHANGES-action.md)
 
-接口暂存于 [`interfaces/action/`](../../../interfaces/action/)，是 Action ABI 的唯一来源。
+Action 已实现，ABI 唯一来源是 action 仓库的 [`src/interfaces/`](https://github.com/LOVE20BSC/action/tree/main/src/interfaces)；本仓库不再保留副本。

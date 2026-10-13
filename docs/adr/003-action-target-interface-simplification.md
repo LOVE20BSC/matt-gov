@@ -4,14 +4,14 @@
 
 已接受 (2026-09-22)
 
-> 2026-10-04 更新：本文代码块保留裁决时点的形状，现行接口以 [`interfaces/action/IActionTarget.sol`](../interfaces/action/IActionTarget.sol) 为准。此后的变化：`join`/`exit` 定名为 `registerJoinState`/`clearJoinState`；事件改为 `JoinStateRegistered`/`JoinStateCleared`（`ForceExited` 并入 `forced` 字段），`ActionCreated` 增 `round`；`actions`/`actionIdsByExecutor` 移除 `round`（追加写入索引派生）并新增 `votedActions`；`mintProposalReward`/`mintedProposalReward` 定名 `mintActionReward`/`actionReward`。
+> 2026-10-04 更新：本文代码块保留裁决时点的形状，现行接口以 [`interfaces/action/IActionTarget.sol`](https://github.com/LOVE20BSC/action/blob/main/src/interfaces/IActionTarget.sol) 为准。此后的变化：`join`/`exit` 定名为 `registerJoinState`/`clearJoinState`；事件改为 `JoinStateRegistered`/`JoinStateCleared`（`ForceExited` 并入 `forced` 字段），`ActionCreated` 增 `round`；`actions`/`actionIdsByExecutor` 移除 `round`（追加写入索引派生）并新增 `votedActions`；`mintProposalReward`/`mintedProposalReward` 定名 `mintActionReward`/`actionReward`。
 
 ## 背景
 
 在 ActionTarget 迁移规格与接口 Review 中，发现原接口设计存在以下问题：
 
 1. **事件字段不匹配**：草稿事件包含 `amount, isExperience, providerMemberId` 字段，但 `join/exit` 函数签名没有这些参数
-2. **集合读取重复**：`actionIdsByMemberId` 既提供全量数组，又提供 Count/AtIndex 分页，违反[集合设计原则](../../migration-standards.md#集合读取函数的设计原则)
+2. **集合读取重复**：`actionIdsByMemberId` 既提供全量数组，又提供 Count/AtIndex 分页，违反[集合设计原则](../dev-standards.md#43-集合读取函数)
 3. **职责边界模糊**：ActionTarget 定位是"通用加入登记"，但草稿事件字段包含了具体业务细节
 4. **命名一致性**：`isAccountJoined` 使用 Account 前缀但参数是 memberId；事件名带 Action 前缀冗余
 5. **无界集合未分页**：某轮某 executor 的行动列表、某轮总行动列表由外部创建决定，属无界集合
@@ -103,6 +103,6 @@ function actions(
 
 ## 相关文档
 
-- [迁移标准：集合读取函数的设计原则](../../migration-standards.md#集合读取函数的设计原则)
+- [开发规范：集合读取函数的设计原则](../dev-standards.md#43-集合读取函数)
 - [ActionTarget 规格](../specs/action/01-action-target.md)
 - [接口对账：ActionTarget](../../.scratch/interface-diff/action.md#1-iactiontarget-vs-iextensioncenter--iextension)
