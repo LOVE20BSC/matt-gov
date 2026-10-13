@@ -50,14 +50,32 @@ interface IGroupServiceExecutorErrors {
     error AlreadyJoined();
 }
 
-interface IGroupServiceExecutor is IActionExecutor, IGroupRecipients, IGroupServiceExecutorEvents, IGroupServiceExecutorErrors {
-    function init(address actionTargetAddress, address stakeAddress, address groupActionExecutorAddress) external;
+interface IGroupServiceExecutor is
+    IActionExecutor,
+    IGroupRecipients,
+    IGroupServiceExecutorEvents,
+    IGroupServiceExecutorErrors
+{
+    function init(
+        address actionTargetAddress,
+        address stakeAddress,
+        address groupActionExecutorAddress
+    ) external;
     function currentVerifyRound() external view returns (uint256);
 
-    function GOV_RATIO_MULTIPLIER(address serviceTokenAddress, uint256 serviceActionId) external view returns (uint256);
+    function GOV_RATIO_MULTIPLIER(
+        address serviceTokenAddress,
+        uint256 serviceActionId
+    ) external view returns (uint256);
 
-    function ACTION_TOKEN_ADDRESS(address serviceTokenAddress, uint256 serviceActionId) external view returns (address);
-    function RATIO_FOR_PUBLIC_VERIFIER(address serviceTokenAddress, uint256 serviceActionId) external view returns (uint256);
+    function ACTION_TOKEN_ADDRESS(
+        address serviceTokenAddress,
+        uint256 serviceActionId
+    ) external view returns (address);
+    function RATIO_FOR_PUBLIC_VERIFIER(
+        address serviceTokenAddress,
+        uint256 serviceActionId
+    ) external view returns (uint256);
 
     function rewardByRecipient(
         address serviceTokenAddress,
@@ -84,15 +102,36 @@ interface IGroupServiceExecutor is IActionExecutor, IGroupRecipients, IGroupServ
             uint256 ownerAmount
         );
 
-    function serviceRewardByMember(address serviceTokenAddress, uint256 serviceActionId, uint256 round,
-        uint256 memberId) external view returns (uint256 verifierReward, uint256 ownerReward,
-        uint256 ownerBurned, uint256 ownerDistributed, uint256 ownerRemaining, bool claimed);
+    function serviceRewardByMember(
+        address serviceTokenAddress,
+        uint256 serviceActionId,
+        uint256 round,
+        uint256 memberId
+    )
+        external
+        view
+        returns (
+            uint256 verifierReward,
+            uint256 ownerReward,
+            uint256 ownerBurned,
+            uint256 ownerDistributed,
+            uint256 ownerRemaining,
+            bool claimed
+        );
     function totalGroupActionReward(
         address actionTokenAddress,
         uint256 round
     ) external view returns (uint256);
 
-    function join(address serviceTokenAddress, uint256 serviceActionId, uint256 memberId) external;
-    function joinInfo(address serviceTokenAddress, uint256 serviceActionId, uint256 round, uint256 memberId)
-        external view returns (bool joined);
+    function join(
+        address serviceTokenAddress,
+        uint256 serviceActionId,
+        uint256 memberId
+    ) external;
+    function joinInfo(
+        address serviceTokenAddress,
+        uint256 serviceActionId,
+        uint256 round,
+        uint256 memberId
+    ) external view returns (bool joined);
 }
