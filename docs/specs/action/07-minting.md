@@ -34,8 +34,8 @@ Core 的预留、铸造和取消额度账本见 [Mint](../core/07-mint.md)，不
 | `AlreadyCreated(tokenAddress, actionId)` | 同一 `(tokenAddress, actionId)` 的重复创建回调 |
 | `AlreadyMinted(tokenAddress, actionId, round)` | 同一行动同一轮重复铸造（ActionTarget 行动级去重，独立状态位判定） |
 | `TransferFailed(tokenAddress, to, amount)` | ActionTarget 向 Executor 转出整笔激励失败 |
-| `InvalidRound(round)` | Round 已开始但不在对应操作的有效阶段 |
-| `RoundNotStarted()` | 对应阶段的 Round 小于 1 |
+| `InvalidRound(round)` | Round 已开始但不在对应操作的有效阶段（成员结算中即 `round` 超过当前铸币轮） |
+| `RoundNotStarted()` | 对应阶段的 Round 小于 1；成员结算中早于行动创建轮的 `round`（`createdRound == 0 || round < createdRound`）同样报此错误——三个 Executor 保持一致，不改用 `InvalidRound(round)` |
 | `InsufficientProviderQuota(providerId, required, available)` | Provider 额度不足 |
 | `GroupNotActive()` | 在未激活链群上执行群管理操作（停用、更新配置） |
 | `VerifierAlreadyLocked(tokenAddress, actionId, round)` | 锁定后更换验证者 |
