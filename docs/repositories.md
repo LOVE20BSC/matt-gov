@@ -21,7 +21,7 @@
 | `matt-gov` | 组织治理、迁移决策和验收记录 | 无 | 活跃 |
 | `core` | 核心治理、`MemberNFT`、`Phase` 和基础子币发射能力 | 外部 Uniswap V2 兼容 DEX 的 `Factory`/`Pair`/`Router` 接口 | 规划中 |
 | `compatibility` | 外部 WBNB/WETH9 与 Uniswap V2 兼容 DEX 测试 | 外部 WBNB、Factory、Pair、Router 和本地 Uniswap V2 参考实现 | 规划中 |
-| `action` | `ActionTarget`、LP、GroupAction 和 GroupService Executor | `core` | 规划中 |
+| `action` | `ActionTarget`、LP、GroupAction 和 GroupService Executor | `core` | 活跃；ActionTarget、LP、GroupAction 已迁移，GroupService 实现完成、单元测试待补 |
 | `group-chat` | 群聊业务和 **Group Chat Delegate** | `core`、`action` | 规划中 |
 | `interface-test` | BSC 前端开发、集成和验收 | `core`、`action`、`group-chat` | 规划中；日常修改入口 |
 | `interface` | BSC 前端正式发布 | 验收后的 `interface-test` | 规划中；只接受人工同步 |
