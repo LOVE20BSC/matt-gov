@@ -74,7 +74,7 @@ groupId 的当前 NFT 持有人按 `sourceTokenAddress + sourceActionId + groupI
 
 setRecipients 沿用旧 GroupRecipients：只写当前验证 Round，不允许指定已结束轮次；同轮更新覆盖该轮配置。三数组等长回滚 `ArrayLengthMismatch`、最多 10 项回滚 `TooManyRecipients`（协议级编译期常量）、逐项比例为正回滚 `ZeroRatio`、接收 NFT 有效（无效由 `IMemberNFT.ownerOf` 回滚）、不得重复回滚 `DuplicateMemberId(memberId)`、不得等于 groupId 回滚 `RecipientCannotBeSelf`；非 groupId 当前持有人调用回滚 `NotMemberOwner(groupId)`。全部传空表示显式清空，该轮及后续回退到空配置，不能重新找到清空前配置。没有配置时 owner 保留全部该项预算。付款使用结算时接收 NFT 当前持有人。
 
-配置按 `sourceTokenAddress + groupId` 维护按轮枚举：本轮非空写入登记源行动、显式清空移除，`actionIdsWithRecipients(sourceTokenAddress, groupId, round, offset, limit, reverse)` 分页返回该轮有效的已配置源行动与真实总数（懒继承到不晚于该轮的最近记录；同轮配置更新会重写该轮快照，调用方不得跨调用缓存 `offset`）。`getDistribution(sourceTokenAddress, sourceActionId, groupId, groupReward, round)` 对任意金额按同规则试算（逐项向下取整、余数归 owner，100% 不下溢）。
+配置按 `sourceTokenAddress + groupId` 维护按轮枚举：本轮非空写入登记源行动、显式清空移除，`actionIdsWithRecipients(sourceTokenAddress, groupId, round, offset, limit, reverse)` 分页返回该轮有效的已配置源行动与真实总数（懒继承到不晚于该轮的最近记录；同轮配置更新会重写该轮快照）。该集合用 swap-and-pop 删除：同一 `offset` 的返回内容不保证跨调用稳定，`reverse` 也不等于「新到旧」；调用方不得跨调用缓存 `offset`，也不得按「先拉首页再增量补页」拼接。`getDistribution(sourceTokenAddress, sourceActionId, groupId, groupReward, round)` 对任意金额按同规则试算（逐项向下取整、余数归 owner，100% 不下溢）。
 
 配置比例总和不得超过 `1e18`，超过回滚 `DistributionOverflow(configured, available)`；正好 100% 合法。金额逐步向下取整：
 
