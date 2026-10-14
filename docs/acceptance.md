@@ -245,7 +245,7 @@
 **覆盖要求**：覆盖 `Phase 1..3` 对 LP 行动和 `Phase 1..4` 对 GroupAction、GroupService 的冷启动期，各 Executor 查询尚未开始阶段时回滚 `RoundNotStarted` 且不返回 `0`。覆盖 LP 行动使用 3 阶段模型（投票-加入-铸币），GroupAction 使用 4 阶段模型（投票-加入-验证-铸币），GroupService 保留 4 阶段并复用被服务 GroupAction 同轮次的验证结果，不在 GroupService 内执行验证。覆盖各 Executor 从 `Phase.currentPhase()` 正确计算自己的业务 Round：全局 Phase 为 p 时，投票 Round 为 p，加入 Round 为 p-1；因此投票 Round p 在 Phase p 发生，下一全局 Phase p+1 开放同一 Round p 的加入。三段 Round 查询定义在 `IActionExecutor`；GroupAction / GroupService 另提供 `currentVerifyRound()`。
 
 **测试方式**：
-- 单元测试：`action/test/LPExecutor.t.sol`、`action/test/GroupActionExecutor.t.sol` 和 `action/test/GroupServiceExecutor.t.sol` 的 Phase 1-3/4 查询场景
+- 单元测试：`action/test/LPExecutor.t.sol`、`action/test/GroupActionExecutor.t.sol`、`action/test/GroupServiceInit.t.sol` 和 `action/test/GroupServiceJoin.t.sol` 的 Phase 1-3/4 查询场景
 - 集成测试：三类行动在同一 Phase 的投票和加入 Round 一致性，以及服务行动读取被服务 GroupAction 同轮结果的结算场景
 - 验收证据：Round 计算日志
 
@@ -275,7 +275,7 @@
 `totalGroupActionReward == 0` 时不执行除法；覆盖轮次结束后任何地址调用 `burnRewardIfNeeded(serviceTokenAddress, serviceActionId, round)`：`D == 0` 时经 ActionTarget 核销整笔预留激励（无代币移动、`RewardBurned` 留痕、重复调用无操作），owner 超额销毁由 Executor 直接调用服务代币 `burn`，两条销毁路径互斥。
 
 **测试方式**：
-- 单元测试：`action/test/GroupServiceExecutor.t.sol` 的服务结算场景
+- 单元测试：`action/test/GroupServiceSettlement.t.sol`（治理上限、核销链路与精度边界）、`action/test/GroupServiceEvents.t.sol`（事件还原）和 `action/test/GroupServiceRecipients.t.sol`（二次分配）的服务结算场景
 - 验收证据：结算金额分配日志、精度验证日志
 
 **判定标准**：
