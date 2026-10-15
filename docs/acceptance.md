@@ -99,7 +99,7 @@
 - 次数融合不携带 `launchCredit`
 
 ### 子币发射分发边界
-**覆盖要求**：覆盖首个代币通过 `Launch.init(LaunchInitParams)` 一次性启动、使用 WBNB 且不带分发数据、不消耗发射次数、启动后不能重复创建首个代币、普通发射社区与 `parentTokenAddress` 一致、非零 `distributor`、普通发射的 `NoCallback`/`Callback` 两种分发模式、普通发射的 `distributorData` 可空且原样透传、`NoCallback` 下 `distributorData` 被忽略、Callback 回调失败回滚、首币固定使用 Airdrop 与 `NoCallback`、首币含名称和符号的 `TokenLaunched` 事件，以及代币列表与子币列表分页查询、符号唯一性与符号字符集（ASCII 与 CJK 基本区汉字、非法 UTF-8 拒绝）。
+**覆盖要求**：覆盖首个代币通过 `Launch.init(LaunchInitParams)` 一次性启动、使用 WETH 且不带分发数据、不消耗发射次数、启动后不能重复创建首个代币、普通发射社区与 `parentTokenAddress` 一致、非零 `distributor`、普通发射的 `NoCallback`/`Callback` 两种分发模式、普通发射的 `distributorData` 可空且原样透传、`NoCallback` 下 `distributorData` 被忽略、Callback 回调失败回滚、首币固定使用 Airdrop 与 `NoCallback`、首币含名称和符号的 `TokenLaunched` 事件，以及代币列表与子币列表分页查询、符号唯一性与符号字符集（ASCII 与 CJK 基本区汉字、非法 UTF-8 拒绝）。
 
 **测试方式**：
 - 单元测试：`core/test/Launch.t.sol` 的首个代币启动、普通发射场景
@@ -285,7 +285,7 @@
 - 事件流与结算、销毁的资产变化一致
 
 ### 外部依赖兼容性
-**覆盖要求**：`compatibility` 必须分别对本地 Uniswap V2/WETH9 参考实现和每个准备部署的目标网络 profile 的 WBNB、Uniswap V2 兼容 DEX（如 PancakeSwap）的 Factory/Pair/Router 执行测试，覆盖接口返回值、Pair 创建和 LP 铸造/销毁、Swap 手续费与储备变化、Router 报价和实际输出、Token 顺序、失败回滚及协议计算所需的 `sqrt(k)` 数据；测试记录目标链、合约地址、区块高度和提交，任何未验证的外部地址不得进入对应 BSC 部署配置。
+**覆盖要求**：`compatibility` 必须分别对本地 Uniswap V2/WETH9 参考实现和每个准备部署的目标网络 profile 的 WETH、Uniswap V2 兼容 DEX（如 PancakeSwap）的 Factory/Pair/Router 执行测试，覆盖接口返回值、Pair 创建和 LP 铸造/销毁、Swap 手续费与储备变化、Router 报价和实际输出、Token 顺序、失败回滚及协议计算所需的 `sqrt(k)` 数据；测试记录目标链、合约地址、区块高度和提交，任何未验证的外部地址不得进入对应 BSC 部署配置。
 
 **测试方式**：
 - 单元测试：`compatibility/test/*.t.sol` 按目标网络分组

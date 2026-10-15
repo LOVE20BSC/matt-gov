@@ -4,7 +4,7 @@ Compatibility 只验证 BSC 外部依赖能否满足 Core/Action 的接口、状
 
 ## 对象与配置
 
-每个 profile 独立记录链 ID、RPC 标识、固定测试区块、WBNB、Factory、Router、Pair 地址或创建参数：
+每个 profile 独立记录链 ID、RPC 标识、固定测试区块、WETH、Factory、Router、Pair 地址或创建参数：
 
 - `anvil`
 - `bsc97_dev`
@@ -23,7 +23,7 @@ profile 名称确定网络：`bsc97_dev` 的 chain ID 为 `97`，两个 `bsc56_*
 
 | 组件 | 必测行为 |
 | --- | --- |
-| WBNB/WETH9 | `deposit`、`withdraw`、余额、原生转账、ERC20 转账/授权；余额不足和非法金额回滚 |
+| WETH | `deposit`、`withdraw`、余额、原生转账、ERC20 转账/授权；余额不足和非法金额回滚 |
 | Factory | `getPair`、`createPair`、代币顺序、Pair 唯一性和重复创建 |
 | Pair | `token0`、`token1`、`getReserves`、`totalSupply`、`mint`、`burn`、`swap` |
 | Router | `getAmountsOut`、`swapExactTokensForTokens`、路径和 `amountOutMin` |

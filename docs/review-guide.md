@@ -215,7 +215,7 @@ rg -n 'core\.md|action\.md|group-chat\.md|launchFirstToken|initializeGenesis|TOD
 ### Compatibility
 
 - [ ] 每个目标 profile 有独立地址、区块、代码摘要和提交
-- [ ] WBNB、Factory、Pair、Router 均有真实调用结果
+- [ ] WETH、Factory、Pair、Router 均有真实调用结果
 - [ ] 记录 token 顺序、储备、供应、手续费、报价和舍入
 - [ ] 覆盖 Pair 创建、LP 铸造/销毁、Swap、滑点和失败回滚
 - [ ] 包含 Stake 加入、手续费结算、销毁和提取场景

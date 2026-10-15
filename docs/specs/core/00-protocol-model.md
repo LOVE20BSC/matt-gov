@@ -2,7 +2,7 @@
 
 ## 协议模型
 
-每个 LOVE20 代币有一个 `parentTokenAddress`。首个代币的父币为 WBNB，WBNB 是协议树外根父币；普通发射的父币必须是已登记的 LOVE20 代币。首币产生整数发射次数时，同数量 1:1 伴生以根父币为父币的根级次数；根级次数只能发射与首币平级的同级代币，其他代币不产生根级次数（见 [Launch 的根级次数与伴生规则](08-launch.md#根级次数与伴生规则)）。供应受 `maxSupply` 限制，代币和治理状态在链上维护。
+每个 LOVE20 代币有一个 `parentTokenAddress`。首个代币的父币为 WETH，WETH 是协议树外根父币（由 Router.WETH() 读取）；普通发射的父币必须是已登记的 LOVE20 代币。首币产生整数发射次数时，同数量 1:1 伴生以根父币为父币的根级次数；根级次数只能发射与首币平级的同级代币，其他代币不产生根级次数（见 [Launch 的根级次数与伴生规则](08-launch.md#根级次数与伴生规则)）。供应受 `maxSupply` 限制，代币和治理状态在链上维护。
 
 | 组件 | 职责 |
 | --- | --- |
@@ -40,7 +40,7 @@ Core 不解释具体 Proposal 的业务字段，扩展通过 Target 接入。
 | Mint | `roundRewardGovPerThousand`、`roundRewardProposalPerThousand` | 治理池、提案池占可用供应的千分比；状态变量和公开 getter 为 `ROUND_REWARD_GOV_PER_THOUSAND`、`ROUND_REWARD_PROPOSAL_PER_THOUSAND`，如 `30`、`10` |
 | Mint | `maxGovBoostRewardMultiplier` | 加速激励相对投票激励的倍数上限；状态变量和公开 getter 为 `MAX_GOV_BOOST_REWARD_MULTIPLIER`，如 `2` |
 | Launch | `mintAddress`、`memberNFTAddress`、`pairFactoryAddress` | 铸造、身份与建池依赖；每个代币在创建时即创建或复用 Pair |
-| Launch | `rootParentTokenAddress` | 根父币（BSC 上为 WBNB）；首币与根级同级币的父币，也是根级次数的账本维度 |
+| Launch | `rootParentTokenAddress` | 根父币（Router.WETH() 读取）；首币与根级同级币的父币，也是根级次数的账本维度 |
 | Launch | `distributor`、`name`、`symbol` | 首币分发目标、名称和符号；首币固定使用 `NoCallback`，`distributor` 非零 |
 | Launch | `launchRatio` | 发射阈值比例；状态变量和公开 getter 为 `LAUNCH_RATIO`，`1e18` 精度，如 `1e16 = 1%` |
 | Launch | `maxLaunchCount` | 每社区累计次数上限；状态变量和公开 getter 为 `MAX_LAUNCH_COUNT`，如 `100` |

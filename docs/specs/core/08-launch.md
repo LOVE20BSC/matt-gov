@@ -39,7 +39,7 @@ Launch 负责首币部署、LOVE20Token 创建、基础发射与次数账本。T
 
 ## 代币登记与查询
 
-`isLOVE20Token(tokenAddress)` 是登记状态的唯一判定入口：`init` 登记首币，`launchToken` 登记新创建的子币。对首币与所有由 Launch 创建的子币返回 `true`；对其余任何地址（WBNB、EOA、其它合约，以及未初始化时的全部地址）返回 `false`，不校验也不回滚。登记只写一次，不提供删除或改写入口。根父币（BSC 上为 WBNB）不在登记范围内，但承载根级次数，并作为根级同级币的父币维度参与 `childTokens` 查询：`isLOVE20Token(rootParentTokenAddress)` 始终为 `false`（见[根级次数与伴生规则](#根级次数与伴生规则)）。
+`isLOVE20Token(tokenAddress)` 是登记状态的唯一判定入口：`init` 登记首币，`launchToken` 登记新创建的子币。对首币与所有由 Launch 创建的子币返回 `true`；对其余任何地址（WETH、EOA、其它合约，以及未初始化时的全部地址）返回 `false`，不校验也不回滚。登记只写一次，不提供删除或改写入口。根父币（Router.WETH() 读取）不在登记范围内，但承载根级次数，并作为根级同级币的父币维度参与 `childTokens` 查询：`isLOVE20Token(rootParentTokenAddress)` 始终为 `false`（见[根级次数与伴生规则](#根级次数与伴生规则)）。
 
 登记状态记录为「代币地址 → 父币地址」，由 Launch 自己维护：非零即已登记，首币的父币地址是 `rootParentTokenAddress`。`parentTokenOf(tokenAddress)` 是读取入口，`isLOVE20Token` 也用它判定，不读取代币合约的 `parentTokenAddress()`：无关合约同样能实现这个 getter，而 EOA 与非合约地址调用它会回滚，与上面的返回约定冲突。
 
@@ -73,7 +73,7 @@ Launch 只保存“成员可用整数次数”和“社区累计已产生次数�
 
 ## 根级次数与伴生规则
 
-根父币（BSC 上为 WBNB）维度的次数称为根级次数：它用于发射与首币平级、父币同为根父币的同级代币。根级次数只作用于首币：首币每次通过 `addLaunchCount` 产生整数次数时，Launch 在同一调用内把同一 `count` 1:1 记入 `launchCount[rootParentTokenAddress][memberId]` 与 `issuedLaunchCount[rootParentTokenAddress]`，并追加一条 `LaunchCountAdded`（`tokenAddress` 为根父币）；其他代币产生次数时不伴生，其他代币也不能产生根级次数。
+根父币（Router.WETH() 读取）维度的次数称为根级次数：它用于发射与首币平级、父币同为根父币的同级代币。根级次数只作用于首币：首币每次通过 `addLaunchCount` 产生整数次数时，Launch 在同一调用内把同一 `count` 1:1 记入 `launchCount[rootParentTokenAddress][memberId]` 与 `issuedLaunchCount[rootParentTokenAddress]`，并追加一条 `LaunchCountAdded`（`tokenAddress` 为根父币）；其他代币产生次数时不伴生，其他代币也不能产生根级次数。
 
 - 伴生与首币次数增加发生在同一笔交易：`addLaunchCount` 由 Mint 调用并与治理激励铸造整体回滚，根级伴生同样整体回滚。
 - 根父币维度不由 `addLaunchCount` 的外部入口写入：Mint 直接以根父币为 `tokenAddress` 调用会按存在性校验回滚 `InvalidTokenAddress()`。
@@ -135,7 +135,7 @@ distributor 自行实现领取与查询逻辑，`claim(tokenAddress)` 只是建�
 | 施加 `Test` 前缀后的最终符号已登记 | `TokenSymbolExists()` |
 | 子币建池返回零地址 | `InvalidAddress()` |
 
-名称只按 `tokenSymbol + "@" + parentTokenSymbol` 生成，不另存名称账本；根级发射的 `parentTokenSymbol` 取根父币的实际符号（BSC 上为 WBNB，不写死）。
+名称只按 `tokenSymbol + "@" + parentTokenSymbol` 生成，不另存名称账本；根级发射的 `parentTokenSymbol` 取根父币的实际符号（按链读取，不写死）。
 
 ## 事件
 

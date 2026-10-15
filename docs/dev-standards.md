@@ -185,44 +185,47 @@ EIP-170 限制部署字节码 ≤ 24,576 字节。超过时：
 
 ## 六、部署脚本组织
 
-统一结构（示例见 `core/`）：
+统一结构（示例见 `action/`）：
 
 ```
 script/
 ├── deploy/                        # 部署脚本实现
-│   ├── one_click_deploy.sh        # 一键部署入口（必需）
+│   ├── one_click_deploy.sh        # 一键部署入口（必需，纯编排）
 │   ├── one_click_deploy_<x>.sh    # 新增合约/模块的独立入口（按需）
-│   ├── 00_init.sh                 # 部署环境初始化
-│   ├── 01_deploy.sh               # 合约部署与初始化
-│   ├── 99_check.sh                # 部署与初始化正确性校验
-│   ├── verify.sh                  # 合约开源验证
+│   ├── 11_deploy.sh               # 合约部署与初始化（自载入部署输入）
+│   ├── 21_check.sh                # 部署与初始化正确性校验（自载入校验文件）
+│   ├── 31_verify.sh               # 合约开源验证（自载入网络与地址文件）
 │   └── Deploy<Xxx>.s.sol          # Foundry 部署脚本
 └── network/
     ├── anvil31337_dev/            # 本地 anvil · dev
-    ├── bsc97_dev/                 # BSC 测试网 · dev
-    └── <链名><链id>_<部署类型>/    # 见 6.2
+    └── <链名><链id>_<部署类型>/    # 其它网络按需新建，见 6.2
 ```
 
 ### 6.1 deploy 脚本
 
 - **`one_click_deploy.sh` 必需**：一键部署本代码库的全部合约。后续新增合约/模块时额外增加 `one_click_deploy_xxx.sh`（只部署该部分）。
-- **步骤脚本只做自己那一步、互不调用**（`01_deploy.sh` 不得调用 `99_check.sh`）；顺序编排与失败处理（如校验失败不得覆盖上次已保存的地址）只放在 `one_click_deploy.sh` 一类入口脚本里。
-- **环境由调用方在调用前载入**（`source 00_init.sh <network>`）：入口脚本负责，手工单独执行某一步时由执行者负责；步骤脚本不自行载入环境，也不重复载入。部署产物（如合约地址）由入口在部署后刷新，再传给后续步骤。
+- **步骤脚本只做自己那一步、互不调用**（`11_deploy.sh` 不得调用 `21_check.sh`）；顺序编排与失败处理（如校验失败不得覆盖上次已保存的地址）只放在 `one_click_deploy.sh` 一类入口脚本里。
+- **步骤脚本自包含**：统一 `<step>.sh <network>` 一种调用形态，网络目录校验、配置存在性检查、文件载入、链 ID 核对都在步骤内完成；不依赖调用方预载环境，也没有文件互相 source。入口脚本不 source 任何文件，只做编排。共享 `00_init.sh` 一类的环境初始化文件不再单设，其职责并入 `11_deploy.sh`。
+- **步骤编号**：deploy 步骤以 `1` 开头、check 以 `2` 开头、verify 以 `3` 开头，第二位为模块序号——`1x` 部署、`2x` 校验、`3x` 验证同属模块 `x`（如 `dex`：WETH 模块 `11_deploy_weth`/`21_check_weth`，UniswapV2 模块 `12_deploy_uniswapv2`/`22_check_uniswapv2`/`32_verify`；单模块仓库即 `11`/`21`/`31`）。无可验证合约的模块不设 verify 步骤。
+- 新增合约/模块 = 一套自包含脚本（`one_click_deploy_<x>.sh` + 自己的步骤脚本 + 自己的参数文件），各模块的部署输入互不要求存在——部署模块 A 不会因模块 B 的参数缺失或变动而失败。
+- **账户签名统一走 keystore**：`.account` 是必需文件，提供 `KEYSTORE_ACCOUNT` 与 `ACCOUNT_ADDRESS`；不按链 ID 提供 `--unlocked` 回退，本地链与公共网络同一签名路径。
+- **keystore 密码口径**：`KEYSTORE_PASSWORD` 非空时直接用于解锁，部署全程无交互；留空或未配时由 macOS `osascript` 弹窗读取（全程仅一次）；非 macOS 环境没有 `osascript`，必须预设 `KEYSTORE_PASSWORD`，脚本在缺失时明确报错，不静默退出。**入口脚本不继承调用方环境变量里的密码**：`one_click_deploy.sh` 先重置 `KEYSTORE_PASSWORD` 再读 `.account`、最后才交互，避免上次运行的残留值被静默复用；因此 `KEYSTORE_PASSWORD=xxx ./one_click_deploy.sh <net>` 不生效，非交互场景请把密码写进 `.account`。
+- **被依赖方地址在 shell 层广播前校验**：从配置文件读入的被依赖方地址（如 `FACTORY_ADDRESS`/`ROUTER_ADDRESS`、`MINT_ADDRESS`/`STAKE_ADDRESS`、已配置的 `WETH_ADDRESS`）由 `11_deploy.sh` 以 `cast code` 校验为已部署合约，避免白广播本库合约；脚本内派生的值（如 `Router.WETH()`）在模拟阶段校验。
+- **键集合断言**：每个 check 步骤（`2x`）断言其地址文件的键集合等于期望合约集合（逐一对应、无多无缺）。键名漏改会让后续变量静默为空，逐项链上调用要到很后面才以难以定位的形式失败；显式断言把「漏改」变成即时失败。
 - 下列职责**各自独立成文件**，由 `one_click_deploy.sh` 统一调用，也可按实际情况单独执行其中任一文件：
 
 | 文件             | 职责                         |
 | -------------- | -------------------------- |
-| `00_init.sh`   | 部署环境初始化：校验网络目录、载入配置、核对链 ID |
-| `01_deploy.sh` | 合约部署与初始化                   |
-| `99_check.sh`  | 校验部署与初始化是否正确（只读、可重复运行）     |
-| `verify.sh`    | 合约开源验证（链支持开源验证时才需要）        |
+| `11_deploy.sh` | 合约部署与初始化；自载入部署输入（`network.params`、被依赖方地址、本模块参数、账户），写入本库地址文件 |
+| `21_check.sh`  | 校验部署与初始化是否正确（只读、可重复运行）；自载入校验文件，含上次部署写入的地址文件 |
+| `31_verify.sh` | 合约开源验证（链支持开源验证时才需要）；自载入网络与地址文件 |
 
-- 支持开源验证的链**必须包含验证环节**（`verify.sh`）；不支持的链上该步骤应跳过并返回成功，不视为失败，否则本地链与未接入浏览器的链无法一键跑通。
+- 支持开源验证的链**必须包含验证环节**（`31_verify.sh`）；不支持的链上该步骤应跳过并返回成功，不视为失败，否则本地链与未接入浏览器的链无法一键跑通。
 - **部署脚本改动先在本地链端到端验证再提交**：按依赖顺序先部署被依赖的代码库（如 `core` 依赖 `dex`），再跑本库入口脚本，确认校验步骤全部通过、工作区无残留改动；只有回归测试或"能编译"不算验证。
 
 ### 6.2 network 配置
 
-- 目录命名 **`<链名><链id>_<部署类型>`**（例：`anvil31337_dev`、`bsc97_dev`、`bsc56_public`）。
+- 目录命名 **`<链名><链id>_<部署类型>`**（例：`anvil31337_dev`、`bsc97_dev`、`bsc56_public`；均为示例名，按需新建）。
 - `<部署类型>` 三种：`dev`（开发者内测）、`public_test`（社区公测）、`public`（正式部署）。
 - **`dev` 用于 anvil 与测试网；`public_test`、`public` 只用于主网。**
 
@@ -230,13 +233,13 @@ script/
 
 | 文件                        | 内容                                                             |
 | ------------------------- | -------------------------------------------------------------- |
-| `.account`                | `KEYSTORE_ACCOUNT`（keystore 路径或账户标识）、`ACCOUNT_ADDRESS`（部署账户地址） |
+| `.account`                | `KEYSTORE_ACCOUNT`（keystore 路径或账户标识）、`ACCOUNT_ADDRESS`（部署账户地址）、`KEYSTORE_PASSWORD`（可选，口径见 6.1） |
 | `network.params`          | `CHAIN_ID`、`RPC_URL`                                           |
 | `<代码库名>.params`           | 构造函数或 `init` 所需的全部参数；参数名与接口声明一致                                |
-| `addresses.<代码库名>.params` | 已部署的链上地址记录，供后续脚本引用与验证                                          |
+| `addresses.<代码库名>.params` | 已部署的链上地址记录，供后续脚本引用与验证；代码库按模块拆分部署时，一个模块一个 `addresses.<模块名>.params`（如 `addresses.weth.params`、`addresses.uniswapv2.params`） |
 
 - `.account` 含敏感信息，必须加入 `.gitignore`；其余三个提交进 Git。
 - 部署脚本从这些文件读配置，不得硬编码网络参数或地址。网络切换只切 `network/` 子目录，不改脚本。
-- **跨库依赖地址**：A 依赖 B 已部署合约时，把 B 的 `addresses.<B>.params` 复制到 `A/script/network/<net>/`，与 `addresses.<A>.params` 并列，不在 A 的配置文件里重复记录 B 的地址（如 `core` 依赖 `dex` 时复制 `addresses.dex.params`）。这样 B 重新部署后，A 只需复制新地址文件即可同步，避免手工转抄与多处漂移。
+- **跨库依赖地址**：A 依赖 B 已部署合约时，把 B 的各模块 `addresses.<模块名>.params` 复制到 `A/script/network/<net>/`，与 `addresses.<A>.params` 并列，不在 A 的配置文件里重复记录 B 的地址（如 `core` 依赖 `dex` 时只复制 UniswapV2 模块的 `addresses.uniswapv2.params`；根父币由 `Router.WETH()` 读取，无需复制 WETH 模块文件）。这样 B 重新部署后，A 只需复制新地址文件即可同步，避免手工转抄与多处漂移。
 - 部署脚本按依赖顺序 `source` 各 `addresses.*.params`：先被依赖方，再本库。
 - 可在依赖地址文件顶部注释记录来源提交或部署时间，便于版本追踪与对账。
