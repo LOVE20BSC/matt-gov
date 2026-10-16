@@ -32,7 +32,7 @@
 - 约 300 个 Proposal 的准备交易可完成，且准备后的 `eligibleProposalVotes` 只读不改
 - 非 Target 铸造拒绝
 - 各 Proposal Target 按冻结状态单独计算并铸造且单 Proposal 只能成功一次
-- 行动类 `ActionTarget -> Mint -> executor` 转发
+- 行动类 `executor -> ActionTarget -> Mint -> executor`：Mint 按 Target 指定的 `recipient` 直铸给 Executor，路径上无中间转账
 - 铸造失败整笔回滚
 
 **测试方式**：
@@ -272,10 +272,10 @@
 ### GroupService 结算
 **覆盖要求**：覆盖服务代币与行动代币相同或为其直接父币、非直接关系拒绝；覆盖只有当轮已加入服务 Proposal 的群 owner/公共验证者候选 MemberNFT 才能按人结算、未加入角色份额不重分配、所有 GroupAction 总激励作为分母且首次计算后缓存、源行动激励查询自行处理验证条件、公共验证者按工作量直接分配，以及按确认后的 owner 治理票占比处理超额销毁；同时覆盖加入资格两类分支（社区激活链群 / 服务轮社区行动集内有效候选申请）、`1e18` 乘数精度、100% 二次分配不下溢，以及逐笔付款与销毁事件可还原全部资产变化。
 
-`totalGroupActionReward == 0` 时不执行除法；覆盖轮次结束后任何地址调用 `burnRewardIfNeeded(serviceTokenAddress, serviceActionId, round)`：`D == 0` 时经 ActionTarget 核销整笔预留激励（无代币移动、`RewardBurned` 留痕、重复调用无操作），owner 超额销毁由 Executor 直接调用服务代币 `burn`，两条销毁路径互斥。
+`totalGroupActionReward == 0` 时不执行除法；覆盖该情形下任何角色结算都回滚 `NoRewardAvailable`、整笔预留激励停留在未结算状态（无销毁入口、预留不释放），owner 超额销毁由 Executor 直接调用服务代币 `burn`。
 
 **测试方式**：
-- 单元测试：`action/test/GroupServiceSettlement.t.sol`（治理上限、核销链路与精度边界）、`action/test/GroupServiceEvents.t.sol`（事件还原）和 `action/test/GroupServiceRecipients.t.sol`（二次分配）的服务结算场景
+- 单元测试：`action/test/GroupServiceSettlement.t.sol`（治理上限、零分母结算与精度边界）、`action/test/GroupServiceEvents.t.sol`（事件还原）和 `action/test/GroupServiceRecipients.t.sol`（二次分配）的服务结算场景
 - 验收证据：结算金额分配日志、精度验证日志
 
 **判定标准**：

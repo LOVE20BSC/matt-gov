@@ -11,7 +11,6 @@
 - `exit(tokenAddress, actionId, memberId)` — 完全退出的签名是通用的
 - `mintMemberReward(...)` / `memberReward(...)` 与事件 `MemberRewardMinted` — 成员级奖励的铸造与查询，签名三家一致（成员级奖励裁决）
 - `mintMemberRewards(...)` — 批量成员结算（平行数组按下标配对，任一元素失败整笔回滚）
-- `needBurnReward(...)` — 行动级销毁判据：本轮整笔激励是否无法分配（bool），供 ActionTarget 的 `burnRewardIfNeeded` 取用
 - `joinedAmount(...)` / `joinedAmountByMemberId(...)` / `joinedAmountTokenAddress(...)` — 截止加入轮 `round` 结束的累计参与量、按成员累计量与参与计价代币（`round` 大于当前加入轮时按未开始返回 0；计价代币与轮次无关，故 `joinedAmountTokenAddress` 不带 `round`；口径由各 Executor 规格固定）。与 GroupAction 的 `joinInfo` 快照（另含 `joinedRound`、`groupId` 与 `ownAmount`/`providerAmount`）同键同值为**有意并存**：基座是跨 Executor 的统一聚合口径，`joinInfo` 是成员记录快照入口
 - `currentVoteRound()` / `currentJoinRound()` / `currentMintRound()` — 从 `Phase.currentPhase()` 推导的三阶段 Round；未开始回滚 `RoundNotStarted`
 
@@ -67,8 +66,6 @@ interface IActionExecutor is IProposalTarget, IActionExecutorEvents, IActionExec
     function mintMemberRewards(address tokenAddress, uint256[] calldata actionIds, uint256 memberId,
         uint256[] calldata rounds)
         external returns (uint256[] memory mintAmounts, uint256[] memory burnAmounts);
-    function needBurnReward(address tokenAddress, uint256 actionId, uint256 round)
-        external view returns (bool needed);
 
     function currentVoteRound() external view returns (uint256);
     function currentJoinRound() external view returns (uint256);
@@ -83,7 +80,7 @@ interface IActionExecutor is IProposalTarget, IActionExecutorEvents, IActionExec
 }
 ```
 
-`IActionExecutor` 装七处真正共享的成员：自证绑定、初始化查询、完全退出、Round 查询、成员级奖励（`mintMemberReward`/`mintMemberRewards`/`memberReward` 与事件 `MemberRewardMinted`，成员级奖励裁决定稿）、行动级销毁判据（`needBurnReward`，销毁执行与 `RewardBurned` 在 ActionTarget）、参与量查询（`joinedAmount` 族，按加入轮累计）。各 Executor 的 `Errors` 子接口按各自旧文件拆分。
+`IActionExecutor` 装六处真正共享的成员：自证绑定、初始化查询、完全退出、Round 查询、成员级奖励（`mintMemberReward`/`mintMemberRewards`/`memberReward` 与事件 `MemberRewardMinted`，成员级奖励裁决定稿）、参与量查询（`joinedAmount` 族，按加入轮累计）。各 Executor 的 `Errors` 子接口按各自旧文件拆分。
 
 ## 与 ActionTarget 的调用关系
 

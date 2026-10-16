@@ -79,6 +79,6 @@ burnReward = theoreticalReward - mintReward
 
 乘数为 0 时关闭上限并返回理论激励；上限启用且总治理票为 0 时该成员理论激励全部销毁。未参与的轮次查询返回零。结算量为零（`mintAmount` 与 `burnAmount` 均为 0，含无有效参与量、行动激励为零）时回滚 `NoRewardAvailable`，不置位已结算、不发事件，不拉取整笔激励，可待行动激励就绪后重试；有销毁量即允许结算。销毁调用 Token.burn，不修改 Core 的取消预留账本。销毁量带成员归属，因此并入该成员 `MemberRewardMinted.burnAmount`，不单独立事件；纯销毁情形下 `mintAmount = 0` 而 `burnAmount > 0`，`minted` 仍为 true。
 
-成员结算按 [统一铸造链路](07-minting.md#铸造链路) 进行：整笔预期数量读 `ActionTarget.actionReward`（未铸造时返回理论可铸造数量），大于零且未铸造时经 `ActionTarget.mintActionReward` 取得该整笔激励再内部分配；该轮有效参与总量（`totalJoinedAmount - totalDeduction`）为零或预期数量为零时，成员结算无产出，回滚 `NoRewardAvailable`（不拉取整笔激励、不记已结算）。`needBurnReward` 仅在轮次已到铸币轮且有效参与总量为零时返回真，由 `ActionTarget.burnRewardIfNeeded` 核销预留。未到铸币轮的轮次结算回滚（见上表），查询返回零值。
+成员结算按 [统一铸造链路](07-minting.md#铸造链路) 进行：整笔预期数量读 `ActionTarget.actionReward`（未铸造时返回理论可铸造数量），大于零且未铸造时经 `ActionTarget.mintActionReward` 取得该整笔激励再内部分配；该轮有效参与总量（`totalJoinedAmount - totalDeduction`）为零或预期数量为零时，成员结算无产出，回滚 `NoRewardAvailable`（不拉取整笔激励、不记已结算）。轮次已到铸币轮而有效参与总量仍为零时，该轮没有任何有效分配路径：结算一律回滚 `NoRewardAvailable`，整笔激励停留在未结算状态，预留不释放（没有销毁入口）。未到铸币轮的轮次结算回滚（见上表），查询返回零值。
 
 来源：旧 `LOVE20TKM/extension-lp/src/ExtensionLp.sol`、`LOVE20TKM/extension-lp/src/ExtensionLpFactoryV2.sol` 和 `LOVE20TKM/extension/src/ExtensionBaseRewardTokenJoin.sol`。部分撤回、全额撤回自动退出与取消退出等待是 BSC 新增/变更，不声称旧 V2 已具备。验收见 [Action 验收](08-testing.md)。

@@ -29,7 +29,7 @@ theoreticalOwnerReward(m)    = mulDiv(serviceReward, (1e18 - r) * ownerWeightNum
 
 `generatedActionRewardByGroupId` 对未完成验证或无参与的行动返回 0，`lockedVerifierId` 只在该行动的目标轮存在锁定验证者时非零；每个行动只在其创建轮产出参与与激励，`votedActions` 入榜的行动即该轮创建的行动，跨轮行动天然不计入。理论金额使用同一组不提前截断的分子与分母（`Math.mulDiv`）。
 
-首次成功结算某服务轮次时，按 `actionTokenAddress + round` 冻结整本奖励账：分母 `D`、每个行动的 `A[a]`、以及每个群在行动内的切片 `groupReward(a, g)`。查询不能写状态，未冻结时按实时账本只计算返回，后续结算一律读取冻结值，包括被冻结为零的项——零值同样不再回读实时账本。分子与分母因此始终同源：owner 权重按 `groupReward` 冻结值汇总，验证者权重按 `A[a]` 冻结值汇总，冻结后账本再变动也不会把同一笔服务激励二次分配。冻结在结算读取之前写入，零额回滚时随交易一并撤销；销毁路径不写状态；`needBurnReward` 每次按需计算。冻结账本与分母缓存是内部状态，不属于对外 ABI。
+首次成功结算某服务轮次时，按 `actionTokenAddress + round` 冻结整本奖励账：分母 `D`、每个行动的 `A[a]`、以及每个群在行动内的切片 `groupReward(a, g)`。查询不能写状态，未冻结时按实时账本只计算返回，后续结算一律读取冻结值，包括被冻结为零的项——零值同样不再回读实时账本。分子与分母因此始终同源：owner 权重按 `groupReward` 冻结值汇总，验证者权重按 `A[a]` 冻结值汇总，冻结后账本再变动也不会把同一笔服务激励二次分配。冻结在结算读取之前写入，零额回滚时随交易一并撤销；零分母不落缓存、分母每次重算。冻结账本与分母缓存是内部状态，不属于对外 ABI。
 
 完整 ABI 见 [`IGroupServiceExecutor.sol`](https://github.com/LOVE20BSC/action/blob/main/src/interfaces/IGroupServiceExecutor.sol)（继承 [`IGroupRecipients.sol`](https://github.com/LOVE20BSC/action/blob/main/src/interfaces/IGroupRecipients.sol) 的二次分配配置面）。
 
@@ -41,7 +41,7 @@ theoreticalOwnerReward(m)    = mulDiv(serviceReward, (1e18 - r) * ownerWeightNum
 
 基座 `joinedAmount` 族代理社区激活质押：`joinedAmount(serviceTokenAddress, serviceActionId, round)` 返回 `totalStaked(actionTokenAddress)`（`round > currentJoinRound()` 返回 0），`joinedAmountByMemberId(serviceTokenAddress, serviceActionId, round, memberId)` 返回 `totalStakedByMemberId(actionTokenAddress, memberId)`，`joinedAmountTokenAddress(serviceTokenAddress, serviceActionId)` 返回 `ACTION_TOKEN_ADDRESS(serviceTokenAddress, serviceActionId)`；社区激活质押为当前值，没有按轮历史。
 
-[组织验收](../../acceptance.md#groupservice-结算) 还要求：只有本轮加入服务 Proposal 的群 owner/候选 MemberNFT 可按人结算，未加入角色份额不重分配。每个角色先检查自己的分子，为零只跳过该角色，不影响同一 memberId 的另一角色；两个分子都为零时不读取分母，视图返回全零，结算入口按零额规则回滚 `NoRewardAvailable`（见 [统一链路](07-minting.md#铸造链路)）。`totalGroupActionReward == 0` 时，任何地址可在轮次结束后调用 `burnRewardIfNeeded(serviceTokenAddress, serviceActionId, round)` 销毁整笔服务激励（`needBurnReward` 与 GroupAction 同型：轮次不等于 `createdRound` 或超过 `currentMintRound()` 时返回 false，否则返回 `D == 0`），销毁由 `IActionTargetEvents.RewardBurned(tokenAddress, actionId, round, amount)` 留痕。
+[组织验收](../../acceptance.md#groupservice-结算) 还要求：只有本轮加入服务 Proposal 的群 owner/候选 MemberNFT 可按人结算，未加入角色份额不重分配。每个角色先检查自己的分子，为零只跳过该角色，不影响同一 memberId 的另一角色；两个分子都为零时不读取分母，视图返回全零，结算入口按零额规则回滚 `NoRewardAvailable`（见 [统一链路](07-minting.md#铸造链路)）。`totalGroupActionReward == 0` 时该轮没有分配路径（判据与 GroupAction 同型：轮次不等于 `createdRound` 或超过 `currentMintRound()` 时不适用，否则看 `D == 0`），任何角色结算都回滚 `NoRewardAvailable`，整笔服务激励停留在未结算状态、预留不释放。
 
 ## 治理上限
 
@@ -62,7 +62,7 @@ ownerOverflow(m) = theoreticalOwnerReward(m) - actualOwnerReward(m)
 
 其中 `theoreticalOwnerReward(m)` 使用上节权重公式；治理票读取 `Stake.validGovVotes(actionTokenAddress, m)` 和 `Stake.globalGovVotes(actionTokenAddress)`。上限启用且总治理票为零时只销毁 owner 理论激励；乘数为零直接关闭上限。结算使用服务铸造时 `actionTokenAddress` 社区最新的有效治理票；已结算的查询返回记录结果，不重新套用后续票权。
 
-`GOV_RATIO_MULTIPLIER` 与 `RATIO_FOR_PUBLIC_VERIFIER` 来自服务 Proposal 创建回调的 `targetData[2]`、`targetData[3]`；owner 超额按每个 owner 单独记入 `ownerBurned`。服务代币已经由 Mint 铸造并转入 Executor 后，销毁直接调用该代币的 `burn(amount)`；不重复修改 Core Mint 的 `rewardBurned`。服务 Proposal 本轮没有激励时由 Mint 的内部 Round 准备逻辑处理，Executor 不重复判断。
+`GOV_RATIO_MULTIPLIER` 与 `RATIO_FOR_PUBLIC_VERIFIER` 来自服务 Proposal 创建回调的 `targetData[2]`、`targetData[3]`；owner 超额按每个 owner 单独记入 `ownerBurned`。服务代币已经由 Mint 直接铸给 Executor 后，销毁直接调用该代币的 `burn(amount)`；不重复修改 Core Mint 的 `rewardBurned`。服务 Proposal 本轮没有激励时由 Mint 的内部 Round 准备逻辑处理，Executor 不重复判断。
 
 成员级结清每次结算发出两条事件：基座的 `MemberRewardMinted(tokenAddress, actionId, memberId, round, mintAmount, burnAmount)` 记公共口径，本接口的 `ServiceRewardDistributed(...)` 追加角色细分。两者必须满足 `MemberRewardMinted.mintAmount == verifierReward + ownerReward` 且 `.burnAmount == ownerBurned`，因此基座的「可铸造」在本接口是**聚合值**（服务轮次的可铸造量不是标量，公共验证者与 owner 两部分独立计算），逐个角色的金额仍读 `serviceRewardByMember`。`ServiceRewardDistributed` 与 `serviceRewardByMember` 同时给出 owner 份额的拆分：`ownerDistributed` 为实际转给二次分配接收者的总额（逐笔见 `DistributeRecipient`），`ownerRemaining` 为留在 owner 手中的部分（含无配置行动的整份切片与逐项取整余数），恒有 `ownerReward == ownerDistributed + ownerRemaining`。
 
@@ -84,7 +84,7 @@ amount[i] = mulDiv(slice(a, m), ratios[i], 1e18)
 
 各项取整后的总支出不得超过对应预算，`slice` 层与 owner 总量层的舍入余数都归 owner；100% 分配不得下溢。旧版两处双重 floor 曾使「单链群理论激励之和」超过可铸造量，100% 分配时 `mintReward - distributed` 下溢、整笔铸造回滚；本版全部中间量不提前截断，**`Σ 转账 + 销毁 ≤ serviceReward` 为承重不变量**，回归用例见 [Action 验收](08-testing.md)。
 
-逐笔付款由 `DistributeRecipient(serviceTokenAddress, round, serviceActionId, groupId, sourceActionId, recipientId, amount)` 留痕；事件流连同 `MemberRewardMinted`、`RewardBurned` 可完整还原结算的全部资产变化。
+逐笔付款由 `DistributeRecipient(serviceTokenAddress, round, serviceActionId, groupId, sourceActionId, recipientId, amount)` 留痕；事件流连同 `MemberRewardMinted` 与服务代币的 `TokenBurn` 可完整还原结算的全部资产变化。
 
 ## 实现约束
 

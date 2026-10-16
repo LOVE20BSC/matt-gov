@@ -77,8 +77,8 @@
 - **旧**：成员各自调用 `LOVE20Mint.mintActionReward` 领取自己那一份，去重键含 `msg.sender`（成员级，同一行动各成员互不影响）
 - **新**：Executor 每轮经 `ActionTarget.mintActionReward` 一次性铸造整笔激励，去重键 `tokenAddress + actionId + round`（行动级，整个行动本轮只能铸一次），再按自身账本分给参与成员
 - **对成员不透明**：成员只与 Executor 的成员级入口交互，不需要了解也不依赖 ActionTarget 这一层；ActionTarget 不向成员暴露领取入口
-- **事件分层**：行动级整笔由 ActionTarget 发出 `ActionRewardMinted(tokenAddress, actionId, round, amount)`；成员级由各 Executor 发出 `MemberRewardMinted(tokenAddress, actionId, memberId, round, mintAmount, burnAmount)`（声明在共用基座 `IActionExecutorEvents`）。成员归属的销毁并入后者的 `burnAmount`；无成员归属的整批销毁才单独立为 `RewardBurned`，声明在 `IActionTargetEvents`、由 ActionTarget 发出，各 Executor 不声明
-- **共用成员上提**：三个 Executor 签名一致的 1 个事件（`MemberRewardMinted`）与 8 个错误上提到 `IActionExecutor` 的子接口；批量成员结算 `mintMemberRewards`、销毁判据 `needBurnReward` 与参与量查询 `joinedAmount` 族同在基座，销毁执行 `burnRewardIfNeeded`/`burnInfo`/事件 `RewardBurned` 在 ActionTarget。只被两家使用的（如 `InvalidParticipationAmount`）留在各自子接口
+- **事件分层**：行动级整笔由 ActionTarget 发出 `ActionRewardMinted(tokenAddress, actionId, round, amount)`；成员级由各 Executor 发出 `MemberRewardMinted(tokenAddress, actionId, memberId, round, mintAmount, burnAmount)`（声明在共用基座 `IActionExecutorEvents`）。成员归属的销毁并入后者的 `burnAmount`；无成员归属的整批销毁没有入口，不再有行动级 `RewardBurned`
+- **共用成员上提**：三个 Executor 签名一致的 1 个事件（`MemberRewardMinted`）与 8 个错误上提到 `IActionExecutor` 的子接口；批量成员结算 `mintMemberRewards` 与参与量查询 `joinedAmount` 族同在基座；ActionTarget 与 Executor 都不再有销毁层。只被两家使用的（如 `InvalidParticipationAmount`）留在各自子接口
 
 #### 行为变更（旧回滚 → 新幂等/不回滚）
 - **重复加入**：旧 `ExtensionCenter.sol:187-189` 回滚 `AccountAlreadyJoined`；新 `registerJoinState` 幂等，不改状态、不发事件
@@ -91,7 +91,9 @@
 - 补四个依赖 getter：`memberNFTAddress()` / `submitAddress()` / `voteAddress()` / `mintAddress()`，供发布前检查脚本核对绑定结果；另补派生的 `phaseAddress()`（init 时从 `IMint(mintAddress).phaseAddress()` 缓存并暴露，当前投票轮直读 Phase）
 - `IActionExecutor` 补 `actionTarget()`（自证绑定）与 `initialized()`
 - 删三个不可达错误：`IndexOutOfBounds`、`InvalidRound`、`InvalidKVLength`（ActionTarget 不做分页越界回滚、不校验业务 Round、不校验 Target Data 的业务项）；`InvalidKVLength` 同时从 `ILpExecutor`、`IGroupActionExecutor`、`IGroupServiceExecutor` 删除——无键 `bytes[]` 下不存在「两数组」，需要项数校验时由各 Executor 在自己的 `Errors` 子接口声明
-- `RewardAlreadyMinted` 离开 ActionTarget：ActionTarget 侧为行动级去重 `AlreadyMinted(tokenAddress, actionId, round)`，成员级去重留在各 Executor
+- `RewardAlreadyMinted` 离开 ActionTarget：行动级去重由 Mint 的状态位承担（同一行动同一轮重复铸造回滚 `AlreadyMinted()`），ActionTarget 不再保存行动级铸造状态位，`actionReward` 直接委托 Mint 的 `proposalRewardByProposalId`；成员级去重留在各 Executor
+- 行动级激励不再经 ActionTarget 转手：Mint 的 `mintProposalReward` 增加 `recipient` 入参，ActionTarget 把绑定的 Executor 直接作为收款人传入，省掉一次 ERC20 转账；随之删除不可达的 `TransferFailed` 错误
+- 销毁机制整个删除：Mint 删除 `burnUnmintedProposalReward`，`BurnReason` 只保留准备期取消池与治理溢出三项；ActionTarget 删除 `burnRewardIfNeeded`/`burnInfo`/销毁账本与行动级 `RewardBurned`；`IActionExecutor` 删除 `needBurnReward` 与各 Executor 的实现，不新增任何销毁接口——不可分配的激励永久停留在未结算状态，预留不释放，理由与代价见 [ADR-004](../adr/004-action-reward-ledger-owned-by-mint.md)
 - 补 `actionReward(tokenAddress, actionId, round) returns (amount, minted)`：铸造信息只读入口，未铸造与未关联都返回 `(0, false)` 不回滚
 - `mintActionReward` 权限收紧为该行动**已注册绑定的 Executor**（`executor[tokenAddress][actionId] == msg.sender` 且绑定非零），其他调用者回滚 `UnauthorizedExecutor(tokenAddress, actionId)`
 
@@ -308,7 +310,7 @@ theoreticalVerifierReward(m) = serviceReward × verifierWeightNumerator(m) / (to
 theoreticalOwnerReward(m) = serviceReward × ownerWeightNumerator(m) / (totalGroupActionReward × 1e18)
 ```
 
-`totalGroupActionReward` 统计 `actionTokenAddress` 社区本轮全部 GroupAction 激励，首次按 `actionTokenAddress + round` 计算并缓存。各角色分子为零时直接返回，不执行除法；分母为零时由 `burnRewardIfNeeded(serviceTokenAddress, serviceActionId, round)` 销毁整笔服务激励。
+`totalGroupActionReward` 统计 `actionTokenAddress` 社区本轮全部 GroupAction 激励，首次按 `actionTokenAddress + round` 计算并缓存。各角色分子为零时直接返回，不执行除法；分母为零时该轮无法结算，整笔服务激励停留在未结算状态（无销毁入口）。
 
 #### 二次分配
 **保留逻辑**：groupId 当前持有人可以按 `sourceTokenAddress + sourceActionId + groupId + round` 配置 `recipientIds[]` 和 `ratios[]`；查询轮次没有配置时沿用不晚于该轮的最近配置。
