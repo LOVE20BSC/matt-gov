@@ -10,15 +10,15 @@
 | --- | --- |
 | `A[a]` | 源 GroupAction a 的行动层分配总额，等于其全部链群成员激励之和 |
 | `r` / `RATIO_FOR_PUBLIC_VERIFIER` | 服务 Proposal 绑定的公共验证者比例，`1e18` 精度；各源行动统一取该值（不再由候选在申请时自报） |
-| `totalGroupActionReward` | `actionTokenAddress` 社区本轮全部 GroupAction 的 `A[a]` 之和，首次计算时缓存为本服务轮次分母 |
+| `totalGroupActionReward` | `actionTokenAddress` 社区本轮全部 GroupAction 的 `A[a]` 之和，首次成功结算时冻结为本服务轮次分母 |
 | `publicVerifierId[a]` | 行动 a 在目标轮锁定的公共验证者 memberId |
 | `m` | 结算主体 memberId；作为群 owner 时也是 groupId |
-| `groupReward(a, m)` | Group m 在行动 a 的成员激励总和 |
+| `groupReward(a, m)` | Group m 在行动 a 的成员激励总和；与 `A[a]`、`D` 同源，来自同一本冻结账 |
 | `serviceReward` | 本服务 Proposal 的整笔激励 |
 
 ```text
 A[a] = Σ_{g ∈ groupIds(actionTokenAddress, a, round)} generatedActionRewardByGroupId(actionTokenAddress, a, round, g)
-D    = Σ_a A[a]                                                          // 按 actionTokenAddress + round 缓存
+D    = Σ_a A[a]                                                          // 首次成功结算时按 actionTokenAddress + round 冻结
 
 verifierWeightNumerator(m) = Σ_{a: lockedVerifierId(actionTokenAddress, a, round) == m} A[a]
 ownerWeightNumerator(m)    = Σ_a groupReward(a, m)
@@ -29,7 +29,7 @@ theoreticalOwnerReward(m)    = mulDiv(serviceReward, (1e18 - r) * ownerWeightNum
 
 `generatedActionRewardByGroupId` 对未完成验证或无参与的行动返回 0，`lockedVerifierId` 只在该行动的目标轮存在锁定验证者时非零；每个行动只在其创建轮产出参与与激励，`votedActions` 入榜的行动即该轮创建的行动，跨轮行动天然不计入。理论金额使用同一组不提前截断的分子与分母（`Math.mulDiv`）。
 
-首次成功结算某服务轮次时，按 `actionTokenAddress + round` 计算并缓存分母；查询不能写状态，未缓存时只计算返回，后续结算读取缓存。零分母不产生缓存写：结算在缓存写入前因零额回滚，销毁路径不写状态；`needBurnReward` 每次按需计算。分母缓存是内部状态，不属于对外 ABI。
+首次成功结算某服务轮次时，按 `actionTokenAddress + round` 冻结整本奖励账：分母 `D`、每个行动的 `A[a]`、以及每个群在行动内的切片 `groupReward(a, g)`。查询不能写状态，未冻结时按实时账本只计算返回，后续结算一律读取冻结值，包括被冻结为零的项——零值同样不再回读实时账本。分子与分母因此始终同源：owner 权重按 `groupReward` 冻结值汇总，验证者权重按 `A[a]` 冻结值汇总，冻结后账本再变动也不会把同一笔服务激励二次分配。冻结在结算读取之前写入，零额回滚时随交易一并撤销；销毁路径不写状态；`needBurnReward` 每次按需计算。冻结账本与分母缓存是内部状态，不属于对外 ABI。
 
 完整 ABI 见 [`IGroupServiceExecutor.sol`](https://github.com/LOVE20BSC/action/blob/main/src/interfaces/IGroupServiceExecutor.sol)（继承 [`IGroupRecipients.sol`](https://github.com/LOVE20BSC/action/blob/main/src/interfaces/IGroupRecipients.sol) 的二次分配配置面）。
 
@@ -52,13 +52,13 @@ W(m)   = (1e18 - r) * ownerWeightNumerator(m)                            // 不�
 govRatio(m) = globalGovVotes == 0 ? 0 : mulDiv(validGovVotes(actionTokenAddress, m), 1e18, globalGovVotes)
 cap(m)      = multiplier == 0 ? 上限关闭 : mulDiv(govRatio(m), multiplier, 1e18)
 
-actualOwnerReward(m) = (multiplier == 0 || cap(m) * D >= W(m))
+actualOwnerReward(m) = (multiplier == 0 || cap(m) >= ceilDiv(W(m), D))
     ? theoreticalOwnerReward(m)
     : mulDiv(serviceReward, cap(m), 1e18)
 ownerOverflow(m) = theoreticalOwnerReward(m) - actualOwnerReward(m)
 ```
 
-上限判定用交叉相乘，不对 ratio 先取整再比较：上限未触发时 `actualOwnerReward == theoreticalOwnerReward`，不产生取整粉尘销毁；触发时按 `cap(m)` 全额向下取整。
+上限判定等价于交叉相乘 `cap(m) * D >= W(m)`，即 `cap(m) >= ceilDiv(W(m), D)`；实现对 ratio 不先取整，但按后一形式比较：除法形式不会溢出，任意 `govRatioMultiplier`（含极大值）都不会让结算回滚并锁死该行动。上限未触发时 `actualOwnerReward == theoreticalOwnerReward`，不产生取整粉尘销毁；触发时按 `cap(m)` 全额向下取整。
 
 其中 `theoreticalOwnerReward(m)` 使用上节权重公式；治理票读取 `Stake.validGovVotes(actionTokenAddress, m)` 和 `Stake.globalGovVotes(actionTokenAddress)`。上限启用且总治理票为零时只销毁 owner 理论激励；乘数为零直接关闭上限。结算使用服务铸造时 `actionTokenAddress` 社区最新的有效治理票；已结算的查询返回记录结果，不重新套用后续票权。
 
