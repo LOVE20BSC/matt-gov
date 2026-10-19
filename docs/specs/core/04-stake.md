@@ -72,20 +72,22 @@ newFeeLp = totalLp - newWithdrawableLp
 **二、单笔结算量就是一个阈值单位。**
 
 ```text
-settlementUnit = floor(withdrawableLp / MAX_WITHDRAWABLE_TO_FEE_RATIO)
+settlementUnit = floor(withdrawableLp * 1e18 / MAX_WITHDRAWABLE_TO_FEE_RATIO)
 触发条件        feeLp >= settlementUnit
 单笔处理量      processedFeeLp = settlementUnit
 ```
 
+`MAX_WITHDRAWABLE_TO_FEE_RATIO` 以 `1e18` 表示 1:1，即「可提取 LP : 手续费 LP」的比值上限；上面的 `1e18` 定点除法等价于 `withdrawableLp / ratio` 的整数除法，不引入精度损失。
+
 阈值同时定义「何时开始烧」和「一次烧多少」：达到一个单位就结算一个单位，剩余 `feeLp - settlementUnit` 留待下个 Phase。这样不需要第二个参数。
 
-结算把 `processedFeeLp / pairTotalSupply` 的流动性按比例取出，再把其中父币那半卖出，价格移动比例恰为 `processedFeeLp / pairTotalSupply`，即 `(withdrawableLp / pairTotalSupply) / MAX_WITHDRAWABLE_TO_FEE_RATIO`——不超过 `1 / MAX_WITHDRAWABLE_TO_FEE_RATIO`（Stake 持满整个 Pair 时取到上界）。**因此该参数同时是夹子敞口的尺度，取值必须满足**：
+结算把 `processedFeeLp / pairTotalSupply` 的流动性按比例取出，再把其中父币那半卖出，价格移动比例恰为 `processedFeeLp / pairTotalSupply`，即 `(withdrawableLp * 1e18) / (pairTotalSupply * MAX_WITHDRAWABLE_TO_FEE_RATIO)`——不超过 `1e18 / MAX_WITHDRAWABLE_TO_FEE_RATIO`（Stake 持满整个 Pair 时取到上界）。**因此该参数同时是夹子敞口的尺度，取值必须满足**：
 
 ```text
-MAX_WITHDRAWABLE_TO_FEE_RATIO >= 1 / 池费率
+MAX_WITHDRAWABLE_TO_FEE_RATIO >= 1e18 / 池费率
 ```
 
-夹子需要在一次往返中盖过两倍池费才有利润，上式让单笔价格移动不超过一个池费率，留出两倍余量。目标池费率 0.25% 时要求该值不小于 `400`；旧代码使用的 `1000` 满足（覆盖率 0.1%，余量 2.5 倍）。取值低于该下界会静默放大夹子敞口，部署前须按目标 DEX 的实际池费率核对。
+夹子需要在一次往返中盖过两倍池费才有利润，上式让单笔价格移动不超过一个池费率，留出两倍余量。目标池费率 0.25% 时要求该值不小于 `400e18`；配置使用的 `1000e18` 满足（覆盖率 0.1%，余量 2.5 倍）。取值低于该下界会静默放大夹子敞口，部署前须按目标 DEX 的实际池费率核对。
 
 单笔量过小、无法让 Pair 两侧都产出非零数量时（`pair.burn` 会回滚 `INSUFFICIENT_LIQUIDITY_BURNED`），本次不结算也不消耗本 Phase 的额度。
 

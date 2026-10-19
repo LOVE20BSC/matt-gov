@@ -70,12 +70,16 @@ totalDeduction -= deductionReduction
 成员与社区治理票均在铸造时读取 `Stake.validGovVotes(tokenAddress, memberId)` 和 `Stake.globalGovVotes(tokenAddress)`。已铸造轮次的 `govRatio` 返回当时记录，不受后续质押变化影响。
 
 ```text
-theoreticalReward = floor(proposalReward * effectiveLpRatio / 1e18)
+theoreticalReward = floor(proposalReward * effectiveAmount / totalEffectiveAmount)
 govRatio = floor(validGovVotes * 1e18 / totalGovVotes)
 govRatioCap = floor(govRatio * govRatioMultiplier / 1e18)
-mintReward = floor(proposalReward * min(effectiveLpRatio, govRatioCap) / 1e18)
+mintReward = effectiveLpRatio <= govRatioCap
+    ? theoreticalReward
+    : floor(proposalReward * govRatioCap / 1e18)
 burnReward = theoreticalReward - mintReward
 ```
+
+`cap` 不生效时直接取 `theoreticalReward`；若改用截断后的 `effectiveLpRatio` 重算，可能少 1 个单位，把本应零销毁的结算变成 1 单位销毁。
 
 乘数为 0 时关闭上限并返回理论激励；上限启用且总治理票为 0 时该成员理论激励全部销毁。未参与的轮次查询返回零。结算量为零（`mintAmount` 与 `burnAmount` 均为 0，含无有效参与量、行动激励为零）时回滚 `NoRewardAvailable`，不置位已结算、不发事件，不拉取整笔激励，可待行动激励就绪后重试；有销毁量即允许结算。销毁调用 Token.burn，不修改 Core 的取消预留账本。销毁量带成员归属，因此并入该成员 `MemberRewardMinted.burnAmount`，不单独立事件；纯销毁情形下 `mintAmount = 0` 而 `burnAmount > 0`，`minted` 仍为 true。
 
