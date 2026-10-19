@@ -15,7 +15,7 @@
 - delegate NFT 当前持有人可批量清除自己收到的委托、开关委托方白名单和维护允许的 groupId 列表。
 - 保留有效 delegate 查询、批量查询、被委托群/白名单枚举与分页、幂等行为及旧事件。
 
-委托接口见 [`IGroupChatDelegate.sol`](../../../interfaces/group-chat/IGroupChatDelegate.sol)，包括有效 delegate 查询和分页枚举。
+委托接口见 [`IGroupChatDelegate.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/IGroupChatDelegate.sol)，包括有效 delegate 查询和分页枚举。
 
 ## 权限范围
 

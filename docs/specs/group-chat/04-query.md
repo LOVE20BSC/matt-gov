@@ -10,7 +10,7 @@
 
 以下接口保留旧 `LOVE20TKM/group-chat/src/interfaces/IGroupChat.sol` 的参数、返回类型和查询行为，删除地址主体参数及默认身份接口。GroupChat 列表查询支持 `offset`、`limit`、`reverse`；成员、委托、黑名单各自的分页签名沿用旧接口，不强加统一参数。
 
-完整查询与写入 ABI 见 [`IGroupChat.sol`](../../../interfaces/group-chat/IGroupChat.sol)，包含 Group/管理模块地址和 Phase 查询。
+完整查询与写入 ABI 见 [`IGroupChat.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/IGroupChat.sol)，包含 Group/管理模块地址；轮次只通过 `currentRound()` 暴露，不提供 `originBlocks` / `phaseBlocks` 推导入口。
 
 | 范围 | 查询 |
 | --- | --- |
@@ -29,5 +29,6 @@
 - 群不存在时相应群查询回滚 GroupNotExist；有效群内单条 messageId 为 0 或超出消息数时回滚 InvalidMessageId。
 - 空 Round 的数量为 0、消息数组为空，roundInfo 返回 `RoundSpan(round, 0, 0, 0)`；rounds 列表只枚举有消息的 Round。
 - BSC 动态 Phase 下，`Message.round` 在发言时按 `phase.currentPhase()` 固定保存；后续校准不能重算旧消息。
+- `messages*` 分页返回含 `string` / `uint256[]` 的 `Message[]`，是对旧 ABI 的保留，属 `dev-standards §4.3(2)` 的模块级例外；新增查询不得沿用该形态。
 
 来源：旧 `LOVE20TKM/group-chat/src/GroupChat.sol` 的 `_pageCount`、`_pageIndex`、`_roundSpanOrEmpty`、`message`。验收见 [群聊验收](08-testing.md)。

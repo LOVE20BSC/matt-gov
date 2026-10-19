@@ -17,8 +17,8 @@
 
 只有 `senderId == groupId` 或 senderId 等于当前有效 delegateId 可跳过 scope/ban；群存在、激活、发言开关、sender 存在及调用者持有 sender 的校验仍必须执行。
 
-owner、有效 delegate、有效 admin 可 `mentionAll`；admin 不因此绕过 scope/ban。插件失败处理见 [发言](03-posting.md#消息与插件)。
+sender 为群本身（`senderId == groupId`）、有效 delegate 或有效 admin 可 `mentionAll`；admin 不因此绕过 scope/ban。插件失败处理见 [发言](03-posting.md#消息与插件)。
 
 ## 标准接口
 
-规则槽位接口见 [`IGroupChatRules.sol`](../../../interfaces/group-chat/IGroupChatRules.sol)。
+规则槽位接口见 [`IPostScopeSource.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/sources/IPostScopeSource.sol)、[`IPostBanSource.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/sources/IPostBanSource.sol)、[`IBeforePostPlugin.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/plugins/IBeforePostPlugin.sol) 与 [`IAfterPostPlugin.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/plugins/IAfterPostPlugin.sol)。

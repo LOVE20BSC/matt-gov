@@ -24,4 +24,4 @@
 
 [组织约束](../../../CONTEXT.md)
 
-接口暂存于 [`interfaces/group-chat/`](../../../interfaces/group-chat/)，是 Group Chat ABI 的唯一来源。
+接口以 [`group-chat/src/interfaces/`](https://github.com/LOVE20BSC/group-chat/tree/main/src/interfaces) 为准，是 Group Chat ABI 的唯一来源；本仓库不再保留副本。

@@ -6,13 +6,13 @@
 
 同一个 token（token Manager）或 token + actionId（action Manager）只能在同一 Manager 中激活一次。保留 tokenOfGroup/groupIdOfToken、actionOfGroup/groupIdOfAction 及批量、分页查询；行动定位使用已有 `actionOfGroup(groupId)` 返回 token 和 actionId，不另加重复的 getActionId。
 
-Token Manager 与 Action Manager 的接口分别见 [`ITokenManager.sol`](../../../interfaces/group-chat/ITokenManager.sol) 和 [`IActionManager.sol`](../../../interfaces/group-chat/IActionManager.sol)。两类接口不合并，避免单个 Manager 实现另一类 Manager 的无关方法。
+Token Manager 与 Action Manager 的接口分别见 [`IBaseTokenScopeManager.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/managers/IBaseTokenScopeManager.sol) 和 [`IBaseTokenActionScopeManager.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/managers/IBaseTokenActionScopeManager.sol)，两者共享的槽位 getter 与错误在 [`IBaseManager.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/managers/IBaseManager.sol)。两类接口不合并，避免单个 Manager 实现另一类 Manager 的无关方法。
 
 ## NFT 付款与持有
 
 保留旧 BaseManager 的激活交易：
 
-1. 校验 LOVE20 token、存在的 Proposal 及未重复激活，生成唯一名称；保留名称前缀、ASCII 清理/截断、12 位十六进制后缀和最多 8 次重试，长度读取 MemberNFT 配置。
+1. 校验 LOVE20 token、存在的 Proposal 及未重复激活，生成唯一名称；保留名称前缀、ASCII 清理/截断、12 位十六进制后缀和最多 8 次重试，长度读取 MemberNFT 配置。MemberNFT 的 `MAX_NAME_LENGTH` 至少为 17 字节（1 字节分隔符 + 12 位十六进制后缀 + 4 字节 Test 前缀），否则 Manager 构造即回滚 `ManagerGroupNameSpaceTooSmall`。
 2. Manager 计算铸造费用，从激活者 msg.sender 转入首币并按需授权 MemberNFT；零费用不转账。付款/授权失败或实际费用与报价不一致则回滚。
 3. Manager 铸造并持有 NFT，以其 memberId 为 groupId 记录业务映射；scope 使用 Manager 自身，其他槽位使用构造时固定的模块，然后激活同一个 GroupChat 合约。
 4. 任一步失败整体回滚，付款、NFT、映射和激活不能半完成；激活者只是付费者，不因付费获得 Chat 管理权。

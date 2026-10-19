@@ -26,11 +26,75 @@
 ## 纠正此前未经核验的表述
 
 - 旧 GroupChat 已是一 NFT 一 Chat，Manager 已激活同一个 GroupChat，不是“可能独立创建 Chat”。
-- 旧 TokenMainManager 的持币阈值是严格大于 1 个最小单位；按“其他行为不变”保留。
+- 旧 TokenMainManager 的持币阈值是严格大于 1 个最小单位；2026-10-19 决策改为 **任一非零余额即满足**（`> 0`），规格 [05-chat-types.md](group-chat/05-chat-types.md) 与实现同步更新。
 - 旧行动黑名单读取当前 Vote Round 的行动票权，分母为全社区当前治理票；不固定在 Proposal 创建 Round。
 - 旧 GroupDelegate 实现在 group 仓库；迁到 group-chat 并限制消费者，不是给全局 MemberNFT 添加授权。
 - 旧群内委托还可以管理管理员、成员和人工黑名单，不能被精简为“只能改开关与槽位”。
 - forceExit 只移除一个资格分支，不能推导为所有 Chat 资格立即失效。
+
+## ABI 对账（函数 / 事件 / 错误）
+
+对账口径：自有声明（group-chat `src/interfaces/`），不含从标准依赖继承的成员。旧侧为 `LOVE20TKM` 群聊接口。
+
+### GroupChat（`IGroupChat.sol`）
+
+| 层 | 保留 | 改参 | 新增 | 删除 |
+| --- | --- | --- | --- | --- |
+| 函数 | 三个地址 getter、两个上限 getter、`activateChat`、`post`、`chatInfo(s)`、五个槽位 getter、`messages*` / `message` / `messagesBy*` / `messageIds*` / `senderIds` / `groupIds` / `rounds` / `roundInfo(s)` | `canPost(uint256,uint256,address)` → `canPost(uint256,uint256)`；五个配置 setter 各增 `uint256 operatorId` | `currentRound()` | `originBlocks()` / `phaseBlocks()`、`postAsDefaultSender(...)`、`GROUP_DEFAULTS_ADDRESS()` |
+| 事件 | `PostMessage` / `MentionSenderId` / `MentionAll` / `FailAfterPostPlugin` | 五个配置事件各增 `uint256 indexed operatorId`；`Activate(uint256,address)` → `Activate(uint256,uint256,address)` | — | — |
+| 错误 | `GroupNotExist` / `ChatAlreadyActivated` / `ChatNotActivated` / `PostingNotAllowed` / `NotChatOwner` / `NotChatOwnerOrDelegateIdOwner` / `RoundNotStarted` / `Reentrant` / `PhaseBlocksZero` / `MaxContentLengthZero` / `SourceAddressHasNoCode` / `PluginAddressHasNoCode` / `ContentEmpty` / `ContentTooLong` / `TooManyMentionedSenderIds` / `DuplicateMentionedSenderId` / `InvalidQuotedMessageId` / `InvalidMessageId` / `GroupAdminHasNoCode` / `GroupDelegateHasNoCode` / `GroupDelegateGroupMismatch` / `MentionAllUnauthorized` / `ScopeRejected` / `BanRejected` / `ScopeSourceFailed` / `BanSourceFailed` | `SenderAddressNotSenderIdOwner()` → `SenderNotMemberOwner(uint256 senderId)` | `InvalidAddress()`、`MaxMentionedSenderIdsZero()` | `DefaultGroupIdNotSet()` / `GroupDefaultsHasNoCode()` / `GroupDefaultsGroupMismatch()` |
+
+构造签名 `(groupAdmin, originBlocks, phaseBlocks, maxContentLength, maxMentionedSenderIds)` → `(groupAdmin, phaseAddress, maxContentLength, maxMentionedSenderIds)`；`Message.round` 由发言时的 Phase 轮次固定（[04-query.md](group-chat/04-query.md)）。
+
+### GroupAdmin / GroupMember
+
+| 接口 | 改参 | 新增 | 删除 |
+| --- | --- | --- | --- |
+| `IGroupAdmin` | `addAdmins` / `removeAdmins` 各增 `uint256 operatorId`；构造删 `groupDefaults` 参 | — | `GROUP_DEFAULTS_ADDRESS()`、`adminIdOf(uint256,address)`、`ownerOrDelegateIdOf(uint256,address)`、错误 `GroupDelegateGroupMismatch()`（同名错误由 `IGroupChat` 承载） |
+| `IGroupMember` | `addMemberIds` / `removeMemberIds` 各增 `uint256 operatorId` | — | — |
+
+### GroupChatBanList（原 `IGroupBanList`）
+
+- **改名**：合约 `GroupBanList` → `GroupChatBanList`；接口同名改名；错误 `GroupBanListAddressHasNoCode` → `GroupChatBanListAddressHasNoCode`
+- **改参**：`banBySenderIds` / `unbanBySenderIds` 各增 `uint256 operatorId`
+- **新增**：`isSenderIdBannedBatch(uint256,uint256[])`
+- **删除**：地址名单一整套（`banBySenderAddresses` / `unbanBySenderAddresses` / `banBySenders` / `unbanBySenders` / `isAddressBanned` / `addressBanDetails` / `addressBanList(Count)` / `isBanned(uint256,uint256,address)`）、错误 `TargetAddressZero` / `SenderPairLengthMismatch`、事件 `SetAddressBan`
+
+### GroupChatDelegate（原 `IGroupDelegate`）
+
+- **改名**：合约与接口 `GroupDelegate` → `GroupChatDelegate`；`InvalidAddress()` 等错误与四个事件保留
+- **删除**：`isOwnerOrDelegate(uint256,address)`；等价判断由 `ownerOrDelegateIdOf(...) != 0` 表达，`delegateIdOf` / `delegateIdsOf` 已覆盖「有效 delegate 查询」
+
+### Manager 三接口
+
+- **改参**：四个 Manager 构造 `extensionCenter_` → `actionTarget_`；`banSource_` 由激活参数提前为构造参数
+- **删参**：`TokenMainManager` / `TokenGovManager` 构造删 `recentRounds_`
+- **删除**：`IBaseManager.EXTENSION_CENTER_ADDRESS()`、`IBaseTokenScopeManager.RECENT_ROUNDS()`
+- **移动**：`ActionIdNotExist()` 由 `IBaseManager` 移至 `IBaseTokenActionScopeManager`（selector 不变）
+- **命名**：`_groupChatAddress` 等 6 个小写 `public` getter 改为 `GROUP_CHAT_ADDRESS` 等 5 个大写 `public`；`tokenOfGroup` / `groupIdOfToken` / `actionOfGroup` / `groupIdOfAction` 改为 `internal` + 显式 getter（selector 不变）
+- **入参名**：批量入参在接口与实现统一为 `_` 后缀，与 `postingAllowed_` 同例，规避与同名 getter 的声明遮蔽（solc 8760）：`addAdmins` / `removeAdmins` 的 `adminIds_`、`addMemberIds` / `removeMemberIds` / `isMemberIdBatch` 的 `memberIds_`、`chatInfos` 的 `groupIds_`、`roundInfos` 的 `rounds_`
+- **新增**：错误 `ManagerGroupNameSpaceTooSmall()`；MemberNFT `MAX_NAME_LENGTH < 17`（1 字节分隔符 + 12 位十六进制后缀 + 4 字节 Test 前缀）时 Manager 构造回滚
+
+### 资格与黑名单源
+
+| 接口 | 变更 |
+| --- | --- |
+| `IPostScopeSource` | `canPost(uint256,uint256,address)` → `canPost(uint256,uint256)` |
+| `IPostBanSource` | `isBanned(uint256,uint256,address)` → `isBanned(uint256,uint256)` |
+| `IBanVoteWeightSource` | `voteWeightOf(uint256,address)` → `voteWeightOf(uint256,uint256)` |
+| `IGroupJoinScopeSource` | `GROUP_JOIN_ADDRESS()` → `GROUP_ACTION_EXECUTOR_ADDRESS()`；成员判定改 `IGroupActionIndexes.isGroupMember(groupId, senderId)` |
+| `IAdminBanSource` / `IGroupMemberScope` | 不变 |
+| `IGovVotedBanSource` | `voteBySenderId(uint256,uint256,bool)` → `(uint256,uint256,uint256,bool)`（显式 `voterId`），`clear` / `refresh` 同理；删除地址投票一整套（`voteBySenderAddress` / `voteBySender` 及其 clear/refresh、`voteWeightsBySenderAddressesByVoter` / `voteStatusBySenderAddress(es)` / `isAddressBanned(es)` / `votedSenderAddresses*` / `votersBySenderAddress*`、事件 `SetAddressBanVote` / `SetAddressBan`、错误 `TargetAddressZero`）与单条 `isSenderIdBanned` |
+
+### 插件与来源（`plugins/`）
+
+`IBeforePostPlugin.beforePost` / `IAfterPostPlugin.afterPost` **保留** `address senderAddress` 参数，`GroupChat._post` 继续传 `msg.sender`；地址在此仅作审计字段（[00-overview.md](group-chat/00-overview.md)）。
+
+### 部署脚本
+
+`script/` 按 [dev-standards §6](../../dev-standards.md) 重组为 `11_deploy.sh` / `21_check.sh` / `31_verify.sh` + `one_click_deploy.sh`；
+`DeployGroupChat.s.sol` 移入 `script/deploy/` 并改用 forge-std `Script`；依赖地址拆为 `addresses.core.params` / `addresses.action.params`；
+部署范围新增 `GroupChatDelegate`（旧流程由仓外文件提供地址），one-click 覆盖本库全部 13 个合约。
 
 ## 验收
 
