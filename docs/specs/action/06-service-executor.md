@@ -8,17 +8,17 @@
 
 | 符号 | 含义 |
 | --- | --- |
-| `A[a]` | 源 GroupAction a 的行动层分配总额，等于其全部链群成员激励之和 |
+| `A[a]` | 源 GroupAction a 的行动层分配总额，即 `generatedActionReward` 返回的 proposalReward；按群切片 floor 后其和不超过 `A[a]` |
 | `r` / `RATIO_FOR_PUBLIC_VERIFIER` | 服务 Proposal 绑定的公共验证者比例，`1e18` 精度；各源行动统一取该值（不再由候选在申请时自报） |
-| `totalGroupActionReward` | `actionTokenAddress` 社区本轮全部 GroupAction 的 `A[a]` 之和，首次成功结算时冻结为本服务轮次分母 |
+| `totalGroupActionReward` | `actionTokenAddress` 社区本轮全部 GroupAction 的 `A[a]` 之和，即本服务轮次的分母 |
 | `publicVerifierId[a]` | 行动 a 在目标轮锁定的公共验证者 memberId |
 | `m` | 结算主体 memberId；作为群 owner 时也是 groupId |
-| `groupReward(a, m)` | Group m 在行动 a 的成员激励总和；与 `A[a]`、`D` 同源，来自同一本冻结账 |
+| `groupReward(a, m)` | Group m 在行动 a 的成员激励总和；与 `A[a]`、`D` 同源，同一时刻从同一份账本读出 |
 | `serviceReward` | 本服务 Proposal 的整笔激励 |
 
 ```text
-A[a] = Σ_{g ∈ groupIds(actionTokenAddress, a, round)} generatedActionRewardByGroupId(actionTokenAddress, a, round, g)
-D    = Σ_a A[a]                                                          // 首次成功结算时按 actionTokenAddress + round 冻结
+A[a] = generatedActionReward(actionTokenAddress, a, round)                 // 该行动自身的行动层激励
+D    = Σ_a A[a]                                                          // 未准备时实时重算；行动代币轮次准备后读缓存
 
 verifierWeightNumerator(m) = Σ_{a: lockedVerifierId(actionTokenAddress, a, round) == m} A[a]
 ownerWeightNumerator(m)    = Σ_a groupReward(a, m)
@@ -29,19 +29,27 @@ theoreticalOwnerReward(m)    = mulDiv(serviceReward, (1e18 - r) * ownerWeightNum
 
 `generatedActionRewardByGroupId` 对未完成验证或无参与的行动返回 0，`lockedVerifierId` 只在该行动的目标轮存在锁定验证者时非零；每个行动只在其创建轮产出参与与激励，`votedActions` 入榜的行动即该轮创建的行动，跨轮行动天然不计入。理论金额使用同一组不提前截断的分子与分母（`Math.mulDiv`）。
 
-首次成功结算某服务轮次时，按 `actionTokenAddress + round` 冻结整本奖励账：分母 `D`、每个行动的 `A[a]`、以及每个群在行动内的切片 `groupReward(a, g)`。查询不能写状态，未冻结时按实时账本只计算返回，后续结算一律读取冻结值，包括被冻结为零的项——零值同样不再回读实时账本。分子与分母因此始终同源：owner 权重按 `groupReward` 冻结值汇总，验证者权重按 `A[a]` 冻结值汇总，冻结后账本再变动也不会把同一笔服务激励二次分配。冻结在结算读取之前写入，零额回滚时随交易一并撤销；零分母不落缓存、分母每次重算。冻结账本与分母缓存是内部状态，不属于对外 ABI。
+分母 `D` 与每个行动的 `A[a]` 默认按实时账本读取。分母对每个入榜行动读一次 `A[a]`（`generatedActionReward`，未完成验证或无参与返回 0），即 O(votedActions)，而 `votedActions` 有每轮提案上界，**链上没有与链群数成正比的成本**；群切片 `groupReward(a, g)` 不落存储，按 `mulDiv(A[a], finalScore(a, g), totalFinalScore(a))` 现算；权重侧另按群切片读取，成员为锁定验证者时再读一次 `A[a]`。
+
+owner 权重按群切片 floor 后汇总，因此 `Σ_m ownerWeightNumerator(m) ≤ D`：每个行动的分母最多比该行动的群切片之和多「群数 − 1」个 wei。owner 侧按 `ownerWeight / D` 分成，这部分未被权重覆盖的服务激励不重分配、留在服务合约，与未加入角色的份额、零分母未结算激励同口径；公共验证者权重直接按 `A[a]` 汇总，不受此取整影响。这是分母取行动总额、而非逐群切片之和的直接代价，换来分母的 O(votedActions)。
+
+**分母缓存**：行动代币那一轮被 Mint 准备、且该轮已进入结算窗口（验证已结束）之后，该轮的 `_proposalReward`、`_eligibleProposalVotes` 与票数都已定稿，每个 `A[a]` 不再变化——此时把 `D` 存下来，后续结算与查询直接读缓存，省掉一次行动枚举。判据必须是**行动代币**的 `isRewardPrepared(actionTokenAddress, round)`，不是服务代币的：服务 Proposal 挂在父币上时，结算里的 `mintActionReward` 只准备父币那一轮，子币那一轮仍开着，`A[a]` 还会随 `rewardAvailable()` 移动；此时缓存会把冻结的分母和活的分子配在一起，第二个人超额领取（`testRegression_RealSourceBurnCannotOverpayServiceBudget` 就是这个反例）。未准备时一律实时算、不写缓存。`mintAddress` 在 `init` 内从 `ActionTarget.mintAddress()` 读取一次并缓存，只用于这一个查询。
+
+未走缓存时（缓存尚未写入）分子与分母仍然同源，且只差一个公共因子：同一轮里所有行动都按 `P · v_a / E` 分摊同一个池 `P` 与同一个达标票数 `E`，所以池子无论何时变大变小（别的轮次准备或铸造、社区代币被销毁都会改变 `rewardAvailable()`），`A[a]` 与 `D` 都同比例变化，**因子在 `w(m)/D` 里约掉**，同一轮的两位成员即使在不同交易里结算，分摊比例也一样——差异只剩逐项取整的几位 wei。这也解释了为什么历史上「分子读实时、分母读快照」会超额支付：错在两侧不同源，而不在是否快照。
+
+现算切片的前提是轮次已过验证：`finalScoreByGroupId` 与 `totalFinalScore` 只在 `_scoreBatch` 里增长，验证结束、进入铸造窗口后都不再变化。若将来出现「验证之后还能改分数」的路径，同一轮的 owner 权重会在两次结算之间静默变化——这是承重不变式。
 
 完整 ABI 见 [`IGroupServiceExecutor.sol`](https://github.com/LOVE20BSC/action/blob/main/src/interfaces/IGroupServiceExecutor.sol)（继承 [`IGroupRecipients.sol`](https://github.com/LOVE20BSC/action/blob/main/src/interfaces/IGroupRecipients.sol) 的二次分配配置面）。
 
 创建 Target Data 从第 `1` 项起（第 `0` 项是 ActionTarget 保留的 executor）固定为 `targetData[1] = abi.encode(address actionTokenAddress)`、`targetData[2] = abi.encode(uint256 govRatioMultiplier)` 和 `targetData[3] = abi.encode(uint256 ratioForPublicVerifier)`，项数恰为 `4`；超出回滚 `InvalidTargetDataLength`，`ratioForPublicVerifier > 1e18` 回滚 `InvalidRatio`（否则 `1e18 - r` 下溢），代币关系不满足回滚 `InvalidParentToken`。`ACTION_TOKEN_ADDRESS`、`GOV_RATIO_MULTIPLIER`、`RATIO_FOR_PUBLIC_VERIFIER` 均按 `serviceTokenAddress + serviceActionId` 读取。投票回调没有业务项，`targetData.length > 1` 回滚 `InvalidTargetDataLength`。
 
-`init(actionTargetAddress, stakeAddress, groupActionExecutorAddress)` 只收 ActionTarget、Stake 和 GroupAction Executor：`memberNFTAddress`、`phaseAddress`、`launchAddress` 在 init 内从 `stakeAddress` 的 getter 读取一次并缓存，任一为零回滚 `InvalidAddress`；激励经 `ActionTarget` 读取，不注入 Mint。
+`init(actionTargetAddress, stakeAddress, groupActionExecutorAddress)` 只收 ActionTarget、Stake 和 GroupAction Executor：`memberNFTAddress`、`phaseAddress`、`launchAddress` 在 init 内从 `stakeAddress` 的 getter 读取一次并缓存，`mintAddress` 从 `ActionTarget.mintAddress()` 读取一次并缓存（只用于 `isRewardPrepared`，激励本身仍经 `ActionTarget` 读取），任一为零回滚 `InvalidAddress`。
 
 **加入与退出**：`join(serviceTokenAddress, serviceActionId, memberId)` 校验当前 NFT 持有人，资格为两类之一——该成员（自身作为链群主体）在 `actionTokenAddress` 社区存在激活行动，以 GroupAction Executor 的 `hasActiveGroups(actionTokenAddress, memberId)` 一次判定；或在该服务轮的社区行动集（与分母枚举同源）中存在有效公共验证者竞选申请，逐个读 `verifierApplication(actionTokenAddress, actionId, memberId)` 的 `applicationId != 0`（无申请返回零值结构体、不回滚）。满足其一即可，不要求该轮已选出公共验证者；均不满足回滚 `NoActiveGroups`。重复 `join` 回滚 `AlreadyJoined`，未加入 `exit` 回滚 `NotJoined`。服务资格按轮快照由 ActionTarget 持有：`joinInfo(serviceTokenAddress, serviceActionId, round, memberId)` 转发 `isJoinedByRound`、返回该轮快照是否已加入，Executor 不自建副本；退出只写当时轮快照，不追回已发生轮。共同准备/铸造/销毁 ABI 见 [行动铸造](07-minting.md#铸造链路)。
 
 基座 `joinedAmount` 族代理社区激活质押：`joinedAmount(serviceTokenAddress, serviceActionId, round)` 返回 `totalStaked(actionTokenAddress)`（`round > currentJoinRound()` 返回 0），`joinedAmountByMemberId(serviceTokenAddress, serviceActionId, round, memberId)` 返回 `totalStakedByMemberId(actionTokenAddress, memberId)`，`joinedAmountTokenAddress(serviceTokenAddress, serviceActionId)` 返回 `ACTION_TOKEN_ADDRESS(serviceTokenAddress, serviceActionId)`；社区激活质押为当前值，没有按轮历史。
 
-[组织验收](../../acceptance.md#groupservice-结算) 还要求：只有本轮加入服务 Proposal 的群 owner/候选 MemberNFT 可按人结算，未加入角色份额不重分配。每个角色先检查自己的分子，为零只跳过该角色，不影响同一 memberId 的另一角色；两个分子都为零时不读取分母，视图返回全零，结算入口按零额规则回滚 `NoRewardAvailable`（见 [统一链路](07-minting.md#铸造链路)）。`totalGroupActionReward == 0` 时该轮没有分配路径（判据与 GroupAction 同型：轮次不等于 `createdRound` 或超过 `currentMintRound()` 时不适用，否则看 `D == 0`），任何角色结算都回滚 `NoRewardAvailable`，整笔服务激励停留在未结算状态、预留不释放。
+[组织验收](../../acceptance.md#groupservice-结算) 还要求：只有本轮加入服务 Proposal 的群 owner/候选 MemberNFT 可按人结算，未加入角色份额不重分配。每个角色先检查自己的分子，为零只跳过该角色，不影响同一 memberId 的另一角色；两个分子都为零时不读取分母，视图返回全零，结算入口按零额规则回滚 `NoRewardAvailable`（见 [统一链路](07-minting.md#铸造链路)）。`totalGroupActionReward == 0` 时该轮没有分配路径（判据与 GroupAction 同型：轮次不等于 `createdRound` 或超过 `currentMintRound()` 时不适用，否则看 `D == 0`），任何角色结算都回滚 `NoRewardAvailable`，整笔服务激励停留在未结算状态、预留不释放。结算只在分母非零且**行动代币**轮次已准备时写分母缓存；零分母的失败结算不写任何状态，因此该轮在账本产出激励之前一直不可结算。
 
 ## 治理上限
 
@@ -72,7 +80,7 @@ groupId 的当前 NFT 持有人按 `sourceTokenAddress + sourceActionId + groupI
 
 二次分配配置接口见 [`IGroupRecipients.sol`](https://github.com/LOVE20BSC/action/blob/main/src/interfaces/IGroupRecipients.sol)（含配置枚举 `actionIdsWithRecipients` 与任意金额试算 `getDistribution`）；结算结果查询 `rewardDistribution` 与单接收者投影 `rewardByRecipient` 见 [`IGroupServiceExecutor.sol`](https://github.com/LOVE20BSC/action/blob/main/src/interfaces/IGroupServiceExecutor.sol)（后者返回指定接收者的分配额，`recipientId` 等于 `groupId` 时返回 owner 自留额，非接收者返回 0）。
 
-setRecipients 沿用旧 GroupRecipients：只写当前验证 Round，不允许指定已结束轮次；同轮更新覆盖该轮配置。三数组等长回滚 `ArrayLengthMismatch`、最多 10 项回滚 `TooManyRecipients`（协议级编译期常量）、逐项比例为正回滚 `ZeroRatio`、接收 NFT 有效（无效由 `IMemberNFT.ownerOf` 回滚）、不得重复回滚 `DuplicateMemberId(memberId)`、不得等于 groupId 回滚 `RecipientCannotBeSelf`；非 groupId 当前持有人调用回滚 `NotMemberOwner(groupId)`。全部传空表示显式清空，该轮及后续回退到空配置，不能重新找到清空前配置。没有配置时 owner 保留全部该项预算。付款使用结算时接收 NFT 当前持有人。
+setRecipients 沿用旧 GroupRecipients：只写当前验证 Round，不允许指定已结束轮次；同轮更新覆盖该轮配置。源行动未由本 Executor 创建时回滚 `UnknownSourceAction(sourceTokenAddress, sourceActionId)`；三数组等长回滚 `ArrayLengthMismatch`、最多 10 项回滚 `TooManyRecipients`（协议级编译期常量）、逐项比例为正回滚 `ZeroRatio`、接收 NFT 有效（无效由 `IMemberNFT.ownerOf` 回滚）、不得重复回滚 `DuplicateMemberId(memberId)`、不得等于 groupId 回滚 `RecipientCannotBeSelf`；非 groupId 当前持有人调用回滚 `NotMemberOwner(groupId)`。全部传空表示显式清空，该轮及后续回退到空配置，不能重新找到清空前配置。没有配置时 owner 保留全部该项预算。付款使用结算时接收 NFT 当前持有人。
 
 配置按 `sourceTokenAddress + groupId` 维护按轮枚举：本轮非空写入登记源行动、显式清空移除，`actionIdsWithRecipients(sourceTokenAddress, groupId, round, offset, limit, reverse)` 分页返回该轮有效的已配置源行动与真实总数（懒继承到不晚于该轮的最近记录；同轮配置更新会重写该轮快照）。该集合用 swap-and-pop 删除：同一 `offset` 的返回内容不保证跨调用稳定，`reverse` 也不等于「新到旧」；调用方不得跨调用缓存 `offset`，也不得按「先拉首页再增量补页」拼接。`getDistribution(sourceTokenAddress, sourceActionId, groupId, groupReward, round)` 对任意金额按同规则试算（逐项向下取整、余数归 owner，100% 不下溢）。
 
@@ -91,7 +99,7 @@ amount[i] = mulDiv(slice(a, m), ratios[i], 1e18)
 - `DistributionOverflow` 在配置比例总和超过 `1e18` 时触发；正好 `1e18` 合法。
 - 二次分配配置键为 `sourceTokenAddress + sourceActionId + groupId + round`；分配事件另带服务 Proposal 上下文。
 - 二次分配配置面单独声明接口 `IGroupRecipients.sol`（沿用旧文件名，由 `IGroupServiceExecutor` 继承），实现落在独立业务库 `GroupRecipients`：与单体 Executor 合并会超过 24,576 字节部署上限。
-- ownerBurned 按 `serviceTokenAddress + serviceActionId + round + memberId` 保存实际销毁量，`ownerDistributed`/`ownerRemaining` 按同一键记录（恒有 `ownerReward = ownerDistributed + ownerRemaining`），不影响源行动缓存；铸造与销毁失败时标记、转账和代币 burn 全部回滚。
+- ownerBurned 按 `serviceTokenAddress + serviceActionId + round + memberId` 保存实际销毁量，`ownerDistributed`/`ownerRemaining` 按同一键记录（恒有 `ownerReward = ownerDistributed + ownerRemaining`），不影响源行动激励的读取；铸造与销毁失败时标记、转账和代币 burn 全部回滚。
 - 来源为旧 `LOVE20TKM/extension-group/src/ExtensionGroupService.sol`、`LOVE20TKM/extension-group/src/GroupRecipients.sol` 与 `LOVE20TKM/extension/src/ExtensionBaseReward.sol`。公共验证者份额及全社区分母以本文件 BSC 规则为准。
 
 铸造见 [统一链路](07-minting.md#铸造链路)，验收见 [Action 验收](08-testing.md)。
