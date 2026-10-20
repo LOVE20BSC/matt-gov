@@ -121,7 +121,7 @@ Vote 每次投票通过 `Stake.validGovVotes(tokenAddress, memberId)` 读取当�
 2. 满足 `currentPhase > unlockRequestPhase + promisedWaitingPhases` 后，当前持有人一次提取 LP 对应双币和加速代币；不能分别解锁、分别提取。等待期按「申请 Phase 之后再等满 `promisedWaitingPhases` 个完整 Phase」计量，与旧 `LOVE20Stake.withdraw` 同口径：申请轮加 `promisedWaitingPhases` 的那一个 Phase 仍然太早，例如在 Phase 100 申请、承诺 `1` 时，Phase 102 起才可提取。
 3. NFT 转移不重置等待期，不限制解锁中的 NFT 转移。查询应返回申请 Phase、承诺等待期和是否可提取，任何人可按社区和成员查询。
 
-提取先按原规则结算手续费，再以 `floor(liquidityShares * lastWithdrawableLp / totalLiquidityShares)` 折算 LP。结果为零时跳过 LP 转账与 Pair 销毁，仍归还全部加速代币、扣减成员及社区份额并清理头寸；`Withdraw` 的双币数量为零。退出者放弃不足一个 LP 最小单位的尾差，零额提取不扣减可提取 LP 总账，余量由剩余份额承接。LP 非零时仍必须成功拆成双币；手续费结算或后续资产交付失败仍整笔回滚，不新增直接领取 LP 的出口。
+提取先按原规则结算手续费，再以 `floor(liquidityShares * lastWithdrawableLp / totalLiquidityShares)` 折算 LP。结果为零时跳过 LP 转账与 Pair 销毁，仍归还全部加速代币、扣减成员及社区份额并清理头寸；`Withdraw` 的双币数量为零。退出者放弃不足一个 LP 最小单位的尾差，零额提取不扣减可提取 LP 总账，余量由剩余份额承接。LP 非零时，只有两侧产出都非零（`lpAmount * reserve_i >= pairTotalSupply`，`i` 取两币）才转入 Pair 并销毁；否则 `pair.burn` 会因一侧取整为零而回滚，而 `withdraw` 是原子的、加速代币返还排在其后，整笔头寸（本金与 boost）将永久锁死。因此「非零但不可烧」时 LP 原样转给提取者：不转入 Pair、不销毁，`Withdraw` 的双币数量为零，份额与可提取 LP 总账照常扣减，LP 转出以 Pair 代币的标准 Transfer 事件可观测；提取人持 LP 自行退出 Pair，这是协议唯一的直接 LP 出口，仅在销毁会回滚时启用。LP 转出不改变 `pairTotalSupply`，手续费分类与基线照常重算，不受影响。手续费结算或后续资产交付失败仍整笔回滚。
 
 ## 融合
 
