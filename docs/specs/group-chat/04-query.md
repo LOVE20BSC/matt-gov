@@ -2,7 +2,7 @@
 
 ## 群聊 Round
 
-构造时接收 Phase 地址，`currentRound = phase.currentPhase()`，从 1 开始，与治理 Round 一对一。不独立维护 `originBlock` 和 `phaseBlocks`，也不按行动阶段偏移。
+构造时接收 Phase 地址，`currentRound = phase.currentPhase()`，从 1 开始，与治理 Round 一对一。不独立维护 `originBlock` 和 `phaseBlocks`，也不按行动阶段偏移。构造校验 Phase 地址有代码且 `Phase.ORIGIN_PHASE_BLOCKS() != 0`，分别回滚 `InvalidAddress` 与 `PhaseBlocksZero`（错误名沿用旧 ABI）。
 
 消息创建时记录的 Round 永久固定；后续配置变化不回写消息。
 
@@ -10,7 +10,7 @@
 
 以下接口保留旧 `LOVE20TKM/group-chat/src/interfaces/IGroupChat.sol` 的参数、返回类型和查询行为，删除地址主体参数及默认身份接口。GroupChat 列表查询支持 `offset`、`limit`、`reverse`；成员、委托、黑名单各自的分页签名沿用旧接口，不强加统一参数。
 
-完整查询与写入 ABI 见 [`IGroupChat.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/IGroupChat.sol)，包含 Group/管理模块地址；轮次只通过 `currentRound()` 暴露，不提供 `originBlocks` / `phaseBlocks` 推导入口。
+完整查询与写入 ABI 见 [`IGroupChat.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/IGroupChat.sol)，包含 Group/管理模块地址与构造注入的 `PHASE_ADDRESS()`；Phase 地址只作部署校核，轮次只通过 `currentRound()` 暴露，不提供 `originBlocks` / `phaseBlocks` 推导入口。
 
 | 范围 | 查询 |
 | --- | --- |

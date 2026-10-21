@@ -12,7 +12,7 @@
 
 | 组件 | 保留 | BSC 必要修改 |
 | --- | --- | --- |
-| GroupChat | 一 NFT 一 Chat、激活、四槽位、消息、提及、引用、索引、分页、插件失败处理 | 依赖改 MemberNFT；删除 postAsDefaultSender 和 GroupDefaults；预检查不再接收业务地址 |
+| GroupChat | 一 NFT 一 Chat、激活、四槽位、消息、提及、引用、索引、分页、插件失败处理 | 依赖改 MemberNFT；删除 postAsDefaultSender 和 GroupDefaults；预检查不再接收业务地址；mentionAll 与 scope/ban 直通改按 `senderId` 判定（旧按调用者地址） |
 | GroupAdmin | NFT 管理员、双 owner 快照、数量限制、转移失效/转回恢复 | 删除默认身份查找，操作显式给 adminId |
 | GroupMember / GroupBanList | ID 集合、批量增删、枚举、权限和事件行为 | 删除地址黑名单及地址/ID 双轨路径 |
 | GovVotedBanSource | 双阈值、settledWeight、改票/撤票/刷新、stateVersion、已结算名单 | voter 和 target 均用 memberId，删除地址目标及对应索引/事件 |
@@ -40,11 +40,11 @@
 
 | 层 | 保留 | 改参 | 新增 | 删除 |
 | --- | --- | --- | --- | --- |
-| 函数 | 三个地址 getter、两个上限 getter、`activateChat`、`post`、`chatInfo(s)`、五个槽位 getter、`messages*` / `message` / `messagesBy*` / `messageIds*` / `senderIds` / `groupIds` / `rounds` / `roundInfo(s)` | `canPost(uint256,uint256,address)` → `canPost(uint256,uint256)`；五个配置 setter 各增 `uint256 operatorId` | `currentRound()` | `originBlocks()` / `phaseBlocks()`、`postAsDefaultSender(...)`、`GROUP_DEFAULTS_ADDRESS()` |
+| 函数 | `currentRound()`、三个地址 getter、两个上限 getter、`activateChat`、`post`、`chatInfo(s)`、五个槽位 getter、`messages*` / `message` / `messagesBy*` / `messageIds*` / `senderIds` / `groupIds` / `rounds` / `roundInfo(s)` | `canPost(uint256,uint256,address)` → `canPost(uint256,uint256)`；五个配置 setter 各增 `uint256 operatorId` | `PHASE_ADDRESS()` | `originBlocks()` / `phaseBlocks()`、`postAsDefaultSender(...)`、`GROUP_DEFAULTS_ADDRESS()` |
 | 事件 | `PostMessage` / `MentionSenderId` / `MentionAll` / `FailAfterPostPlugin` | 五个配置事件各增 `uint256 indexed operatorId`；`Activate(uint256,address)` → `Activate(uint256,uint256,address)` | — | — |
 | 错误 | `GroupNotExist` / `ChatAlreadyActivated` / `ChatNotActivated` / `PostingNotAllowed` / `NotChatOwner` / `NotChatOwnerOrDelegateIdOwner` / `RoundNotStarted` / `Reentrant` / `PhaseBlocksZero` / `MaxContentLengthZero` / `SourceAddressHasNoCode` / `PluginAddressHasNoCode` / `ContentEmpty` / `ContentTooLong` / `TooManyMentionedSenderIds` / `DuplicateMentionedSenderId` / `InvalidQuotedMessageId` / `InvalidMessageId` / `GroupAdminHasNoCode` / `GroupDelegateHasNoCode` / `GroupDelegateGroupMismatch` / `MentionAllUnauthorized` / `ScopeRejected` / `BanRejected` / `ScopeSourceFailed` / `BanSourceFailed` | `SenderAddressNotSenderIdOwner()` → `SenderNotMemberOwner(uint256 senderId)` | `InvalidAddress()`、`MaxMentionedSenderIdsZero()` | `DefaultGroupIdNotSet()` / `GroupDefaultsHasNoCode()` / `GroupDefaultsGroupMismatch()` |
 
-构造签名 `(groupAdmin, originBlocks, phaseBlocks, maxContentLength, maxMentionedSenderIds)` → `(groupAdmin, phaseAddress, maxContentLength, maxMentionedSenderIds)`；`Message.round` 由发言时的 Phase 轮次固定（[04-query.md](group-chat/04-query.md)）。
+构造签名 `(groupAdmin, originBlocks, phaseBlocks, maxContentLength, maxMentionedSenderIds)` → `(groupAdmin, phaseAddress, maxContentLength, maxMentionedSenderIds)`；`currentRound()` 签名保留，语义改为直接映射 Phase（Phase 前回滚 `RoundNotStarted`，从 1 起）；`Message.round` 由发言时的 Phase 轮次固定（[04-query.md](group-chat/04-query.md)）。
 
 ### GroupAdmin / GroupMember
 
@@ -55,7 +55,7 @@
 
 ### GroupChatBanList（原 `IGroupBanList`）
 
-- **改名**：合约 `GroupBanList` → `GroupChatBanList`；接口同名改名；错误 `GroupBanListAddressHasNoCode` → `GroupChatBanListAddressHasNoCode`
+- **改名**：合约 `GroupBanList` → `GroupChatBanList`；接口同名改名；错误 `GroupBanListAddressHasNoCode` 保留原名（selector 不变）
 - **改参**：`banBySenderIds` / `unbanBySenderIds` 各增 `uint256 operatorId`
 - **新增**：`isSenderIdBannedBatch(uint256,uint256[])`
 - **删除**：地址名单一整套（`banBySenderAddresses` / `unbanBySenderAddresses` / `banBySenders` / `unbanBySenders` / `isAddressBanned` / `addressBanDetails` / `addressBanList(Count)` / `isBanned(uint256,uint256,address)`）、错误 `TargetAddressZero` / `SenderPairLengthMismatch`、事件 `SetAddressBan`
@@ -68,10 +68,9 @@
 ### Manager 三接口
 
 - **改参**：四个 Manager 构造 `extensionCenter_` → `actionTarget_`；`banSource_` 由激活参数提前为构造参数
-- **删参**：`TokenMainManager` / `TokenGovManager` 构造删 `recentRounds_`
-- **删除**：`IBaseManager.EXTENSION_CENTER_ADDRESS()`、`IBaseTokenScopeManager.RECENT_ROUNDS()`
+- **删除**：`IBaseManager.EXTENSION_CENTER_ADDRESS()`
 - **移动**：`ActionIdNotExist()` 由 `IBaseManager` 移至 `IBaseTokenActionScopeManager`（selector 不变）
-- **命名**：`_groupChatAddress` 等 6 个小写 `public` getter 改为 `GROUP_CHAT_ADDRESS` 等 5 个大写 `public`；`tokenOfGroup` / `groupIdOfToken` / `actionOfGroup` / `groupIdOfAction` 改为 `internal` + 显式 getter（selector 不变）
+- **可见性**：`tokenOfGroup` / `groupIdOfToken` / `actionOfGroup` / `groupIdOfAction` 由 `public` 存储改为 `internal` + 显式 getter（selector 不变）
 - **入参名**：批量入参在接口与实现统一为 `_` 后缀，与 `postingAllowed_` 同例，规避与同名 getter 的声明遮蔽（solc 8760）：`addAdmins` / `removeAdmins` 的 `adminIds_`、`addMemberIds` / `removeMemberIds` / `isMemberIdBatch` 的 `memberIds_`、`chatInfos` 的 `groupIds_`、`roundInfos` 的 `rounds_`
 - **新增**：错误 `ManagerGroupNameSpaceTooSmall()`；MemberNFT `MAX_NAME_LENGTH < 17`（1 字节分隔符 + 12 位十六进制后缀 + 4 字节 Test 前缀）时 Manager 构造回滚
 
@@ -84,7 +83,7 @@
 | `IBanVoteWeightSource` | `voteWeightOf(uint256,address)` → `voteWeightOf(uint256,uint256)` |
 | `IGroupJoinScopeSource` | `GROUP_JOIN_ADDRESS()` → `GROUP_ACTION_EXECUTOR_ADDRESS()`；成员判定改 `IGroupActionIndexes.isGroupMember(groupId, senderId)` |
 | `IAdminBanSource` / `IGroupMemberScope` | 不变 |
-| `IGovVotedBanSource` | `voteBySenderId(uint256,uint256,bool)` → `(uint256,uint256,uint256,bool)`（显式 `voterId`），`clear` / `refresh` 同理；删除地址投票一整套（`voteBySenderAddress` / `voteBySender` 及其 clear/refresh、`voteWeightsBySenderAddressesByVoter` / `voteStatusBySenderAddress(es)` / `isAddressBanned(es)` / `votedSenderAddresses*` / `votersBySenderAddress*`、事件 `SetAddressBanVote` / `SetAddressBan`、错误 `TargetAddressZero`）与单条 `isSenderIdBanned` |
+| `IGovVotedBanSource` | `voteBySenderId(uint256,uint256,bool)` → `(uint256,uint256,uint256,bool)`（显式 `voterId`），`clear` / `refresh` 同理；新增错误 `SenderNotMemberOwner(uint256)`（写入/撤票校验 voter 当前持有人）；删除地址投票一整套（`voteBySenderAddress` / `voteBySender` 及其 clear/refresh、`voteWeightsBySenderAddressesByVoter` / `voteStatusBySenderAddress(es)` / `isAddressBanned(es)` / `votedSenderAddresses*` / `votersBySenderAddress*`、事件 `SetAddressBanVote` / `SetAddressBan`、错误 `TargetAddressZero`）与单条 `isSenderIdBanned` |
 
 ### 插件与来源（`plugins/`）
 
