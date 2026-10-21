@@ -17,7 +17,7 @@ GroupAction 使用 MemberNFT 身份，`groupId` 是群主体的 `memberId`，不
 
 验证信息模板的 keys 和 descriptions 在 Proposal 创建回调时通过可选 `targetData[6] = abi.encode(string[] keys, string[] descriptions)` 传入，后续不可修改；两数组不等长回滚 `VerificationInfoLengthMismatch`。成员提交的验证信息值在加入时写入，项数与模板 keys 不符同样回滚 `VerificationInfoLengthMismatch`，每次修改参与量时可更新。
 
-管理操作要求持有 groupId；自有参与操作要求持有 memberId。`groupId` 即群主体的 memberId，同一成员在同一行动上至多激活一个链群：行动内是否激活用 `isGroupActive(tokenAddress, actionId, groupId)` 直查，不设行动维度的按 owner 激活列表与质押查询。跨行动的社区级判定与聚合保留（主体为 memberId，与全员身份模型一致）：`hasActiveGroups(tokenAddress, memberId)` 一次判定该成员（自身作为链群主体）在该社区是否存在激活行动（GroupService 加入资格判据），`totalStakedByMemberId(tokenAddress, memberId)` 返回其全部激活链群的累计质押（各行动 `ACTIVATION_STAKE_AMOUNT(tokenAddress, actionId)` 可能不同且激活行动数未知，不展开为按行动遍历）。同一行动中成员只能归属一个 Group，追加不得改群；换群须先正常退出。`join` 的资产来源由 `providerId` 决定：`0` 表示成员自有代币，非零表示从该 Provider 已存入合约的额度中扣减。同一成员可在同一行动上混合多个来源，重复 `join` 按来源分别追加；`joinInfo`（含 `ownAmount`/`providerAmount` 聚合）、`joinedAmountByMemberId` 与 `totalJoinedAmountByGroupId` 都包含全部来源。`withdraw` 只减少自有账本，`providerWithdraw` 只减少指定 Provider 账本，两者不互相抵扣；成员总参与量（自有 + 全部 Provider）归零时自动退出。`providerWithdraw` 由该 Provider 当前持有人调用，代币始终返还该 Provider 当前持有人；Provider 身份不授予成员 `exit`、额度管理或撤回 Provider 已投入部分的权限。成员调用 `exit` 时结清全部来源：自有资产返还成员，Provider 来源恢复为该 Provider 对该成员的可用额度、不转出合约（Provider 仍可用 `providerQuotaRemove` 取回）。代币量只由 `Joined` 与 `Withdrawn` 承载：`exit` 按来源逐条发出 `Withdrawn`（自有来源为 `0`，每个有余额的 Provider 一条），`Exited` 只表示退出状态（带链群 `groupId`）、不带金额。无参与记录返回零元组，历史集合无记录返回空数组。
+管理操作要求持有 groupId；自有参与操作要求持有 memberId。`activateGroup` 只接受本 Executor 已创建的行动（`createdRound != 0`）：创建回调之前 `ACTIVATION_STAKE_AMOUNT` 仍为零、gov-ratio 下限未设，放行会让群零押金入场并绕开下限；未创建时回滚 `InvalidRound(0)`。`groupId` 即群主体的 memberId，同一成员在同一行动上至多激活一个链群：行动内是否激活用 `isGroupActive(tokenAddress, actionId, groupId)` 直查，不设行动维度的按 owner 激活列表与质押查询。跨行动的社区级判定与聚合保留（主体为 memberId，与全员身份模型一致）：`hasActiveGroups(tokenAddress, memberId)` 一次判定该成员（自身作为链群主体）在该社区是否存在激活行动（GroupService 加入资格判据），`totalStakedByMemberId(tokenAddress, memberId)` 返回其全部激活链群的累计质押（各行动 `ACTIVATION_STAKE_AMOUNT(tokenAddress, actionId)` 可能不同且激活行动数未知，不展开为按行动遍历）。同一行动中成员只能归属一个 Group，追加不得改群；换群须先正常退出。`join` 的资产来源由 `providerId` 决定：`0` 表示成员自有代币，非零表示从该 Provider 已存入合约的额度中扣减。同一成员可在同一行动上混合多个来源，重复 `join` 按来源分别追加；`joinInfo`（含 `ownAmount`/`providerAmount` 聚合）、`joinedAmountByMemberId` 与 `totalJoinedAmountByGroupId` 都包含全部来源。`withdraw` 只减少自有账本，`providerWithdraw` 只减少指定 Provider 账本，两者不互相抵扣；成员总参与量（自有 + 全部 Provider）归零时自动退出。`providerWithdraw` 由该 Provider 当前持有人调用，代币始终返还该 Provider 当前持有人；Provider 身份不授予成员 `exit`、额度管理或撤回 Provider 已投入部分的权限。成员调用 `exit` 时结清全部来源：自有资产返还成员，Provider 来源恢复为该 Provider 对该成员的可用额度、不转出合约（Provider 仍可用 `providerQuotaRemove` 取回）。代币量只由 `Joined` 与 `Withdrawn` 承载：`exit` 按来源逐条发出 `Withdrawn`（自有来源为 `0`，每个有余额的 Provider 一条），`Exited` 只表示退出状态（带链群 `groupId`）、不带金额。无参与记录返回零元组，历史集合无记录返回空数组。
 
 ## 当前归属与索引
 
@@ -101,6 +101,8 @@ Executor 先按 [统一铸造链路](07-minting.md#铸造链路) 取得整笔激
 Executor 是单例，全部逻辑落在一个地址上会超过 EIP-170 的 24,576 字节上限（旧实现实测 39,241 字节），因此把实现体拆进 `action/src/` 的 `public` 库、按业务模块各成一个库，经 delegatecall 执行；部署地址、ABI 与状态都不变。
 
 **状态只有一份，由一个根 Layout 承载。** 全部状态收进 `GroupActionStorage.Layout` 一个 struct，Executor 只声明 `GroupActionStorage.Layout internal s`；库函数一律只收一个 `GroupActionStorage.Layout storage s` 加业务参数。状态变量增减只改 Layout，不改任何库的函数签名；多个库共享同一个 Layout，天然读写同一份存储，不出现「这个库要传哪几个变量」的问题。
+
+**Layout 变更即重新部署**：字段的插入、删除或重排都会移动后续槽位。本仓无生产部署，Layout 变更后必须整体重新部署；若已有部署，只能把新字段追加到结构体末尾，不能把「本仓这次只是追加」当成通用规则。
 
 **库按业务模块划分**，一个业务一个库、一个库一个接口文件，不按调用热度：
 

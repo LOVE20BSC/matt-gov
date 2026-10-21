@@ -4,6 +4,8 @@
 
 阶段和源行动查询见 [服务验证复用](02-phase-model.md#服务验证复用)。分母统计 `actionTokenAddress` 社区本轮全部 GroupAction 的行动层激励：按 `votedActions(actionTokenAddress, round)` 枚举本轮有票行动（规模上界由每轮提案上界保证，见 [ActionTarget](01-action-target.md)），过滤 `executor == groupActionExecutorAddress` 后逐个行动求和。行动层查询自带验证与激励条件，未完成验证或无公共验证者的行动整轮返回 0，GroupService 不重复筛选。服务 Proposal 本轮没有可铸造激励时，由 Mint 的内部 Round 准备逻辑决定为零，Executor 不重复判断原因，owner 和公共验证者激励均为零。
 
+状态集中在 `GroupServiceStorage.Layout`；字段的插入、删除或重排都会移动后续槽位。本仓无生产部署，Layout 变更后必须整体重新部署；若已有部署，只能尾部追加。
+
 ## 权重
 
 | 符号 | 含义 |
@@ -33,7 +35,7 @@ theoreticalOwnerReward(m)    = mulDiv(serviceReward, (1e18 - r) * ownerWeightNum
 
 owner 权重按群切片 floor 后汇总，因此 `Σ_m ownerWeightNumerator(m) ≤ D`：每个行动的分母最多比该行动的群切片之和多「群数 − 1」个 wei。owner 侧按 `ownerWeight / D` 分成，这部分未被权重覆盖的服务激励不重分配、留在服务合约，与未加入角色的份额、零分母未结算激励同口径；公共验证者权重直接按 `A[a]` 汇总，不受此取整影响。这是分母取行动总额、而非逐群切片之和的直接代价，换来分母的 O(votedActions)。
 
-**分母缓存**：行动代币那一轮被 Mint 准备、且该轮已进入结算窗口（验证已结束）之后，该轮的 `_proposalReward`、`_eligibleProposalVotes` 与票数都已定稿，每个 `A[a]` 不再变化——此时把 `D` 存下来，后续结算与查询直接读缓存，省掉一次行动枚举。判据必须是**行动代币**的 `isRewardPrepared(actionTokenAddress, round)`，不是服务代币的：服务 Proposal 挂在父币上时，结算里的 `mintActionReward` 只准备父币那一轮，子币那一轮仍开着，`A[a]` 还会随 `rewardAvailable()` 移动；此时缓存会把冻结的分母和活的分子配在一起，第二个人超额领取（`testRegression_RealSourceBurnCannotOverpayServiceBudget` 就是这个反例）。未准备时一律实时算、不写缓存。`mintAddress` 在 `init` 内从 `ActionTarget.mintAddress()` 读取一次并缓存，只用于这一个查询。
+**分母缓存**：行动代币那一轮被 Mint 准备、且该轮已进入结算窗口（验证已结束）之后，该轮的 `_proposalReward`、`_eligibleProposalVotes` 与票数都已定稿，每个 `A[a]` 不再变化——此时把 `D` 存下来，后续结算与查询直接读缓存，省掉一次行动枚举；缓存命中后不再重写，也不再读 `isRewardPrepared`。判据必须是**行动代币**的 `isRewardPrepared(actionTokenAddress, round)`，不是服务代币的：服务 Proposal 挂在父币上时，结算里的 `mintActionReward` 只准备父币那一轮，子币那一轮仍开着，`A[a]` 还会随 `rewardAvailable()` 移动；此时缓存会把冻结的分母和活的分子配在一起，第二个人超额领取（`testRegression_RealSourceBurnCannotOverpayServiceBudget` 就是这个反例）。未准备时一律实时算、不写缓存。`mintAddress` 在 `init` 内从 `ActionTarget.mintAddress()` 读取一次并缓存，只用于这一个查询。
 
 未走缓存时（缓存尚未写入）分子与分母仍然同源，且只差一个公共因子：同一轮里所有行动都按 `P · v_a / E` 分摊同一个池 `P` 与同一个达标票数 `E`，所以池子无论何时变大变小（别的轮次准备或铸造、社区代币被销毁都会改变 `rewardAvailable()`），`A[a]` 与 `D` 都同比例变化，**因子在 `w(m)/D` 里约掉**，同一轮的两位成员即使在不同交易里结算，分摊比例也一样——差异只剩逐项取整的几位 wei。这也解释了为什么历史上「分子读实时、分母读快照」会超额支付：错在两侧不同源，而不在是否快照。
 
