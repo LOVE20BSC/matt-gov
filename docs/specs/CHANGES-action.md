@@ -249,10 +249,15 @@ GroupAction Executor 通过加入阶段内逐笔发生的加入、追加、部�
 #### 公共验证者机制
 **BSC 新增**：旧 `LOVE20TKM/extension-group/src/GroupVerify.sol` 只作为连续批次和原始分校验的参考；候选申请、排名和分割线开放不沿用旧机制。
 
-- 候选申请只在投票阶段新增、撤销或修改
-- 排名按累计候选票降序、`applicationId` 升序
+- 候选申请是**常设登记**：行动创建轮及之后的任意轮次都能提交，一份申请自提交轮起对之后每一轮生效，不必逐轮重新申请；修改申请等价于撤销后重新申请（新 ID 从零计票），当前轮排名里的旧项被移除
+- **票数与排名按轮隔离**：`votesByApplicationId` 以 `round` 为键，只存该轮票数，排名与查询都读它；不存在跨轮累计值，同一候选上一轮的票不会抬高它这一轮的排名
+- **按轮查询**：`applicationIdHistory[token][actionId][memberId]` 用 `RoundHistoryUint256` 记录「哪一轮以哪份申请站台」——申请时写入新 `applicationId`，撤销时写入零值，读取按懒继承取不晚于该轮的最近记录。因此第 3 轮申请、第 5 轮修改后，查第 4 轮仍返回第 3 轮那份申请；票数仍按该轮实际获得读取
+- **押金一份**：同一成员在同一行动只质押一次，修改申请既不退还也不再划转，只有撤销才全额退还；`verifierStake` 与「持有当前申请」等价
+- **行动未创建的错误**：`createdRound == 0` 时回滚 `ActionNotCreated(tokenAddress, actionId)`，`activateGroup`、`submitVerifierApplication` 与三个 Executor 的成员结算同口径，声明在基座 `IActionExecutorErrors`；不再用 `InvalidRound(0)` 哨兵，也不再把该情形混进 `RoundNotStarted()`（后者只表示 `round` 早于创建轮）
+- **行动可跨轮复用**：Proposal 在创建轮之后被重新推举并投票时，该轮重新构建排名、重新聚集参与、独立验证与结算，与创建轮互不影响
+- 排名按当轮候选票降序、`applicationId` 升序
 - 分割线开放：`openBlock = verifyPhaseStartBlock + ceil(verifyPhaseBlocks × splits[rank - 2] / 1e18)`
-- 验证者押金：候选**首次**申请按行动配置 `verifierStakeAmount` 从成员当前持有人转入执行合约，替换申请不重复划转，撤销申请时全额退还；押金独立于链群激活质押与治理票账本
+- 验证者押金：候选**首次**申请按行动配置 `verifierStakeAmount` 从成员当前持有人转入执行合约，替换申请不重复划转，撤销当前申请时全额退还；押金只担保持有申请，撤销不收回当轮已得到的验证资格（候选身份按该轮历史解析）；押金独立于链群激活质押与治理票账本
 
 #### 激励计算
 **BSC 调整**：所有成员按同一原始得分规则计算，全行动共用分母，不在 Group 内二次按比例分配：

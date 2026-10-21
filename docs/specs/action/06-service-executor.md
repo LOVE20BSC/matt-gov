@@ -29,15 +29,17 @@ theoreticalVerifierReward(m) = mulDiv(serviceReward, r * verifierWeightNumerator
 theoreticalOwnerReward(m)    = mulDiv(serviceReward, (1e18 - r) * ownerWeightNumerator(m), D * 1e18)
 ```
 
-`generatedActionRewardByGroupId` 对未完成验证或无参与的行动返回 0，`lockedVerifierId` 只在该行动的目标轮存在锁定验证者时非零；每个行动只在其创建轮产出参与与激励，`votedActions` 入榜的行动即该轮创建的行动，跨轮行动天然不计入。理论金额使用同一组不提前截断的分子与分母（`Math.mulDiv`）。
+`generatedActionRewardByGroupId` 对未完成验证或无参与的行动返回 0，`lockedVerifierId` 只在该行动的目标轮存在锁定验证者时非零；行动可跨轮复用，但**每个行动只在被推举并投票的那一轮产出参与与激励**，`votedActions(round)` 入榜的正是该轮被投票的行动，因此分母天然只统计当轮的参与。理论金额使用同一组不提前截断的分子与分母（`Math.mulDiv`）。
 
 分母 `D` 与每个行动的 `A[a]` 默认按实时账本读取。分母对每个入榜行动读一次 `A[a]`（`generatedActionReward`，未完成验证或无参与返回 0），即 O(votedActions)，而 `votedActions` 有每轮提案上界，**链上没有与链群数成正比的成本**；群切片 `groupReward(a, g)` 不落存储，按 `mulDiv(A[a], finalScore(a, g), totalFinalScore(a))` 现算；权重侧另按群切片读取，成员为锁定验证者时再读一次 `A[a]`。
 
 owner 权重按群切片 floor 后汇总，因此 `Σ_m ownerWeightNumerator(m) ≤ D`：每个行动的分母最多比该行动的群切片之和多「群数 − 1」个 wei。owner 侧按 `ownerWeight / D` 分成，这部分未被权重覆盖的服务激励不重分配、留在服务合约，与未加入角色的份额、零分母未结算激励同口径；公共验证者权重直接按 `A[a]` 汇总，不受此取整影响。这是分母取行动总额、而非逐群切片之和的直接代价，换来分母的 O(votedActions)。
 
-**分母缓存**：行动代币那一轮被 Mint 准备、且该轮已进入结算窗口（验证已结束）之后，该轮的 `_proposalReward`、`_eligibleProposalVotes` 与票数都已定稿，每个 `A[a]` 不再变化——此时把 `D` 存下来，后续结算与查询直接读缓存，省掉一次行动枚举；缓存命中后不再重写，也不再读 `isRewardPrepared`。判据必须是**行动代币**的 `isRewardPrepared(actionTokenAddress, round)`，不是服务代币的：服务 Proposal 挂在父币上时，结算里的 `mintActionReward` 只准备父币那一轮，子币那一轮仍开着，`A[a]` 还会随 `rewardAvailable()` 移动；此时缓存会把冻结的分母和活的分子配在一起，第二个人超额领取（`testRegression_RealSourceBurnCannotOverpayServiceBudget` 就是这个反例）。未准备时一律实时算、不写缓存。`mintAddress` 在 `init` 内从 `ActionTarget.mintAddress()` 读取一次并缓存，只用于这一个查询。
+**分母缓存**：行动代币那一轮被 Mint 准备、且该轮已进入结算窗口（验证已结束）之后，该轮的 `_proposalReward`、`_eligibleProposalVotes` 与票数都已定稿，每个 `A[a]` 不再变化——此时把 `D` 存下来，后续结算与查询直接读缓存，省掉一次行动枚举；缓存命中后不再重写，也不再读 `isRewardPrepared`。判据必须是**行动代币**的 `isRewardPrepared(actionTokenAddress, round)`，不是服务代币的：服务 Proposal 挂在父币上时，结算里的 `mintActionReward` 只准备父币那一轮，子币那一轮仍开着，`A[a]` 还会随 `rewardAvailable()` 移动；此时缓存会把冻结的分母和活的权重配在一起，第二个人超额领取（`testRegression_RealSourceBurnCannotOverpayServiceBudget` 就是这个反例）。未准备时一律实时算、不写缓存。`mintAddress` 在 `init` 内从 `ActionTarget.mintAddress()` 读取一次并缓存，只用于这一个查询。
 
-未走缓存时（缓存尚未写入）分子与分母仍然同源，且只差一个公共因子：同一轮里所有行动都按 `P · v_a / E` 分摊同一个池 `P` 与同一个达标票数 `E`，所以池子无论何时变大变小（别的轮次准备或铸造、社区代币被销毁都会改变 `rewardAvailable()`），`A[a]` 与 `D` 都同比例变化，**因子在 `w(m)/D` 里约掉**，同一轮的两位成员即使在不同交易里结算，分摊比例也一样——差异只剩逐项取整的几位 wei。这也解释了为什么历史上「分子读实时、分母读快照」会超额支付：错在两侧不同源，而不在是否快照。
+**分摊之所以稳定，靠的是「权重与分母同源」，不是「分子与分母同源」。** 权重侧 `ownerWeightNumerator(m)` 与 `verifierWeightNumerator(m)` 都由 `A[a]` 派生（群切片是 `A[a]` 按 `finalScore / totalFinalScore` 的比例，验证者权重直接是 `A[a]` 之和），分母 `D = Σ A[a]` 也是同一份账本，因此两者对池子大小同比例变化，`w(m)/D` 与池子无关。同一轮里所有行动都按 `P · v_a / E` 分摊同一个池 `P` 与同一个达标票数 `E`，所以别的轮次准备或铸造、社区代币被销毁导致 `rewardAvailable()` 移动时，`w` 与 `D` 一起动、比例不动，同一轮的两位成员即使在不同交易里结算，分摊比例也一样——差异只剩逐项取整的几位 wei。
+
+这条论证**不要求分子与分母同币同源**：服务代币是行动代币的父币时，分子来自父币池、分母来自子币池，二者本就不会一起动；但分子一经准备即冻结、权重与分母同源，分摊仍然稳定。反过来，历史上「分子读实时、分母读快照」会超额支付，错的正是权重与分母不同源，而不在是否快照——所以只钉分母、不钉权重是不够的，真要快照就必须两侧一起钉（即已删除的旧「冻结账本」那套）。
 
 现算切片的前提是轮次已过验证：`finalScoreByGroupId` 与 `totalFinalScore` 只在 `_scoreBatch` 里增长，验证结束、进入铸造窗口后都不再变化。若将来出现「验证之后还能改分数」的路径，同一轮的 owner 权重会在两次结算之间静默变化——这是承重不变式。
 
@@ -47,7 +49,7 @@ owner 权重按群切片 floor 后汇总，因此 `Σ_m ownerWeightNumerator(m) 
 
 `init(actionTargetAddress, stakeAddress, groupActionExecutorAddress)` 只收 ActionTarget、Stake 和 GroupAction Executor：`memberNFTAddress`、`phaseAddress`、`launchAddress` 在 init 内从 `stakeAddress` 的 getter 读取一次并缓存，`mintAddress` 从 `ActionTarget.mintAddress()` 读取一次并缓存（只用于 `isRewardPrepared`，激励本身仍经 `ActionTarget` 读取），任一为零回滚 `InvalidAddress`。
 
-**加入与退出**：`join(serviceTokenAddress, serviceActionId, memberId)` 校验当前 NFT 持有人，资格为两类之一——该成员（自身作为链群主体）在 `actionTokenAddress` 社区存在激活行动，以 GroupAction Executor 的 `hasActiveGroups(actionTokenAddress, memberId)` 一次判定；或在该轮社区行动集（与分母枚举同源）中存在有效公共验证者竞选申请，逐个读 `verifierApplication(actionTokenAddress, actionId, memberId)` 的 `applicationId != 0`（无申请返回零值结构体、不回滚）。满足其一即可，不要求该轮已选出公共验证者；均不满足回滚 `NoActiveGroups`。重复 `join` 回滚 `AlreadyJoined`，未加入 `exit` 回滚 `NotJoined`。服务资格按轮快照由 ActionTarget 持有：`joinInfo(serviceTokenAddress, serviceActionId, round, memberId)` 转发 `isJoinedByRound`、返回该轮快照是否已加入，Executor 不自建副本；退出只写当时轮快照，不追回已发生轮。共同准备/铸造/销毁 ABI 见 [行动铸造](07-minting.md#铸造链路)。
+**加入与退出**：`join(serviceTokenAddress, serviceActionId, memberId)` 校验当前 NFT 持有人，资格为两类之一——该成员（自身作为链群主体）在 `actionTokenAddress` 社区存在激活行动，以 GroupAction Executor 的 `hasActiveGroups(actionTokenAddress, memberId)` 一次判定；或在该轮社区行动集（与分母枚举同源）中存在有效公共验证者竞选申请，逐个读 `verifierApplication(actionTokenAddress, actionId, round, memberId)` 的 `applicationId != 0`（申请自其提交轮起常设，必须按**被加入轮**判断它当时是否已生效；无申请返回零值结构体、不回滚）。满足其一即可，不要求该轮已选出公共验证者；均不满足回滚 `NoActiveGroups`。重复 `join` 回滚 `AlreadyJoined`，未加入 `exit` 回滚 `NotJoined`。服务资格按轮快照由 ActionTarget 持有：`joinInfo(serviceTokenAddress, serviceActionId, round, memberId)` 转发 `isJoinedByRound`、返回该轮快照是否已加入，Executor 不自建副本；退出只写当时轮快照，不追回已发生轮。共同准备/铸造/销毁 ABI 见 [行动铸造](07-minting.md#铸造链路)。
 
 **加入窗口**：服务 Proposal 是持续存在的，创建之后**每一轮都可以加入**，不限于创建轮——`createdRound` 只是下界。快照自加入轮起持续有效直到 `exit`，因此某轮结算只包含「在该轮或更早加入、且尚未退出」的成员；晚加入的人拿不到更早轮次的分成，但也无需重复加入。资格判定用**被加入的那一轮**的社区行动集（`currentJoinRound()`），不是创建轮的行动集。下界由 ActionTarget 的 `registerJoinState` 兜住：当前轮 `<= createdRound` 时回滚 `JoinNotOpen`，Executor 不重复判断。
 

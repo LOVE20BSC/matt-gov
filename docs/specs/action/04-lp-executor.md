@@ -27,12 +27,13 @@ Target Data 是无键数组，按位置读取。第 `0` 项是 ActionTarget 保�
 | 首次加入且 `govRatio < minGovRatio` | `InsufficientGovRatio()` |
 | `exit` 时该成员没有加入记录 | `NotJoined()` |
 | 加入轮低于该行动创建轮 | `JoinNotOpen(tokenAddress, actionId, currentRound, createdRound)`（ActionTarget 抛出） |
-| 结算轮次低于该行动创建轮 | `RoundNotStarted()` |
+| 行动未创建（`createdRound == 0`） | `ActionNotCreated(tokenAddress, actionId)` |
+| 结算轮次低于该行动创建轮（行动已创建） | `RoundNotStarted()` |
 | 结算轮次大于当前铸币轮（铸币阶段未开始时任何轮次都不在有效阶段） | `InvalidRound(round)` |
 | 同一成员同一轮重复结算 | `RewardAlreadyMinted(tokenAddress, actionId, memberId, round)` |
 | 非 ActionTarget 调用回调 | `UnauthorizedCallback()` |
 
-行动轮次的下界是该行动的创建轮（不小于 `1`），比按 Phase 推导的下界更严格：加入的下界由 ActionTarget 的 `JoinNotOpen` 承担，结算的下界由本 Executor 按创建轮校验。
+行动轮次的下界是该行动的创建轮（不小于 `1`），比按 Phase 推导的下界更严格：加入的下界由 ActionTarget 的 `JoinNotOpen` 承担，结算的下界由本 Executor 按创建轮校验。结算的第一段先判行动是否存在（`createdRound == 0` 回滚 `ActionNotCreated`），第二段才判轮次是否早于创建轮，两段不合并。
 
 ## 时间权重
 
