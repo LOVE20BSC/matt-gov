@@ -91,7 +91,7 @@
 #### 接口差异（代码级）
 - **`stakeLiquidity` 加参数**：新增 `slippage`（`1e18` 精度），入池前先按 Pair 储备折算最优数量并按该值校验偏离；旧接口与旧 Hub 都只接收数量，数量折算与条件校验原在 `LOVE20TKM/periphery/src/LOVE20Hub.sol`
 - **入池折算的零储备分支由「两侧都为零」放宽为「任一侧为零」**：旧 `_calculateOptimalAmounts` 只在 `tokenReserve == 0 && parentTokenReserve == 0` 时跳过折算，单侧为零会走进折算分支——`tokenReserve == 0` 在该分支的第一次除法除零 panic，`parentTokenReserve == 0` 则折算得 0 并撞上最小量 `require` 回滚（旧最小量由调用方传入，通常大于零）；新实现任一侧储备为零即跳过折算、直接采用期望数量，没有除零面
-- **新增错误**：`SlippageExceeded(uint256 slippage, uint256 deviation)`、`InvalidTokenAddress()`、`InvalidMemberId()`、`NotMemberOwner(uint256)`、`SourceAndTargetMustBeDifferent()`、`SourceHasUsedStakeRightsInCurrentRound()`、`TargetPromisedWaitingPhasesTooShort()`、`InvalidAddress()`、`ZeroAmount(string)`、`InvalidAmount()`、`InvalidPhase(uint256)`
+- **新增错误**：`SlippageExceeded(uint256 slippage, uint256 deviation)`、`InvalidTokenAddress()`、`InvalidMemberId()`、`NotMemberOwner(uint256)`、`SourceAndTargetMustBeDifferent()`、`SourceHasUsedStakeRightsInCurrentRound()`、`MemberHasUsedStakeRightsInCurrentRound()`、`FeeSettlementRatioOutOfRange()`、`TargetPromisedWaitingPhasesTooShort()`、`InvalidAddress()`、`ZeroAmount(string)`、`InvalidAmount()`、`InvalidPhase(uint256)`
 - **错误改名与承接**：`NotEnoughWaitingBlocks` → `NotEnoughWaitingPhases`；删除 `InvalidToAddress()`、`RoundHasNotStartedYet()`，后者的「轮次尚未开始」语义由 `InvalidPhase(uint256)` 承接（与 `IPhaseErrors` 同名同参数）；`SlippageExceeded` 的两个参数分别是请求容差与实际偏离
 - **新增事件**：`FeesSettled`、`StakeMerged`
 - **事件改名与改字段**：`StakeToken` → `StakeBoost`；`StakeLiquidity` 增加 `tokenAmountDesired`/`parentTokenAmountDesired` 并保留实际入池量；`StakeLiquidity`/`Unstake`/`Withdraw`/`StakeBoost` 的账户参数由 `address account` 改为 `uint256 memberId`
@@ -99,7 +99,8 @@
 - **函数改名与改参**：`govVotesNum` → `globalGovVotes`；`accountStakeStatus` → `stakeData`；`cumulatedTokenAmountByAccount` → `cumulatedBoostShares`；`stakeTokenUpdatedRoundsCount`/`AtIndex` 与 `...ByAccountCount`/`AtIndex` 两对 → 分页 `globalBoostUpdatedRounds`/`boostUpdatedRounds`；`stakeToken` → `stakeBoost`；`unstake`/`withdraw` 由 `(address)` 改为 `(address, uint256 memberId)`
 - **删除函数**：`caculateGovVotes`、`cumulatedTokenAmount`、`initialStakeRound`
 - **新增 DEX 依赖声明**：`IPair`、`IPairFactory`、`IRouter` 三个最小外部接口，落在 `core/src/interfaces/`，**不进入 `matt-gov/interfaces/`**（它们不是 LOVE20 自有 ABI，而是外部部署的调用面，仓库不引入 Uniswap 依赖）；增删 LP 直接经 Pair，Router 只用于父币手续费换币，Factory 的 `createPair` 由 `Launch` 在创建代币（首币与子币）时调用、`getPair` 由 `Stake` 在首次质押时读取——旧 `LOVE20TokenFactory.createToken` 也是创建代币时一并 `createPair`，BSC 把这个位置随 TokenFactory 一起并入了 `Launch`
-- **手续费结算加限频与单笔上限**：旧 `LOVE20SLToken.withdrawFee` 一次把全部 `feeLp` 取回，没有规模约束；新实现把 `MAX_WITHDRAWABLE_TO_FEE_RATIO` 的阈值单位同时用作单笔结算量（`settlementUnit = withdrawableLp / MAX_WITHDRAWABLE_TO_FEE_RATIO`），并限制每社区每 Phase 最多结算一次，未处理部分保留待结算。接口不新增参数；该参数因此同时是夹子敞口的尺度，部署取值须满足 `MAX_WITHDRAWABLE_TO_FEE_RATIO >= 1 / 池费率`
+- **手续费结算加限频与单笔上限**：旧 `LOVE20SLToken.withdrawFee` 一次把全部 `feeLp` 取回，没有规模约束；新实现把 `FEE_SETTLEMENT_RATIO` 的阈值单位同时用作单笔结算量（`settlementUnit = floor(withdrawableLp * FEE_SETTLEMENT_RATIO / 1e18)`），并限制每社区每 Phase 最多结算一次，未处理部分保留待结算。接口不新增参数；该参数因此同时是夹子敞口的尺度，部署取值须满足 `FEE_SETTLEMENT_RATIO <= 池费率`（`1e18` 表示 100%，配置 `3e15` 即 0.3%）
+- **解锁要求本轮未使用质押权**：`unstake` 在本轮已推举或已投票时回滚 `MemberHasUsedStakeRightsInCurrentRound()`。旧实现允许「投票后立即解锁」，本轮已计入的票撤不回，等于让同一份质押资产在本轮既投票又退出；该检查与 `mergeStake` 对源成员的检查同口径
 - **`pairTotalSupply == 0` 的重分类由「清零」改为「原样返回」**：旧 `_calculateLpAndSqrtK` 在该分支返回 `(0, 0, 0)`，会把既有手续费与可提取基准一并抹掉；新实现原样返回上次基准，跳过本次重分类。`lastFeeLp + lastWithdrawableLp == 0`（尚未有质押）走同一分支，两者都不进入结算
 ### ❌ 删除能力
 - 不再产生 SL（Staking Liquidity）代币
@@ -395,7 +396,7 @@
 ### 🔄 BSC 调整
 - Launch 内部创建逻辑接收非零 `distributor`，首批供应量直接铸给该地址
 - 删除 SL/ST 实例创建及其 Stake 依赖；Pair 生命周期随 TokenFactory 一起并入 `Launch`，由其在创建每个代币时建池，`Stake` 只在首次质押时读取
-- `MAX_WITHDRAWABLE_TO_FEE_RATIO` 与 Pair Factory 地址一并移入 `Stake`：前者原在 `ILOVE20TokenFactory` 和 `ILOVE20SLToken` 各有一份，现只由 `IStake.MAX_WITHDRAWABLE_TO_FEE_RATIO()` 提供；后者即旧 `ILOVE20TokenFactory.uniswapV2Factory()`，现为 `IStake.pairFactoryAddress()`
+- `FEE_SETTLEMENT_RATIO`（旧名 `MAX_WITHDRAWABLE_TO_FEE_RATIO`）与 Pair Factory 地址一并移入 `Stake`：前者原在 `ILOVE20TokenFactory` 和 `ILOVE20SLToken` 各有一份，现只由 `IStake.FEE_SETTLEMENT_RATIO()` 提供；刻度由「可提取 LP : 手续费 LP」的比值改为「单笔结算占可提取 LP 的比例」，`1e18` 表示 100%，使「不大于池费率」这条部署约束可直接读出；后者即旧 `ILOVE20TokenFactory.uniswapV2Factory()`，现为 `IStake.pairFactoryAddress()`
 - 首个代币依赖 Airdrop 合约分发（来源：LOVE20TKM/burn）
 - 删除 `burnForParentToken`、`parentPool()`、`BurnForParentToken` 事件和 `InsufficientBalance` 错误：BSC 版不再由代币合约承担父币赎回，社区手续费中父币的换币与销毁由 `Stake` 结算（见 [Stake](core/04-stake.md)）；`parentTokenAddress` 保留，`Stake` 用它判定代币是否已登记。同时移除随之不再需要的 `ReentrancyGuard` 继承
 

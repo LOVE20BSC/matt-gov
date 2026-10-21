@@ -31,7 +31,7 @@ Core 不解释具体 Proposal 的业务字段，扩展通过 Target 接入。
 | Phase 构造参数 | `ORIGIN_BLOCKS`、`ORIGIN_PHASE_BLOCKS`、`TARGET_SECONDS`、`ADJUST_THRESHOLD`、`SYNC_OBSERVATION_LIMIT` | 启动区块、初始区块数、每个 Phase 的目标自然时长（秒，7 天为 `604800`）、偏差阈值、单次同步回溯上限；五项均须大于零，偏差阈值使用 `1e18` 精度且不超过 `1e18` |
 | Stake | `phaseAddress`、`memberNFTAddress`、`voteAddress`、`launchAddress`、`routerAddress`、`pairFactoryAddress` | 时间、身份、当前轮投票/推举检查、Launch 代币登记、路由和 Pair Factory 依赖；Stake 通过 Vote 已绑定的 Submit 读取推举记录；在 Stake 侧 Pair Factory 只用于读取 Launch 已创建或复用的 Pair |
 | Stake | `promisedWaitingPhasesMin`、`promisedWaitingPhasesMax` | 承诺解锁期的最小、最大 Phase 数 |
-| Stake | `maxWithdrawableToFeeRatio` | 可提取 LP 与手续费 LP 的比值上限，`1e18` 表示 1:1；手续费结算阈值，同时是单笔结算量的分母；须不小于 `1e18 / 池费率`，见 [Stake](04-stake.md#手续费结算与销毁) |
+| Stake | `feeSettlementRatio` | 单笔手续费结算占可提取 LP 的比例，`1e18` 表示 100%（如 `3e15` 为 0.3%）；同时是结算阈值与单笔处理量；须不大于池费率，见 [Stake](04-stake.md#手续费结算与销毁) |
 | Submit | `phaseAddress`、`stakeAddress`、`memberNFTAddress` | 时间、质押和身份依赖 |
 | Submit | `submitMinRatio` | 推举门槛，`1e18` 表示 100%，如 `1e16 = 1%` |
 | Vote | `phaseAddress`、`stakeAddress`、`submitAddress`、`memberNFTAddress` | 时间、票权、提案和身份依赖 |

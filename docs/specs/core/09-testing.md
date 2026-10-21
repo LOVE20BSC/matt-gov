@@ -21,12 +21,13 @@
 | Stake | 入池最优量折算与滑点：储备任一侧为零、比例一致、偏离未超/超过 `slippage`、LP 铸出为零 | 储备为零时按期望量入池；比例一致时不折算；偏离未超阈值时只转入折算量并计入相应份额；超过阈值回滚 `SlippageExceeded(slippage, deviation)`；LP 为零回滚 `ZeroAmount("lpMinted")` |
 | Stake | Pair 与代币登记：首次质押读取并登记、再次质押不再访问 Factory、未登记代币或未登记 Pair 的社区调用各入口 | 首次质押只接受 `Launch.isLOVE20Token(tokenAddress)` 为真的代币，读取 Factory 的 `getPair` 并保存；已登记后不再访问 Factory；未登记代币或无 Pair 时所有入口回滚 `InvalidTokenAddress()`，`Stake` 从不创建 Pair |
 | Stake | 加速历史查询的轮次边界：已结束轮、无记录轮、明确归零轮、未来轮 | 前三者按最近不晚于目标轮的记录返回（含显式归零）；未来轮回滚 `InvalidPhase(round)`，不把当前记录当作未来轮的值 |
-| Stake | 结算的夹子防护：阈值单位触发、同 Phase 重复调用、剩余手续费、单笔量小到无法产出 | 单笔处理量恰为一个阈值单位（价格移动不超过 `1 / MAX_WITHDRAWABLE_TO_FEE_RATIO`）；同一 Phase 第二次调用无操作返回；`FeesSettled` 只报实际处理量；剩余留待下个 Phase 且不重复扣减 `withdrawableLp`；单笔量过小时不结算也不消耗本 Phase 额度 |
+| Stake | 结算的夹子防护：阈值单位触发、同 Phase 重复调用、剩余手续费、单笔量小到无法产出 | 单笔处理量恰为一个阈值单位（价格移动不超过 `FEE_SETTLEMENT_RATIO / 1e18`，实际严格小于）；同一 Phase 第二次调用无操作返回；`FeesSettled` 只报实际处理量；剩余留待下个 Phase 且不重复扣减 `withdrawableLp`；单笔量过小时不结算也不消耗本 Phase 额度 |
 | Stake | 等待期到期边界：`unlockRequestPhase + promisedWaitingPhases` 的前一个、恰好、后一个 Phase | 前一个与恰好等于该 Phase 都回滚 `NotEnoughWaitingPhases()`；其后一个 Phase 起允许提取；`canWithdraw` 与 `withdraw` 在同一 Phase 上给出相同结论 |
 | Stake | 份额折算 LP 为零且有加速质押 | 跳过本金 LP 销毁，归还全部加速代币并清理头寸；只扣除退出成员份额和加速负债，可提取 LP 总账不减；对应 `StakeTest.testDustWithdrawalReturnsBoostAndClearsShares` |
 | Stake | 加速历史的解锁归属：申请解锁、等待期内查询、提取、解锁中再追加 | 申请解锁当轮即扣减成员与全局累计；等待期与提取都不重复扣减；`totalBoostShares` 到提取才减少；解锁中追加回滚 `UnstakeAlreadyRequested()` |
 | Stake | 当前 Round 质押融合：来源已推举、来源已投票、目标已使用、上一 Round 使用、创建回调内融合 | 来源当前 Round 已推举或已投票 → `SourceHasUsedStakeRightsInCurrentRound()`；目标已使用不阻止接收；上一 Round 的使用不影响下一 Round；`onProposalCreated` 回调期间也不能绕过来源检查 |
-| Stake | `init` 参数校验与重复初始化：七个依赖地址任一为零、`promisedWaitingPhasesMin` 为零、`maxWithdrawableToFeeRatio` 为零、`promisedWaitingPhasesMin > promisedWaitingPhasesMax`、已初始化 | 依赖地址任一为零 → `InvalidAddress()`；`promisedWaitingPhasesMin` 为零 → `ZeroAmount("promisedWaitingPhasesMin")`；`maxWithdrawableToFeeRatio` 为零 → `ZeroAmount("maxWithdrawableToFeeRatio")`；`min > max` → `InvalidAmount()`；已初始化 → `AlreadyInitialized()`（初始化状态先于参数校验，同时命中回滚前者）；成功后七个依赖 getter 与三个参数 getter 等于入参，再次调用回滚 |
+| Stake | 解锁时的本轮质押权：本轮已投票、本轮已推举、上一 Round 用过、从未使用 | 本轮已投票或已推举 → `MemberHasUsedStakeRightsInCurrentRound()`，解锁不落账、治理票保持有效；上一 Round 用过不影响本轮解锁；从未使用可正常解锁；对应 `StakeTest.testUnstakeRevertsIfMemberVotedInCurrentRound` 与 `testUnstakeSucceedsWhenStakeRightsWereUsedInAPreviousRound` |
+| Stake | `init` 参数校验与重复初始化：六个依赖地址任一为零、`promisedWaitingPhasesMin` 为零、`feeSettlementRatio` 为零或大于 `1e18`、`promisedWaitingPhasesMin > promisedWaitingPhasesMax`、已初始化 | 依赖地址任一为零 → `InvalidAddress()`；`promisedWaitingPhasesMin` 为零 → `ZeroAmount("promisedWaitingPhasesMin")`；`feeSettlementRatio` 为零 → `ZeroAmount("feeSettlementRatio")`，大于 `1e18` → `FeeSettlementRatioOutOfRange()`；`min > max` → `InvalidAmount()`；已初始化 → `AlreadyInitialized()`（初始化状态先于参数校验，同时命中回滚前者）；成功后六个依赖 getter 与三个参数 getter 等于入参，再次调用回滚 |
 | [Proposal](05-submit.md) / [Vote](06-vote.md) | 零 Target、三类回调失败 | 拒绝并整体回滚 |
 | Proposal | `proposalIds`/`proposalIdsByAuthor`/`submitInfos` 分页：`offset` 越界、`limit` 超剩余、`reverse`、只取总数 | 三个查询都按 `(offset, limit, reverse)` 按页返回并给出真实总数，越界返回空数组且不回滚，`reverse` 时从新到旧；`proposalIds`/`proposalIdsByAuthor` 只回 `proposalId`；`limit = 0` 只回总数 |
 | Proposal | `proposalInfosByIds(proposalIds[])` 批量：未分配 ID、批量缺项、批量大小 | 回 `ProposalInfo` 数组，与入参下标一一对应，无长度上限；任一 ID 未分配回滚 `ProposalNotFound`，不静默补空 |
@@ -49,5 +50,7 @@
 | Launch | 发射即建池：`init` 首币、`launchToken` 子币、预建正确 Pair、Factory 返回零地址 | `init` 与每次 `launchToken` 都在同一笔内查询 Pair；不存在时调用 `createPair`，已存在的正确 Pair 被复用；创建返回零地址回滚 `InvalidAddress()`；`Stake` 首次质押时读到的正是该 Pair |
 | Launch | 首币次数伴生：1:1 镜像、其他代币不伴生、根父币维度不可直写 | 首币产生 `count` 时根父币维度同 `count` 增加并发第二条 `LaunchCountAdded`；不变式 `issuedLaunchCount(rootParentTokenAddress) == issuedLaunchCount(firstTokenAddress)` 且不超 `MAX_LAUNCH_COUNT`；Mint 直调 `addLaunchCount(rootParentTokenAddress, …)` 回滚 `InvalidTokenAddress()` |
 | Launch | 根级发射与根级融合：父币为根父币、消耗根级次数、命名与前缀 | 同级币与首币平级，登记、`childTokens(rootParentTokenAddress)`、Pair、名称 `tokenSymbol + "@" + 根父币符号` 正确；无根级次数回滚 `NotEnoughLaunchCount()`；根级次数可融合；`Test` 前缀按首币符号判定 |
+
+ProposalDoS 压力测试把 `SUBMIT_MIN_RATIO` 设为 `1`：成员逐个入池时，后加入者的票权占全局票权的比例远低于 1%，而该测试只度量每轮 1,000 个提案的准备成本，不验证门槛语义。门槛本身由 `Submit` 的专项用例覆盖。
 
 存在“待确认”的场景必须先确定预期，不得用当前实现结果反推规格。

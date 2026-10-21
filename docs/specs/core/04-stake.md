@@ -24,7 +24,7 @@ Stake 按 `tokenAddress + memberId` 维护流动性质押和加速质押，不�
 
 ## 流动性质押与手续费
 
-`init` 只校验 `initialized` 状态并固定依赖地址和参数，不设调用者限制；成功后 `initialized` 置为 `true`，再次调用回滚 `AlreadyInitialized()`。固定 `phaseAddress`、`memberNFTAddress`、`voteAddress`、`launchAddress`、`routerAddress`、`pairFactoryAddress`、`PROMISED_WAITING_PHASES_MIN`、`PROMISED_WAITING_PHASES_MAX` 和 `MAX_WITHDRAWABLE_TO_FEE_RATIO`。所有成员写操作校验当前 NFT 持有人；`voteAddress` 提供本轮投票记录并暴露其已绑定的 Submit，`launchAddress` 用于确认代币由 Launch 登记。金额单位为代币最小单位，等待期为 Phase。
+`init` 只校验 `initialized` 状态并固定依赖地址和参数，不设调用者限制；成功后 `initialized` 置为 `true`，再次调用回滚 `AlreadyInitialized()`。固定 `phaseAddress`、`memberNFTAddress`、`voteAddress`、`launchAddress`、`routerAddress`、`pairFactoryAddress`、`PROMISED_WAITING_PHASES_MIN`、`PROMISED_WAITING_PHASES_MAX` 和 `FEE_SETTLEMENT_RATIO`。所有成员写操作校验当前 NFT 持有人；`voteAddress` 提供本轮投票记录并暴露其已绑定的 Submit，`launchAddress` 用于确认代币由 Launch 登记。金额单位为代币最小单位，等待期为 Phase。
 
 每个社区的唯一 Pair 由 [Launch](08-launch.md) 在发射该代币的同一笔交易内创建或复用；`Stake` 在首次质押时通过 `pairFactoryAddress.getPair(tokenAddress, parentTokenAddress)` 读取并保存，为零地址时回滚 `InvalidTokenAddress()`。**`Stake` 的所有入口都只接受 Launch 已登记的代币，只读取已登记的 Pair，不创建 Pair**，未登记或无 Pair 即回滚。
 
@@ -72,22 +72,22 @@ newFeeLp = totalLp - newWithdrawableLp
 **二、单笔结算量就是一个阈值单位。**
 
 ```text
-settlementUnit = floor(withdrawableLp * 1e18 / MAX_WITHDRAWABLE_TO_FEE_RATIO)
+settlementUnit = floor(withdrawableLp * FEE_SETTLEMENT_RATIO / 1e18)
 触发条件        feeLp >= settlementUnit
 单笔处理量      processedFeeLp = settlementUnit
 ```
 
-`MAX_WITHDRAWABLE_TO_FEE_RATIO` 以 `1e18` 表示 1:1，即「可提取 LP : 手续费 LP」的比值上限；上面的 `1e18` 定点除法等价于 `withdrawableLp / ratio` 的整数除法，不引入精度损失。
+`FEE_SETTLEMENT_RATIO` 是单笔结算占可提取 LP 的比例，以 `1e18` 表示 100%（配置值 `3e15` 即 0.3%）；初始化时要求 `0 < FEE_SETTLEMENT_RATIO <= 1e18`。
 
 阈值同时定义「何时开始烧」和「一次烧多少」：达到一个单位就结算一个单位，剩余 `feeLp - settlementUnit` 留待下个 Phase。这样不需要第二个参数。
 
-结算把 `processedFeeLp / pairTotalSupply` 的流动性按比例取出，再把其中父币那半卖出，价格移动比例恰为 `processedFeeLp / pairTotalSupply`，即 `(withdrawableLp * 1e18) / (pairTotalSupply * MAX_WITHDRAWABLE_TO_FEE_RATIO)`——不超过 `1e18 / MAX_WITHDRAWABLE_TO_FEE_RATIO`（Stake 持满整个 Pair 时取到上界）。**因此该参数同时是夹子敞口的尺度，取值必须满足**：
+结算把 `processedFeeLp / pairTotalSupply` 的流动性按比例取出，再把其中父币那半卖出，价格移动比例恰为 `processedFeeLp / pairTotalSupply`，即 `(withdrawableLp * FEE_SETTLEMENT_RATIO) / (pairTotalSupply * 1e18)`——不超过 `FEE_SETTLEMENT_RATIO / 1e18`（Stake 持满整个 Pair 时趋近该上界；因结算要求 `feeLp > 0`，实际严格小于）。**因此该参数同时是夹子敞口的尺度，取值必须满足**：
 
 ```text
-MAX_WITHDRAWABLE_TO_FEE_RATIO >= 1e18 / 池费率
+FEE_SETTLEMENT_RATIO <= 池费率
 ```
 
-夹子需要在一次往返中盖过两倍池费才有利润，上式让单笔价格移动不超过一个池费率，留出两倍余量。目标池费率 0.25% 时要求该值不小于 `400e18`；配置使用的 `1000e18` 满足（覆盖率 0.1%，余量 2.5 倍）。取值低于该下界会静默放大夹子敞口，部署前须按目标 DEX 的实际池费率核对。
+夹子需要在一次往返中盖过两倍池费才有利润，上式让单笔价格移动不超过一个池费率，往返成本为两个池费。目标池费率 0.30% 时要求该值不大于 `3e15`；配置使用的 `3e15`（0.3%）即取该上界。取值高于该上界会静默放大夹子敞口，部署前须按目标 DEX 的实际池费率核对。
 
 单笔量过小、无法让 Pair 两侧都产出非零数量时（`pair.burn` 会回滚 `INSUFFICIENT_LIQUIDITY_BURNED`），本次不结算也不消耗本 Phase 的额度。
 
@@ -117,7 +117,7 @@ Vote 每次投票通过 `Stake.validGovVotes(tokenAddress, memberId)` 读取当�
 
 ## 解锁与提取
 
-1. 当前 NFT 持有人申请统一解锁，记录申请 Phase 和承诺等待期，立即清零治理票，禁止追加及融合。
+1. 当前 NFT 持有人申请统一解锁，记录申请 Phase 和承诺等待期，立即清零治理票，禁止追加及融合。**本 Round 已推举或已投票的成员不得申请解锁**：解锁只清零当前票权，撤不回已经计入本轮的票，放行等于让同一份质押资产在本轮既投票又退出。该限制与融合对源成员的「本轮已使用质押权」检查同口径，只作用于当前治理 Round，上一 Round 用过质押权的成员在新一轮可以解锁。
 2. 满足 `currentPhase > unlockRequestPhase + promisedWaitingPhases` 后，当前持有人一次提取 LP 对应双币和加速代币；不能分别解锁、分别提取。等待期按「申请 Phase 之后再等满 `promisedWaitingPhases` 个完整 Phase」计量，与旧 `LOVE20Stake.withdraw` 同口径：申请轮加 `promisedWaitingPhases` 的那一个 Phase 仍然太早，例如在 Phase 100 申请、承诺 `1` 时，Phase 102 起才可提取。
 3. NFT 转移不重置等待期，不限制解锁中的 NFT 转移。查询应返回申请 Phase、承诺等待期和是否可提取，任何人可按社区和成员查询。
 
@@ -147,10 +147,11 @@ Vote 每次投票通过 `Stake.validGovVotes(tokenAddress, memberId)` 读取当�
 | 顺序 | 条件 | 回滚错误 |
 | --- | --- | --- |
 | 1 | 已初始化 | `AlreadyInitialized()` |
-| 2 | `phaseAddress`、`memberNFTAddress`、`voteAddress`、`routerAddress`、`pairFactoryAddress` 任一为零地址 | `InvalidAddress()` |
+| 2 | `phaseAddress`、`memberNFTAddress`、`voteAddress`、`launchAddress`、`routerAddress`、`pairFactoryAddress` 任一为零地址 | `InvalidAddress()` |
 | 3 | `promisedWaitingPhasesMin` 为零 | `ZeroAmount("promisedWaitingPhasesMin")` |
-| 4 | `maxWithdrawableToFeeRatio` 为零 | `ZeroAmount("maxWithdrawableToFeeRatio")` |
-| 5 | `promisedWaitingPhasesMin` 大于 `promisedWaitingPhasesMax` | `InvalidAmount()` |
+| 4 | `feeSettlementRatio` 为零 | `ZeroAmount("feeSettlementRatio")` |
+| 5 | `feeSettlementRatio` 大于 `1e18` | `FeeSettlementRatioOutOfRange()` |
+| 6 | `promisedWaitingPhasesMin` 大于 `promisedWaitingPhasesMax` | `InvalidAmount()` |
 
 ### `stakeLiquidity`
 
@@ -191,6 +192,7 @@ Vote 每次投票通过 `Stake.validGovVotes(tokenAddress, memberId)` 读取当�
 | 3 | 调用者不持有指定 `memberId` 的 NFT | `NotMemberOwner(memberId)` |
 | 4 | 已申请解锁 | `UnstakeAlreadyRequested()` |
 | 5 | 无流动性质押 | `NoStakedLiquidity()` |
+| 6 | 本 Round 已推举或已投票 | `MemberHasUsedStakeRightsInCurrentRound()` |
 
 ### `withdraw`
 
