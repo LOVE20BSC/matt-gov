@@ -265,6 +265,9 @@ script/
 | `<代码库名>.params`           | 构造函数或 `init` 所需的全部参数；参数名与接口声明一致                                |
 | `addresses.<代码库名>.params` | 已部署的链上地址记录，供后续脚本引用与验证；代码库按模块拆分部署时，一个模块一个 `addresses.<模块名>.params`（如 `addresses.weth.params`、`addresses.uniswapv2.params`） |
 
+- 配置键统一 **`UPPER_SNAKE_CASE`**：大写英文单词，多词用 `_` 分隔；`NFT`、`LP`、`URL`、`ID`、`RPC` 等缩写视为一个词。地址键以 `_ADDRESS` 结尾，例如 `ACTION_TARGET_ADDRESS`、`GROUP_ACTION_EXECUTOR_ADDRESS`、`MEMBER_NFT_ADDRESS`、`LP_EXECUTOR_ADDRESS`；不写 `ACTIONTARGET_ADDRESS`、`MEMBERNFT_ADDRESS`。禁止首尾或连续下划线；数字随所属单词（`LOVE20_TOKEN_ADDRESS`）。
+- 生产方与消费方必须使用同一键名；跨库地址文件应可直接复制，不得在复制时手工映射。键名是部署接口的一部分，改名须同步生产方、消费方、配置模板、README 与部署回归测试。
+- 该规则只约束部署配置与环境变量键，不改变 Solidity ABI、getter 或合约内 immutable 的命名。
 - `.account` 含敏感信息，必须加入 `.gitignore`；其余三个提交进 Git。
 - 部署脚本从这些文件读配置，不得硬编码网络参数或地址。网络切换只切 `network/` 子目录，不改脚本。
 - **跨库依赖地址**：A 依赖 B 已部署合约时，把 B 的各模块 `addresses.<模块名>.params` 复制到 `A/script/network/<net>/`，与 `addresses.<A>.params` 并列，不在 A 的配置文件里重复记录 B 的地址（如 `core` 依赖 `dex` 时只复制 UniswapV2 模块的 `addresses.uniswapv2.params`；根父币由 `Router.WETH()` 读取，无需复制 WETH 模块文件）。这样 B 重新部署后，A 只需复制新地址文件即可同步，避免手工转抄与多处漂移。
