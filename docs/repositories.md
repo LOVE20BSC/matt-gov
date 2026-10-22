@@ -19,12 +19,12 @@
 | 仓库 | 定位 | 主要依赖 | 当前状态 |
 | --- | --- | --- | --- |
 | `matt-gov` | 组织治理、迁移决策和验收记录 | 无 | 活跃 |
-| `core` | 核心治理、`MemberNFT`、`Phase` 和基础子币发射能力 | 外部 Uniswap V2 兼容 DEX 的 `Factory`/`Pair`/`Router` 接口 | 活跃；核心合约、接口与测试均已提交 |
-| `libs` | 跨仓库共享的 Solidity 原语（有序历史索引、集合、按轮历史与分页） | 无 | 活跃；作为 `core`、`action` 的固定子模块引入 |
+| `core` | 核心治理、`MemberNFT`、`Phase` 和基础子币发射能力 | `libs`、OpenZeppelin Contracts、外部 Uniswap V2 兼容 DEX 的 `Factory`/`Pair`/`Router` 接口 | 活跃；核心合约、接口与测试均已提交 |
+| `libs` | 跨仓库共享的 Solidity 原语（有序历史索引、集合、按轮历史与分页） | 无 | 活跃；由 `core` 固定为子模块，`action`、`group-chat` 经上游嵌套依赖使用 |
 | `compatibility` | 外部 WETH 与 Uniswap V2 兼容 DEX 测试 | 外部 WETH、Factory、Pair、Router 和本地 Uniswap V2 参考实现 | 进行中；PancakeSwap 兼容性验证已完成（BSC 主网与测试网），Git 仓库待建 |
 | `dex` | 独立部署的 Uniswap V2（`Factory`、`Pair`、`Router02`），上游源码零修改、永久关闭协议抽成 | 固定提交的上游 Uniswap `v2-core`/`v2-periphery`/`solidity-lib` 子模块 | 活跃 |
-| `action` | `ActionTarget`、LP、GroupAction 和 GroupService Executor | `core` | 活跃；ActionTarget、LP、GroupAction 已迁移，GroupService 实现完成、单元测试待补 |
-| `group-chat` | 群聊业务和 **Group Chat Delegate** | `core`、`action` | 规划中 |
+| `action` | `ActionTarget`、LP、GroupAction 和 GroupService Executor | `core`（`libs`、OpenZeppelin 经 `core` 传递） | 活跃；ActionTarget、LP、GroupAction、GroupService 均已迁移并完成测试 |
+| `group-chat` | 群聊业务和 **Group Chat Delegate** | `action`（`core`、`libs`、OpenZeppelin 经 `action` 传递） | 活跃；群聊业务与 Group Chat Delegate 已实现并提交 |
 | `interface-test` | BSC 前端开发、集成和验收 | `core`、`action`、`group-chat` | 规划中；日常修改入口 |
 | `interface` | BSC 前端正式发布 | 验收后的 `interface-test` | 规划中；只接受人工同步 |
 | `periphery` | 跨仓库调用与外围适配 | `core`、`action` | 规划中 |

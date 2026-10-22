@@ -37,12 +37,12 @@
 
 ### 3.2 依赖管理
 
-- OpenZeppelin Contracts 经 Git submodule 引入并固定 ref；不得与同路径 vendored OZ 源码并存。
-- `LOVE20BSC/libs` 经 Git submodule 引入，其 Solidity 与 EVM 基线与 Core 对齐。
-- 固定版本不在本文件登记（避免文档与仓库两处漂移）。唯一可核验来源：目标仓库索引 gitlink（指向的子模块提交）与 `foundry.lock`（ref 语义与解析结果），`forge` 在 install/update/build 时据此校验；两者都必须提交进 git。核对版本读这两处；本文件只规定版本策略与升级流程。
-- 升级须经确认后单独提交，不得混入业务实现。升级后至少跑一次完整 `forge build` 与现有测试；若 OZ 主版本变化导致内部 API、错误或事件行为变化，必须在对应实现或测试提交中明确记录，不得只用"编译通过"当兼容性证明。
-- `forge build` 只校验、不改写 `foundry.lock`：升级子模块后必须显式把 lock 中的 rev 同步为新提交，并与 gitlink 一并提交，否则 build 会报 `expected …, found …` 不一致。
-- 消费方引用被依赖仓库的新提交前，该提交必须先推送；推送顺序为「被依赖方 → 消费方」，否则消费方会指向远端不存在的提交。
+- **单链依赖**：每仓只声明直接上游的生产子模块（如 `core` 依赖 `libs`/OpenZeppelin，`action` 依赖 `core`，`group-chat` 依赖 `action`）；`forge-std` 作为测试与脚本工具链各仓直接声明。不得重复引入传递依赖；`remappings.txt` 仍列出实际 import 所需的传递别名。
+- **导入约定**：跨仓 import 统一 `@` 前缀（如 `@core/interfaces/...`、`@libs/...`、`@openzeppelin/contracts/...`、`@forge-std/...`），本地相对导入不加；别名指向包的源码入口。`@forge-std/` 是本地约定，与 Foundry 示例写法不同。
+- **显式 remappings**：各仓提交 `remappings.txt`，`foundry.toml` 设 `auto_detect_remappings = false`；别名只追加不重指，每条必须有实际 import 命中。不得与同路径 vendored OZ 源码并存。
+- **版本凭证**：子模块 gitlink 与 `foundry.lock` 是唯一版本凭证且必须一致；lock 只记录直接子模块，传递版本由上游 commit 固定。具体版本不在文档登记；部署记录保存实际 commit 与字节码 hash。
+- **升级**：被依赖方先推送；消费方 fetch/checkout 后同步 gitlink 与 lock，并跑完整 `forge build` 与测试，不得只用“编译通过”当兼容性证明。升级单独提交，不用 `forge update <path>`；外部库主版本变化还须记录行为差异，上游 `lib/` 布局变化必须同步下游 remappings。
+- **双版本**：默认不并行保留；确需并行时用新别名（如 `@libs-v2/`）并隔离源码。
 
 ### 3.3 单合约 24KB 拆分
 
