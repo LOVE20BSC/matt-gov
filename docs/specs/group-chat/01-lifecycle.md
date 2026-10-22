@@ -12,7 +12,7 @@
 
 - `setDelegateId(groupId, delegateId)` 由群 NFT 当前 owner 调用。0 表示撤销；非零 delegateId 必须存在（缺失回 `ERC721NonexistentToken(delegateId)`）且不同于 groupId。
 - 每群至多一个 delegateId。保存群与 delegate NFT 的 owner 快照；任一 owner 变化或白名单不允许则无效。转回快照 owner 且白名单允许时恢复，不删除历史记录。
-- delegate NFT 当前持有人可批量清除自己收到的委托、开关委托方白名单和维护允许的 groupId 列表；缺失 delegateId 回 `ERC721NonexistentToken(delegateId)`，非 owner 回 `SenderNotDelegateOwner()`。delegate NFT 缺失时，查询与有效性判断按无有效 delegate 处理，不回滚。
+- delegate NFT 当前持有人可批量清除自己收到的委托、开关委托方白名单和维护允许的 groupId 列表；缺失 delegateId 的写入口回 `ERC721NonexistentToken(delegateId)`，非 owner 回 `SenderNotDelegateOwner()`。delegate NFT 缺失时，查询与有效性判断按无有效 delegate 处理，不回滚：`isDelegatorWhitelistEnabled` 返回 false，`allowedDelegatorGroupIds` / `delegatedGroupIds` 返回空且 total=0、计数返回 0，`canSetDelegateTo` 返回 false（delegateId=0 仍返回 true，表示可撤销）。
 - 保留有效 delegate 查询、批量查询、被委托群/白名单枚举与分页、幂等行为及旧事件。
 
 委托接口见 [`IGroupChatDelegate.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/IGroupChatDelegate.sol)，包括有效 delegate 查询和分页枚举。

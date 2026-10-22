@@ -32,6 +32,6 @@ after 插件在消息及通知事件之后调用。上述是业务容错要求�
 
 预检查接口见 [`IGroupChat.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/IGroupChat.sol)。
 
-保留旧 reasonCode 的错误 selector 语义：成功返回 `(true, bytes4(0))`；失败返回 GroupNotExist、ChatNotActivated、PostingNotAllowed、ScopeRejected、BanRejected、ScopeSourceFailed 或 BanSourceFailed 的 selector。无内容预检查不验证正文、提及、引用或 before 插件。预检查不验证 sender 所有权；缺失 senderId 仍返回 `GroupNotExist` reasonCode，实际 `post` 写入路径按成员错误回滚（缺失回 `ERC721NonexistentToken`，非 owner 回 `SenderNotMemberOwner`）。
+保留旧 reasonCode 的错误 selector 语义：成功返回 `(true, bytes4(0))`；失败返回 GroupNotExist、ChatNotActivated、PostingNotAllowed、ScopeRejected、BanRejected、ScopeSourceFailed 或 BanSourceFailed 的 selector。无内容预检查不验证正文、提及、引用或 before 插件。预检查不验证 sender 所有权；缺失 senderId 仍返回 `GroupNotExist` reasonCode，实际 `post` 写入路径按成员错误回滚（缺失回 `ERC721NonexistentToken`，非 owner 回 `SenderNotMemberOwner`）。该例外只适用于 `canPost` 的 reasonCode；`post` 写入路径和其它入口仍按成员角色错误回滚，不得据此扩展 `GroupNotExist`。
 
 正文 4096 bytes、提及 32 个是旧公测 profile 的部署值，保留构造参数而非新增硬编码。错误和插件捕获机制沿用已核对的旧 GroupChat，不另设计恢复流程。身份接口和事件按 [迁移边界](00-overview.md#迁移边界) 适配，验收见 [群聊验收](08-testing.md)。

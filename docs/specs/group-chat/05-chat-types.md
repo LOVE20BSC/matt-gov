@@ -19,6 +19,8 @@
 
 ## 黑名单
 
+`targetSenderId` 只要求非零，不要求 MemberNFT 存在（允许预黑名单）；`0` 回 `TargetSenderIdZero`。
+
 `voteWeightOf(groupId, voterId)` 使用上表权重；两类 token Manager 和两类 action Manager 的 `totalVoteWeight(groupId)` 都取所属社区的当前总有效治理票，不取行动总票数或创建 Round。
 
 权重源不是独立配置项，而是群 NFT 的当前持有者：`GovVotedBanSource` 以 `MemberNFT.ownerOf(groupId)` 解析权重合约，再调用其 `voteWeightOf` / `totalVoteWeight`。四类 Manager 在托管群 NFT 的同时实现 `IBanVoteWeightSource`，因此只有 Manager 托管的 Chat 具备治理加权封禁。owner 型群的持有者（EOA，或未实现该接口的合约钱包）调用写票必然回滚 `BanVoteWeightSourceUnavailable`，只能用人工黑名单；`setBanSource` 只校验地址有代码，误配不会在配置期报错。
