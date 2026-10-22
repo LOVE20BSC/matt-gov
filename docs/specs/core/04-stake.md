@@ -189,7 +189,7 @@ Vote 每次投票通过 `Stake.validGovVotes(tokenAddress, memberId)` 读取当�
 | 2 | `tokenAddress` 无效 | `InvalidTokenAddress()` |
 | 3 | 已申请解锁 | `UnstakeAlreadyRequested()` |
 | 4 | 无流动性质押 | `NoStakedLiquidity()` |
-| 5 | 本 Round 已推举或已投票 | `MemberHasUsedStakeRightsInCurrentRound()` |
+| 5 | 本 Round 已推举或已投票 | `StakeRightsUsedInCurrentRound(memberId)` |
 
 ### `withdraw`
 
@@ -206,12 +206,12 @@ Vote 每次投票通过 `Stake.validGovVotes(tokenAddress, memberId)` 读取当�
 | 顺序 | 条件 | 回滚错误 |
 | --- | --- | --- |
 | 1 | 调用者不持有源 `memberId` 的 NFT | `NotMemberOwner(sourceMemberId)` |
-| 2 | 源与目标相同 | `SourceAndTargetMustBeDifferent()` |
+| 2 | 源与目标相同 | `SourceAndTargetMemberIdsMustBeDifferent(sourceMemberId, targetMemberId)` |
 | 3 | `tokenAddress` 无效 | `InvalidTokenAddress()` |
 | 4 | 目标 `memberId` 不存在（含 `0`） | MemberNFT 的标准错误（`ownerOf` 回滚） |
 | 5 | 源或目标已申请解锁 | `UnstakeAlreadyRequested()` |
 | 6 | 源无流动性质押 | `NoStakedLiquidity()` |
-| 7 | 源在当前治理 Round 已使用过质押权（已推举或已投票） | `SourceHasUsedStakeRightsInCurrentRound()` |
+| 7 | 源在当前治理 Round 已使用过质押权（已推举或已投票） | `StakeRightsUsedInCurrentRound(sourceMemberId)` |
 | 8 | 目标非空且其 `promisedWaitingPhases` 短于源 | `TargetPromisedWaitingPhasesTooShort()` |
 
 ### `settleFees`

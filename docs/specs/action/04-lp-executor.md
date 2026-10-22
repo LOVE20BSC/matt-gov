@@ -25,7 +25,7 @@ Target Data 是无键数组，按位置读取。第 `0` 项是 ActionTarget 保�
 | 调用者不是 memberId 当前持有人 | `NotMemberOwner(memberId)` |
 | 加入金额为零，或撤回金额为零、大于当前余额 | `InvalidParticipationAmount()` |
 | 首次加入且 `govRatio < minGovRatio` | `InsufficientGovRatio()` |
-| `exit` 时该成员没有加入记录 | `NotJoined()` |
+| `exit` 时该成员没有加入记录 | `NotJoined(tokenAddress, actionId, memberId)` |
 | 加入轮低于该行动创建轮 | `JoinNotOpen(tokenAddress, actionId, currentRound, createdRound)`（ActionTarget 抛出） |
 | 行动未创建（`createdRound == 0`） | `ActionNotCreated(tokenAddress, actionId)` |
 | 结算轮次低于该行动创建轮（行动已创建） | `RoundNotStarted()` |

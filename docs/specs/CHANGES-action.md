@@ -256,7 +256,7 @@ GroupAction Executor 通过加入阶段内逐笔发生的加入、追加、部�
 - **行动未创建的错误**：`createdRound == 0` 时回滚 `ActionNotCreated(tokenAddress, actionId)`，`activateGroup`、`submitVerifierApplication` 与三个 Executor 的成员结算同口径，声明在基座 `IActionExecutorErrors`；不再用 `InvalidRound(0)` 哨兵，也不再把该情形混进 `RoundNotStarted()`（后者只表示 `round` 早于创建轮）
 - **行动可跨轮复用**：Proposal 在创建轮之后被重新推举并投票时，该轮重新构建排名、重新聚集参与、独立验证与结算，与创建轮互不影响
 - 排名按当轮候选票降序、`applicationId` 升序
-- **原始分入口的错误落点**：候选无当前申请回 `ApplicationNotActive`；有申请但未进入当轮排名或分割窗口未开回 `InvalidCandidate`
+- **原始分入口的错误落点**：候选无当前申请回 `NoActiveApplication(memberId)`；有申请但未进入当轮排名回 `CandidateNotRanked(memberId, round)`、分割窗口未开回 `CandidateNotOpen(memberId, round)`
 - 分割线开放：`openBlock = verifyPhaseStartBlock + ceil(verifyPhaseBlocks × splits[rank - 2] / 1e18)`
 - 验证者押金：候选**首次**申请按行动配置 `verifierStakeAmount` 从成员当前持有人转入执行合约，替换申请不重复划转，撤销当前申请时全额退还；押金只担保持有申请，撤销不收回当轮已得到的验证资格（候选身份按该轮历史解析）；押金独立于链群激活质押与治理票账本
 
@@ -334,7 +334,7 @@ theoreticalOwnerReward(m) = serviceReward × ownerWeightNumerator(m) / (totalGro
 - **新**：逐笔付款由 `DistributeRecipient` 留痕，事件流可完整还原结算的资产变化
 
 #### 加入资格与行动 ID
-- **新**：加入资格为两类分支——该成员自身作为链群在社区存在激活行动，或服务轮社区行动集内存在有效公共验证者竞选申请；均不满足回滚 `NoActiveGroups`；结算资格按轮快照由 `ActionTarget.isJoinedByRound` 持有
+- **新**：加入资格为两类分支——该成员自身作为链群在社区存在激活行动，或服务轮社区行动集内存在有效公共验证者竞选申请；均不满足回滚 `NotQualified(actionTokenAddress, round, memberId)`；结算资格按轮快照由 `ActionTarget.isJoinedByRound` 持有
 - **新**：服务 Proposal 在 Action 层以 `serviceActionId` 称呼（Action ID 别名）
 
 #### 同币或父币服务
@@ -368,7 +368,7 @@ theoreticalOwnerReward(m) = serviceReward × ownerWeightNumerator(m) / (totalGro
 #### 错误落点收敛
 - **旧**：重复加入、重复加入体验、重复登记名单成员都是错误
 - **新**：重复加入与重复授予在统一模型下是追加，`AlreadyJoined`、`TrialAlreadyJoined`、`TrialAccountAlreadyAdded`、`TrialProviderMismatch` 不再迁移；额度类校验统一改名到 `Quota*` 词汇，额度不足由 `InsufficientProviderQuota` 表达
-- **零群 ID**：`providerQuotaAdd` / `providerQuotaRemove` 的 `groupId == 0` 回 `InvalidGroupId`；`providerQuotaRemove` 空名单在非零 `groupId` 下是空操作
+- **零群 ID**：`providerQuotaAdd` / `providerQuotaRemove` 的 `groupId == 0` 或群身份不存在回 `GroupNotExist(groupId)`；`providerQuotaRemove` 空名单在群存在时是空操作
 
 #### 部分撤回边界
 - **旧**：只支持全部退出
@@ -387,6 +387,15 @@ theoreticalOwnerReward(m) = serviceReward × ownerWeightNumerator(m) / (totalGro
 ```
 
 ---
+
+## 7. 身份错误统一（阶段 2）
+
+- **群身份/权限**：`GroupNotExist(uint256 groupId)`、`GroupNotActive(uint256 groupId)`、`NotGroupOwner(uint256 groupId)`；旧 `OnlyGroupOwner`、`CannotJoinInactiveGroup`、`InvalidGroupId` 已删除。
+- **参与**：`NotJoined(address,uint256,uint256)`、`AlreadyJoined(address,uint256,uint256)`、`AlreadyInOtherGroup(uint256,uint256,uint256)`、`QuotaMemberIsProvider(uint256)`；旧 `NotJoinedAction`、`QuotaMemberZero` 已删除；成员 `0` 由 `ownerOf` 回 `ERC721NonexistentToken`。
+- **验证**：`NoActiveApplication(uint256)`、`CandidateNotRanked(uint256,uint256)`、`CandidateNotOpen(uint256,uint256)`、`GroupVerificationComplete(uint256,uint256)`；旧 `ApplicationNotActive`、`AlreadyVerified` 已删除；`InvalidCandidate` 已删除，零候选按无当前申请回滚 `NoActiveApplication(0)`。
+- **服务资格**：`NotQualified(address,uint256,uint256)`；旧 `NoActiveGroups` 已删除。
+- **二次分配**：`RecipientIsGroupId(uint256,uint256)`；旧 `RecipientCannotBeSelf` 已删除。
+- **ABI 边界**：同名加参数的 `GroupNotExist`、`GroupNotActive`、`NotJoined`、`AlreadyJoined`、`AlreadyInOtherGroup`、`QuotaMemberIsProvider` 不能与旧无参声明重载，旧 selector 已移除；其余改名类旧声明也已删除，最终 ABI 不含旧错误。
 
 ## 删除组件
 

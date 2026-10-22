@@ -42,31 +42,31 @@
 | --- | --- | --- | --- | --- |
 | 函数 | `currentRound()`、三个地址 getter、两个上限 getter、`activateChat`、`post`、`chatInfo(s)`、五个槽位 getter、`messages*` / `message` / `messagesBy*` / `messageIds*` / `senderIds` / `groupIds` / `rounds` / `roundInfo(s)` | `canPost(uint256,uint256,address)` → `canPost(uint256,uint256)`；五个配置 setter 各增 `uint256 operatorId` | `PHASE_ADDRESS()` | `originBlocks()` / `phaseBlocks()`、`postAsDefaultSender(...)`、`GROUP_DEFAULTS_ADDRESS()` |
 | 事件 | `PostMessage` / `MentionSenderId` / `MentionAll` / `FailAfterPostPlugin` | 五个配置事件各增 `uint256 indexed operatorId`；`Activate(uint256,address)` → `Activate(uint256,uint256,address)` | — | — |
-| 错误 | `GroupNotExist` / `ChatAlreadyActivated` / `ChatNotActivated` / `PostingNotAllowed` / `NotChatOwner` / `NotChatOwnerOrDelegateIdOwner` / `RoundNotStarted` / `Reentrant` / `PhaseBlocksZero` / `MaxContentLengthZero` / `SourceAddressHasNoCode` / `PluginAddressHasNoCode` / `ContentEmpty` / `ContentTooLong` / `TooManyMentionedSenderIds` / `DuplicateMentionedSenderId` / `InvalidQuotedMessageId` / `InvalidMessageId` / `GroupAdminHasNoCode` / `GroupDelegateHasNoCode` / `GroupDelegateGroupMismatch` / `MentionAllUnauthorized` / `ScopeRejected` / `BanRejected` / `ScopeSourceFailed` / `BanSourceFailed` | `SenderAddressNotSenderIdOwner()` → `SenderNotMemberOwner(uint256 senderId)` | `InvalidAddress()`、`MaxMentionedSenderIdsZero()` | `DefaultGroupIdNotSet()` / `GroupDefaultsHasNoCode()` / `GroupDefaultsGroupMismatch()` |
+| 错误 | `GroupNotExist` / `ChatAlreadyActivated` / `ChatNotActivated` / `PostingNotAllowed` / `RoundNotStarted` / `Reentrant` / `PhaseBlocksZero` / `MaxContentLengthZero` / `SourceAddressHasNoCode` / `PluginAddressHasNoCode` / `ContentEmpty` / `ContentTooLong` / `TooManyMentionedSenderIds` / `InvalidQuotedMessageId` / `InvalidMessageId` / `GroupAdminHasNoCode` / `GroupDelegateHasNoCode` / `MentionAllUnauthorized` / `ScopeRejected` / `BanRejected` / `ScopeSourceFailed` / `BanSourceFailed` | `SenderAddressNotSenderIdOwner()` → `NotMemberOwner(uint256 memberId)`；`GroupNotExist()` → `GroupNotExist(uint256 groupId)`；`GroupDelegateGroupMismatch()` → `GroupAddressMismatch(address expected, address actual)` | `InvalidAddress()`、`MaxMentionedSenderIdsZero()`、`NotGroupOwner(uint256 groupId)`、`NotGroupOperator(uint256 groupId, uint256 operatorId)`、`DuplicateMemberId(uint256 memberId)` | `DefaultGroupIdNotSet()` / `GroupDefaultsHasNoCode()` / `GroupDefaultsGroupMismatch()` |
 
-构造签名 `(groupAdmin, originBlocks, phaseBlocks, maxContentLength, maxMentionedSenderIds)` → `(groupAdmin, phaseAddress, maxContentLength, maxMentionedSenderIds)`；`currentRound()` 签名保留，语义改为直接映射 Phase（Phase 前回滚 `RoundNotStarted`，从 1 起）；`Message.round` 由发言时的 Phase 轮次固定（[04-query.md](group-chat/04-query.md)）。缺失成员角色 ID（sender/member/admin/delegate/mention/voter）回 `ERC721NonexistentToken(id)`；非 owner 的发言/delegate 写入口回 `SenderNotMemberOwner(senderId)` / `SenderNotDelegateOwner()`；GovVoted 的 voter 非 owner 回 `NotMemberOwner(voterId)`；delegate 查询缺失 delegate 返回 false/0/空，不回滚；缺失群仍 `GroupNotExist()`。
+构造签名 `(groupAdmin, originBlocks, phaseBlocks, maxContentLength, maxMentionedSenderIds)` → `(groupAdmin, phaseAddress, maxContentLength, maxMentionedSenderIds)`；`currentRound()` 签名保留，语义改为直接映射 Phase（Phase 前回滚 `RoundNotStarted`，从 1 起）；`Message.round` 由发言时的 Phase 轮次固定（[04-query.md](group-chat/04-query.md)）。缺失成员角色 ID（sender/member/admin/delegate/mention/voter）回 `ERC721NonexistentToken(id)`；非 owner 的发言/delegate 写入口回 `NotMemberOwner(senderId)` / `NotMemberOwner(delegateId)`；GovVoted 的 voter 非 owner 回 `NotMemberOwner(voterId)`；群 owner 非 owner 回 `NotGroupOwner(groupId)`，owner/delegate/admin 复合鉴权回 `NotGroupOperator(groupId, operatorId)`；数组内重复成员回 `DuplicateMemberId(memberId)`；delegate 查询缺失 delegate 返回 false/0/空，不回滚；缺失群回 `GroupNotExist(groupId)`。旧 `NotChatOwner` / `NotChatOwnerOrDelegateIdOwner` / `DuplicateMentionedSenderId` / `SenderNotMemberOwner` / `SenderNotDelegateOwner` 已删除。
 
 ### GroupAdmin / GroupMember
 
 | 接口 | 改参 | 新增 | 删除 |
 | --- | --- | --- | --- |
-| `IGroupAdmin` | `addAdmins` / `removeAdmins` 各增 `uint256 operatorId`；构造删 `groupDefaults` 参 | — | `GROUP_DEFAULTS_ADDRESS()`、`adminIdOf(uint256,address)`、`ownerOrDelegateIdOf(uint256,address)`、错误 `GroupDelegateGroupMismatch()`（同名错误由 `IGroupChat` 承载） |
+| `IGroupAdmin` | `addAdmins` / `removeAdmins` 各增 `uint256 operatorId`；构造删 `groupDefaults` 参 | — | `GROUP_DEFAULTS_ADDRESS()`、`adminIdOf(uint256,address)`、`ownerOrDelegateIdOf(uint256,address)`、错误 `GroupDelegateGroupMismatch()`（新名 `GroupAddressMismatch(address expected, address actual)`，由 `IGroupChat` 承载） |
 | `IGroupMember` | `addMemberIds` / `removeMemberIds` 各增 `uint256 operatorId` | — | — |
 
-错误：缺失成员/管理员（含 `0`）回 `ERC721NonexistentToken`；`TargetMemberIdZero` 保留声明但不再使用；缺失群仍回 `GroupNotExist()`。
+错误：缺失成员/管理员（含 `0`）回 `ERC721NonexistentToken`；缺失群回 `GroupNotExist(groupId)`；群操作者鉴权回 `NotGroupOperator(groupId, operatorId)`；重复管理员回 `DuplicateMemberId(memberId)`。`TargetMemberIdZero`、`UnauthorizedGroup*Manager`、`DuplicateAdminId` 已删除。
 
 ### GroupChatBanList（原 `IGroupBanList`）
 
 - **改名**：合约 `GroupBanList` → `GroupChatBanList`；接口同名改名；错误 `GroupBanListAddressHasNoCode` 保留原名（selector 不变）
 - **改参**：`banBySenderIds` / `unbanBySenderIds` 各增 `uint256 operatorId`
-- **新增**：`isSenderIdBannedBatch(uint256,uint256[])`
+- **新增**：`isSenderIdBannedBatch(uint256,uint256[])`；错误 `NotGroupOperator(uint256,uint256)`
 - **删除**：地址名单一整套（`banBySenderAddresses` / `unbanBySenderAddresses` / `banBySenders` / `unbanBySenders` / `isAddressBanned` / `addressBanDetails` / `addressBanList(Count)` / `isBanned(uint256,uint256,address)`）、错误 `TargetAddressZero` / `SenderPairLengthMismatch`、事件 `SetAddressBan`
 
 ### GroupChatDelegate（原 `IGroupDelegate`）
 
 - **改名**：合约与接口 `GroupDelegate` → `GroupChatDelegate`；`InvalidAddress()` 等错误与四个事件保留
 - **删除**：`isOwnerOrDelegate(uint256,address)`；等价判断由 `ownerOrDelegateIdOf(...) != 0` 表达，`delegateIdOf` / `delegateIdsOf` 已覆盖「有效 delegate 查询」
-- **错误**：写入口缺失 delegateId 回 `ERC721NonexistentToken`；查询缺失 delegate 返回 false/0/空，不回滚；`GroupNotExist` 只用于群角色
+- **错误**：写入口缺失 delegateId 回 `ERC721NonexistentToken`；非 owner 回 `NotMemberOwner(delegateId)`；查询缺失 delegate 返回 false/0/空，不回滚；群 owner 非 owner 回 `NotGroupOwner(groupId)`；`delegateId == groupId` 回 `DelegateIsSelfGroup(groupId)`；`GroupNotExist(groupId)` 只用于群角色。旧 `SenderNotGroupOwner` / `DelegateIdCannotBeGroupId` / `SenderNotDelegateOwner` 已删除
 
 ### Manager 三接口
 
@@ -86,7 +86,7 @@
 | `IBanVoteWeightSource` | `voteWeightOf(uint256,address)` → `voteWeightOf(uint256,uint256)` |
 | `IGroupJoinScopeSource` | `GROUP_JOIN_ADDRESS()` → `GROUP_ACTION_EXECUTOR_ADDRESS()`；成员判定改 `IGroupActionIndexes.isGroupMember(groupId, senderId)` |
 | `IAdminBanSource` / `IGroupMemberScope` | 不变 |
-| `IGovVotedBanSource` | `voteBySenderId(uint256,uint256,bool)` → `(uint256,uint256,uint256,bool)`（显式 `voterId`），`clear` / `refresh` 同理；新增错误 `NotMemberOwner(uint256)`（写入/撤票校验 voter 当前持有人），旧 `SenderNotMemberOwner(uint256)` 保留但不再用于 voter；删除地址投票一整套（`voteBySenderAddress` / `voteBySender` 及其 clear/refresh、`voteWeightsBySenderAddressesByVoter` / `voteStatusBySenderAddress(es)` / `isAddressBanned(es)` / `votedSenderAddresses*` / `votersBySenderAddress*`、事件 `SetAddressBanVote` / `SetAddressBan`、错误 `TargetAddressZero`）与单条 `isSenderIdBanned` |
+| `IGovVotedBanSource` | `voteBySenderId(uint256,uint256,bool)` → `(uint256,uint256,uint256,bool)`（显式 `voterId`），`clear` / `refresh` 同理；新增错误 `NotMemberOwner(uint256)`（写入/撤票校验 voter 当前持有人），旧 `SenderNotMemberOwner(uint256)` 已删除；删除地址投票一整套（`voteBySenderAddress` / `voteBySender` 及其 clear/refresh、`voteWeightsBySenderAddressesByVoter` / `voteStatusBySenderAddress(es)` / `isAddressBanned(es)` / `votedSenderAddresses*` / `votersBySenderAddress*`、事件 `SetAddressBanVote` / `SetAddressBan`、错误 `TargetAddressZero`）与单条 `isSenderIdBanned` |
 
 ### 插件与来源（`plugins/`）
 

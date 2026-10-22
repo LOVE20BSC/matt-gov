@@ -36,7 +36,7 @@ Core 的预留、铸造和取消额度账本见 [Mint](../core/07-mint.md)，不
 | `ActionNotCreated(tokenAddress, actionId)` | 行动尚未创建（`createdRound == 0`）：群激活、验证者申请与三个 Executor 的成员结算（含批量）都拒绝；成员结算里这是唯一归它的条件，`round` 早于创建轮另见 `RoundNotStarted()` |
 | `RoundNotStarted()` | 对应阶段的 Round 小于 1；成员结算中 `round` 早于行动创建轮（行动已存在）同样报此错误——三个 Executor 保持一致，不改用 `InvalidRound(round)`。行动不存在（`createdRound == 0`）不归这条，走 `ActionNotCreated` |
 | `InsufficientProviderQuota(providerId, required, available)` | Provider 额度不足 |
-| `GroupNotActive()` | 在未激活链群上执行群管理操作（停用、更新配置） |
+| `GroupNotActive(uint256 groupId)` | 在未激活链群上执行群管理或加入操作 |
 | `VerifierAlreadyLocked(tokenAddress, actionId, round)` | 锁定后更换验证者 |
 | `StartIndexMismatch(expected, actual)` | 验证批次跳跃、重复或乱序；`expected` 为该群当前已验证数量，`actual` 为调用者传入的 `startIndex` |
 | `VerificationBatchTooLarge()` | 验证批次项数超过协议级上界 100（对应常量 `MAX_VERIFICATION_BATCH`） |
@@ -44,6 +44,6 @@ Core 的预留、铸造和取消额度账本见 [Mint](../core/07-mint.md)，不
 | `NoRewardAvailable()` | 成员结算无产出：`mintAmount` 与 `burnAmount` 均为 0（无有效参与、目标轮未完成验证或零分、行动激励为零）；有销毁量即允许结算，不置位已结算、不发事件 |
 | `DistributionOverflow(configured, available)` | 配置比例总和超过 `1e18` 时拒绝；正好 `1e18` 合法 |
 
-Target Data 的项数、每项位置与编码由各 Executor 在自己的规格中固定，并在对应回调内自行校验，错误也声明在各自的 `Errors` 子接口；ActionTarget 只解析创建回调的第 `0` 项 executor。`InvalidParticipationAmount` 拒绝零值或超出配置范围的参与量；`InvalidCandidate` 拒绝候选身份无效、未进入排名或分割窗口未开；`InvalidSplits` 拒绝分割线不严格递增或超出范围；`InvalidRatio` 拒绝创建回调中比例（`maxJoinAmountRatio`、`activationMinGovRatio`、`ratioForPublicVerifier`）超出 `1e18`；`ApplicationNotActive` 拒绝没有当前申请或申请已失效；`InvalidTargetDataLength` 拒绝 Target Data 项数超出约定；`VerificationInfoLengthMismatch` 拒绝验证信息 schema 两数组不等长或成员值项数与 schema 不符；`GroupNotActive` 拒绝在未激活链群上执行群管理操作，加入类操作改由 `CannotJoinInactiveGroup` 拒绝。以上错误均在对应外层交易中回滚。
+Target Data 的项数、每项位置与编码由各 Executor 在自己的规格中固定，并在对应回调内自行校验，错误也声明在各自的 `Errors` 子接口；ActionTarget 只解析创建回调的第 `0` 项 executor。`InvalidParticipationAmount` 拒绝零值或超出配置范围的参与量；`CandidateNotRanked(memberId, round)` 拒绝未进入当轮排名；`CandidateNotOpen(memberId, round)` 拒绝分割窗口未开；`InvalidSplits` 拒绝分割线不严格递增或超出范围；`InvalidRatio` 拒绝创建回调中比例（`maxJoinAmountRatio`、`activationMinGovRatio`、`ratioForPublicVerifier`）超出 `1e18`；`NoActiveApplication(memberId)` 拒绝没有当前申请或申请已失效；`InvalidTargetDataLength` 拒绝 Target Data 项数超出约定；`VerificationInfoLengthMismatch` 拒绝验证信息 schema 两数组不等长或成员值项数与 schema 不符；`GroupNotExist(groupId)` 拒绝群身份不存在；`GroupNotActive(groupId)` 拒绝在未激活链群上执行群管理或加入操作。以上错误均在对应外层交易中回滚。
 
 验收见 [Action 验收](08-testing.md)。

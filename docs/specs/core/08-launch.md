@@ -88,7 +88,7 @@ Launch 只保存“成员可用整数次数”和“社区累计已产生次数�
 
 | 条件 | 回滚错误 |
 | --- | --- |
-| `sourceMemberId == targetMemberId` | `SourceAndTargetMustBeDifferent()` |
+| `sourceMemberId == targetMemberId` | `SourceAndTargetMemberIdsMustBeDifferent(sourceMemberId, targetMemberId)` |
 | `count == 0` | `CountMustBeGreaterThanZero()` |
 | `tokenAddress` 不是已登记 LOVE20 代币且不是根父币 | `InvalidTokenAddress()` |
 | 源或目标 `memberId` 不存在（含 `0`） | MemberNFT 的标准错误（`ownerOf` 回滚） |

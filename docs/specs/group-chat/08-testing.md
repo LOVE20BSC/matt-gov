@@ -6,7 +6,8 @@
 | --- | --- | --- |
 | 核心 | 一 NFT 一 Chat、激活、转移 | owner 实时变化，历史不回写 |
 | 身份 | 默认映射、地址发言、地址黑名单/投票 | ABI、状态、索引和专属事件完全删除，不仅是运行时拒绝 |
-| 身份 | 缺失成员/管理员/delegate | post 缺失 senderId → `ERC721NonexistentToken`；非 owner → `SenderNotMemberOwner`；delegate 写入口/`setDelegateId` 目标缺失 delegateId → `ERC721NonexistentToken`；非 owner → `SenderNotDelegateOwner`；`GroupMember`/`GroupAdmin` 缺失成员/管理员 → `ERC721NonexistentToken`；delegate 查询缺失 delegate → false/0/空；GovVoted voter 非 owner → `NotMemberOwner(voterId)`；缺失群仍 `GroupNotExist` |
+| 身份 | 缺失成员/管理员/delegate | post 缺失 senderId → `ERC721NonexistentToken`；非 owner → `NotMemberOwner(senderId)`；delegate 写入口/`setDelegateId` 目标缺失 delegateId → `ERC721NonexistentToken`；非 owner → `NotMemberOwner(delegateId)`；`GroupMember`/`GroupAdmin` 缺失成员/管理员 → `ERC721NonexistentToken`；delegate 查询缺失 delegate → false/0/空；GovVoted voter 非 owner → `NotMemberOwner(voterId)`；缺失群 → `GroupNotExist(groupId)` |
+| 身份 | 群权限、重复 ID、delegate 自指 | 群 owner 非 owner → `NotGroupOwner(groupId)`；owner/delegate/admin 复合鉴权 → `NotGroupOperator(groupId, operatorId)`；数组内重复成员 → `DuplicateMemberId(memberId)`；`delegateId == groupId` → `DelegateIsSelfGroup(groupId)` |
 | Delegate | 设置、撤销、快照失效/恢复 | 只管理 Chat，不冒充 sender |
 | 发言 | 鉴权先于群状态、scope/ban、before/after | 非持有人先回鉴权错误；before 回滚，after 失败保留消息 |
 | 消息 | 提及、mentionAll、引用、ID | 规则和索引一致 |

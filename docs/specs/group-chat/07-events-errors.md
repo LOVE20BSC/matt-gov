@@ -12,9 +12,15 @@
 
 拒绝不存在的群或成员、重复激活、越权管理、非 owner 发言、未激活、关闭发言、空或超长正文、提及超限/重复、无效引用、非法 mentionAll、无代码规则地址、scope/ban 拒绝和重入。
 
-存在性按角色区分：缺失群回 `GroupNotExist()`；缺失成员角色 ID（sender、member、admin、delegate、mention、voter）回 `ERC721NonexistentToken(id)`，成员/管理员的 `0` 值按缺失处理，都不借用 `GroupNotExist()`。`delegateId = 0` 在 `setDelegateId` / `canSetDelegateTo` 中表示撤销或无委托，按[生命周期](01-lifecycle.md)处理，不按缺失回滚。人工黑名单/GovVoted 的目标 sender 只要求非零，不要求 NFT 存在，见 [Chat 类型](05-chat-types.md#黑名单)。所有权按角色区分：sender 发言非 owner 回 `SenderNotMemberOwner(senderId)`，delegate 写入口非 owner 回 `SenderNotDelegateOwner()`；GovVoted 的 voter 非 owner 回 `NotMemberOwner(voterId)`（接口新增，旧 `SenderNotMemberOwner` 保留但不再用于 voter，见 [CHANGES](../CHANGES-group-chat.md)）。delegate 查询缺失 ID 时按[生命周期](01-lifecycle.md)返回无 delegate，不回滚。
+存在性按角色区分：缺失群回 `GroupNotExist(groupId)`；缺失成员角色 ID（sender、member、admin、delegate、mention、voter）回 `ERC721NonexistentToken(id)`，成员/管理员的 `0` 值按缺失处理，都不借用 `GroupNotExist`。`delegateId = 0` 在 `setDelegateId` / `canSetDelegateTo` 中表示撤销或无委托，按[生命周期](01-lifecycle.md)处理，不按缺失回滚。人工黑名单/GovVoted 的目标 sender 只要求非零，不要求 NFT 存在，见 [Chat 类型](05-chat-types.md#黑名单)。
 
-视图行为：`is*`/`can*` 谓词对缺失成员或 delegate 返回 false/0，delegate 枚举查询返回空且 total=0。GroupChat 与 GroupChatDelegate 的群作用域记录/枚举查询缺失群回 `GroupNotExist()`；成员名单、黑名单等模块的枚举查询按各自规格返回空/0。`canPost` 的 reasonCode 是旧 ABI 的封闭枚举例外，缺失 sender 仍返回 `GroupNotExist.selector`，见[发言](03-posting.md#预检查)；不得据此扩展其它入口。
+所有权与操作者按角色区分：成员 NFT 所有权统一回 `NotMemberOwner(memberId)`（发言传 `senderId`，delegate 写入口传 `delegateId`，GovVoted voter 传 `voterId`）。群 owner 非 owner 回 `NotGroupOwner(groupId)`；owner/delegate/admin 的复合群鉴权回 `NotGroupOperator(groupId, operatorId)`。delegate 查询缺失 ID 时按[生命周期](01-lifecycle.md)返回无 delegate，不回滚。
+
+数组内重复成员 ID 回 `DuplicateMemberId(memberId)`；`delegateId == groupId` 回 `DelegateIsSelfGroup(groupId)`。
+
+旧 `NotChatOwner`、`SenderNotGroupOwner`、`NotChatOwnerOrDelegateIdOwner`、`UnauthorizedGroup*Manager`、`DuplicateMentionedSenderId`、`DuplicateAdminId`、`DelegateIdCannotBeGroupId`、`TargetMemberIdZero`、`SenderNotMemberOwner(uint256)`、`SenderNotDelegateOwner()` 已从接口删除；不得重新引入。
+
+视图行为：`is*`/`can*` 谓词对缺失成员或 delegate 返回 false/0，delegate 枚举查询返回空且 total=0。GroupChat 与 GroupChatDelegate 的群作用域记录/枚举查询缺失群回 `GroupNotExist(groupId)`；成员名单、黑名单等模块的枚举查询按各自规格返回空/0。`canPost` 的 reasonCode 是旧 ABI 的封闭枚举例外，缺失 sender 仍返回 `GroupNotExist.selector`（selector 随错误签名更新），见[发言](03-posting.md#预检查)；不得据此扩展其它入口。
 
 错误定义见 [`IGroupChat.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/IGroupChat.sol)、[`IGroupChatDelegate.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/IGroupChatDelegate.sol)、[`IGroupAdmin.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/IGroupAdmin.sol)、[`IGroupMember.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/IGroupMember.sol)、[`IGroupChatBanList.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/IGroupChatBanList.sol)、[`IGovVotedBanSource.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/sources/ban/IGovVotedBanSource.sol)、[`IBaseManager.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/managers/IBaseManager.sol)、[`IBaseTokenScopeManager.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/managers/IBaseTokenScopeManager.sol) 和 [`IBaseTokenActionScopeManager.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/managers/IBaseTokenActionScopeManager.sol)。
 

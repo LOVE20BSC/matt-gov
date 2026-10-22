@@ -63,9 +63,9 @@ GroupAction 使用 MemberNFT 身份，`groupId` 是群主体的 `memberId`，不
 
 **验证者押金**：行动创建时按 `targetData[5]` 配置 `verifierStakeAmount`，由 `VERIFIER_STAKE_AMOUNT(tokenAddress, actionId)` 读取。配置非零时，成员在该行动上**首次**申请时把该数量的行动代币从当前持有人转入 Executor；此后的修改（等价于撤销后重新申请）既不退还也不再划转，余额或授权不足时整笔回滚、不留下申请。只有 `cancelVerifierApplication` 才把押金全额退还给该 memberId 当前持有人——因此「已质押」与「持有当前申请」是同一件事，`verifierStake(tokenAddress, actionId, memberId)` 在持有当前申请时返回配置额、否则返回 0。押金只担保「持有当前申请」：撤销即退款，**即使该成员已在本轮排名内或已锁定**——验证资格由当轮的排名决定（见上文「验证按当轮排名」），与是否仍持有申请无关。押金与链群激活质押相互独立：不计入 `staked`/`totalStaked`/`totalStakedByMemberId`，不影响 `hasActiveGroups`，也不构成 GroupService 的加入量。押金划转由 `VerifierStakeDeposited`/`VerifierStakeRefunded` 带金额留痕，申请与撤销事件只承载状态。
 
-投票 Target Data 为空表示不指定候选；非空时第 `0` 项为已绑定 Executor（ActionTarget 转发门禁），本 Executor 的业务项从第 `1` 项起：`targetData[1] = abi.encode(uint256 candidateMemberId)`，对应当轮有效申请，项数多于 `2` 回滚 `InvalidTargetDataLength`。每次回调把全部治理票增量记给该候选在**该轮**的申请，并把「该轮 → 成员 → 申请」的关联指向这份申请，供按验证者查询票数；回调不校验轮次——`Vote` 传的是它自己的 `currentRound()`（即当轮），而提案只能在其创建轮或之后被投票，因此 `round` 恒不早于创建轮；候选没有当前申请则回滚 `ApplicationNotActive`。候选字段为空时不增加候选票。排名增量维护，只保存可开放的前 n 名；榜满时榜外候选必须票数严格超过末位才替换，不因修改旧申请自动转移票数。
+投票 Target Data 为空表示不指定候选；非空时第 `0` 项为已绑定 Executor（ActionTarget 转发门禁），本 Executor 的业务项从第 `1` 项起：`targetData[1] = abi.encode(uint256 candidateMemberId)`，对应当轮有效申请，项数多于 `2` 回滚 `InvalidTargetDataLength`。每次回调把全部治理票增量记给该候选在**该轮**的申请，并把「该轮 → 成员 → 申请」的关联指向这份申请，供按验证者查询票数；回调不校验轮次——`Vote` 传的是它自己的 `currentRound()`（即当轮），而提案只能在其创建轮或之后被投票，因此 `round` 恒不早于创建轮；候选没有当前申请则回滚 `NoActiveApplication(candidateMemberId)`。候选字段为空时不增加候选票。排名增量维护，只保存可开放的前 n 名；榜满时榜外候选必须票数严格超过末位才替换，不因修改旧申请自动转移票数。
 
-`submitOriginScores` 只作用于当前验证轮（不收 `round` 入参）；调用者持有 verifierId，批次数组非空，每项不超过 100、单批项数超过协议上界 100 回滚 `VerificationBatchTooLarge`，`startIndex` 等于该群已验证数量且不能超出历史成员数。候选无当前申请回 `ApplicationNotActive`；有申请但未进入当轮排名或分割窗口未开回 `InvalidCandidate`。全部校验成功才锁定和计分；同一成员记录只消费一次。未验证的分数查询返回 `(0, false)`，与已验证零分区分。
+`submitOriginScores` 只作用于当前验证轮（不收 `round` 入参）；调用者持有 verifierId，批次数组非空，每项不超过 100、单批项数超过协议上界 100 回滚 `VerificationBatchTooLarge`，`startIndex` 等于该群已验证数量且不能超出历史成员数。候选无当前申请回 `NoActiveApplication(memberId)`；有申请但未进入当轮排名回 `CandidateNotRanked(memberId, round)`，分割窗口未开回 `CandidateNotOpen(memberId, round)`。全部校验成功才锁定和计分；同一成员记录只消费一次。未验证的分数查询返回 `(0, false)`，与已验证零分区分。
 
 存储记「扣分」而非原始分：已验证成员仅当原始分低于 100 时写一次 `100 − 原始分` 的冷槽，满分零写入（沿用旧 `GroupVerify.sol` 的 gas 记法）；「已验证」不占存储位，由成员在目标 Round 群集合中的位置早于该群已验证游标推导——该推导依赖前文「加入结束后不得回写目标 Round」：目标轮集合快照冻结后，已验证游标前缀与实际计分集合恒等。查询接口仍按 `(score, verified)` 返回；读路径由单槽读取变为按轮点查（群归属、已验证游标、集合定位与扣分读取），精确命中为 O(1)，未命中回退到最近已记录轮（二分），结算路径经库调用复用同一解码。每组的轮级累计量用累加器，不按成员二次写。原始分上限 100 仍由 `ScoreExceedsMax` 在写入前显式校验，减法记法的下溢不是校验手段。
 
@@ -99,7 +99,7 @@ Executor 先按 [统一铸造链路](07-minting.md#铸造链路) 取得整笔激
 - 退出零值与无记录继续使用旧 RoundHistory 的显式记录语义；不得通过清空 mapping 伪造退出。
 - `candidateCount = n` 表示最大可开放排名数，不是本轮总申请人数；`n = splits.length + 1`。分割线严格递增且在 `(0, 1e18)` 内，空数组只开放第 1 名。投票结束后排名自然冻结，不增加冻结交易。
 - 候选竞选是 BSC 新逻辑；旧 `LOVE20TKM/extension-group/src/GroupVerify.sol` 的 `submitOriginScores` 仅作为连续批次和原始分校验的参考，不是候选机制来源。
-- 链群未激活的错误落点：`deactivateGroup`、`updateGroupConfig` 回滚 `GroupNotActive`；`join`、`providerQuotaAdd` 回滚 `CannotJoinInactiveGroup`。验证路径不检查链群当前激活状态。
+- 链群身份不存在的错误落点：群管理、`join`、`providerQuotaAdd`、`providerQuotaRemove` 回滚 `GroupNotExist(groupId)`。链群未激活的错误落点：`deactivateGroup`、`updateGroupConfig`、`join`、`providerQuotaAdd` 回滚 `GroupNotActive(groupId)`。验证路径不检查链群当前激活状态。
 - 行动存在性判定（`createdRound == 0`）统一回滚 `ActionNotCreated(tokenAddress, actionId)`：`activateGroup`、`submitVerifierApplication` 与成员结算的第一段守卫都用它；成员结算的第二段仍按轮次判，`round < createdRound` 归 `RoundNotStarted()`（见[铸造](07-minting.md#铸造链路)的错误表）。
 - Provider 额度的授予、调整与枚举见 [共同模型](03-participation.md#provider-额度接口)；额度授予即存入合约，`join` 只按使用量扣减额度、不再转移代币；划转量由 `ProviderQuotaAdded`/`ProviderQuotaRemoved` 逐成员发出。
 - 三个协议级上界是**编译期常量**，不进 `init`、不设 getter：原始分上限 100（`ScoreExceedsMax`）、单个验证批次项数上限 100（`VerificationBatchTooLarge`）、描述字段 1024 字节（`DescriptionTooLong`）。它们对所有部署、所有社区、所有行动一致，属协议语义的一部分；本协议没有管理员身份（`init` 不保存部署者、不授予特权），做成配置项同样写入即不可改，只会增加部署参数与错配面。
