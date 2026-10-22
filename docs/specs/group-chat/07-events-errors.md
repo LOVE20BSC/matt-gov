@@ -10,7 +10,7 @@
 
 ## 错误
 
-拒绝不存在的群或 sender、重复激活、越权管理、非 sender owner 发言、未激活、关闭发言、空或超长正文、提及超限/重复、无效引用、非法 mentionAll、无代码规则地址、scope/ban 拒绝和重入。
+拒绝不存在的群或 sender、重复激活、越权管理、非 sender owner 发言、未激活、关闭发言、空或超长正文、提及超限/重复、无效引用、非法 mentionAll、无代码规则地址、scope/ban 拒绝和重入。缺失群回 `GroupNotExist()`；缺失 sender/delegate ID 回 `ERC721NonexistentToken(id)`，非 owner 回 `SenderNotMemberOwner(senderId)` / `SenderNotDelegateOwner()`，都不借用 `GroupNotExist()`。
 
 错误定义见 [`IGroupChat.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/IGroupChat.sol)、[`IGroupChatDelegate.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/IGroupChatDelegate.sol)、[`IGroupAdmin.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/IGroupAdmin.sol)、[`IGroupMember.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/IGroupMember.sol)、[`IGroupChatBanList.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/IGroupChatBanList.sol)、[`IGovVotedBanSource.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/sources/ban/IGovVotedBanSource.sol)、[`IBaseManager.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/managers/IBaseManager.sol)、[`IBaseTokenScopeManager.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/managers/IBaseTokenScopeManager.sol) 和 [`IBaseTokenActionScopeManager.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/managers/IBaseTokenActionScopeManager.sol)。
 

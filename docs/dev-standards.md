@@ -179,7 +179,20 @@ EIP-170 限制部署字节码 ≤ 24,576 字节。超过时：
 - 部署是否成功由发布前 check 脚本核对实际绑定结果判定，任何不一致即重新部署；不能把"部署后立即初始化"当作防抢跑保证。
 - **参数尽可能少**：能由入参地址的 getter 派生的依赖，不再作为 `init` 入参；在 `init` 内读取一次并缓存，派生值同样校验非零；被派生依赖须先完成初始化。例：`ActionTarget` 从 `Vote` 派生 `phaseAddress`，`LpExecutor` 从 `Stake` 派生 `memberNFTAddress`、`phaseAddress`、`pairFactoryAddress`。
 
-### 5.5 复用
+### 5.5 调用者校验
+
+**写函数的调用者校验一律写成 modifier，且是函数体的第一道判定。只判「谁可以调」。**
+
+- 顺序：鉴权 → 参数 → 存在性 → 业务 → 账本。非授权方只拿到鉴权错误，不能借错误差异探测内部状态。
+- modifier 就在使用它的文件里定义（Solidity 不能跨文件引用 modifier）；副本必须自己判调用者（`msg.sender` 或 `_is*` 谓词）、有 revert、以 `_;` 收尾，由 `script/check_caller_auth.sh` 校验；错误名按各合约自己的 `I<Name>Errors` 取，允许不同。
+- 一个 modifier 只判一件事；revert 用 `I<Name>Errors` 已声明的自定义错误。
+- 只做判定：不写状态、不发起改变状态的外部调用；鉴权所需的只读查询（`ownerOf`、`ownerOrDelegateIdOf`、`isAdminId`、`proposalTarget` 等）允许，且只能用于判定。接收方守卫（`_onERC721ReceivedFromMint`）不属于调用者鉴权，脚本按名称豁免。
+- modifier 形参占栈：参数多的函数若因此 stack too deep，把函数体拆进私有 `_<name>(...)`，外部函数只留 modifier + 转调（`GroupActionJoin`、`GroupRecipients` 已如此处理），不得改用 `via_ir` 或退回函数体内联判定。
+- 多个 modifier 时 `nonReentrant` 必须最左（`non-reentrant-not-first` 强制），鉴权紧随其后。
+- 判定值函数体还要用（owner 快照、事件）时仍写 modifier，函数体再读一次；多分支判定可委托给 `_is<X>()` 布尔谓词（`_isOperator`、`_isBoundExecutor`），错误仍在 modifier 里抛。业务状态校验（如 `activated`）不进鉴权判定，作为函数体首条紧跟其后。
+- 无调用者限制的写函数在规格里写明，不靠「没挂 modifier」隐式表达。只读函数不适用；`init` 见 5.4。
+
+### 5.6 复用
 
 - 动手前先检查目标仓库已固定的依赖与 LOVE20BSC 共享库；已有实现满足语义时直接复用并固定版本，不得重复复制。
 - **不含业务逻辑、可跨仓库复用的实现一律放入 `LOVE20BSC/libs`**；只有含业务语义、不具跨仓库复用价值的实现才留在业务仓库，并在对账中写明理由。

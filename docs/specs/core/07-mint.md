@@ -101,6 +101,7 @@ if eligibleProposalVotes == 0:
 | 条件 | 回滚 |
 | --- | --- |
 | `IMemberNFT(memberNFTAddress).ownerOf(memberId) != msg.sender` | `NotMemberOwner(uint256 memberId)` |
+| `recipient == address(0)` | `InvalidAddress()` |
 | `!IVote(voteAddress).isRoundEnded(round)` | `RoundNotReadyToMint()` |
 | 已铸造（独立状态位） | `AlreadyMinted()` |
 | `memberVotes == 0` | `NoRewardAvailable()` |
@@ -124,7 +125,7 @@ else:
 
 `memberVotes` 为本轮累计投出票数；`memberBoost` 和 `totalBoost` 均取 Vote 的同轮冻结快照，记账时机见 [Vote](06-vote.md#投票和加速快照)。投票后仅追加质押、不再投票，不增加本轮加速权重；NFT 转移不重算快照。两池按固定 50/50 拆分，奇数余量归加速池。`totalBoost == 0` 时整份加速池已在准备时取消，本次不得再计 `burnReward`。未投票者即使有加速质押也不能领取治理激励。
 
-批量接口 `mintGovRewards` 逐轮按上述顺序执行，任一轮失败整笔回滚。空 `rounds` 数组允许（返回空数组，无副作用）。轮次数量由调用者自行决定，接口不设数量上限；数量过大导致交易失败及 gas 成本由调用者承担，这是写入批量长度上限规则的明确例外。
+批量接口 `mintGovRewards` 先鉴权，再逐轮按上述顺序执行，任一轮失败整笔回滚。空 `rounds` 数组在鉴权通过后允许（返回空数组，无副作用）。轮次数量由调用者自行决定，接口不设数量上限；数量过大导致交易失败及 gas 成本由调用者承担，这是写入批量长度上限规则的明确例外。
 
 例：两池各 500、成员投票占 10%、加速份额占 50%、倍数上限为 2。结果为 `voteReward = 50`、`boostReward = 100`、`burnReward = 150`；实际铸造 150。
 
@@ -149,7 +150,7 @@ else:
 
 `rewardAvailable` 按 `maxSupply - totalSupply - reservedAvailable` 计算当前可分配额度；`reservedAvailable` 返回 `rewardReserved - rewardMinted - rewardBurned`。
 
-批量接口 `mintGovRewards` 按输入顺序执行，结果数组与输入等长；任一 Round 未结束、没有投票记录或已铸造，则整笔回滚。治理激励和发射额度/次数更新也必须原子完成。
+批量接口 `mintGovRewards` 先鉴权，再按输入顺序执行，结果数组与输入等长；任一 Round 未结束、没有投票记录或已铸造，则整笔回滚。治理激励和发射额度/次数更新也必须原子完成。
 
 ## 发射额度的生成
 
@@ -199,7 +200,7 @@ launchCredit -= count * threshold
 - `phaseAddress` 在 `init` 时从 Vote 读取一次并缓存，经同名 getter 暴露，供发布前检查脚本核对与 Vote 一致；`voteAddress` 须先完成 init，否则其 `phaseAddress` 为零、`init` 回滚 `InvalidAddress()`。轮次结束判定直读缓存的 Phase（`round != 0 && IPhase(phaseAddress).currentPhase() > round`），语义与 `Vote.isRoundEnded` 一致，不再经 Vote 二跳。
 - Mint 的内部准备路径只在首次准备时扫描 Vote 本轮有票 Proposal；实现和验收至少覆盖约 300 个 Proposal 的准备交易。准备成功后，`eligibleProposalVotes[tokenAddress][round]` 只读，不得再次读取 Vote 列表或改写。零额事件行为见[事件](#事件)节。
 - 各项分配向下取整产生的极小舍入余数不单独维护，也不追加结算状态；累计账本只记录实际铸造和明确销毁的额度。
-- `NotEnoughReward()` 与 `NotEnoughRewardToBurn()` 是防御性检查；在正确配置与正常流程下不可达（账本不变式 `rewardReserved >= rewardMinted + rewardBurned` 始终成立）。`_proposalRewardCalculation` 的 `:430 eligibleVotes == 0` 早退、`_govRewardCalculation` 的 `:473 totalVotes == 0` 早退、`_updateLaunchCredit` 的 `:586 threshold == 0` 早退均为防御性分支，在当前账本不变式下不可达（`:430` 能进入时必有 `proposalVotes > 0` 且 `proposalVotes >= minVotes`，从而 `eligibleVotes > 0`；`:473` 能进入时必有 `memberVotes > 0`；`:586` 能进入时必有 `mintAmount > 0` 从而 `maxSupply - totalSupplyBeforeMint > 0`）。
+- `NotEnoughReward()` 与 `NotEnoughRewardToBurn()` 是防御性检查；在正确配置与正常流程下不可达（账本不变式 `rewardReserved >= rewardMinted + rewardBurned` 始终成立）。`_proposalRewardCalculation` 的 `:391 eligibleVotes == 0` 早退、`_govRewardCalculation` 的 `:434 totalVotes == 0` 早退、`_updateLaunchCredit` 的 `:547 threshold == 0` 早退均为防御性分支，在当前账本不变式下不可达（`:391` 能进入时必有 `proposalVotes > 0` 且 `proposalVotes >= minVotes`，从而 `eligibleVotes > 0`；`:434` 能进入时必有 `memberVotes > 0`；`:547` 能进入时必有 `mintAmount > 0` 从而 `maxSupply - totalSupplyBeforeMint > 0`）。
 - 历史来源 `LOVE20TKM/core/src/LOVE20Mint.sol` 只作为行为参考，不替代本文件的账本规则。
 
 验收见 [Core 验收](09-testing.md)。

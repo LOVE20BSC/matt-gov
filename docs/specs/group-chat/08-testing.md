@@ -6,8 +6,9 @@
 | --- | --- | --- |
 | 核心 | 一 NFT 一 Chat、激活、转移 | owner 实时变化，历史不回写 |
 | 身份 | 默认映射、地址发言、地址黑名单/投票 | ABI、状态、索引和专属事件完全删除，不仅是运行时拒绝 |
+| 身份 | 缺失 senderId / delegateId | post 缺失 senderId → `ERC721NonexistentToken`；非 owner → `SenderNotMemberOwner`；delegate 写入口/`setDelegateId` 目标缺失 delegateId → `ERC721NonexistentToken`；非 owner → `SenderNotDelegateOwner`；缺失群仍 `GroupNotExist` |
 | Delegate | 设置、撤销、快照失效/恢复 | 只管理 Chat，不冒充 sender |
-| 发言 | 校验顺序、scope/ban、before/after | before 回滚，after 失败保留消息 |
+| 发言 | 鉴权先于群状态、scope/ban、before/after | 非持有人先回鉴权错误；before 回滚，after 失败保留消息 |
 | 消息 | 提及、mentionAll、引用、ID | 规则和索引一致 |
 | 查询 | Round、sender、mention、分页 | 空值、越界和 reverse 符合最终 ABI |
 | 查询 | Phase 重新标定后的历史消息 Round | 旧消息 round 与分轮索引不变，新帖按新参数计算（`testT050B`） |

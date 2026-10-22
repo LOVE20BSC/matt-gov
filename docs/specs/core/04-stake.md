@@ -138,7 +138,7 @@ Vote 每次投票通过 `Stake.validGovVotes(tokenAddress, memberId)` 读取当�
 
 ## 拒绝条件与错误
 
-各入口按「参数 → 存在性 → 持有 → 账本」的顺序校验，先命中的条件先回滚，同一入口内不重排。事件与错误定义见 [`IStake.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/IStake.sol)。
+各入口按「鉴权 → 参数 → 存在性 → 业务 → 账本」的顺序校验，先命中的条件先回滚，同一入口内不重排。鉴权行同时覆盖 `memberId` 不存在：`memberId == 0` 或 NFT 不存在时由 `MemberNFT.ownerOf` 抛出 `ERC721NonexistentToken`，不进入 `NotMemberOwner`。事件与错误定义见 [`IStake.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/IStake.sol)。
 
 `tokenAddress` 的有效性统一由 `ILaunch(launchAddress).isLOVE20Token(tokenAddress)` 判定；未由 Launch 登记的地址即使实现了 `parentTokenAddress()` 也无效。需要 Pair 的入口再判 `pairAddress[tokenAddress]` 为零地址。两者都回滚 `InvalidTokenAddress()`。
 
@@ -157,62 +157,58 @@ Vote 每次投票通过 `Stake.validGovVotes(tokenAddress, memberId)` 读取当�
 
 | 顺序 | 条件 | 回滚错误 |
 | --- | --- | --- |
-| 1 | `tokenAmount` 或 `parentTokenAmount` 为零 | `StakeAmountMustBeSet()` |
-| 2 | `promisedWaitingPhases` 不在 `[PROMISED_WAITING_PHASES_MIN, PROMISED_WAITING_PHASES_MAX]` 范围 | `PromisedWaitingPhasesOutOfRange()` |
-| 3 | `tokenAddress` 无效，或首次质押时 Pair 为零地址 | `InvalidTokenAddress()` |
-| 4 | 当前 Phase 为 `0` | `NotAllowedToStakeAtRoundZero()` |
-| 5 | `memberId` 为 `0` | `InvalidMemberId()` |
-| 6 | 调用者不持有指定 `memberId` 的 NFT | `NotMemberOwner(memberId)` |
-| 7 | 已申请解锁 | `UnstakeAlreadyRequested()` |
-| 8 | `promisedWaitingPhases` 小于已有值 | `PromisedWaitingPhasesMustBeGreaterOrEqualThanBefore()` |
-| 9 | 折算使入池量低于期望量，且偏离比例超过 `slippage` | `SlippageExceeded(slippage, deviation)` |
-| 10 | Pair 铸出的 LP 数量为零 | `ZeroAmount("lpMinted")` |
+| 1 | 调用者不持有指定 `memberId` 的 NFT | `NotMemberOwner(memberId)` |
+| 2 | `tokenAmount` 或 `parentTokenAmount` 为零 | `StakeAmountMustBeSet()` |
+| 3 | `promisedWaitingPhases` 不在 `[PROMISED_WAITING_PHASES_MIN, PROMISED_WAITING_PHASES_MAX]` 范围 | `PromisedWaitingPhasesOutOfRange()` |
+| 4 | `tokenAddress` 无效，或首次质押时 Pair 为零地址 | `InvalidTokenAddress()` |
+| 5 | 当前 Phase 为 `0` | `NotAllowedToStakeAtRoundZero()` |
+| 6 | 已申请解锁 | `UnstakeAlreadyRequested()` |
+| 7 | `promisedWaitingPhases` 小于已有值 | `PromisedWaitingPhasesMustBeGreaterOrEqualThanBefore()` |
+| 8 | 折算使入池量低于期望量，且偏离比例超过 `slippage` | `SlippageExceeded(slippage, deviation)` |
+| 9 | Pair 铸出的 LP 数量为零 | `ZeroAmount("lpMinted")` |
 
-第 3 行在首次质押时读取 Factory 登记的 Pair 并保存；该入口不创建 Pair，未登记即回滚。
+第 4 行在首次质押时读取 Factory 登记的 Pair 并保存；该入口不创建 Pair，未登记即回滚。
 
 ### `stakeBoost`
 
 | 顺序 | 条件 | 回滚错误 |
 | --- | --- | --- |
-| 1 | `boostAmount` 为零 | `StakeAmountMustBeSet()` |
-| 2 | `promisedWaitingPhases` 不在 `[PROMISED_WAITING_PHASES_MIN, PROMISED_WAITING_PHASES_MAX]` 范围 | `PromisedWaitingPhasesOutOfRange()` |
-| 3 | `tokenAddress` 无效 | `InvalidTokenAddress()` |
-| 4 | `memberId` 为 `0` | `InvalidMemberId()` |
-| 5 | 调用者不持有指定 `memberId` 的 NFT | `NotMemberOwner(memberId)` |
-| 6 | 已申请解锁 | `UnstakeAlreadyRequested()` |
-| 7 | 无流动性质押 | `NoStakedLiquidity()` |
-| 8 | `promisedWaitingPhases` 小于已有值 | `PromisedWaitingPhasesMustBeGreaterOrEqualThanBefore()` |
+| 1 | 调用者不持有指定 `memberId` 的 NFT | `NotMemberOwner(memberId)` |
+| 2 | `boostAmount` 为零 | `StakeAmountMustBeSet()` |
+| 3 | `promisedWaitingPhases` 不在 `[PROMISED_WAITING_PHASES_MIN, PROMISED_WAITING_PHASES_MAX]` 范围 | `PromisedWaitingPhasesOutOfRange()` |
+| 4 | `tokenAddress` 无效 | `InvalidTokenAddress()` |
+| 5 | 已申请解锁 | `UnstakeAlreadyRequested()` |
+| 6 | 无流动性质押 | `NoStakedLiquidity()` |
+| 7 | `promisedWaitingPhases` 小于已有值 | `PromisedWaitingPhasesMustBeGreaterOrEqualThanBefore()` |
 
 ### `unstake`
 
 | 顺序 | 条件 | 回滚错误 |
 | --- | --- | --- |
-| 1 | `tokenAddress` 无效 | `InvalidTokenAddress()` |
-| 2 | `memberId` 为 `0` | `InvalidMemberId()` |
-| 3 | 调用者不持有指定 `memberId` 的 NFT | `NotMemberOwner(memberId)` |
-| 4 | 已申请解锁 | `UnstakeAlreadyRequested()` |
-| 5 | 无流动性质押 | `NoStakedLiquidity()` |
-| 6 | 本 Round 已推举或已投票 | `MemberHasUsedStakeRightsInCurrentRound()` |
+| 1 | 调用者不持有指定 `memberId` 的 NFT | `NotMemberOwner(memberId)` |
+| 2 | `tokenAddress` 无效 | `InvalidTokenAddress()` |
+| 3 | 已申请解锁 | `UnstakeAlreadyRequested()` |
+| 4 | 无流动性质押 | `NoStakedLiquidity()` |
+| 5 | 本 Round 已推举或已投票 | `MemberHasUsedStakeRightsInCurrentRound()` |
 
 ### `withdraw`
 
 | 顺序 | 条件 | 回滚错误 |
 | --- | --- | --- |
-| 1 | `tokenAddress` 无效，或 Pair 为零地址 | `InvalidTokenAddress()` |
-| 2 | `memberId` 为 `0` | `InvalidMemberId()` |
-| 3 | 调用者不持有指定 `memberId` 的 NFT | `NotMemberOwner(memberId)` |
-| 4 | 未申请解锁 | `UnstakeNotRequested()` |
-| 5 | 无流动性质押 | `NoStakedLiquidity()` |
-| 6 | 当前 Phase 不大于 `unlockRequestPhase + promisedWaitingPhases` | `NotEnoughWaitingPhases()` |
+| 1 | 调用者不持有指定 `memberId` 的 NFT | `NotMemberOwner(memberId)` |
+| 2 | `tokenAddress` 无效，或 Pair 为零地址 | `InvalidTokenAddress()` |
+| 3 | 未申请解锁 | `UnstakeNotRequested()` |
+| 4 | 无流动性质押 | `NoStakedLiquidity()` |
+| 5 | 当前 Phase 不大于 `unlockRequestPhase + promisedWaitingPhases` | `NotEnoughWaitingPhases()` |
 
 ### `mergeStake`
 
 | 顺序 | 条件 | 回滚错误 |
 | --- | --- | --- |
-| 1 | 源与目标相同 | `SourceAndTargetMustBeDifferent()` |
-| 2 | `tokenAddress` 无效 | `InvalidTokenAddress()` |
-| 3 | 源或目标 `memberId` 为 `0` | `InvalidMemberId()` |
-| 4 | 调用者不持有源 `memberId` 的 NFT | `NotMemberOwner(sourceMemberId)` |
+| 1 | 调用者不持有源 `memberId` 的 NFT | `NotMemberOwner(sourceMemberId)` |
+| 2 | 源与目标相同 | `SourceAndTargetMustBeDifferent()` |
+| 3 | `tokenAddress` 无效 | `InvalidTokenAddress()` |
+| 4 | 目标 `memberId` 不存在（含 `0`） | MemberNFT 的标准错误（`ownerOf` 回滚） |
 | 5 | 源或目标已申请解锁 | `UnstakeAlreadyRequested()` |
 | 6 | 源无流动性质押 | `NoStakedLiquidity()` |
 | 7 | 源在当前治理 Round 已使用过质押权（已推举或已投票） | `SourceHasUsedStakeRightsInCurrentRound()` |
@@ -231,10 +227,10 @@ Vote 每次投票通过 `Stake.validGovVotes(tokenAddress, memberId)` 读取当�
 事件与错误定义见 [`IStake.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/IStake.sol)。
 
 - 当前质押余额为 `0` 就表示没有质押；只有 RoundHistory 的历史查询需要区分”本轮没有记录”和”本轮明确归零”，直接沿用旧 RoundHistory 的显式记录语义，不新增额外布尔状态。
-- 流动性写操作先按条件表顺序完成参数与权限校验——校验自身允许读取 Factory、代币合约与 MemberNFT 的只读接口——**再发起会改变资产或记账的外部调用**（转入代币、向 Pair 铸出或退出 LP、经 Router 换币），并以这些调用实际返回的数量记账；不设重入锁，一致性由这一顺序保证（与 [通用规则](01-common-rules.md#初始化与安全)的检查—更新—交互顺序的差别在此）。读取 Pair 状态，在任何除法前处理 `pairTotalSupply == 0`、`currentSqrtKOfLp == 0` 和基准未增长；需要 Router、Pair 或 ERC20 调用时，以外部调用成功返回的实际数量计算并更新 `lastWithdrawableLp`、`lastFeeLp`、`lastSqrtKOfLp`、成员份额和社区总份额。任一步失败全部回滚。BSC 不使用 SL/ST 凭证，所有份额和可提取 LP 直接存入 Stake。
+- 流动性写操作先按条件表顺序完成鉴权、参数与存在性校验——校验自身允许读取 Factory、代币合约与 MemberNFT 的只读接口——**再发起会改变资产或记账的外部调用**（转入代币、向 Pair 铸出或退出 LP、经 Router 换币），并以这些调用实际返回的数量记账；不设重入锁，一致性由这一顺序保证（与 [通用规则](01-common-rules.md#初始化与安全)的检查—更新—交互顺序的差别在此）。读取 Pair 状态，在任何除法前处理 `pairTotalSupply == 0`、`currentSqrtKOfLp == 0` 和基准未增长；需要 Router、Pair 或 ERC20 调用时，以外部调用成功返回的实际数量计算并更新 `lastWithdrawableLp`、`lastFeeLp`、`lastSqrtKOfLp`、成员份额和社区总份额。任一步失败全部回滚。BSC 不使用 SL/ST 凭证，所有份额和可提取 LP 直接存入 Stake。
 - 手续费结算失败（Pair 取回、Router 兑换、销毁或统计更新任一失败）时整笔结算回滚；提取本金前自动结算手续费，手续费结算失败则提取也回滚。
 - 空目标沿用本文件的等待期继承例外；`MemberStake` 和 `GlobalStake` 结构体仅用于内部存储，不作为查询返回格式。
-- `InvalidMemberId()` 只覆盖 `memberId == 0`；`memberId` 非零但不存在的，由 `MemberNFT.ownerOf` 抛出 OpenZeppelin 的 `ERC721NonexistentToken`，与 `Launch` 的既有实现一致，不另作归一化。
+- `memberId == 0` 与不存在的 `memberId` 同走 `MemberNFT.ownerOf`，由 OpenZeppelin 抛出 `ERC721NonexistentToken`；Stake 不声明 `InvalidMemberId()`，与 `Launch` 的既有实现一致。
 - 治理票为 `liquidityShares × promisedWaitingPhases`；`unlockRequestPhase != 0` 时 `validGovVotes` 返回 `0`，`globalGovVotes` 与全体成员 `validGovVotes` 之和保持一致，追加质押、提升等待期、申请解锁、融合、提取都要同步增减。
 - `stakeData()` 和 `globalStakeData()` 返回的 `tokenAmountForLiquidity` / `parentTokenAmountForLiquidity` 以及 `withdrawableLp` / `feeLp` 都是查询时根据当前 Pair 状态现算的值，不是直接读取存储的历史基准。
 - 分页查询 `globalBoostUpdatedRounds` 和 `boostUpdatedRounds` 使用 `(offset, limit, reverse)` 参数顺序并返回 `(rounds, totalCount)`，与 `IPhase`、`IMemberNFT`、`ILaunch` 的分页接口一致。

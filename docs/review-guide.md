@@ -255,7 +255,7 @@ LOVE20TKM/<repo>/<path>[#<function-or-symbol>]
 
 ### 权限
 
-- [ ] 每个写接口只有一个明确权限来源
+- [ ] 每个写接口只有一个明确权限来源，写成 modifier 且为首道判定；同名 modifier 的每份副本都判 `msg.sender`（或 `_is*` 谓词）；跑 `./matt-gov/script/check_caller_auth.sh` 应输出 `violations: 0`
 - [ ] NFT 转移后权限实时读取 owner，不缓存旧地址
 - [ ] 回调、Launch、Executor 的调用链不能被旁路
 - [ ] 外部合约地址检查非零、代码存在和初始化完成

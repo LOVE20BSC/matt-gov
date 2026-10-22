@@ -67,7 +67,7 @@ Launch 只保存“成员可用整数次数”和“社区累计已产生次数�
 | `MAX_LAUNCH_COUNT` | 每社区累计次数上限；根级累计由伴生不变式约束在同一上限内 |
 
 - `launchCount` 与 `issuedLaunchCount` 对任意 `tokenAddress`、`memberId` 可查询；未登记的 token 返回 `0`，不校验也不回滚（根父币未登记但承载根级次数，返回真实账本值）。
-- `addLaunchCount` 只允许 Mint 调用，其他调用者回滚 `UnauthorizedCaller()`。校验顺序固定为参数 → 存在性 → 账本：`count` 必须大于 `0`，否则回滚 `CountMustBeGreaterThanZero()`；`tokenAddress` 必须是已登记 LOVE20 代币，否则回滚 `InvalidTokenAddress()`——根父币不经过本入口，其次数只由首币伴生在同一调用内追加；必须满足 `issuedLaunchCount + count <= MAX_LAUNCH_COUNT`，否则回滚 `LaunchCountLimitReached()`（Mint 已按剩余额度截断，此处是兜底）。上限判断不得依赖加法结果：任何使累计次数超过上限的 `count`（含极端大值）都必须回滚 `LaunchCountLimitReached()`，不能以算术溢出回滚收场。
+- `addLaunchCount` 只允许 Mint 调用，其他调用者回滚 `UnauthorizedCaller()`。校验顺序固定为鉴权 → 参数 → 存在性 → 账本：`count` 必须大于 `0`，否则回滚 `CountMustBeGreaterThanZero()`；`tokenAddress` 必须是已登记 LOVE20 代币，否则回滚 `InvalidTokenAddress()`——根父币不经过本入口，其次数只由首币伴生在同一调用内追加；必须满足 `issuedLaunchCount + count <= MAX_LAUNCH_COUNT`，否则回滚 `LaunchCountLimitReached()`（Mint 已按剩余额度截断，此处是兜底）。上限判断不得依赖加法结果：任何使累计次数超过上限的 `count`（含极端大值）都必须回滚 `LaunchCountLimitReached()`，不能以算术溢出回滚收场。
 - 只增加 `launchCount` 与 `issuedLaunchCount`，与治理激励铸造整体回滚；次数被消耗或融合都不释放累计上限。
 - 只有 `init` 校验初始化状态：`addLaunchCount`、`mergeLaunchCount` 和 `launchToken` 不重复校验 `initialized`（未成功初始化的版本不会发布，见 [通用规则](01-common-rules.md#初始化与安全)），它们的失败由各自的权限、参数与存在性校验决定。
 
@@ -84,7 +84,7 @@ Launch 只保存“成员可用整数次数”和“社区累计已产生次数�
 
 源、目标必须不同且存在，`count > 0`，源次数足够。只校验调用者持有源 NFT，不要求持有目标。成功后原子扣减源次数、增加目标次数；不转移 `launchCredit`，不改变其他质押、投票、发射历史或事件，也不减少目标既有状态。此操作可用于 NFT 场外交易。融合对已登记代币与根父币两个维度同规则：根级次数同样可融合。
 
-校验顺序固定为参数 → 存在性 → 持有 → 账本：先校验参数（源与目标不同、`count > 0`），再校验存在性（`tokenAddress` 已登记或为根父币、源与目标 `memberId` 都存在），然后校验调用者持有源 MemberNFT，最后校验源可用次数。
+校验顺序固定为鉴权 → 参数 → 存在性 → 账本：先校验调用者持有源 MemberNFT，再校验参数（源与目标不同、`count > 0`），再校验存在性（`tokenAddress` 已登记或为根父币、目标 `memberId` 存在；源存在性由鉴权覆盖），最后校验源可用次数。
 
 | 条件 | 回滚错误 |
 | --- | --- |
@@ -99,7 +99,7 @@ Launch 只保存“成员可用整数次数”和“社区累计已产生次数�
 
 ## 普通发射
 
-当前成员 NFT 持有人可发射社区子币，消耗其一次 `launchCount`。发射流程按「检查 → 更新 → 交互」执行：先按参数 → 存在性 → 持有 → 账本的顺序完成检查，扣减一次次数，再创建子币、登记、分发首批供应并调用 distributor；以“先更新账本、再外部调用”满足防重入，不引入额外重入锁。外部调用失败时子币创建、登记和次数消耗全部回滚。
+当前成员 NFT 持有人可发射社区子币，消耗其一次 `launchCount`。发射流程按「检查 → 更新 → 交互」执行：先按鉴权 → 参数 → 存在性 → 账本的顺序完成检查，扣减一次次数，再创建子币、登记、分发首批供应并调用 distributor；以“先更新账本、再外部调用”满足防重入，不引入额外重入锁。外部调用失败时子币创建、登记和次数消耗全部回滚。
 
 发射、次数和代币查询接口均见 [`ILaunch.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/ILaunch.sol)。
 
@@ -119,7 +119,7 @@ Launch 只保存“成员可用整数次数”和“社区累计已产生次数�
 
 distributor 自行实现领取与查询逻辑，`claim(tokenAddress)` 只是建议接口，不是协议必需 ABI。发射者负责选择分发目标，承担其失败和 Gas 耗尽风险。
 
-校验顺序固定为参数 → 存在性 → 持有 → 账本 → 扣减 → 最终符号唯一性：先校验参数（`tokenSymbol`、`distributor` 与分发模式），再校验存在性（`parentTokenAddress` 已登记或为根父币、`memberId` 存在），然后校验调用者持有 `memberId`，再校验账本余量并扣减次数，最后按施加 `Test` 前缀后的最终符号校验唯一性。唯一性校验必须排在父币存在性校验之后：最终符号要先读取父币（根级发射为首币）符号才能得到。
+校验顺序固定为鉴权 → 参数 → 存在性 → 账本 → 扣减 → 最终符号唯一性：先校验调用者持有 `memberId`，再校验参数（`tokenSymbol`、`distributor` 与分发模式），再校验存在性（`parentTokenAddress` 已登记或为根父币；`memberId` 存在性由鉴权覆盖），再校验账本余量并扣减次数，最后按施加 `Test` 前缀后的最终符号校验唯一性。唯一性校验必须排在父币存在性校验之后：最终符号要先读取父币（根级发射为首币）符号才能得到。
 
 `distributorData` 不参与校验：除了分发模式本身，Launch 不对它设任何条件，`NoCallback` 下直接忽略。
 

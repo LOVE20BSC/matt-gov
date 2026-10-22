@@ -101,34 +101,34 @@ Proposal 由合约分配的头部与创建者提供的主体组成，对外以 `
 
 ## 校验顺序
 
+两个入口都先完成鉴权（`memberId` 存在且调用者为当前持有人），再按下列顺序校验；非持有人只拿到鉴权错误。
+
 `submitNewProposal` 的创建段与推举段在同一笔内依次执行，任一步回滚整笔：
 
-1. **参数校验**：`title` 非空（`EmptyString("title")`）、`target` 非零（`InvalidAddress()`）、`targetMode` 合法（枚举范围内且 `Callback` 时 `target.code.length > 0`，否则 `InvalidTargetMode()`）
-2. **存在性**：`memberId` 存在（`IMemberNFT.ownerOf` 不回滚）
-3. **持有权**：`ownerOf(memberId) == msg.sender`（`NotMemberOwner(memberId)`）
-4. **门槛**：`canSubmit(tokenAddress, memberId)`（`CannotSubmitAction()`）
-5. **本轮名额**：同一成员同社区同 Round 尚未推举过（`OnlyOneSubmitPerRound()`）
-6. 分配 `proposalId`，写入 `ProposalInfo` 与作者索引
-7. 发出 `ProposalCreated` 事件
-8. 检查社区本 Round 已推举数小于 1,000（`CannotSubmitAction()`），然后写入三处推举状态：推举记录列表（供 `submitInfos`）、按 `proposalId` 的推举者（供 `isSubmitted` 与 `submitterIdByProposalId`）、按 `submitterId` 的反查（供 `proposalIdBySubmitter`）
-9. 发出 `ProposalSubmitted` 事件
-10. 本社区本轮首笔推举时调用 `Phase.sync()`
-11. `Callback` 时回调 `IProposalTarget.onProposalCreated`
-12. `Callback` 时回调 `IProposalTarget.onProposalSubmitted`
+1. **鉴权**：`memberId` 存在且 `ownerOf(memberId) == msg.sender`（鉴权 modifier；不存在由 MemberNFT 回滚，非持有人回滚 `NotMemberOwner(memberId)`）
+2. **参数校验**：`title` 非空（`EmptyString("title")`）、`target` 非零（`InvalidAddress()`）、`targetMode` 合法（枚举范围内且 `Callback` 时 `target.code.length > 0`，否则 `InvalidTargetMode()`）
+3. **门槛**：`canSubmit(tokenAddress, memberId)`（`CannotSubmitAction()`）
+4. **本轮名额**：同一成员同社区同 Round 尚未推举过（`OnlyOneSubmitPerRound()`）
+5. 分配 `proposalId`，写入 `ProposalInfo` 与作者索引
+6. 发出 `ProposalCreated` 事件
+7. 检查社区本 Round 已推举数小于 1,000（`CannotSubmitAction()`），然后写入三处推举状态：推举记录列表（供 `submitInfos`）、按 `proposalId` 的推举者（供 `isSubmitted` 与 `submitterIdByProposalId`）、按 `submitterId` 的反查（供 `proposalIdBySubmitter`）
+8. 发出 `ProposalSubmitted` 事件
+9. 本社区本轮首笔推举时调用 `Phase.sync()`
+10. `Callback` 时回调 `IProposalTarget.onProposalCreated`
+11. `Callback` 时回调 `IProposalTarget.onProposalSubmitted`
 
 `submitNewProposal` 不会命中 `AlreadySubmitted()`：`proposalId` 在本笔内新分配，此前不存在任何推举记录，该判定只对 `submit` 可达。
 
 `submit` 校验顺序：
 
-1. **参数校验**：无显式参数校验
-2. **存在性**：`proposalId` 存在（`ProposalNotFound(proposalId)`）、`memberId` 存在
-3. **持有权**：`ownerOf(memberId) == msg.sender`（`NotMemberOwner(memberId)`）
-4. **门槛**：`canSubmit(tokenAddress, memberId)`（`CannotSubmitAction()`）
-5. **去重与总数**：先判同一 Proposal 同轮是否已推举（`AlreadySubmitted()`）、再判同一成员同社区同轮是否已推举其他 Proposal（`OnlyOneSubmitPerRound()`），最后检查社区本 Round 已推举数小于 1,000（`CannotSubmitAction()`）
-6. 写入三处状态：推举记录列表、按 `proposalId` 的推举者、按 `submitterId` 的反查
-7. 发出 `ProposalSubmitted` 事件
-8. 本社区本轮首笔推举时调用 `Phase.sync()`
-9. `Callback` 时回调 `IProposalTarget.onProposalSubmitted`
+1. **鉴权**：`memberId` 存在且 `ownerOf(memberId) == msg.sender`（鉴权 modifier）
+2. **存在性**：`proposalId` 存在（`ProposalNotFound(proposalId)`）
+3. **门槛**：`canSubmit(tokenAddress, memberId)`（`CannotSubmitAction()`）
+4. **去重与总数**：先判同一 Proposal 同轮是否已推举（`AlreadySubmitted()`）、再判同一成员同社区同轮是否已推举其他 Proposal（`OnlyOneSubmitPerRound()`），最后检查社区本 Round 已推举数小于 1,000（`CannotSubmitAction()`）
+5. 写入三处状态：推举记录列表、按 `proposalId` 的推举者、按 `submitterId` 的反查
+6. 发出 `ProposalSubmitted` 事件
+7. 本社区本轮首笔推举时调用 `Phase.sync()`
+8. `Callback` 时回调 `IProposalTarget.onProposalSubmitted`
 
 初始化校验：`phaseAddress`、`stakeAddress`、`memberNFTAddress` 非零（`InvalidAddress()`）；`submitMinRatio` 在 `1..1e18` 范围（`ZeroAmount("submitMinRatio")` / `InvalidAmount()`）。
 

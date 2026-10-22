@@ -147,7 +147,7 @@ OZ 5 的标准回滚由固定依赖提供：`IERC721Errors`、`ERC721OutOfBounds
 
 ### 错误
 
-旧 11 个 = 保留 8 + 改名 1 + 删除 2；新 20 个 = 保留 8 + 改名 1 + 新增 11。
+旧 11 个 = 保留 8 + 改名 1 + 删除 2；新 21 个 = 保留 8 + 改名 1 + 新增 12。
 
 保留 8 个（相对顺序不变）：`AlreadyInitialized`、`NotAllowedToStakeAtRoundZero`、`StakeAmountMustBeSet`、`UnstakeAlreadyRequested`、`UnstakeNotRequested`、`PromisedWaitingPhasesOutOfRange`、`PromisedWaitingPhasesMustBeGreaterOrEqualThanBefore`、`NoStakedLiquidity`。
 
@@ -155,9 +155,9 @@ OZ 5 的标准回滚由固定依赖提供：`IERC721Errors`、`ERC721OutOfBounds
 
 删除 2 个：`InvalidToAddress()`（新接口不再接收 `to` 地址）、`RoundHasNotStartedYet()`（轮次未开始的语义由 `IStakeErrors.InvalidPhase(uint256)` 承接，与 `IPhaseErrors.InvalidPhase` 同名同参数、selector 相同）。
 
-新增 11 个：`InvalidTokenAddress`、`InvalidMemberId`、`NotMemberOwner(uint256 memberId)`、`SourceAndTargetMustBeDifferent()`、`SourceHasVotedInCurrentRound()`、`TargetPromisedWaitingPhasesTooShort()`、`InvalidAddress()`、`ZeroAmount(string parameter)`、`InvalidAmount()`、`SlippageExceeded(uint256 slippage, uint256 deviation)`、`InvalidPhase(uint256 phaseNumber)`。后 7 个服务于 `init`、`stakeLiquidity`、`mergeStake` 与 `settleFees` 入口；`SlippageExceeded` 承接旧 `LOVE20Hub` 的两条 `require` 字符串，第一个参数是请求容差、第二个是实际偏离；`InvalidPhase` 承接删除的 `RoundHasNotStartedYet`。
+新增 12 个：`SlippageExceeded(uint256 slippage, uint256 deviation)`、`InvalidTokenAddress()`、`NotMemberOwner(uint256 memberId)`、`SourceAndTargetMustBeDifferent()`、`SourceHasUsedStakeRightsInCurrentRound()`、`MemberHasUsedStakeRightsInCurrentRound()`、`FeeSettlementRatioOutOfRange()`、`TargetPromisedWaitingPhasesTooShort()`、`InvalidAddress()`、`ZeroAmount(string parameter)`、`InvalidAmount()`、`InvalidPhase(uint256 phaseNumber)`。这些错误服务于 `init`、`stakeLiquidity`、`mergeStake` 与 `settleFees` 入口；`SlippageExceeded` 承接旧 `LOVE20Hub` 的两条 `require` 字符串，第一个参数是请求容差、第二个是实际偏离；`InvalidPhase` 承接删除的 `RoundHasNotStartedYet`。`InvalidMemberId` 已删除：零值与其他不存在的 `memberId` 同走 `MemberNFT.ownerOf` 的标准错误。
 
-错误顺序：保留 8 项的旧相对顺序不变（原 `InvalidToAddress` 位置直接消失），改名项与 11 个新增项插在其后。
+错误顺序：保留 8 项的旧相对顺序不变（原 `InvalidToAddress` 位置直接消失），改名项与 12 个新增项插在其后。
 
 ---
 

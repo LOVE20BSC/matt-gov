@@ -91,13 +91,14 @@
 #### 接口差异（代码级）
 - **`stakeLiquidity` 加参数**：新增 `slippage`（`1e18` 精度），入池前先按 Pair 储备折算最优数量并按该值校验偏离；旧接口与旧 Hub 都只接收数量，数量折算与条件校验原在 `LOVE20TKM/periphery/src/LOVE20Hub.sol`
 - **入池折算的零储备分支由「两侧都为零」放宽为「任一侧为零」**：旧 `_calculateOptimalAmounts` 只在 `tokenReserve == 0 && parentTokenReserve == 0` 时跳过折算，单侧为零会走进折算分支——`tokenReserve == 0` 在该分支的第一次除法除零 panic，`parentTokenReserve == 0` 则折算得 0 并撞上最小量 `require` 回滚（旧最小量由调用方传入，通常大于零）；新实现任一侧储备为零即跳过折算、直接采用期望数量，没有除零面
-- **新增错误**：`SlippageExceeded(uint256 slippage, uint256 deviation)`、`InvalidTokenAddress()`、`InvalidMemberId()`、`NotMemberOwner(uint256)`、`SourceAndTargetMustBeDifferent()`、`SourceHasUsedStakeRightsInCurrentRound()`、`MemberHasUsedStakeRightsInCurrentRound()`、`FeeSettlementRatioOutOfRange()`、`TargetPromisedWaitingPhasesTooShort()`、`InvalidAddress()`、`ZeroAmount(string)`、`InvalidAmount()`、`InvalidPhase(uint256)`
+- **新增错误**：`SlippageExceeded(uint256 slippage, uint256 deviation)`、`InvalidTokenAddress()`、`NotMemberOwner(uint256)`、`SourceAndTargetMustBeDifferent()`、`SourceHasUsedStakeRightsInCurrentRound()`、`MemberHasUsedStakeRightsInCurrentRound()`、`FeeSettlementRatioOutOfRange()`、`TargetPromisedWaitingPhasesTooShort()`、`InvalidAddress()`、`ZeroAmount(string)`、`InvalidAmount()`、`InvalidPhase(uint256)`
 - **错误改名与承接**：`NotEnoughWaitingBlocks` → `NotEnoughWaitingPhases`；删除 `InvalidToAddress()`、`RoundHasNotStartedYet()`，后者的「轮次尚未开始」语义由 `InvalidPhase(uint256)` 承接（与 `IPhaseErrors` 同名同参数）；`SlippageExceeded` 的两个参数分别是请求容差与实际偏离
 - **新增事件**：`FeesSettled`、`StakeMerged`
 - **事件改名与改字段**：`StakeToken` → `StakeBoost`；`StakeLiquidity` 增加 `tokenAmountDesired`/`parentTokenAmountDesired` 并保留实际入池量；`StakeLiquidity`/`Unstake`/`Withdraw`/`StakeBoost` 的账户参数由 `address account` 改为 `uint256 memberId`
 - **新增函数**：`init`、`settleFees`、`mergeStake`、`canWithdraw`、`globalStakeData`、`pairAddress`、`totalBurnedToken`、`totalParentTokenBurned` 及 6 个依赖 getter
 - **函数改名与改参**：`govVotesNum` → `globalGovVotes`；`accountStakeStatus` → `stakeData`；`cumulatedTokenAmountByAccount` → `cumulatedBoostShares`；`stakeTokenUpdatedRoundsCount`/`AtIndex` 与 `...ByAccountCount`/`AtIndex` 两对 → 分页 `globalBoostUpdatedRounds`/`boostUpdatedRounds`；`stakeToken` → `stakeBoost`；`unstake`/`withdraw` 由 `(address)` 改为 `(address, uint256 memberId)`
 - **删除函数**：`caculateGovVotes`、`cumulatedTokenAmount`、`initialStakeRound`
+- **删除错误**：`InvalidMemberId()`；`memberId == 0` 与不存在的 `memberId` 同走 `MemberNFT.ownerOf` 的标准错误（`ERC721NonexistentToken`），鉴权先于参数校验，不再保留专门的零值错误
 - **新增 DEX 依赖声明**：`IPair`、`IPairFactory`、`IRouter` 三个最小外部接口，落在 `core/src/interfaces/`，**不进入 `matt-gov/interfaces/`**（它们不是 LOVE20 自有 ABI，而是外部部署的调用面，仓库不引入 Uniswap 依赖）；增删 LP 直接经 Pair，Router 只用于父币手续费换币，Factory 的 `createPair` 由 `Launch` 在创建代币（首币与子币）时调用、`getPair` 由 `Stake` 在首次质押时读取——旧 `LOVE20TokenFactory.createToken` 也是创建代币时一并 `createPair`，BSC 把这个位置随 TokenFactory 一起并入了 `Launch`
 - **手续费结算加限频与单笔上限**：旧 `LOVE20SLToken.withdrawFee` 一次把全部 `feeLp` 取回，没有规模约束；新实现把 `FEE_SETTLEMENT_RATIO` 的阈值单位同时用作单笔结算量（`settlementUnit = floor(withdrawableLp * FEE_SETTLEMENT_RATIO / 1e18)`），并限制每社区每 Phase 最多结算一次，未处理部分保留待结算。接口不新增参数；该参数因此同时是夹子敞口的尺度，部署取值须满足 `FEE_SETTLEMENT_RATIO <= 池费率`（`1e18` 表示 100%，配置 `3e15` 即 0.3%）
 - **解锁要求本轮未使用质押权**：`unstake` 在本轮已推举或已投票时回滚 `MemberHasUsedStakeRightsInCurrentRound()`。旧实现允许「投票后立即解锁」，本轮已计入的票撤不回，等于让同一份质押资产在本轮既投票又退出；该检查与 `mergeStake` 对源成员的检查同口径
@@ -127,7 +128,7 @@
 - **主体身份**：`submitterAddress` → `submitterId (memberId)`
 - **权限校验**：`msg.sender` → `MemberNFT.ownerOf(submitterId) == msg.sender`
 - **创建入口改名**：`submitNewAction(tokenAddress, ActionBody)` → `submitNewProposal(tokenAddress, memberId, ProposalBody)`，沿用旧 `submitNewAction`/`submit` 的动词配对；**保留旧代码「创建后立即推举」的语义**——旧 `submitNewAction` 内部即 `_createAction` + `_submitByActionId` 一笔完成，新接口同样在同一笔内先创建再推举，两个入口共用「每人每轮一个」「每提案每轮一次」两条名额约束
-- **校验顺序对齐 core 统一口径**：旧 `submitNewAction` 先查 `canSubmit` 再校验参数，新接口按「参数 → 存在性 → 持有 → 门槛 → 本轮名额」执行。非行为差异（任一不满足都回滚整笔），改的是错误优先级：参数非法且不满足门槛时报精确参数错误而非 `CannotSubmitAction()`
+- **校验顺序对齐 core 统一口径**：旧 `submitNewAction` 先查 `canSubmit` 再校验参数；新接口先鉴权，再按「参数 → 门槛 → 本轮名额」执行（`submit` 为「proposalId 存在性 → 门槛 → 去重与名额」）。非行为差异（任一不满足都回滚整笔），改的是错误优先级：鉴权错误最先，参数非法且不满足门槛时报精确参数错误而非 `CannotSubmitAction()`
 
 ### 🆕 接口新增（2026-09-15）
 - **错误声明拆出子接口**：`ISubmitErrors` 独立声明（含新增 7 个错误，另有 1 个改名）
