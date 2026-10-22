@@ -65,7 +65,7 @@ GroupAction 使用 MemberNFT 身份，`groupId` 是群主体的 `memberId`，不
 
 投票 Target Data 为空表示不指定候选；非空时第 `0` 项为已绑定 Executor（ActionTarget 转发门禁），本 Executor 的业务项从第 `1` 项起：`targetData[1] = abi.encode(uint256 candidateMemberId)`，对应当轮有效申请，项数多于 `2` 回滚 `InvalidTargetDataLength`。每次回调把全部治理票增量记给该候选在**该轮**的申请，并把「该轮 → 成员 → 申请」的关联指向这份申请，供按验证者查询票数；回调不校验轮次——`Vote` 传的是它自己的 `currentRound()`（即当轮），而提案只能在其创建轮或之后被投票，因此 `round` 恒不早于创建轮；候选没有当前申请则回滚 `ApplicationNotActive`。候选字段为空时不增加候选票。排名增量维护，只保存可开放的前 n 名；榜满时榜外候选必须票数严格超过末位才替换，不因修改旧申请自动转移票数。
 
-`submitOriginScores` 只作用于当前验证轮（不收 `round` 入参）；调用者持有 verifierId，批次数组非空，每项不超过 100、单批项数超过协议上界 100 回滚 `VerificationBatchTooLarge`，`startIndex` 等于该群已验证数量且不能超出历史成员数。全部校验成功才锁定和计分；同一成员记录只消费一次。未验证的分数查询返回 `(0, false)`，与已验证零分区分。
+`submitOriginScores` 只作用于当前验证轮（不收 `round` 入参）；调用者持有 verifierId，批次数组非空，每项不超过 100、单批项数超过协议上界 100 回滚 `VerificationBatchTooLarge`，`startIndex` 等于该群已验证数量且不能超出历史成员数。候选无当前申请回 `ApplicationNotActive`；有申请但未进入当轮排名或分割窗口未开回 `InvalidCandidate`。全部校验成功才锁定和计分；同一成员记录只消费一次。未验证的分数查询返回 `(0, false)`，与已验证零分区分。
 
 存储记「扣分」而非原始分：已验证成员仅当原始分低于 100 时写一次 `100 − 原始分` 的冷槽，满分零写入（沿用旧 `GroupVerify.sol` 的 gas 记法）；「已验证」不占存储位，由成员在目标 Round 群集合中的位置早于该群已验证游标推导——该推导依赖前文「加入结束后不得回写目标 Round」：目标轮集合快照冻结后，已验证游标前缀与实际计分集合恒等。查询接口仍按 `(score, verified)` 返回；读路径由单槽读取变为按轮点查（群归属、已验证游标、集合定位与扣分读取），精确命中为 O(1)，未命中回退到最近已记录轮（二分），结算路径经库调用复用同一解码。每组的轮级累计量用累加器，不按成员二次写。原始分上限 100 仍由 `ScoreExceedsMax` 在写入前显式校验，减法记法的下溢不是校验手段。
 

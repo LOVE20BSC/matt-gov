@@ -256,6 +256,7 @@ GroupAction Executor 通过加入阶段内逐笔发生的加入、追加、部�
 - **行动未创建的错误**：`createdRound == 0` 时回滚 `ActionNotCreated(tokenAddress, actionId)`，`activateGroup`、`submitVerifierApplication` 与三个 Executor 的成员结算同口径，声明在基座 `IActionExecutorErrors`；不再用 `InvalidRound(0)` 哨兵，也不再把该情形混进 `RoundNotStarted()`（后者只表示 `round` 早于创建轮）
 - **行动可跨轮复用**：Proposal 在创建轮之后被重新推举并投票时，该轮重新构建排名、重新聚集参与、独立验证与结算，与创建轮互不影响
 - 排名按当轮候选票降序、`applicationId` 升序
+- **原始分入口的错误落点**：候选无当前申请回 `ApplicationNotActive`；有申请但未进入当轮排名或分割窗口未开回 `InvalidCandidate`
 - 分割线开放：`openBlock = verifyPhaseStartBlock + ceil(verifyPhaseBlocks × splits[rank - 2] / 1e18)`
 - 验证者押金：候选**首次**申请按行动配置 `verifierStakeAmount` 从成员当前持有人转入执行合约，替换申请不重复划转，撤销当前申请时全额退还；押金只担保持有申请，撤销不收回当轮已得到的验证资格（候选身份按该轮历史解析）；押金独立于链群激活质押与治理票账本
 
@@ -367,6 +368,7 @@ theoreticalOwnerReward(m) = serviceReward × ownerWeightNumerator(m) / (totalGro
 #### 错误落点收敛
 - **旧**：重复加入、重复加入体验、重复登记名单成员都是错误
 - **新**：重复加入与重复授予在统一模型下是追加，`AlreadyJoined`、`TrialAlreadyJoined`、`TrialAccountAlreadyAdded`、`TrialProviderMismatch` 不再迁移；额度类校验统一改名到 `Quota*` 词汇，额度不足由 `InsufficientProviderQuota` 表达
+- **零群 ID**：`providerQuotaAdd` / `providerQuotaRemove` 的 `groupId == 0` 回 `InvalidGroupId`；`providerQuotaRemove` 空名单在非零 `groupId` 下是空操作
 
 #### 部分撤回边界
 - **旧**：只支持全部退出
