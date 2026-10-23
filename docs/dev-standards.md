@@ -237,6 +237,7 @@ script/
 - 新增合约/模块 = 一套自包含脚本（`one_click_deploy_<x>.sh` + 自己的步骤脚本 + 自己的参数文件），各模块的部署输入互不要求存在——部署模块 A 不会因模块 B 的参数缺失或变动而失败。
 - **账户签名统一走 keystore**：`.account` 是必需文件，提供 `KEYSTORE_ACCOUNT` 与 `ACCOUNT_ADDRESS`；不按链 ID 提供 `--unlocked` 回退，本地链与公共网络同一签名路径。
 - **keystore 密码口径**：`KEYSTORE_PASSWORD` 非空时直接用于解锁，部署全程无交互；留空或未配时由 macOS `osascript` 弹窗读取（全程仅一次）；非 macOS 环境没有 `osascript`，必须预设 `KEYSTORE_PASSWORD`，脚本在缺失时明确报错，不静默退出。**入口脚本不继承调用方环境变量里的密码**：`one_click_deploy.sh` 先重置 `KEYSTORE_PASSWORD` 再读 `.account`、最后才交互，避免上次运行的残留值被静默复用；因此 `KEYSTORE_PASSWORD=xxx ./one_click_deploy.sh <net>` 不生效，非交互场景请把密码写进 `.account`。
+- **密码不得进入进程参数**：`forge script --password` 会把明文放进 `/proc/<pid>/cmdline`（权限 0444，本机所有用户可读）；改用 `--password-file` 指向权限 600 的临时文件，广播结束或脚本退出时删除。环境变量（`/proc/<pid>/environ`，0400）只对同一用户可读，而 `.account` 本身就是明文密码、同一用户已能直接读取，因此作为环境变量传递不增加泄露面。部署回归测试须断言 `--password` 不出现在 forge 参数里。
 - **被依赖方地址在 shell 层广播前校验**：从配置文件读入的被依赖方地址（如 `FACTORY_ADDRESS`/`ROUTER_ADDRESS`、`MINT_ADDRESS`/`STAKE_ADDRESS`、已配置的 `WETH_ADDRESS`）由 `11_deploy.sh` 以 `cast code` 校验为已部署合约，避免白广播本库合约；脚本内派生的值（如 `Router.WETH()`）在模拟阶段校验。
 - **键集合断言**：每个 check 步骤（`2x`）断言其地址文件的键集合等于期望合约集合（逐一对应、无多无缺）。键名漏改会让后续变量静默为空，逐项链上调用要到很后面才以难以定位的形式失败；显式断言把「漏改」变成即时失败。
 - 下列职责**各自独立成文件**，由 `one_click_deploy.sh` 统一调用，也可按实际情况单独执行其中任一文件：
@@ -260,7 +261,7 @@ script/
 
 | 文件                        | 内容                                                             |
 | ------------------------- | -------------------------------------------------------------- |
-| `.account`                | `KEYSTORE_ACCOUNT`（keystore 路径或账户标识）、`ACCOUNT_ADDRESS`（部署账户地址）、`KEYSTORE_PASSWORD`（可选，口径见 6.1） |
+| `.account`                | `KEYSTORE_ACCOUNT`（keystore 路径或账户标识）、`ACCOUNT_ADDRESS`（部署账户地址）、`KEYSTORE_PASSWORD`（可选，口径见 6.1）；不含私钥，签名统一走 keystore |
 | `network.params`          | `CHAIN_ID`、`RPC_URL`                                           |
 | `<代码库名>.params`           | 构造函数或 `init` 所需的全部参数；参数名与接口声明一致                                |
 | `addresses.<代码库名>.params` | 已部署的链上地址记录，供后续脚本引用与验证；代码库按模块拆分部署时，一个模块一个 `addresses.<模块名>.params`（如 `addresses.weth.params`、`addresses.uniswapv2.params`） |
