@@ -19,9 +19,9 @@ targetData[0] = abi.encode(executorAddress)
 4. 该 (tokenAddress, proposalId) 尚未记录 executor
 ```
 
-第 1～3 步任一步失败回滚 `InvalidExecutor()`；第 4 步回滚 `AlreadyCreated(tokenAddress, actionId)`，拒绝同一复合键重复创建，不覆盖已记录映射。
+第 1 步缺失回滚 `TargetDataLengthMismatch(1, 0)`、第 `0` 项不恰为 32 字节回滚 `InvalidTargetDataShape(0, length)`；第 2 步零地址或 EOA 回滚 `ExecutorNotContract(executor)`；第 3 步握手返回值不是 `address(this)` 回滚 `ExecutorTargetMismatch(expected, actual)`（`expected` 为 ActionTarget，`actual` 为 Executor 自报地址），握手调用本身回滚则归一为 `ExecutorHandshakeFailed(executor)`；第 4 步回滚 `AlreadyCreated(tokenAddress, actionId)`，拒绝同一复合键重复创建，不覆盖已记录映射。
 
-**Target Data 的位置契约**：Target Data 是无键的 `bytes[]`，只能按位置读取。ActionTarget 只读取并校验第 `0` 项（executor 保留项）并原样转发整个数组；其余各项的数量、位置与编码**一律由该 Executor 在自己的规格中固定并在对应回调内自行校验**。**创建与推举回调传入同一份** `body.targetData`（core `Submit.sol:301,308`）：第 `0` 项均为 executor 保留项，业务项从 `1` 起算；投票回调传入投票者在 `vote()` 中提供的该项数据（core `Vote.sol:322`）：非空时第 `0` 项必须为已绑定 Executor 地址、其后为业务项，为空时不携带业务数据。**转发门禁**：三类回调中 `targetData` 非空时，第 `0` 项必须解码为该行动已绑定的 Executor 地址（创建回调即握手绑定的地址），否则回滚 `InvalidExecutor()`；投票回调的 `targetData` 可为空，为空时原样转发。项数与位置不匹配由各 Executor 用自己的错误拒绝，不在本层设通用错误。
+**Target Data 的位置契约**：Target Data 是无键的 `bytes[]`，只能按位置读取。ActionTarget 只读取并校验第 `0` 项（executor 保留项）并原样转发整个数组；其余各项的数量、位置与编码**一律由该 Executor 在自己的规格中固定并在对应回调内自行校验**。**创建与推举回调传入同一份** `body.targetData`（core `Submit.sol:301,308`）：第 `0` 项均为 executor 保留项，业务项从 `1` 起算；投票回调传入投票者在 `vote()` 中提供的该项数据（core `Vote.sol:322`）：非空时第 `0` 项必须为已绑定 Executor 地址、其后为业务项，为空时不携带业务数据。**转发门禁**：三类回调中 `targetData` 非空时，第 `0` 项必须恰为 32 字节并解码为该行动已绑定的 Executor 地址；第 `0` 项缺失回滚 `TargetDataLengthMismatch(1, 0)`、长度不对回滚 `InvalidTargetDataShape(0, length)`，解码结果不是已绑定 Executor 回滚 `TargetDataExecutorMismatch(expected, actual)`（`expected` 为绑定地址，`actual` 为解码结果）。投票回调的 `targetData` 可为空，为空时原样转发。项数与位置不匹配由各 Executor 用自己的错误拒绝，不在本层设通用错误。
 
 | Core 调用时点 | ActionTarget 行为 |
 | --- | --- |
@@ -29,7 +29,7 @@ targetData[0] = abi.encode(executorAddress)
 | `onProposalSubmitted` | 读取已保存映射，转发本次推举上下文和 Target Data |
 | `onProposalVoted` | 读取映射，转发 `round`、`voterId`、本次增量票数及 Target Data，由 Executor 记账 |
 
-完整签名统一见 [Core Target 回调](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/IProposalTarget.sol)。ActionTarget 与每个 Executor 都实现这三类回调：ActionTarget 的 `onProposalCreated`/`onProposalSubmitted` 仅 Submit 可调用，`onProposalVoted` 仅 Vote 可调用；Executor 的同名回调仅接受 ActionTarget 调用，其他调用者回滚 `UnauthorizedCallback()`。推举与投票回调遇到未绑定 `(tokenAddress, proposalId)` 时回滚 `UnboundProposal(tokenAddress, proposalId)`——结构上不可达（创建回调必先于推举），仅防御 Core 侧缺陷。任一回调失败均回滚对应外层操作。
+完整签名统一见 [Core Target 回调](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/IProposalTarget.sol)。ActionTarget 与每个 Executor 都实现这三类回调：ActionTarget 的 `onProposalCreated`/`onProposalSubmitted` 仅 Submit 可调用（否则回滚 `NotSubmit(caller)`），`onProposalVoted` 仅 Vote 可调用（否则回滚 `NotVote(caller)`）；Executor 的同名回调仅接受 ActionTarget 调用，其他调用者回滚 `NotActionTarget(caller)`。推举与投票回调遇到未绑定 `(tokenAddress, proposalId)` 时回滚 `UnboundProposal(tokenAddress, proposalId)`——结构上不可达（创建回调必先于推举），仅防御 Core 侧缺陷。任一回调失败均回滚对应外层操作。
 
 ## 加入与退出
 
@@ -53,11 +53,11 @@ targetData[0] = abi.encode(executorAddress)
 
 完整 ABI 见 [`IActionTarget.sol`](https://github.com/LOVE20BSC/action/blob/main/src/interfaces/IActionTarget.sol)。
 
-`init` 只接收 Mint 地址：重复调用回滚 `AlreadyInitialized()`；`mintAddress` 为零，或从 Mint 派生出的 `voteAddress`、`submitAddress`、`memberNFTAddress`、`phaseAddress` 任一为零，回滚 `InvalidAddress()`；不设调用者限制、不保存部署者。四项派生依赖在 init 内各读取一次并缓存，经同名 getter 暴露，供发布前检查脚本核对与 Mint 绑定一致；Mint 须先完成 init，不把「部署后立即初始化」当作防抢跑保证。`phaseAddress` 由 Mint 从 Vote 派生后再由 ActionTarget 读取，ActionTarget 因此与投票轴共享同一 Phase，当前投票轮直读 `IPhase.currentPhase()`，不经 Mint 或 Vote 二跳。
+`init` 只接收 Mint 地址：重复调用回滚 `AlreadyInitialized()`；`mintAddress` 以及从 Mint 派生出的 `voteAddress`、`submitAddress`、`memberNFTAddress`、`phaseAddress` 均要求有代码（零地址同条件），失败回滚 `DependencyNotContract(address)`；不设调用者限制、不保存部署者。四项派生依赖在 init 内各读取一次并缓存，经同名 getter 暴露，供发布前检查脚本核对与 Mint 绑定一致；Mint 须先完成 init，不把「部署后立即初始化」当作防抢跑保证。`phaseAddress` 由 Mint 从 Vote 派生后再由 ActionTarget 读取，ActionTarget 因此与投票轴共享同一 Phase，当前投票轮直读 `IPhase.currentPhase()`，不经 Mint 或 Vote 二跳。
 
 **写操作权限**：`registerJoinState`/`clearJoinState`/`mintActionReward` 仅该 `(tokenAddress, actionId)` 已注册绑定的 Executor 可调用——判据是 `executor[tokenAddress][actionId] == msg.sender` 且该绑定非零，未注册绑定时任何调用者都拒绝；不满足即回滚 `UnauthorizedExecutor(tokenAddress, actionId)`。`registerJoinState` 另有硬性入口校验：当前投票轮必须**大于**该行动的创建轮（`ActionCreated` 的 round），否则回滚 `JoinNotOpen(tokenAddress, actionId, currentRound, createdRound)`——加入在投票后一个阶段开放，投票轮未走完不得登记加入；`clearJoinState`/`forceExit` 无需该校验（已加入本身蕴含加入轮已开放，且轮次单调不减）。`mintActionReward` 只接受已创建关联行动的 `actionId`，绑定键与铸造键一致，不存在「持某个行动的 Executor 去铸另一个行动」的路径。`forceExit` 仅该 memberId 的 MemberNFT 当前持有人可调用，否则 `NotMemberOwner(memberId)`。
 
-重复加入、重复退出均不改状态、不发重复事件；因此 `forceExit` 后，Executor 正常调用 `clearJoinState` 必须成功且不改状态。重复铸造回滚 Mint 的 `AlreadyMinted()`——行动级去重键 `tokenAddress + actionId + round` 由 Mint 的状态位承担，ActionTarget 不另存铸造状态位。不存在关联时 `executor` 返回零，但写操作拒绝零关联。`isJoined` 与 `isJoinedByRound` 无记录时返回 false。
+重复加入、重复退出均不改状态、不发重复事件；因此 `forceExit` 后，Executor 正常调用 `clearJoinState` 必须成功且不改状态。重复铸造回滚 Mint 的 `ProposalRewardAlreadyMinted(tokenAddress, round, proposalId)`——行动级去重键 `tokenAddress + actionId + round` 由 Mint 的状态位承担，ActionTarget 不另存铸造状态位。不存在关联时 `executor` 返回零，但写操作拒绝零关联。`isJoined` 与 `isJoinedByRound` 无记录时返回 false。
 
 **铸造信息查询**：`actionReward(tokenAddress, actionId, round)` 返回 `(amount, minted)`——`amount` 在已铸造时为本轮实际铸造金额、未铸造时为本轮理论可铸造数量（按 Mint 账本计算，未投票、未达门槛、零额度时为 `0`），`minted` 表示本轮是否已铸造；未关联的行动返回 `(0, false)`，已关联但未铸造的行动返回 `(理论数量, false)`，均不回滚。该查询不持有独立账本：已关联时直接委托 Mint 的 `proposalRewardByProposalId`（`amount` 由 Mint 按票数复算，与铸造时同源；Mint 侧已铸造的 `amount` 与 `ActionRewardMinted` 的 `amount` 相等），ActionTarget 只负责把未关联行动收敛为零：销毁不再经过本合约，因此不需要任何掩零。前端与索引据此判断某行动某轮是否已铸造与可铸造数量，不需要扫描事件；同一笔铸造另由 `ActionRewardMinted(tokenAddress, actionId, round, amount)` 留痕，`amount` 与该查询铸造后的返回值同源，供历史回溯与审计使用。
 

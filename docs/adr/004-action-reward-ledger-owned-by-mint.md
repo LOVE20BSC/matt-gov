@@ -4,6 +4,8 @@
 
 已接受 (2026-10-16，2026-10-17 修订)
 
+> 错误模型 v3 注记（2026-10-24）：重复铸造现在回滚 Mint 的 `ProposalRewardAlreadyMinted(tokenAddress, round, proposalId)` 或 `MemberRewardAlreadyMinted(tokenAddress, round, memberId)`；零收款人回滚 `ZeroRecipientAddress()`。本文其余决策不变，正文中的旧错误名按历史记录保留。
+
 ## 背景
 
 ActionTarget 曾同时持有行动级铸造账本：`_actionReward`（本轮实际铸造金额）与 `_actionMinted`（本轮是否已铸造），并在 `mintActionReward` 内先做本地去重、铸造后回写两者。Mint 侧另有 `_proposalMinted` 与 `_proposalRewardCalculation`，记录的是同一事实。

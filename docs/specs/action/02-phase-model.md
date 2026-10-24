@@ -12,7 +12,7 @@
 | GroupAction（四阶段） | p | p - 1 | p - 2 | p - 3 |
 | GroupService（四阶段） | p | p - 1 | p - 2，复用行动结果 | p - 3 |
 
-计算结果小于 1 时，阶段尚未开始，查询和操作回滚 `RoundNotStarted`，不得返回 0。结果有效只表示阶段已开始，实际参与或铸币条件仍由 Executor 校验。获得票的 Proposal 在全局 Phase 增加一后开放加入；此时加入 Round 为当前全局 Phase 减一。
+计算结果小于 1 时，阶段尚未开始，查询和操作回滚 `RoundNotStarted(1, 0)`（`requiredRound` 为 1，`currentRound` 为推导出的 0），不得返回 0。结果有效只表示阶段已开始，实际参与或铸币条件仍由 Executor 校验。获得票的 Proposal 在全局 Phase 增加一后开放加入；此时加入 Round 为当前全局 Phase 减一。
 
 投票、加入、铸币 Round 见 [`IActionExecutor.sol`](https://github.com/LOVE20BSC/action/blob/main/src/interfaces/IActionExecutor.sol)。GroupAction 和 GroupService 额外提供 `currentVerifyRound()`；LP 不提供虚构的验证接口。加入类写操作只写当前加入 Round，验证只接受当前验证 Round，历史领取允许 `1 <= round <= currentMintRound()`。
 

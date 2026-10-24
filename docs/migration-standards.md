@@ -37,7 +37,7 @@
 
 - 旧接口若按 `Events`、`Errors` 和主接口拆分声明，新接口默认保留相同的拆分结构、声明顺序与文件布局；除非规格明确要求，不得在迁移时同时改变接口组织方式。
 - `I<Name>Errors` 子接口的有无、以及它与 `I<Name>Events` 的相对顺序，按旧文件确定（`I<Name>Events` 的拆分见[开发规范](dev-standards.md#41-接口文件与声明)）。
-- 实现前，自有接口在 `matt-gov/interfaces/<repo>/` 冻结，作为 ABI 对账的基准；仓库实现完成后接口迁入该仓库的 `src/interfaces/`、删除 matt-gov 的副本，规格正文的链接改为指向该仓库（`core`、`action` 已按此完成，`group-chat` 待其仓库创建）。
+- 实现前，自有接口在 `matt-gov/interfaces/<repo>/` 冻结，作为 ABI 对账的基准；仓库实现完成后接口迁入该仓库的 `src/interfaces/`、删除 matt-gov 的副本，规格正文的链接改为指向该仓库（`core`、`action`、`group-chat` 均已完成）。
 - 对账文档须区分「自有声明」与「完整 ABI（含继承成员）」两种口径。
 
 ## 五、迁移期的实现约束

@@ -21,27 +21,29 @@ Vote 管理当前治理 Round 的 Proposal 投票和加速快照。Proposal 的�
 | 推举状态 | `ISubmit(submitAddress).isSubmitted(tokenAddress, round, proposalId)` |
 | 回调目标与模式 | `ISubmit(submitAddress).proposalTarget(tokenAddress, proposalId)` |
 
-票上限每笔投票只读一次，不随批量长度重复读取；快照与推举状态逐笔读取。快照只在当前 Round 读取，未来 Round 由 Stake 回滚 `InvalidPhase(round)`，而 Vote 本身只在当前 Round 投票。
+票上限每笔投票只读一次，不随批量长度重复读取；快照与推举状态逐笔读取。快照只在当前 Round 读取，未来 Round 由 Stake 回滚 `RoundNotStarted(requiredRound, currentRound)`，而 Vote 本身只在当前 Round 投票。
 
 ## 校验顺序
 
 `vote` 的校验与写入顺序，任一步回滚整笔：
 
-1. **持有权**：`IMemberNFT.ownerOf(memberId) == msg.sender`（`NotMemberOwner(memberId)`）；`memberId` 不存在时由 `ownerOf` 抛出 MemberNFT 的错误
-2. **资格**：`canVote(tokenAddress, memberId)`，即票上限大于零（`CannotVote()`）
-3. **长度**：`proposalIds` 非空且与 `votes` 等长（`InvalidTargetDataLength()`）；`targetData` 传入时必须与 `proposalIds` 等长，传空外层数组表示每笔回调都使用空 Target Data
+1. **持有权**：`IMemberNFT.ownerOf(memberId) == msg.sender`（`NotMemberOwner(memberId)`）；`memberId` 不存在时由 `ownerOf` 抛出 `ERC721NonexistentToken(memberId)`
+2. **资格**：`canVote(tokenAddress, memberId)`，即票上限大于零（`NoVotingPower(tokenAddress, memberId)`）
+3. **长度**：`proposalIds` 非空（`ProposalIdsEmpty()`）；`votes` 与 `proposalIds` 等长（`ProposalVotesLengthMismatch(proposalIdsLength, votesLength)`）；`targetData` 传入时必须与 `proposalIds` 等长（`TargetDataLengthMismatch(proposalIdsLength, targetDataLength)`），传空外层数组表示每笔回调都使用空 Target Data
 4. 取当前 Round 与票上限，随后逐 Proposal 处理：
-   1. **推举状态**：本轮已推举（`ProposalNotSubmitted()`）
-   2. **票数**：本次增量为正（`VotesMustBeGreaterThanZero()`）
+   1. **推举状态**：本轮已推举（`ProposalNotSubmitted(tokenAddress, round, proposalId)`）
+   2. **票数**：本次增量为正（`ZeroVotes(proposalId)`）
    3. 记录加速快照：首投记全量，后续只补正增量
    4. 累加票数，维护本轮有票 Proposal 与投票者集合
-   5. **额度**：成员本轮累计票数不超过票上限（`NotEnoughVotesLeft()`）
+   5. **额度**：成员本轮累计票数不超过票上限（`VoteLimitExceeded(tokenAddress, round, memberId, cumulativeVotes, maxVotes)`，`cumulativeVotes` 为加上本笔后的成员累计票数）
    6. 发出 `Voted` 事件
    7. `Callback` 且 `target` 非零时回调 `IProposalTarget.onProposalVoted`，失败回滚整笔
 
 额度按整批累计判定：同一批里先投的票数计入后投的判定基准，超过上限的那笔回滚整批。
 
-`init` 校验顺序：先看初始化状态（`AlreadyInitialized()`），再逐个校验 `phaseAddress`、`stakeAddress`、`submitAddress`、`memberNFTAddress` 非零（`InvalidAddress()`）。
+上述回滚都发生在 `votes` 循环内，载荷携带逐笔上下文的错误因此能定位到具体 Proposal 或累计值，而不是只报一个批次级错误。
+
+`init` 校验顺序：先看初始化状态（`AlreadyInitialized()`），再依次校验 `phaseAddress`、`stakeAddress`、`submitAddress`、`memberNFTAddress` 有代码（零地址同条件，`DependencyNotContract(address)`）。
 
 ## 接口
 
@@ -55,7 +57,20 @@ Vote 管理当前治理 Round 的 Proposal 投票和加速快照。Proposal 的�
 
 事件与错误定义见 [`IVote.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/IVote.sol)。
 
-错误沿用旧 Vote 的语义；`ProposalNotSubmitted` 对应旧 `ActionNotSubmitted` 的 Proposal 命名调整。未提交 Proposal、票数超额、零票、`targetData` 外层长度不合法或回调失败时，整笔投票回滚；长度错误使用 `InvalidTargetDataLength()`。
+| 错误 | 触发条件 |
+| --- | --- |
+| `AlreadyInitialized()` | 重复初始化 |
+| `DependencyNotContract(address dependency)` | `init` 的任一依赖为零或无代码；载荷为失败地址 |
+| `NotMemberOwner(uint256 memberId)` | `ownerOf(memberId) != msg.sender`；`memberId` 不存在时由 MemberNFT 回滚 `ERC721NonexistentToken` |
+| `NoVotingPower(address tokenAddress, uint256 memberId)` | 本轮票上限为零 |
+| `ProposalIdsEmpty()` | `proposalIds` 为空 |
+| `ProposalVotesLengthMismatch(uint256 proposalIdsLength, uint256 votesLength)` | `votes` 与 `proposalIds` 不等长 |
+| `TargetDataLengthMismatch(uint256 proposalIdsLength, uint256 targetDataLength)` | 传入的 `targetData` 外层数组与 `proposalIds` 不等长 |
+| `ProposalNotSubmitted(address tokenAddress, uint256 round, uint256 proposalId)` | 该 Proposal 本轮未推举 |
+| `ZeroVotes(uint256 proposalId)` | 该笔票数为零 |
+| `VoteLimitExceeded(address tokenAddress, uint256 round, uint256 memberId, uint256 cumulativeVotes, uint256 maxVotes)` | 成员本轮累计票数超过票上限；`cumulativeVotes` 为加上该笔后的累计值 |
+
+未提交 Proposal、票数超额、零票、批次长度不合法或回调失败时，整笔投票回滚。
 
 ## Target 回调
 

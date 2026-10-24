@@ -12,7 +12,7 @@
 - `mintMemberReward(...)` / `memberReward(...)` 与事件 `MemberRewardMinted` — 成员级奖励的铸造与查询，签名三家一致（成员级奖励裁决）
 - `mintMemberRewards(...)` — 批量成员结算（平行数组按下标配对，任一元素失败整笔回滚）
 - `joinedAmount(...)` / `joinedAmountByMemberId(...)` / `joinedAmountTokenAddress(...)` — 截止加入轮 `round` 结束的累计参与量、按成员累计量与参与计价代币（`round` 大于当前加入轮时按未开始返回 0；计价代币与轮次无关，故 `joinedAmountTokenAddress` 不带 `round`；口径由各 Executor 规格固定）。与 GroupAction 的 `joinInfo` 快照（另含 `joinedRound`、`groupId` 与 `ownAmount`/`providerAmount`）同键同值为**有意并存**：基座是跨 Executor 的统一聚合口径，`joinInfo` 是成员记录快照入口
-- `currentVoteRound()` / `currentJoinRound()` / `currentMintRound()` — 从 `Phase.currentPhase()` 推导的三阶段 Round；未开始回滚 `RoundNotStarted`
+- `currentVoteRound()` / `currentJoinRound()` / `currentMintRound()` — 从 `Phase.currentPhase()` 推导的三阶段 Round；未开始回滚 `RoundNotStarted(1, 0)`（`requiredRound` 为 1，`currentRound` 为推导出的 0；0 是派生轮未开始的哨兵，需要当前 phase 时读 `Phase.currentPhase()`）
 
 **非通用部分**（各 Executor 自行定义）：
 - `init` 与配置项 — 各 Executor 依赖不同，配置来自行动创建时的 Target Data

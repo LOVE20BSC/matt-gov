@@ -2,7 +2,21 @@
 
 本文档列出 BSC Action 相对于 LOVE20TKM 旧协议的所有变更。保留项直接引用旧代码位置，避免重复描述。
 
----
+## 错误模型 v3（2026-10-24）
+
+Action 已全部改为 **local-first** 错误模型：每个合约/模块拥有自己的 `I<Name>Errors`，不设中心枚举、不跨仓导入错误。三个 Executor 共享的条件保留在同一本地基座 `IActionExecutorErrors`；执行器专属条件留在各自错误接口。
+
+- 地址/依赖：`InvalidAddress` 拆为具体依赖错误；必填合约依赖以“有代码”为条件，零地址与非零 EOA 统一回 `DependencyNotContract(address)`，载荷带失败地址；非合约参数仍用 `Zero*`。
+- Target Data：`InvalidTargetDataLength` 拆为项数 `TargetDataLengthMismatch(expected,actual)` 与项长 `InvalidTargetDataShape(index,length)`；`InvalidExecutor` 拆为 `TargetDataLengthMismatch`/`InvalidTargetDataShape`、`ExecutorNotContract`、`ExecutorTargetMismatch`、`ExecutorHandshakeFailed`。
+- 参与/上限：`InvalidParticipationAmount` 拆为零值、低于最小值、超额提取、Provider 超额提取；容量/账户/上限均带 `(actual,limit)` 或 `(count,max)`。
+- 轮次：`RoundNotStarted(requiredRound,currentRound)`、`RoundBeforeActionCreated(round,createdRound)`、`RoundAfterMintWindow(round,mintRound)` 分开。
+- 结算：`MemberRewardUnavailable` 改名为 `MemberActionRewardUnavailable(token,action,member,round)`，与 Core Mint 的同名条件区分。
+- 群管理/验证/接收人/额度：均改为带主体键与边界值的具体错误；非法服务代币父关系回 `ActionTokenParentMismatch(actionTokenAddress, serviceTokenAddress, actualParentTokenAddress)`；删除未使用声明。
+- 命名统一：数值/额度/数量上限一律 `<Subject>Exceeded`（`ActionMaxJoinAmountExceeded`、`GroupMaxJoinAmountExceeded`、`ScoreLimitExceeded`、`ScoreCountExceeded`、`WithdrawAmountExceeded`、`ProviderWithdrawAmountExceeded`），不再使用 `Exceeds*` 或 `LimitReached`。
+- 链群 owner 解析统一走 `MemberOwner.ofOrZero`：只把 `ERC721NonexistentToken` 映射为 `GroupNotExist(groupId)`，其他 `MemberNFT` 失败原样冒泡，不再用宽泛 `catch` 伪造不存在。
+- 标准错误由来源 ABI 拥有；`SafeERC20FailedOperation` 通过库使用进入 ABI；调用方接口不重复继承透传错误，失败契约登记来源 selector。
+
+Action 门禁：**406 tests 全绿**；`build --deny warnings`、`lint`、`check_caller_auth.sh` 通过；`GroupActionExecutor` runtime 21,600 B（余量 2,976 B）。本文档历史小节里的旧错误名均已被 v3 名称取代。
 
 ## 迁移原则
 
@@ -392,7 +406,7 @@ theoreticalOwnerReward(m) = serviceReward × ownerWeightNumerator(m) / (totalGro
 
 - **群身份/权限**：`GroupNotExist(uint256 groupId)`、`GroupNotActive(uint256 groupId)`、`NotGroupOwner(uint256 groupId)`；旧 `OnlyGroupOwner`、`CannotJoinInactiveGroup`、`InvalidGroupId` 已删除。
 - **参与**：`NotJoined(address,uint256,uint256)`、`AlreadyJoined(address,uint256,uint256)`、`AlreadyInOtherGroup(uint256,uint256,uint256)`、`QuotaMemberIsProvider(uint256)`；旧 `NotJoinedAction`、`QuotaMemberZero` 已删除；成员 `0` 由 `ownerOf` 回 `ERC721NonexistentToken`。
-- **验证**：`NoActiveApplication(uint256)`、`CandidateNotRanked(uint256,uint256)`、`CandidateNotOpen(uint256,uint256)`、`GroupVerificationComplete(uint256,uint256)`；旧 `ApplicationNotActive`、`AlreadyVerified` 已删除；`InvalidCandidate` 已删除，零候选按无当前申请回滚 `NoActiveApplication(0)`。
+- **验证**：`NoActiveApplication(uint256)`、`CandidateNotRanked(uint256,uint256)`、`CandidateNotOpen(uint256,uint256)`、`GroupVerificationAlreadyComplete(uint256,uint256)`；旧 `ApplicationNotActive`、`AlreadyVerified` 已删除；`InvalidCandidate` 已删除，零候选按无当前申请回滚 `NoActiveApplication(0)`。
 - **服务资格**：`NotQualified(address,uint256,uint256)`；旧 `NoActiveGroups` 已删除。
 - **二次分配**：`RecipientIsGroupId(uint256,uint256)`；旧 `RecipientCannotBeSelf` 已删除。
 - **ABI 边界**：同名加参数的 `GroupNotExist`、`GroupNotActive`、`NotJoined`、`AlreadyJoined`、`AlreadyInOtherGroup`、`QuotaMemberIsProvider` 不能与旧无参声明重载，旧 selector 已移除；其余改名类旧声明也已删除，最终 ABI 不含旧错误。

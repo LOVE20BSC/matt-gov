@@ -2,6 +2,21 @@
 
 本文档列出 BSC Core 相对于 LOVE20TKM 旧协议的所有变更。保留项直接引用旧代码位置，避免重复描述。
 
+## 错误模型 v3（2026-10-24）
+
+Core 已全部改为 **local-first** 错误模型：每个合约/模块在自己的 `I<Name>Errors` 中声明具体错误，不使用中心 `Field` 枚举、`IProtocolErrors` 或跨仓错误接口。新增合约只新增错误文件，不改既有 `*Errors.sol`。
+
+- `LOVE20Token`：`ZeroInitialSupply()`、`InvalidInitialSupply(value,maxSupply)`、`ZeroDistributorAddress()`、`DependencyNotContract(address)`（minter/parent 零地址或无代码）、`NotMinter(caller)`、`MaxSupplyExceeded(requested,remaining)`。
+- `Phase`：`PhaseNotStarted()`、字段级零值错误、`InvalidAdjustThreshold(value)`；内部索引不变量改为 `assert`（Panic）。
+- `MemberNFT`：`NameEmpty()`、`NameTooLong(length,max)`、`NameInvalidCharacters()`、`NameAlreadyExists(existingId)`、构造参数字段级零值错误、首币地址 `DependencyNotContract(address)`；费用扣款使用 `SafeERC20`；透传的 ERC20 标准错误由 LOVE20Token ABI 拥有，`SafeERC20FailedOperation` 通过库进入 MemberNFT ABI。
+- `Stake`：`DependencyNotContract(address)`、金额/范围/状态/额度错误，载荷带 token/member/round/actual/limit；跨模块同名条件保留同一签名（如 `RoundNotStarted(requiredRound,currentRound)`）；不再使用 `InvalidAddress`/`InvalidTokenAddress`/`ValueOutOfRange(Field)`。滑点允许上限用 512 位乘积比较，只有确实超过上限时才用 `Math.mulDiv` 生成载荷，极端 `slippage` 不再触发乘法溢出；标准错误按透传登记，来源 ABI 为 MemberNFT/LOVE20Token，`SafeERC20FailedOperation` 通过库进入 Stake ABI。
+- `Launch`：`DependencyNotContract(address)`（mint/memberNFT/rootParent/pairFactory）、字段级零值参数错误、`InvalidTokenSymbolLength/Characters`、`TokenSymbolAlreadyExists(symbolHash)`、`ParentTokenNotRegistered`、`PairCreationFailed(parentTokenAddress)`、`TokenNotRegistered`、`DistributorNotContract`、`InsufficientLaunchCount`、`LaunchCountLimitExceeded(tokenAddress,requested,remaining)`、`NotMintContract`、`ZeroCount`。
+- `Submit`：`DependencyNotContract(address)`、`ZeroSubmitMinRatio`、`InvalidSubmitMinRatio`、`TitleEmpty`、`ZeroTargetAddress`、`CallbackTargetNotContract`、`NoGovVotes(tokenAddress)`、`InsufficientSubmitPower`、`SubmitRoundFull`、`ProposalAlreadySubmitted`、`MemberAlreadySubmitted`。
+- `Vote`：`NoVotingPower`、`ProposalIdsEmpty`、`ProposalVotesLengthMismatch`、`TargetDataLengthMismatch`、`ProposalNotSubmitted`、`ZeroVotes(proposalId)`、`VoteLimitExceeded`。
+- `Mint`：`InvalidProposalRewardMinVoteRatio`、`InvalidRoundRewardRatios`、`InvalidMaxGovBoostRewardMultiplier`、`RoundNotEnded(round)`、`ProposalRewardAlreadyMinted`/`MemberRewardAlreadyMinted`、`ProposalRewardUnavailable`/`MemberRewardUnavailable`、`ZeroRecipientAddress`、`NotProposalTarget`；删除死声明 `NotEnoughReward`/`NotEnoughRewardToBurn`。
+
+Core 门禁：**446 tests 全绿**；`build --deny warnings`、`lint`、`check_caller_auth.sh` 通过。规范见 [`dev-standards.md §5.2.2`](../dev-standards.md) 与 [`error-standards.md`](../error-standards.md)；错误目录由 `script/check_errors.py` 生成。本文档历史小节里的旧错误名（如 `InvalidAddress`、`ZeroAmount`、`InvalidPhase`）均已被上述 v3 名称取代。
+
 ## 迁移原则
 
 1. **身份统一**：所有业务主体统一使用 MemberNFT 的 `memberId`
@@ -373,7 +388,7 @@
 - **新**：在旧字符集上扩展 CJK 统一表意文字基本区 `U+4E00`–`U+9FFF`（三字节 UTF-8 编码）；首字符为 ASCII `A-Z` 或汉字，其余为 ASCII `A-Z`、`0-9` 或汉字；字节长度口径不变
 
 #### 不迁移的业务
-公平发射募资与认购领取整块不迁移：`contribute`、`withdraw`、`claim`、`claimInfo`、`LaunchInfo` 的其余 10 个字段、`CLAIM_DELAY_BLOCKS` 全部删除。按发射者或募资状态划分的枚举（`childTokensByLauncher*`、`launching*`、`launched*`、`participatedTokens*`）也删除；代币列表与某社区子币列表保留为分页查询（`tokens`、`childTokens`），符号到地址账本保留为 `tokenAddressBySymbol`（子币符号全局唯一，`TokenSymbolExists`），代币地址到父币地址保留为 `parentTokenOf`。
+公平发射募资与认购领取整块不迁移：`contribute`、`withdraw`、`claim`、`claimInfo`、`LaunchInfo` 的其余 10 个字段、`CLAIM_DELAY_BLOCKS` 全部删除。按发射者或募资状态划分的枚举（`childTokensByLauncher*`、`launching*`、`launched*`、`participatedTokens*`）也删除；代币列表与某社区子币列表保留为分页查询（`tokens`、`childTokens`），符号到地址账本保留为 `tokenAddressBySymbol`（子币符号全局唯一，`TokenSymbolAlreadyExists`），代币地址到父币地址保留为 `parentTokenOf`。
 
 ### 📍 实现参考
 ```

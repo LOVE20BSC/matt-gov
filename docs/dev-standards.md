@@ -175,7 +175,24 @@ EIP-170 限制部署字节码 ≤ 24,576 字节。超过时：
 - **载荷**：要求身份存在的入口，错误带主体 ID；批量错误带失败元素 ID。零值按不存在处理，不新增按模块的零值身份错误；模块规格明确把 `0` 作为撤销/未设置哨兵的入口除外。
 - **读一致**：谓词查询（`is*`、`can*`、`joinInfo`）缺失成员或 delegate 返回 false/0/空；记录/枚举查询的缺失行为按模块规格统一，同一查询族不得一半回滚一半返回空。同一条件不得因读/写入口不同而回不同错误。
 
-具体签名、别名表和迁移阶段另行维护，不在本规范展开。
+具体签名、载荷模板与命名清单见 [`error-standards.md`](error-standards.md)，不在本规范展开。
+
+#### 5.2.2 错误与回滚（通用）
+
+错误是公开 ABI。每个合约/模块自己拥有错误；规范不维护中心错误表，也不存在“新增合约要改老文件”的扩展点。
+
+- **本地所有权**：每个合约/模块在自己的本地接口文件中声明 `I<Name>Errors`（通常是 `src/interfaces/I<Name>Errors.sol`，也可与主接口同文件）；实现文件不声明错误；不得从其他仓导入错误定义。新增合约只新增文件，不改任何既有错误声明。
+- **一条件一错误**：一个 selector 只对应一个条件、一个主体；禁止别名与重载。具体错误名优先于通用字段码，不使用中心 `Field`/错误枚举。
+- **命名**：具体、可读，按 `<Subject><State>` / `Zero<Field>` / `Invalid<Field>` / `<Subject>Exceeded` / `Too<Size>` / `Insufficient*` / `Not<Role>Owner|Operator` / `Already<State>` / `*NotContract` / `*Unavailable` / `*Rejected`。数值上限统一 `*Exceeded`；禁止 `Exceeds...` 前缀、`Exceed<Verb>` 动词式名和 `*LimitReached`；尺寸类统一 `Too<Size>`。必填合约依赖只保留 `*NotContract(address)`（字段级或模块级 `DependencyNotContract`；零地址是同一条件），`Zero<Field>` 仅用于非合约参数。新增错误禁用 `Only*`、`Must*`、`Cannot*`；`Invalid*` 只用于值本身非法。
+- **载荷**：主体键在前，条件值在后；上限带 `actual/limit`，额度带 `required/available`，外部失败带 `source`；批量带失败元素键或索引；固定大小，禁止字符串与动态数组。
+- **回滚**：禁止裸 `require`、`revert()`、`revert("...")`；`assert` 只用于不可达不变量（L0 Panic，不进错误目录）。
+- **顺序**：鉴权 → 参数 → 存在性 → 状态/资格 → 账本/交互；先命中先回滚。身份解析属于鉴权的一部分；鉴权前不得泄露激活、配置或资格。
+- **写语义**：只有 Set（幂等、校验后 no-op、无事件）与 Transition（必须变更或回 `Already*`）；批量一律原子；no-op 不得先于校验。
+- **外部边界**：协议固定依赖按读一致处理预期缺失、意外失败 rethrow；用户配置/绑定依赖以“有代码”为条件，零地址不单独成错误，失败带 `source`；调用方任意输入失败归 invalid。固定依赖禁止宽泛 catch；只转译预期 selector，其余 rethrow。不可信输入（插件、外部规则源、任意加入代币）的宽泛 catch 例外与登记要求见 [`error-standards.md` §七](error-standards.md)。事件中的外部错误数据必须有界。
+- **ABI**：标准错误由产生者接口/合约拥有；上层透传不重复继承，只在失败契约登记来源 ABI；白名单例外需逐项审查。错误签名是公开 API，major 内不变；不保留 deprecated、别名或死声明。错误 selector 不得作为业务返回值。
+- **测试与目录**：每个可达错误有 selector + 载荷断言；每个多条件入口有优先级测试；批量有元素定位测试。错误目录由扫描 `src/interfaces` 与实现生成，不是中心源文件；新增合约自动进入目录。
+
+新增合约流程：新增 `I<Name>Errors.sol` + 实现 + 测试 → 跑错误目录/检查器；不改任何既有错误文件。相同条件可在本地重复声明（selector 相同），目录按签名归组；不要求抽到共享文件。详细规则、载荷模板、外部边界矩阵与测试矩阵见 [`error-standards.md`](error-standards.md)。
 
 ### 5.3 注释
 

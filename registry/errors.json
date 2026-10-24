@@ -1,0 +1,3726 @@
+{
+  "errors": [
+    {
+      "declarations": 1,
+      "files": [
+        "action/src/interfaces/IGroupActionJoin.sol"
+      ],
+      "interfaces": [
+        "IGroupActionJoinErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/GroupActionJoin.sol:650"
+      ],
+      "selector": "0x2de9248d",
+      "signature": "ActionMaxJoinAmountExceeded(uint256,uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "action/src/interfaces/IActionExecutor.sol"
+      ],
+      "interfaces": [
+        "IActionExecutorErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/GroupActionExecutor.sol:789",
+        "action/src/GroupActionManager.sol:108",
+        "action/src/GroupActionVerify.sol:196",
+        "action/src/GroupServiceExecutor.sol:813",
+        "action/src/LpExecutor.sol:554"
+      ],
+      "selector": "0x36c193ae",
+      "signature": "ActionNotCreated(address,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "action/src/interfaces/IGroupServiceExecutor.sol"
+      ],
+      "interfaces": [
+        "IGroupServiceExecutorErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/GroupServiceExecutor.sol:529"
+      ],
+      "selector": "0x4757480b",
+      "signature": "ActionTokenParentMismatch(address,address,address)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "action/src/interfaces/IActionTarget.sol"
+      ],
+      "interfaces": [
+        "IActionTargetErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/ActionTarget.sol:461"
+      ],
+      "selector": "0xca699de2",
+      "signature": "AlreadyCreated(address,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "action/src/interfaces/IGroupActionJoin.sol"
+      ],
+      "interfaces": [
+        "IGroupActionJoinErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/GroupActionJoin.sol:74"
+      ],
+      "selector": "0x246d0493",
+      "signature": "AlreadyInOtherGroup(uint256,uint256,uint256)"
+    },
+    {
+      "declarations": 2,
+      "files": [
+        "action/src/interfaces/IActionExecutor.sol",
+        "action/src/interfaces/IActionTarget.sol"
+      ],
+      "interfaces": [
+        "IActionExecutorErrors",
+        "IActionTargetErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/ActionTarget.sol:52",
+        "action/src/GroupActionExecutor.sol:70",
+        "action/src/GroupServiceExecutor.sol:83",
+        "action/src/LpExecutor.sol:106"
+      ],
+      "selector": "0x0dc149f0",
+      "signature": "AlreadyInitialized()"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "action/src/interfaces/IGroupServiceExecutor.sol"
+      ],
+      "interfaces": [
+        "IGroupServiceExecutorErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/GroupServiceExecutor.sol:192"
+      ],
+      "selector": "0x8a8846f7",
+      "signature": "AlreadyJoined(address,uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "action/src/interfaces/IActionExecutor.sol"
+      ],
+      "interfaces": [
+        "IActionExecutorErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/GroupActionExecutor.sol:710",
+        "action/src/GroupServiceExecutor.sol:398",
+        "action/src/LpExecutor.sol:407"
+      ],
+      "selector": "0x81b5b207",
+      "signature": "BatchLengthMismatch(uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "action/src/interfaces/IGroupActionJoin.sol"
+      ],
+      "interfaces": [
+        "IGroupActionJoinErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/GroupActionJoin.sol:636"
+      ],
+      "selector": "0x21bb7f42",
+      "signature": "BelowMinJoinAmount(uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "action/src/interfaces/IGroupActionVerify.sol"
+      ],
+      "interfaces": [
+        "IGroupActionVerifyErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/GroupActionVerify.sol:560"
+      ],
+      "selector": "0xe51d364b",
+      "signature": "CandidateNotOpen(uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "action/src/interfaces/IGroupActionVerify.sol"
+      ],
+      "interfaces": [
+        "IGroupActionVerifyErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/GroupActionVerify.sol:550"
+      ],
+      "selector": "0x39676b4a",
+      "signature": "CandidateNotRanked(uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "action/src/interfaces/IGroupActionManager.sol"
+      ],
+      "interfaces": [
+        "IGroupActionManagerErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/GroupActionManager.sol:163"
+      ],
+      "selector": "0xb1f4faaf",
+      "signature": "DeactivationLockedInActivatedRound(uint256,uint256)"
+    },
+    {
+      "declarations": 2,
+      "files": [
+        "action/src/interfaces/IActionExecutor.sol",
+        "action/src/interfaces/IActionTarget.sol"
+      ],
+      "interfaces": [
+        "IActionExecutorErrors",
+        "IActionTargetErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/ActionTarget.sol:57",
+        "action/src/ActionTarget.sol:66",
+        "action/src/ActionTarget.sol:69",
+        "action/src/ActionTarget.sol:72",
+        "action/src/ActionTarget.sol:75",
+        "action/src/GroupActionExecutor.sol:75",
+        "action/src/GroupActionExecutor.sol:78",
+        "action/src/GroupActionExecutor.sol:86",
+        "action/src/GroupActionExecutor.sol:89",
+        "action/src/GroupActionExecutor.sol:92",
+        "action/src/GroupServiceExecutor.sol:103",
+        "action/src/GroupServiceExecutor.sol:106",
+        "action/src/GroupServiceExecutor.sol:109",
+        "action/src/GroupServiceExecutor.sol:112",
+        "action/src/GroupServiceExecutor.sol:88",
+        "action/src/GroupServiceExecutor.sol:91",
+        "action/src/GroupServiceExecutor.sol:94",
+        "action/src/LpExecutor.sol:111",
+        "action/src/LpExecutor.sol:114",
+        "action/src/LpExecutor.sol:121",
+        "action/src/LpExecutor.sol:124",
+        "action/src/LpExecutor.sol:127"
+      ],
+      "selector": "0x53516c3b",
+      "signature": "DependencyNotContract(address)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "action/src/interfaces/IGroupActionExecutor.sol"
+      ],
+      "interfaces": [
+        "IGroupActionExecutorErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/GroupActionManager.sol:382",
+        "action/src/GroupActionVerify.sol:190"
+      ],
+      "selector": "0x71a24cf3",
+      "signature": "DescriptionTooLong(uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "action/src/interfaces/IGroupRecipients.sol"
+      ],
+      "interfaces": [
+        "IGroupRecipientsErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/GroupRecipients.sol:278"
+      ],
+      "selector": "0x81281d08",
+      "signature": "DistributionOverflow(uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "action/src/interfaces/IGroupRecipients.sol"
+      ],
+      "interfaces": [
+        "IGroupRecipientsErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/GroupRecipients.sol:271"
+      ],
+      "selector": "0x1a494813",
+      "signature": "DuplicateMemberId(uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "action/src/interfaces/IActionTarget.sol"
+      ],
+      "interfaces": [
+        "IActionTargetErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/ActionTarget.sol:458"
+      ],
+      "selector": "0x4042953c",
+      "signature": "ExecutorHandshakeFailed(address)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "action/src/interfaces/IActionTarget.sol"
+      ],
+      "interfaces": [
+        "IActionTargetErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/ActionTarget.sol:451"
+      ],
+      "selector": "0xa6585817",
+      "signature": "ExecutorNotContract(address)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "action/src/interfaces/IActionTarget.sol"
+      ],
+      "interfaces": [
+        "IActionTargetErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/ActionTarget.sol:455"
+      ],
+      "selector": "0x77523042",
+      "signature": "ExecutorTargetMismatch(address,address)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "action/src/interfaces/IGroupActionJoin.sol"
+      ],
+      "interfaces": [
+        "IGroupActionJoinErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/GroupActionJoin.sol:633"
+      ],
+      "selector": "0xbf0861bd",
+      "signature": "GroupAccountsFull(uint256,uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "action/src/interfaces/IGroupActionManager.sol"
+      ],
+      "interfaces": [
+        "IGroupActionManagerErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/GroupActionManager.sol:113"
+      ],
+      "selector": "0xe36ee043",
+      "signature": "GroupAlreadyActivated(uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "action/src/interfaces/IGroupActionJoin.sol"
+      ],
+      "interfaces": [
+        "IGroupActionJoinErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/GroupActionJoin.sol:644"
+      ],
+      "selector": "0x5b3f94ec",
+      "signature": "GroupCapacityExceeded(uint256,uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "action/src/interfaces/IGroupActionJoin.sol"
+      ],
+      "interfaces": [
+        "IGroupActionJoinErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/GroupActionJoin.sol:627"
+      ],
+      "selector": "0xda731d54",
+      "signature": "GroupMaxJoinAmountExceeded(uint256,uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "action/src/interfaces/IGroupActionManager.sol"
+      ],
+      "interfaces": [
+        "IGroupActionManagerErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/GroupActionJoin.sol:358",
+        "action/src/GroupActionJoin.sol:620",
+        "action/src/GroupActionManager.sol:158",
+        "action/src/GroupActionManager.sol:205"
+      ],
+      "selector": "0xd28fa9ad",
+      "signature": "GroupNotActive(uint256)"
+    },
+    {
+      "declarations": 2,
+      "files": [
+        "action/src/interfaces/IGroupActionManager.sol",
+        "action/src/interfaces/IGroupServiceExecutor.sol"
+      ],
+      "interfaces": [
+        "IGroupActionManagerErrors",
+        "IGroupServiceExecutorErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/GroupActionJoin.sol:354",
+        "action/src/GroupActionJoin.sol:403",
+        "action/src/GroupActionJoin.sol:68",
+        "action/src/GroupActionManager.sol:39",
+        "action/src/GroupServiceExecutor.sol:69"
+      ],
+      "selector": "0xfeddf96a",
+      "signature": "GroupNotExist(uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "action/src/interfaces/IGroupActionVerify.sol"
+      ],
+      "interfaces": [
+        "IGroupActionVerifyErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/GroupActionVerify.sol:74"
+      ],
+      "selector": "0xec3ddd72",
+      "signature": "GroupVerificationAlreadyComplete(uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "action/src/interfaces/IGroupActionManager.sol"
+      ],
+      "interfaces": [
+        "IGroupActionManagerErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/GroupActionManager.sol:408"
+      ],
+      "selector": "0xfc04f2b0",
+      "signature": "InsufficientActivationMinGovRatio(uint256,uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "action/src/interfaces/ILpExecutor.sol"
+      ],
+      "interfaces": [
+        "ILpExecutorErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/LpExecutor.sol:209"
+      ],
+      "selector": "0x39a246e7",
+      "signature": "InsufficientGovRatio(uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "action/src/interfaces/IGroupActionJoin.sol"
+      ],
+      "interfaces": [
+        "IGroupActionJoinErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/GroupActionJoin.sol:716"
+      ],
+      "selector": "0xca9ef3f9",
+      "signature": "InsufficientProviderQuota(uint256,uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "action/src/interfaces/IGroupActionExecutor.sol"
+      ],
+      "interfaces": [
+        "IGroupActionExecutorErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/GroupActionManager.sol:76"
+      ],
+      "selector": "0x828ac3ed",
+      "signature": "InvalidActivationMinGovRatio(uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "action/src/interfaces/ILpExecutor.sol"
+      ],
+      "interfaces": [
+        "ILpExecutorErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/LpExecutor.sol:161"
+      ],
+      "selector": "0x17318f81",
+      "signature": "InvalidJoinTokenFactory(address,address)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "action/src/interfaces/IGroupActionManager.sol"
+      ],
+      "interfaces": [
+        "IGroupActionManagerErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/GroupActionManager.sol:378"
+      ],
+      "selector": "0x24fbf4de",
+      "signature": "InvalidMaxJoinAmount(uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "action/src/interfaces/IGroupActionExecutor.sol"
+      ],
+      "interfaces": [
+        "IGroupActionExecutorErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/GroupActionManager.sol:73"
+      ],
+      "selector": "0x1b42d872",
+      "signature": "InvalidMaxJoinAmountRatio(uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "action/src/interfaces/ILpExecutor.sol"
+      ],
+      "interfaces": [
+        "ILpExecutorErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/LpExecutor.sol:164"
+      ],
+      "selector": "0x30a418eb",
+      "signature": "InvalidMinGovRatio(uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "action/src/interfaces/IGroupActionManager.sol"
+      ],
+      "interfaces": [
+        "IGroupActionManagerErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/GroupActionManager.sol:375"
+      ],
+      "selector": "0xedb63d2d",
+      "signature": "InvalidMinJoinAmount(uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "action/src/interfaces/IGroupServiceExecutor.sol"
+      ],
+      "interfaces": [
+        "IGroupServiceExecutorErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/GroupServiceExecutor.sol:524"
+      ],
+      "selector": "0x790182dd",
+      "signature": "InvalidRatioForPublicVerifier(uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "action/src/interfaces/IGroupActionExecutor.sol"
+      ],
+      "interfaces": [
+        "IGroupActionExecutorErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/GroupActionExecutor.sol:100"
+      ],
+      "selector": "0xba660bff",
+      "signature": "InvalidSplits(uint256,uint256)"
+    },
+    {
+      "declarations": 4,
+      "files": [
+        "action/src/interfaces/IActionTarget.sol",
+        "action/src/interfaces/IGroupActionExecutor.sol",
+        "action/src/interfaces/IGroupServiceExecutor.sol",
+        "action/src/interfaces/ILpExecutor.sol"
+      ],
+      "interfaces": [
+        "IActionTargetErrors",
+        "IGroupActionExecutorErrors",
+        "IGroupServiceExecutorErrors",
+        "ILpExecutorErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/ActionTarget.sol:447",
+        "action/src/ActionTarget.sol:500",
+        "action/src/ActionTarget.sol:529",
+        "action/src/GroupActionManager.sol:60",
+        "action/src/GroupActionVerify.sol:406",
+        "action/src/GroupServiceExecutor.sol:512",
+        "action/src/LpExecutor.sol:149"
+      ],
+      "selector": "0x9c2b3988",
+      "signature": "InvalidTargetDataShape(uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "action/src/interfaces/IActionTarget.sol"
+      ],
+      "interfaces": [
+        "IActionTargetErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/ActionTarget.sol:136"
+      ],
+      "selector": "0x81013803",
+      "signature": "JoinNotOpen(address,uint256,uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "action/src/interfaces/IActionExecutor.sol"
+      ],
+      "interfaces": [
+        "IActionExecutorErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/GroupActionExecutor.sol:818",
+        "action/src/GroupServiceExecutor.sol:831",
+        "action/src/GroupServiceExecutor.sol:841",
+        "action/src/LpExecutor.sol:581"
+      ],
+      "selector": "0x4cd933ce",
+      "signature": "MemberActionRewardUnavailable(address,uint256,uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "action/src/interfaces/IGroupActionVerify.sol"
+      ],
+      "interfaces": [
+        "IGroupActionVerifyErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/GroupActionVerify.sol:235",
+        "action/src/GroupActionVerify.sol:412",
+        "action/src/GroupActionVerify.sol:540"
+      ],
+      "selector": "0xcda5095d",
+      "signature": "NoActiveApplication(uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "action/src/interfaces/IGroupActionManager.sol"
+      ],
+      "interfaces": [
+        "IGroupActionManagerErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/GroupActionManager.sol:402"
+      ],
+      "selector": "0xa0d4ddef",
+      "signature": "NoGovVotes(address)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "action/src/interfaces/IActionExecutor.sol"
+      ],
+      "interfaces": [
+        "IActionExecutorErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/GroupActionExecutor.sol:31",
+        "action/src/GroupServiceExecutor.sol:53",
+        "action/src/LpExecutor.sol:77"
+      ],
+      "selector": "0x67b7e647",
+      "signature": "NotActionTarget(address)"
+    },
+    {
+      "declarations": 2,
+      "files": [
+        "action/src/interfaces/IGroupActionManager.sol",
+        "action/src/interfaces/IGroupServiceExecutor.sol"
+      ],
+      "interfaces": [
+        "IGroupActionManagerErrors",
+        "IGroupServiceExecutorErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/GroupActionManager.sol:31",
+        "action/src/GroupServiceExecutor.sol:72"
+      ],
+      "selector": "0x54a55079",
+      "signature": "NotGroupOwner(uint256)"
+    },
+    {
+      "declarations": 3,
+      "files": [
+        "action/src/interfaces/IGroupActionJoin.sol",
+        "action/src/interfaces/IGroupServiceExecutor.sol",
+        "action/src/interfaces/ILpExecutor.sol"
+      ],
+      "interfaces": [
+        "IGroupActionJoinErrors",
+        "IGroupServiceExecutorErrors",
+        "ILpExecutorErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/GroupActionJoin.sol:205",
+        "action/src/GroupServiceExecutor.sol:486",
+        "action/src/LpExecutor.sol:289"
+      ],
+      "selector": "0x847d1a6f",
+      "signature": "NotJoined(address,uint256,uint256)"
+    },
+    {
+      "declarations": 2,
+      "files": [
+        "action/src/interfaces/IActionExecutor.sol",
+        "action/src/interfaces/IActionTarget.sol"
+      ],
+      "interfaces": [
+        "IActionExecutorErrors",
+        "IActionTargetErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/ActionTarget.sol:108",
+        "action/src/GroupActionExecutor.sol:39",
+        "action/src/GroupActionJoin.sol:35",
+        "action/src/GroupActionVerify.sol:36",
+        "action/src/GroupServiceExecutor.sol:61",
+        "action/src/LpExecutor.sol:85"
+      ],
+      "selector": "0x33393244",
+      "signature": "NotMemberOwner(uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "action/src/interfaces/IGroupServiceExecutor.sol"
+      ],
+      "interfaces": [
+        "IGroupServiceExecutorErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/GroupServiceExecutor.sol:197"
+      ],
+      "selector": "0xd52b235e",
+      "signature": "NotQualified(address,uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "action/src/interfaces/IActionTarget.sol"
+      ],
+      "interfaces": [
+        "IActionTargetErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/ActionTarget.sol:94"
+      ],
+      "selector": "0x3c7708ea",
+      "signature": "NotSubmit(address)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "action/src/interfaces/IActionTarget.sol"
+      ],
+      "interfaces": [
+        "IActionTargetErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/ActionTarget.sol:101"
+      ],
+      "selector": "0x20edde6a",
+      "signature": "NotVote(address)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "action/src/interfaces/IGroupActionVerify.sol"
+      ],
+      "interfaces": [
+        "IGroupActionVerifyErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/GroupActionVerify.sol:52"
+      ],
+      "selector": "0xaafa066e",
+      "signature": "OriginScoresEmpty()"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "action/src/interfaces/IActionTarget.sol"
+      ],
+      "interfaces": [
+        "IActionTargetErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/ActionTarget.sol:285"
+      ],
+      "selector": "0x82bbc7fd",
+      "signature": "ProposalNotVoted(address,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "action/src/interfaces/IGroupActionJoin.sol"
+      ],
+      "interfaces": [
+        "IGroupActionJoinErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/GroupActionJoin.sol:168"
+      ],
+      "selector": "0x1f409c81",
+      "signature": "ProviderWithdrawAmountExceeded(uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "action/src/interfaces/IGroupActionJoin.sol"
+      ],
+      "interfaces": [
+        "IGroupActionJoinErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/GroupActionJoin.sol:351"
+      ],
+      "selector": "0x4a0b0bf7",
+      "signature": "QuotaArrayLengthMismatch(uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "action/src/interfaces/IGroupActionJoin.sol"
+      ],
+      "interfaces": [
+        "IGroupActionJoinErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/GroupActionJoin.sol:368"
+      ],
+      "selector": "0x3791977c",
+      "signature": "QuotaMemberIsProvider(uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "action/src/interfaces/IGroupActionJoin.sol"
+      ],
+      "interfaces": [
+        "IGroupActionJoinErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/GroupActionJoin.sol:415"
+      ],
+      "selector": "0x6ce01173",
+      "signature": "QuotaNotGranted(uint256,uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "action/src/interfaces/IGroupRecipients.sol"
+      ],
+      "interfaces": [
+        "IGroupRecipientsErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/GroupRecipients.sol:254"
+      ],
+      "selector": "0xaae80407",
+      "signature": "RecipientArrayLengthMismatch(uint256,uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "action/src/interfaces/IGroupRecipients.sol"
+      ],
+      "interfaces": [
+        "IGroupRecipientsErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/GroupRecipients.sol:264"
+      ],
+      "selector": "0x6f819480",
+      "signature": "RecipientIsGroupId(uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "action/src/interfaces/IActionExecutor.sol"
+      ],
+      "interfaces": [
+        "IActionExecutorErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/GroupActionExecutor.sol:800",
+        "action/src/GroupServiceExecutor.sol:824",
+        "action/src/LpExecutor.sol:565"
+      ],
+      "selector": "0xf41a3e9f",
+      "signature": "RewardAlreadyMinted(address,uint256,uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "action/src/interfaces/IActionExecutor.sol"
+      ],
+      "interfaces": [
+        "IActionExecutorErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/GroupActionExecutor.sol:796",
+        "action/src/GroupServiceExecutor.sol:820",
+        "action/src/LpExecutor.sol:561"
+      ],
+      "selector": "0x45297019",
+      "signature": "RoundAfterMintWindow(uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "action/src/interfaces/IActionExecutor.sol"
+      ],
+      "interfaces": [
+        "IActionExecutorErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/GroupActionExecutor.sol:792",
+        "action/src/GroupServiceExecutor.sol:816",
+        "action/src/LpExecutor.sol:557"
+      ],
+      "selector": "0x1edd1ded",
+      "signature": "RoundBeforeActionCreated(uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "action/src/interfaces/IActionExecutor.sol"
+      ],
+      "interfaces": [
+        "IActionExecutorErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/GroupActionExecutor.sol:117",
+        "action/src/GroupActionExecutor.sol:648",
+        "action/src/GroupActionExecutor.sol:656",
+        "action/src/GroupActionExecutor.sol:664",
+        "action/src/GroupActionStorage.sol:181",
+        "action/src/GroupActionVerify.sol:526",
+        "action/src/GroupServiceExecutor.sol:133",
+        "action/src/GroupServiceExecutor.sol:141",
+        "action/src/GroupServiceExecutor.sol:149",
+        "action/src/GroupServiceExecutor.sol:157",
+        "action/src/GroupServiceStorage.sol:65",
+        "action/src/LpExecutor.sol:439",
+        "action/src/LpExecutor.sol:447",
+        "action/src/LpExecutor.sol:455"
+      ],
+      "selector": "0xea74f32b",
+      "signature": "RoundNotStarted(uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "action/src/interfaces/IGroupActionVerify.sol"
+      ],
+      "interfaces": [
+        "IGroupActionVerifyErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/GroupActionVerify.sol:80"
+      ],
+      "selector": "0xc6f0561d",
+      "signature": "ScoreCountExceeded(uint256,uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "action/src/interfaces/IGroupActionVerify.sol"
+      ],
+      "interfaces": [
+        "IGroupActionVerifyErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/GroupActionVerify.sol:84"
+      ],
+      "selector": "0x743bbb84",
+      "signature": "ScoreLimitExceeded(uint256,uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "action/src/interfaces/IGroupActionVerify.sol"
+      ],
+      "interfaces": [
+        "IGroupActionVerifyErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/GroupActionVerify.sol:77"
+      ],
+      "selector": "0xdadbe49c",
+      "signature": "StartIndexMismatch(uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "action/src/interfaces/IActionTarget.sol"
+      ],
+      "interfaces": [
+        "IActionTargetErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/ActionTarget.sol:504",
+        "action/src/ActionTarget.sol:533"
+      ],
+      "selector": "0xb4d298bc",
+      "signature": "TargetDataExecutorMismatch(address,address)"
+    },
+    {
+      "declarations": 4,
+      "files": [
+        "action/src/interfaces/IActionTarget.sol",
+        "action/src/interfaces/IGroupActionExecutor.sol",
+        "action/src/interfaces/IGroupServiceExecutor.sol",
+        "action/src/interfaces/ILpExecutor.sol"
+      ],
+      "interfaces": [
+        "IActionTargetErrors",
+        "IGroupActionExecutorErrors",
+        "IGroupServiceExecutorErrors",
+        "ILpExecutorErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/ActionTarget.sol:444",
+        "action/src/ActionTarget.sol:497",
+        "action/src/GroupActionManager.sol:52",
+        "action/src/GroupActionManager.sol:55",
+        "action/src/GroupActionVerify.sol:403",
+        "action/src/GroupServiceExecutor.sol:507",
+        "action/src/GroupServiceExecutor.sol:559",
+        "action/src/LpExecutor.sol:144",
+        "action/src/LpExecutor.sol:187"
+      ],
+      "selector": "0x232f36be",
+      "signature": "TargetDataLengthMismatch(uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "action/src/interfaces/IGroupRecipients.sol"
+      ],
+      "interfaces": [
+        "IGroupRecipientsErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/GroupRecipients.sol:257"
+      ],
+      "selector": "0x3971ddf8",
+      "signature": "TooManyRecipients(uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "action/src/interfaces/IActionTarget.sol"
+      ],
+      "interfaces": [
+        "IActionTargetErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/ActionTarget.sol:87"
+      ],
+      "selector": "0x89d3c18e",
+      "signature": "UnauthorizedExecutor(address,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "action/src/interfaces/IActionTarget.sol"
+      ],
+      "interfaces": [
+        "IActionTargetErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/ActionTarget.sol:494",
+        "action/src/ActionTarget.sol:525"
+      ],
+      "selector": "0x283a3095",
+      "signature": "UnboundProposal(address,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "action/src/interfaces/IGroupRecipients.sol"
+      ],
+      "interfaces": [
+        "IGroupRecipientsErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/GroupRecipients.sol:61"
+      ],
+      "selector": "0x6ea46b42",
+      "signature": "UnknownSourceAction(address,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "action/src/interfaces/IGroupActionVerify.sol"
+      ],
+      "interfaces": [
+        "IGroupActionVerifyErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/GroupActionVerify.sol:55"
+      ],
+      "selector": "0x3b91a8c8",
+      "signature": "VerificationBatchTooLarge(uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "action/src/interfaces/IGroupActionExecutor.sol"
+      ],
+      "interfaces": [
+        "IGroupActionExecutorErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/GroupActionJoin.sol:694",
+        "action/src/GroupActionManager.sol:90"
+      ],
+      "selector": "0xe5b734dc",
+      "signature": "VerificationInfoLengthMismatch(uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "action/src/interfaces/IGroupActionVerify.sol"
+      ],
+      "interfaces": [
+        "IGroupActionVerifyErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/GroupActionVerify.sol:65"
+      ],
+      "selector": "0xa4ab638a",
+      "signature": "VerifierAlreadyLocked(address,uint256,uint256)"
+    },
+    {
+      "declarations": 2,
+      "files": [
+        "action/src/interfaces/IGroupActionJoin.sol",
+        "action/src/interfaces/ILpExecutor.sol"
+      ],
+      "interfaces": [
+        "IGroupActionJoinErrors",
+        "ILpExecutorErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/GroupActionJoin.sol:129",
+        "action/src/LpExecutor.sol:254"
+      ],
+      "selector": "0xbffdd230",
+      "signature": "WithdrawAmountExceeded(uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "action/src/interfaces/IGroupServiceExecutor.sol"
+      ],
+      "interfaces": [
+        "IGroupServiceExecutorErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/GroupServiceExecutor.sol:521"
+      ],
+      "selector": "0x95bf90a9",
+      "signature": "ZeroActionTokenAddress()"
+    },
+    {
+      "declarations": 2,
+      "files": [
+        "action/src/interfaces/IGroupActionExecutor.sol",
+        "action/src/interfaces/ILpExecutor.sol"
+      ],
+      "interfaces": [
+        "IGroupActionExecutorErrors",
+        "ILpExecutorErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/GroupActionManager.sol:70",
+        "action/src/LpExecutor.sol:158"
+      ],
+      "selector": "0x8a1b296f",
+      "signature": "ZeroJoinTokenAddress()"
+    },
+    {
+      "declarations": 2,
+      "files": [
+        "action/src/interfaces/IGroupActionJoin.sol",
+        "action/src/interfaces/ILpExecutor.sol"
+      ],
+      "interfaces": [
+        "IGroupActionJoinErrors",
+        "ILpExecutorErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/GroupActionJoin.sol:123",
+        "action/src/GroupActionJoin.sol:162",
+        "action/src/GroupActionJoin.sol:65",
+        "action/src/LpExecutor.sol:199",
+        "action/src/LpExecutor.sol:248"
+      ],
+      "selector": "0x4ae8f898",
+      "signature": "ZeroParticipationAmount()"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "action/src/interfaces/IGroupActionJoin.sol"
+      ],
+      "interfaces": [
+        "IGroupActionJoinErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/GroupActionJoin.sol:371"
+      ],
+      "selector": "0xb88ef067",
+      "signature": "ZeroQuotaAmount(uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "action/src/interfaces/IGroupRecipients.sol"
+      ],
+      "interfaces": [
+        "IGroupRecipientsErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/GroupRecipients.sol:267"
+      ],
+      "selector": "0x4a3b43a3",
+      "signature": "ZeroRecipientRatio(uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "action/src/interfaces/IGroupActionVerify.sol"
+      ],
+      "interfaces": [
+        "IGroupActionVerifyErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/GroupActionVerify.sol:186"
+      ],
+      "selector": "0x131e332f",
+      "signature": "ZeroVerifyVotes(address,uint256)"
+    },
+    {
+      "declarations": 6,
+      "files": [
+        "core/src/interfaces/ILaunch.sol",
+        "core/src/interfaces/IMemberNFT.sol",
+        "core/src/interfaces/IMint.sol",
+        "core/src/interfaces/IStake.sol",
+        "core/src/interfaces/ISubmit.sol",
+        "core/src/interfaces/IVote.sol"
+      ],
+      "interfaces": [
+        "ILaunchErrors",
+        "IMemberNFTErrors",
+        "IMintErrors",
+        "IStakeErrors",
+        "ISubmitErrors",
+        "IVoteErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Launch.sol:79",
+        "core/src/MemberNFT.sol:74",
+        "core/src/Mint.sol:88",
+        "core/src/Stake.sol:72",
+        "core/src/Submit.sol:50",
+        "core/src/Vote.sol:76"
+      ],
+      "selector": "0x0dc149f0",
+      "signature": "AlreadyInitialized()"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/ISubmit.sol"
+      ],
+      "interfaces": [
+        "ISubmitErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Submit.sol:234"
+      ],
+      "selector": "0x5816a336",
+      "signature": "CallbackTargetNotContract(address)"
+    },
+    {
+      "declarations": 7,
+      "files": [
+        "core/src/interfaces/ILOVE20Token.sol",
+        "core/src/interfaces/ILaunch.sol",
+        "core/src/interfaces/IMemberNFT.sol",
+        "core/src/interfaces/IMint.sol",
+        "core/src/interfaces/IStake.sol",
+        "core/src/interfaces/ISubmit.sol",
+        "core/src/interfaces/IVote.sol"
+      ],
+      "interfaces": [
+        "ILOVE20TokenErrors",
+        "ILaunchErrors",
+        "IMemberNFTErrors",
+        "IMintErrors",
+        "IStakeErrors",
+        "ISubmitErrors",
+        "IVoteErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/LOVE20Token.sol:41",
+        "core/src/LOVE20Token.sol:42",
+        "core/src/Launch.sol:80",
+        "core/src/Launch.sol:82",
+        "core/src/Launch.sol:85",
+        "core/src/Launch.sol:88",
+        "core/src/MemberNFT.sol:75",
+        "core/src/Mint.sol:102",
+        "core/src/Mint.sol:107",
+        "core/src/Mint.sol:93",
+        "core/src/Mint.sol:96",
+        "core/src/Mint.sol:99",
+        "core/src/Stake.sol:73",
+        "core/src/Stake.sol:74",
+        "core/src/Stake.sol:75",
+        "core/src/Stake.sol:76",
+        "core/src/Stake.sol:77",
+        "core/src/Stake.sol:78",
+        "core/src/Submit.sol:53",
+        "core/src/Submit.sol:56",
+        "core/src/Submit.sol:59",
+        "core/src/Vote.sol:79",
+        "core/src/Vote.sol:82",
+        "core/src/Vote.sol:85",
+        "core/src/Vote.sol:88"
+      ],
+      "selector": "0x53516c3b",
+      "signature": "DependencyNotContract(address)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/ILaunch.sol"
+      ],
+      "interfaces": [
+        "ILaunchErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Launch.sol:469"
+      ],
+      "selector": "0x7c7610b0",
+      "signature": "DistributorNotContract(address)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/ILaunch.sol"
+      ],
+      "interfaces": [
+        "ILaunchErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Launch.sol:178",
+        "core/src/Launch.sol:247"
+      ],
+      "selector": "0x750e6e06",
+      "signature": "InsufficientLaunchCount(uint256,uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/ISubmit.sol"
+      ],
+      "interfaces": [
+        "ISubmitErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Submit.sol:102"
+      ],
+      "selector": "0x6898aba8",
+      "signature": "InsufficientSubmitPower(address,uint256,uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/IStake.sol"
+      ],
+      "interfaces": [
+        "IStakeErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Stake.sol:233"
+      ],
+      "selector": "0x84d77e73",
+      "signature": "InsufficientWaitingPhases(uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/IPhase.sol"
+      ],
+      "interfaces": [
+        "IPhaseErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Phase.sol:38"
+      ],
+      "selector": "0xc5e1715a",
+      "signature": "InvalidAdjustThreshold(uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/IStake.sol"
+      ],
+      "interfaces": [
+        "IStakeErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Stake.sol:81"
+      ],
+      "selector": "0xb9e48ba5",
+      "signature": "InvalidFeeSettlementRatio(uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/ILOVE20Token.sol"
+      ],
+      "interfaces": [
+        "ILOVE20TokenErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/LOVE20Token.sol:39"
+      ],
+      "selector": "0x9906d24a",
+      "signature": "InvalidInitialSupply(uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/ILaunch.sol"
+      ],
+      "interfaces": [
+        "ILaunchErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Launch.sol:97"
+      ],
+      "selector": "0xfa953e3c",
+      "signature": "InvalidLaunchAmount(uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/ILaunch.sol"
+      ],
+      "interfaces": [
+        "ILaunchErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Launch.sol:92"
+      ],
+      "selector": "0xfcb552f8",
+      "signature": "InvalidLaunchRatio(uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/IMint.sol"
+      ],
+      "interfaces": [
+        "IMintErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Mint.sol:119"
+      ],
+      "selector": "0xc0ad323e",
+      "signature": "InvalidMaxGovBoostRewardMultiplier(uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/IStake.sol"
+      ],
+      "interfaces": [
+        "IStakeErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Stake.sol:432"
+      ],
+      "selector": "0x50a046ad",
+      "signature": "InvalidPromisedWaitingPhases(uint256,uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/IStake.sol"
+      ],
+      "interfaces": [
+        "IStakeErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Stake.sol:83"
+      ],
+      "selector": "0x57558ec0",
+      "signature": "InvalidPromisedWaitingPhasesRange(uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/IMint.sol"
+      ],
+      "interfaces": [
+        "IMintErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Mint.sol:111"
+      ],
+      "selector": "0xaa32f24b",
+      "signature": "InvalidProposalRewardMinVoteRatio(uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/IMint.sol"
+      ],
+      "interfaces": [
+        "IMintErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Mint.sol:115"
+      ],
+      "selector": "0xbee153b6",
+      "signature": "InvalidRoundRewardRatios(uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/ISubmit.sol"
+      ],
+      "interfaces": [
+        "ISubmitErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Submit.sol:65"
+      ],
+      "selector": "0xfd18623e",
+      "signature": "InvalidSubmitMinRatio(uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/ILaunch.sol"
+      ],
+      "interfaces": [
+        "ILaunchErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Launch.sol:411"
+      ],
+      "selector": "0x7e279c58",
+      "signature": "InvalidTokenSymbolCharacters()"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/ILaunch.sol"
+      ],
+      "interfaces": [
+        "ILaunchErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Launch.sol:410"
+      ],
+      "selector": "0x18a4669e",
+      "signature": "InvalidTokenSymbolLength(uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/ILaunch.sol"
+      ],
+      "interfaces": [
+        "ILaunchErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Launch.sol:278"
+      ],
+      "selector": "0x9affae33",
+      "signature": "LaunchCountLimitExceeded(address,uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/ILOVE20Token.sol"
+      ],
+      "interfaces": [
+        "ILOVE20TokenErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/LOVE20Token.sol:61"
+      ],
+      "selector": "0xea058246",
+      "signature": "MaxSupplyExceeded(uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/ISubmit.sol"
+      ],
+      "interfaces": [
+        "ISubmitErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Submit.sol:287"
+      ],
+      "selector": "0xc3487d0d",
+      "signature": "MemberAlreadySubmitted(address,uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/IMint.sol"
+      ],
+      "interfaces": [
+        "IMintErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Mint.sol:592"
+      ],
+      "selector": "0xc157061f",
+      "signature": "MemberRewardAlreadyMinted(address,uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/IMint.sol"
+      ],
+      "interfaces": [
+        "IMintErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Mint.sol:599"
+      ],
+      "selector": "0x1392e03a",
+      "signature": "MemberRewardUnavailable(address,uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/IMemberNFT.sol"
+      ],
+      "interfaces": [
+        "IMemberNFTErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/MemberNFT.sol:316"
+      ],
+      "selector": "0x2350ee53",
+      "signature": "NameAlreadyExists(uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/IMemberNFT.sol"
+      ],
+      "interfaces": [
+        "IMemberNFTErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/MemberNFT.sol:308"
+      ],
+      "selector": "0x1ff3ed9d",
+      "signature": "NameEmpty()"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/IMemberNFT.sol"
+      ],
+      "interfaces": [
+        "IMemberNFTErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/MemberNFT.sol:310"
+      ],
+      "selector": "0x9954195a",
+      "signature": "NameInvalidCharacters()"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/IMemberNFT.sol"
+      ],
+      "interfaces": [
+        "IMemberNFTErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/MemberNFT.sol:309"
+      ],
+      "selector": "0x243cf1c9",
+      "signature": "NameTooLong(uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/ISubmit.sol"
+      ],
+      "interfaces": [
+        "ISubmitErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Submit.sol:99"
+      ],
+      "selector": "0xa0d4ddef",
+      "signature": "NoGovVotes(address)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/IStake.sol"
+      ],
+      "interfaces": [
+        "IStakeErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Stake.sol:144",
+        "core/src/Stake.sol:187",
+        "core/src/Stake.sol:224",
+        "core/src/Stake.sol:276"
+      ],
+      "selector": "0x42b29552",
+      "signature": "NoStakedLiquidity(address,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/IVote.sol"
+      ],
+      "interfaces": [
+        "IVoteErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Vote.sol:112"
+      ],
+      "selector": "0x8102b749",
+      "signature": "NoVotingPower(address,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/IStake.sol"
+      ],
+      "interfaces": [
+        "IStakeErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Stake.sol:427"
+      ],
+      "selector": "0xbe9cd064",
+      "signature": "NotAllowedToStakeAtRoundZero()"
+    },
+    {
+      "declarations": 5,
+      "files": [
+        "core/src/interfaces/ILaunch.sol",
+        "core/src/interfaces/IMint.sol",
+        "core/src/interfaces/IStake.sol",
+        "core/src/interfaces/ISubmit.sol",
+        "core/src/interfaces/IVote.sol"
+      ],
+      "interfaces": [
+        "ILaunchErrors",
+        "IMintErrors",
+        "IStakeErrors",
+        "ISubmitErrors",
+        "IVoteErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Launch.sol:49",
+        "core/src/Mint.sol:283",
+        "core/src/Stake.sol:104",
+        "core/src/Submit.sol:108",
+        "core/src/Vote.sol:99"
+      ],
+      "selector": "0x33393244",
+      "signature": "NotMemberOwner(uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/ILaunch.sol"
+      ],
+      "interfaces": [
+        "ILaunchErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Launch.sol:44"
+      ],
+      "selector": "0x3ab9a846",
+      "signature": "NotMintContract(address)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/ILOVE20Token.sol"
+      ],
+      "interfaces": [
+        "ILOVE20TokenErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/LOVE20Token.sol:52"
+      ],
+      "selector": "0x361c31f2",
+      "signature": "NotMinter(address)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/IMint.sol"
+      ],
+      "interfaces": [
+        "IMintErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Mint.sol:236"
+      ],
+      "selector": "0xc157502b",
+      "signature": "NotProposalTarget(address,address)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/ILaunch.sol"
+      ],
+      "interfaces": [
+        "ILaunchErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Launch.sol:386"
+      ],
+      "selector": "0x90fa4b05",
+      "signature": "PairCreationFailed(address)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/IStake.sol"
+      ],
+      "interfaces": [
+        "IStakeErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Stake.sol:470"
+      ],
+      "selector": "0xeabd8816",
+      "signature": "PairMissing(address)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/ILaunch.sol"
+      ],
+      "interfaces": [
+        "ILaunchErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Launch.sol:174"
+      ],
+      "selector": "0x7201021d",
+      "signature": "ParentTokenNotRegistered(address)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/IPhase.sol"
+      ],
+      "interfaces": [
+        "IPhaseErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Phase.sol:50",
+        "core/src/Phase.sol:57",
+        "core/src/Phase.sol:88"
+      ],
+      "selector": "0xf2469089",
+      "signature": "PhaseNotStarted()"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/IStake.sol"
+      ],
+      "interfaces": [
+        "IStakeErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Stake.sol:126",
+        "core/src/Stake.sol:146"
+      ],
+      "selector": "0x80336ded",
+      "signature": "PromisedWaitingPhasesDecreased(uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/ISubmit.sol"
+      ],
+      "interfaces": [
+        "ISubmitErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Submit.sol:282"
+      ],
+      "selector": "0x9dcaa584",
+      "signature": "ProposalAlreadySubmitted(address,uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/IVote.sol"
+      ],
+      "interfaces": [
+        "IVoteErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Vote.sol:115"
+      ],
+      "selector": "0x46b9908e",
+      "signature": "ProposalIdsEmpty()"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/ISubmit.sol"
+      ],
+      "interfaces": [
+        "ISubmitErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Submit.sol:178",
+        "core/src/Submit.sol:192",
+        "core/src/Submit.sol:268"
+      ],
+      "selector": "0x428d06a9",
+      "signature": "ProposalNotFound(uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/IVote.sol"
+      ],
+      "interfaces": [
+        "IVoteErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Vote.sol:270"
+      ],
+      "selector": "0x354f9b03",
+      "signature": "ProposalNotSubmitted(address,uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/IMint.sol"
+      ],
+      "interfaces": [
+        "IMintErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Mint.sol:259"
+      ],
+      "selector": "0xece01b78",
+      "signature": "ProposalRewardAlreadyMinted(address,uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/IMint.sol"
+      ],
+      "interfaces": [
+        "IMintErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Mint.sol:265"
+      ],
+      "selector": "0x6b95e12e",
+      "signature": "ProposalRewardUnavailable(address,uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/IVote.sol"
+      ],
+      "interfaces": [
+        "IVoteErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Vote.sol:118"
+      ],
+      "selector": "0xb397cf8c",
+      "signature": "ProposalVotesLengthMismatch(uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/IMint.sol"
+      ],
+      "interfaces": [
+        "IMintErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Mint.sol:147",
+        "core/src/Mint.sol:252",
+        "core/src/Mint.sol:585"
+      ],
+      "selector": "0x652d87c5",
+      "signature": "RoundNotEnded(uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/IStake.sol"
+      ],
+      "interfaces": [
+        "IStakeErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Stake.sol:401"
+      ],
+      "selector": "0xea74f32b",
+      "signature": "RoundNotStarted(uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/IStake.sol"
+      ],
+      "interfaces": [
+        "IStakeErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Stake.sol:662"
+      ],
+      "selector": "0x71c4efed",
+      "signature": "SlippageExceeded(uint256,uint256)"
+    },
+    {
+      "declarations": 2,
+      "files": [
+        "core/src/interfaces/ILaunch.sol",
+        "core/src/interfaces/IStake.sol"
+      ],
+      "interfaces": [
+        "ILaunchErrors",
+        "IStakeErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Launch.sol:235",
+        "core/src/Stake.sol:267"
+      ],
+      "selector": "0x1049dc75",
+      "signature": "SourceAndTargetMemberIdsMustBeDifferent(uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/IStake.sol"
+      ],
+      "interfaces": [
+        "IStakeErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Stake.sol:191",
+        "core/src/Stake.sol:280"
+      ],
+      "selector": "0xd2632e80",
+      "signature": "StakeRightsUsed(address,uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/ISubmit.sol"
+      ],
+      "interfaces": [
+        "ISubmitErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Submit.sol:289"
+      ],
+      "selector": "0x0fe6aa6e",
+      "signature": "SubmitRoundFull(address,uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/IVote.sol"
+      ],
+      "interfaces": [
+        "IVoteErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Vote.sol:121"
+      ],
+      "selector": "0x232f36be",
+      "signature": "TargetDataLengthMismatch(uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/IStake.sol"
+      ],
+      "interfaces": [
+        "IStakeErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Stake.sol:487"
+      ],
+      "selector": "0xe393d50b",
+      "signature": "TargetPromisedWaitingPhasesTooShort(uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/ISubmit.sol"
+      ],
+      "interfaces": [
+        "ISubmitErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Submit.sol:231"
+      ],
+      "selector": "0x5d0ff12d",
+      "signature": "TitleEmpty()"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/ILaunch.sol"
+      ],
+      "interfaces": [
+        "ILaunchErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Launch.sol:374"
+      ],
+      "selector": "0x0d7673b5",
+      "signature": "TokenNameEmpty()"
+    },
+    {
+      "declarations": 2,
+      "files": [
+        "core/src/interfaces/ILaunch.sol",
+        "core/src/interfaces/IStake.sol"
+      ],
+      "interfaces": [
+        "ILaunchErrors",
+        "IStakeErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Launch.sol:240",
+        "core/src/Launch.sol:272",
+        "core/src/Stake.sol:439"
+      ],
+      "selector": "0xddef98d7",
+      "signature": "TokenNotRegistered(address)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/ILaunch.sol"
+      ],
+      "interfaces": [
+        "ILaunchErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Launch.sol:191"
+      ],
+      "selector": "0x98f23aa3",
+      "signature": "TokenSymbolAlreadyExists(bytes32)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/ILaunch.sol"
+      ],
+      "interfaces": [
+        "ILaunchErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Launch.sol:375"
+      ],
+      "selector": "0xf09ce013",
+      "signature": "TokenSymbolEmpty()"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/IStake.sol"
+      ],
+      "interfaces": [
+        "IStakeErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Stake.sol:124",
+        "core/src/Stake.sol:143",
+        "core/src/Stake.sol:186",
+        "core/src/Stake.sol:274",
+        "core/src/Stake.sol:275"
+      ],
+      "selector": "0xe8e88f47",
+      "signature": "UnstakeAlreadyRequested(address,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/IStake.sol"
+      ],
+      "interfaces": [
+        "IStakeErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Stake.sol:223"
+      ],
+      "selector": "0x44357cd8",
+      "signature": "UnstakeNotRequested(address,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/IVote.sol"
+      ],
+      "interfaces": [
+        "IVoteErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Vote.sol:311"
+      ],
+      "selector": "0xb60c38d3",
+      "signature": "VoteLimitExceeded(address,uint256,uint256,uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/IPhase.sol"
+      ],
+      "interfaces": [
+        "IPhaseErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Phase.sol:37"
+      ],
+      "selector": "0x6aebcbb4",
+      "signature": "ZeroAdjustThreshold()"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/IMemberNFT.sol"
+      ],
+      "interfaces": [
+        "IMemberNFTErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/MemberNFT.sol:63"
+      ],
+      "selector": "0xa2962ced",
+      "signature": "ZeroBaseDivisor()"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/IStake.sol"
+      ],
+      "interfaces": [
+        "IStakeErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Stake.sol:138"
+      ],
+      "selector": "0xbbaa8875",
+      "signature": "ZeroBoostAmount()"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/IMemberNFT.sol"
+      ],
+      "interfaces": [
+        "IMemberNFTErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/MemberNFT.sol:64"
+      ],
+      "selector": "0x4e9ecf5e",
+      "signature": "ZeroBytesThreshold()"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/ILaunch.sol"
+      ],
+      "interfaces": [
+        "ILaunchErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Launch.sol:237",
+        "core/src/Launch.sol:271"
+      ],
+      "selector": "0x047b9cec",
+      "signature": "ZeroCount()"
+    },
+    {
+      "declarations": 2,
+      "files": [
+        "core/src/interfaces/ILOVE20Token.sol",
+        "core/src/interfaces/ILaunch.sol"
+      ],
+      "interfaces": [
+        "ILOVE20TokenErrors",
+        "ILaunchErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/LOVE20Token.sol:40",
+        "core/src/Launch.sol:170",
+        "core/src/Launch.sol:90"
+      ],
+      "selector": "0x71702079",
+      "signature": "ZeroDistributorAddress()"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/IStake.sol"
+      ],
+      "interfaces": [
+        "IStakeErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Stake.sol:80"
+      ],
+      "selector": "0xa5c1f133",
+      "signature": "ZeroFeeSettlementRatio()"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/ILOVE20Token.sol"
+      ],
+      "interfaces": [
+        "ILOVE20TokenErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/LOVE20Token.sol:38"
+      ],
+      "selector": "0x9243dc6c",
+      "signature": "ZeroInitialSupply()"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/ILaunch.sol"
+      ],
+      "interfaces": [
+        "ILaunchErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Launch.sol:95"
+      ],
+      "selector": "0x581dbf66",
+      "signature": "ZeroLaunchAmount()"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/ILaunch.sol"
+      ],
+      "interfaces": [
+        "ILaunchErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Launch.sol:91"
+      ],
+      "selector": "0xeb7716f3",
+      "signature": "ZeroLaunchRatio()"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/IStake.sol"
+      ],
+      "interfaces": [
+        "IStakeErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Stake.sol:589"
+      ],
+      "selector": "0xf4791324",
+      "signature": "ZeroLiquidityMinted()"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/ILaunch.sol"
+      ],
+      "interfaces": [
+        "ILaunchErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Launch.sol:93"
+      ],
+      "selector": "0x77bfa46c",
+      "signature": "ZeroMaxLaunchCount()"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/IMemberNFT.sol"
+      ],
+      "interfaces": [
+        "IMemberNFTErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/MemberNFT.sol:66"
+      ],
+      "selector": "0xb4ba1345",
+      "signature": "ZeroMaxNameLength()"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/IMemberNFT.sol"
+      ],
+      "interfaces": [
+        "IMemberNFTErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/MemberNFT.sol:65"
+      ],
+      "selector": "0xcdcf71c0",
+      "signature": "ZeroMultiplier()"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/IPhase.sol"
+      ],
+      "interfaces": [
+        "IPhaseErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Phase.sol:34"
+      ],
+      "selector": "0xbd93f9e4",
+      "signature": "ZeroOriginBlocks()"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/IPhase.sol"
+      ],
+      "interfaces": [
+        "IPhaseErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Phase.sol:35"
+      ],
+      "selector": "0xa3385939",
+      "signature": "ZeroOriginPhaseBlocks()"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/IStake.sol"
+      ],
+      "interfaces": [
+        "IStakeErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Stake.sol:117"
+      ],
+      "selector": "0xe6e1b13a",
+      "signature": "ZeroParentTokenAmount()"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/IStake.sol"
+      ],
+      "interfaces": [
+        "IStakeErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Stake.sol:79"
+      ],
+      "selector": "0x457c87de",
+      "signature": "ZeroPromisedWaitingPhasesMin()"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/IMint.sol"
+      ],
+      "interfaces": [
+        "IMintErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Mint.sol:248",
+        "core/src/Mint.sol:581"
+      ],
+      "selector": "0xceef9857",
+      "signature": "ZeroRecipientAddress()"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/ISubmit.sol"
+      ],
+      "interfaces": [
+        "ISubmitErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Submit.sol:62"
+      ],
+      "selector": "0x61250527",
+      "signature": "ZeroSubmitMinRatio()"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/IPhase.sol"
+      ],
+      "interfaces": [
+        "IPhaseErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Phase.sol:39"
+      ],
+      "selector": "0xa382b380",
+      "signature": "ZeroSyncObservationLimit()"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/ISubmit.sol"
+      ],
+      "interfaces": [
+        "ISubmitErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Submit.sol:232"
+      ],
+      "selector": "0xeaf673fd",
+      "signature": "ZeroTargetAddress()"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/IPhase.sol"
+      ],
+      "interfaces": [
+        "IPhaseErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Phase.sol:36"
+      ],
+      "selector": "0x88b280aa",
+      "signature": "ZeroTargetSeconds()"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/IStake.sol"
+      ],
+      "interfaces": [
+        "IStakeErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Stake.sol:116"
+      ],
+      "selector": "0x82c4a8c9",
+      "signature": "ZeroTokenAmount()"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/ILaunch.sol"
+      ],
+      "interfaces": [
+        "ILaunchErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Launch.sol:94"
+      ],
+      "selector": "0x480b0ce8",
+      "signature": "ZeroTokenSymbolLength()"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/IVote.sol"
+      ],
+      "interfaces": [
+        "IVoteErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Vote.sol:275"
+      ],
+      "selector": "0xf9067921",
+      "signature": "ZeroVotes(uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "group-chat/src/interfaces/managers/IBaseTokenActionScopeManager.sol"
+      ],
+      "interfaces": [
+        "IBaseTokenActionScopeManagerErrors"
+      ],
+      "repo": "group-chat",
+      "revert_sites": [
+        "group-chat/src/managers/BaseTokenActionScopeManager.sol:137"
+      ],
+      "selector": "0x9c0f73f0",
+      "signature": "ActionNotExist(address,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "group-chat/src/interfaces/IGroupAdmin.sol"
+      ],
+      "interfaces": [
+        "IGroupAdminErrors"
+      ],
+      "repo": "group-chat",
+      "revert_sites": [
+        "group-chat/src/GroupAdmin.sol:134"
+      ],
+      "selector": "0x2ffd6226",
+      "signature": "AdminIdsLimitExceeded(uint256,uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "group-chat/src/interfaces/managers/IBaseManager.sol"
+      ],
+      "interfaces": [
+        "IBaseManagerErrors"
+      ],
+      "repo": "group-chat",
+      "revert_sites": [
+        "group-chat/src/managers/BaseManager.sol:122"
+      ],
+      "selector": "0xcd0d3eb5",
+      "signature": "AlreadyManaged(uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "group-chat/src/interfaces/IGroupChat.sol"
+      ],
+      "interfaces": [
+        "IGroupChatErrors"
+      ],
+      "repo": "group-chat",
+      "revert_sites": [
+        "group-chat/src/GroupChat.sol:788"
+      ],
+      "selector": "0x490d7c64",
+      "signature": "BanRejected(address,uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "group-chat/src/interfaces/IGroupChat.sol"
+      ],
+      "interfaces": [
+        "IGroupChatErrors"
+      ],
+      "repo": "group-chat",
+      "revert_sites": [
+        "group-chat/src/GroupChat.sol:794"
+      ],
+      "selector": "0xbd5abe8f",
+      "signature": "BanSourceFailed(address)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "group-chat/src/interfaces/sources/ban/IGovVotedBanSource.sol"
+      ],
+      "interfaces": [
+        "IGovVotedBanSourceErrors"
+      ],
+      "repo": "group-chat",
+      "revert_sites": [
+        "group-chat/src/sources/ban/GovVotedBanSource.sol:47"
+      ],
+      "selector": "0x0197a119",
+      "signature": "BanThresholdTooHigh(uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "group-chat/src/interfaces/sources/ban/IGovVotedBanSource.sol"
+      ],
+      "interfaces": [
+        "IGovVotedBanSourceErrors"
+      ],
+      "repo": "group-chat",
+      "revert_sites": [
+        "group-chat/src/sources/ban/GovVotedBanSource.sol:393",
+        "group-chat/src/sources/ban/GovVotedBanSource.sol:409",
+        "group-chat/src/sources/ban/GovVotedBanSource.sol:417"
+      ],
+      "selector": "0x0410fb1d",
+      "signature": "BanVoteWeightSourceUnavailable(address)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "group-chat/src/interfaces/IGroupChat.sol"
+      ],
+      "interfaces": [
+        "IGroupChatErrors"
+      ],
+      "repo": "group-chat",
+      "revert_sites": [
+        "group-chat/src/GroupChat.sol:138"
+      ],
+      "selector": "0x7dd7c968",
+      "signature": "ChatAlreadyActivated(uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "group-chat/src/interfaces/IGroupChat.sol"
+      ],
+      "interfaces": [
+        "IGroupChatErrors"
+      ],
+      "repo": "group-chat",
+      "revert_sites": [
+        "group-chat/src/GroupChat.sol:244",
+        "group-chat/src/GroupChat.sol:725"
+      ],
+      "selector": "0xba67ced4",
+      "signature": "ChatNotActivated(uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "group-chat/src/interfaces/IGroupChat.sol"
+      ],
+      "interfaces": [
+        "IGroupChatErrors"
+      ],
+      "repo": "group-chat",
+      "revert_sites": [
+        "group-chat/src/GroupChat.sol:251"
+      ],
+      "selector": "0x85a5c617",
+      "signature": "ContentEmpty()"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "group-chat/src/interfaces/IGroupChat.sol"
+      ],
+      "interfaces": [
+        "IGroupChatErrors"
+      ],
+      "repo": "group-chat",
+      "revert_sites": [
+        "group-chat/src/GroupChat.sol:254"
+      ],
+      "selector": "0x9f588bb4",
+      "signature": "ContentTooLong(uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "group-chat/src/interfaces/IGroupChatDelegate.sol"
+      ],
+      "interfaces": [
+        "IGroupChatDelegateErrors"
+      ],
+      "repo": "group-chat",
+      "revert_sites": [
+        "group-chat/src/GroupChatDelegate.sol:132",
+        "group-chat/src/GroupChatDelegate.sol:51"
+      ],
+      "selector": "0x419b0664",
+      "signature": "DelegateIsSelfGroup(uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "group-chat/src/interfaces/IGroupChatDelegate.sol"
+      ],
+      "interfaces": [
+        "IGroupChatDelegateErrors"
+      ],
+      "repo": "group-chat",
+      "revert_sites": [
+        "group-chat/src/GroupChatDelegate.sol:54"
+      ],
+      "selector": "0x00f76a02",
+      "signature": "DelegatorGroupIdNotAllowed(uint256,uint256)"
+    },
+    {
+      "declarations": 4,
+      "files": [
+        "group-chat/src/interfaces/IGroupAdmin.sol",
+        "group-chat/src/interfaces/IGroupChat.sol",
+        "group-chat/src/interfaces/IGroupChatBanList.sol",
+        "group-chat/src/interfaces/IGroupMember.sol"
+      ],
+      "interfaces": [
+        "IGroupAdminErrors",
+        "IGroupChatBanListErrors",
+        "IGroupChatErrors",
+        "IGroupMemberErrors"
+      ],
+      "repo": "group-chat",
+      "revert_sites": [
+        "group-chat/src/GroupAdmin.sol:110",
+        "group-chat/src/GroupChat.sol:871",
+        "group-chat/src/GroupChatBanList.sol:115",
+        "group-chat/src/GroupMember.sol:81"
+      ],
+      "selector": "0x1a494813",
+      "signature": "DuplicateMemberId(uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "group-chat/src/interfaces/sources/scope/IGroupJoinScopeSource.sol"
+      ],
+      "interfaces": [
+        "IGroupJoinScopeSourceErrors"
+      ],
+      "repo": "group-chat",
+      "revert_sites": [
+        "group-chat/src/sources/scope/GroupJoinScopeSource.sol:17"
+      ],
+      "selector": "0x0c1d2ae6",
+      "signature": "GroupActionExecutorNotContract(address)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "group-chat/src/interfaces/IGroupChat.sol"
+      ],
+      "interfaces": [
+        "IGroupChatErrors"
+      ],
+      "repo": "group-chat",
+      "revert_sites": [
+        "group-chat/src/GroupChat.sol:94"
+      ],
+      "selector": "0xdae5425c",
+      "signature": "GroupAddressMismatch(address,address)"
+    },
+    {
+      "declarations": 3,
+      "files": [
+        "group-chat/src/interfaces/IGroupChat.sol",
+        "group-chat/src/interfaces/IGroupChatBanList.sol",
+        "group-chat/src/interfaces/IGroupMember.sol"
+      ],
+      "interfaces": [
+        "IGroupChatBanListErrors",
+        "IGroupChatErrors",
+        "IGroupMemberErrors"
+      ],
+      "repo": "group-chat",
+      "revert_sites": [
+        "group-chat/src/GroupChat.sol:72",
+        "group-chat/src/GroupChatBanList.sol:32",
+        "group-chat/src/GroupMember.sol:26"
+      ],
+      "selector": "0x2c5e1d69",
+      "signature": "GroupAdminNotContract(address)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "group-chat/src/interfaces/sources/ban/IAdminBanSource.sol"
+      ],
+      "interfaces": [
+        "IAdminBanSourceErrors"
+      ],
+      "repo": "group-chat",
+      "revert_sites": [
+        "group-chat/src/sources/ban/AdminBanSource.sol:12"
+      ],
+      "selector": "0x09e82a02",
+      "signature": "GroupBanListNotContract(address)"
+    },
+    {
+      "declarations": 2,
+      "files": [
+        "group-chat/src/interfaces/IGroupAdmin.sol",
+        "group-chat/src/interfaces/IGroupChat.sol"
+      ],
+      "interfaces": [
+        "IGroupAdminErrors",
+        "IGroupChatErrors"
+      ],
+      "repo": "group-chat",
+      "revert_sites": [
+        "group-chat/src/GroupAdmin.sol:29",
+        "group-chat/src/GroupChat.sol:90"
+      ],
+      "selector": "0x2a706f12",
+      "signature": "GroupDelegateNotContract(address)"
+    },
+    {
+      "declarations": 2,
+      "files": [
+        "group-chat/src/interfaces/sources/scope/IGroupJoinScopeSource.sol",
+        "group-chat/src/interfaces/sources/scope/IGroupMemberScope.sol"
+      ],
+      "interfaces": [
+        "IGroupJoinScopeSourceErrors",
+        "IGroupMemberScopeErrors"
+      ],
+      "repo": "group-chat",
+      "revert_sites": [
+        "group-chat/src/sources/scope/GroupJoinScopeSource.sol:14",
+        "group-chat/src/sources/scope/GroupMemberScope.sol:12"
+      ],
+      "selector": "0xc2190309",
+      "signature": "GroupMemberNotContract(address)"
+    },
+    {
+      "declarations": 3,
+      "files": [
+        "group-chat/src/interfaces/IGroupAdmin.sol",
+        "group-chat/src/interfaces/IGroupChatDelegate.sol",
+        "group-chat/src/interfaces/sources/ban/IGovVotedBanSource.sol"
+      ],
+      "interfaces": [
+        "IGovVotedBanSourceErrors",
+        "IGroupAdminErrors",
+        "IGroupChatDelegateErrors"
+      ],
+      "repo": "group-chat",
+      "revert_sites": [
+        "group-chat/src/GroupAdmin.sol:34",
+        "group-chat/src/GroupChatDelegate.sol:27",
+        "group-chat/src/sources/ban/GovVotedBanSource.sol:41"
+      ],
+      "selector": "0xa74ab66c",
+      "signature": "GroupNotContract(address)"
+    },
+    {
+      "declarations": 4,
+      "files": [
+        "group-chat/src/interfaces/IGroupAdmin.sol",
+        "group-chat/src/interfaces/IGroupChat.sol",
+        "group-chat/src/interfaces/IGroupChatDelegate.sol",
+        "group-chat/src/interfaces/sources/ban/IGovVotedBanSource.sol"
+      ],
+      "interfaces": [
+        "IGovVotedBanSourceErrors",
+        "IGroupAdminErrors",
+        "IGroupChatDelegateErrors",
+        "IGroupChatErrors"
+      ],
+      "repo": "group-chat",
+      "revert_sites": [
+        "group-chat/src/GroupAdmin.sol:165",
+        "group-chat/src/GroupChat.sol:843",
+        "group-chat/src/GroupChatDelegate.sol:284",
+        "group-chat/src/GroupChatDelegate.sol:295",
+        "group-chat/src/sources/ban/GovVotedBanSource.sol:390"
+      ],
+      "selector": "0xfeddf96a",
+      "signature": "GroupNotExist(uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "group-chat/src/interfaces/managers/IBaseManager.sol"
+      ],
+      "interfaces": [
+        "IBaseManagerErrors"
+      ],
+      "repo": "group-chat",
+      "revert_sites": [
+        "group-chat/src/managers/BaseManager.sol:110"
+      ],
+      "selector": "0x1e97dff7",
+      "signature": "ManagerDependencyNotContract(address)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "group-chat/src/interfaces/managers/IBaseManager.sol"
+      ],
+      "interfaces": [
+        "IBaseManagerErrors"
+      ],
+      "repo": "group-chat",
+      "revert_sites": [
+        "group-chat/src/managers/BaseManager.sol:63"
+      ],
+      "selector": "0xf4991e70",
+      "signature": "ManagerGroupNameSpaceTooSmall(uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "group-chat/src/interfaces/managers/IBaseManager.sol"
+      ],
+      "interfaces": [
+        "IBaseManagerErrors"
+      ],
+      "repo": "group-chat",
+      "revert_sites": [
+        "group-chat/src/managers/BaseManager.sol:161"
+      ],
+      "selector": "0x4a6464df",
+      "signature": "ManagerGroupNameUnavailable()"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "group-chat/src/interfaces/managers/IBaseManager.sol"
+      ],
+      "interfaces": [
+        "IBaseManagerErrors"
+      ],
+      "repo": "group-chat",
+      "revert_sites": [
+        "group-chat/src/managers/BaseManager.sol:98"
+      ],
+      "selector": "0xeb6a25aa",
+      "signature": "ManagerMintCostChanged(uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "group-chat/src/interfaces/IGroupChat.sol"
+      ],
+      "interfaces": [
+        "IGroupChatErrors"
+      ],
+      "repo": "group-chat",
+      "revert_sites": [
+        "group-chat/src/GroupChat.sol:736"
+      ],
+      "selector": "0x340c79cd",
+      "signature": "MentionAllUnauthorized(uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "group-chat/src/interfaces/IGroupChat.sol"
+      ],
+      "interfaces": [
+        "IGroupChatErrors"
+      ],
+      "repo": "group-chat",
+      "revert_sites": [
+        "group-chat/src/GroupChat.sol:402"
+      ],
+      "selector": "0xf90c4bc6",
+      "signature": "MessageNotFound(uint256,uint256)"
+    },
+    {
+      "declarations": 4,
+      "files": [
+        "group-chat/src/interfaces/IGroupAdmin.sol",
+        "group-chat/src/interfaces/IGroupChat.sol",
+        "group-chat/src/interfaces/IGroupChatBanList.sol",
+        "group-chat/src/interfaces/IGroupMember.sol"
+      ],
+      "interfaces": [
+        "IGroupAdminErrors",
+        "IGroupChatBanListErrors",
+        "IGroupChatErrors",
+        "IGroupMemberErrors"
+      ],
+      "repo": "group-chat",
+      "revert_sites": [
+        "group-chat/src/GroupAdmin.sol:157",
+        "group-chat/src/GroupChat.sol:717",
+        "group-chat/src/GroupChatBanList.sol:147",
+        "group-chat/src/GroupMember.sol:96"
+      ],
+      "selector": "0x20e5d297",
+      "signature": "NotGroupOperator(uint256,uint256)"
+    },
+    {
+      "declarations": 2,
+      "files": [
+        "group-chat/src/interfaces/IGroupChat.sol",
+        "group-chat/src/interfaces/IGroupChatDelegate.sol"
+      ],
+      "interfaces": [
+        "IGroupChatDelegateErrors",
+        "IGroupChatErrors"
+      ],
+      "repo": "group-chat",
+      "revert_sites": [
+        "group-chat/src/GroupChat.sol:122",
+        "group-chat/src/GroupChatDelegate.sol:35"
+      ],
+      "selector": "0x54a55079",
+      "signature": "NotGroupOwner(uint256)"
+    },
+    {
+      "declarations": 3,
+      "files": [
+        "group-chat/src/interfaces/IGroupChat.sol",
+        "group-chat/src/interfaces/IGroupChatDelegate.sol",
+        "group-chat/src/interfaces/sources/ban/IGovVotedBanSource.sol"
+      ],
+      "interfaces": [
+        "IGovVotedBanSourceErrors",
+        "IGroupChatDelegateErrors",
+        "IGroupChatErrors"
+      ],
+      "repo": "group-chat",
+      "revert_sites": [
+        "group-chat/src/GroupChat.sol:115",
+        "group-chat/src/GroupChatDelegate.sol:42",
+        "group-chat/src/sources/ban/GovVotedBanSource.sol:198"
+      ],
+      "selector": "0x33393244",
+      "signature": "NotMemberOwner(uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "group-chat/src/interfaces/IGroupChat.sol"
+      ],
+      "interfaces": [
+        "IGroupChatErrors"
+      ],
+      "repo": "group-chat",
+      "revert_sites": [
+        "group-chat/src/GroupChat.sol:75"
+      ],
+      "selector": "0xff7e866c",
+      "signature": "PhaseNotContract(address)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "group-chat/src/interfaces/IGroupChat.sol"
+      ],
+      "interfaces": [
+        "IGroupChatErrors"
+      ],
+      "repo": "group-chat",
+      "revert_sites": [
+        "group-chat/src/GroupChat.sol:855"
+      ],
+      "selector": "0x54752274",
+      "signature": "PluginNotContract(address)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "group-chat/src/interfaces/IGroupChat.sol"
+      ],
+      "interfaces": [
+        "IGroupChatErrors"
+      ],
+      "repo": "group-chat",
+      "revert_sites": [
+        "group-chat/src/GroupChat.sol:247"
+      ],
+      "selector": "0x27dcd12b",
+      "signature": "PostingNotAllowed(uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "group-chat/src/interfaces/IGroupChat.sol"
+      ],
+      "interfaces": [
+        "IGroupChatErrors"
+      ],
+      "repo": "group-chat",
+      "revert_sites": [
+        "group-chat/src/GroupChat.sol:955"
+      ],
+      "selector": "0xaeb2440f",
+      "signature": "QuotedMessageNotFound(uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "group-chat/src/interfaces/IGroupChat.sol"
+      ],
+      "interfaces": [
+        "IGroupChatErrors"
+      ],
+      "repo": "group-chat",
+      "revert_sites": [
+        "group-chat/src/GroupChat.sol:106"
+      ],
+      "selector": "0xed3ba6a6",
+      "signature": "Reentrant()"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "group-chat/src/interfaces/IGroupChat.sol"
+      ],
+      "interfaces": [
+        "IGroupChatErrors"
+      ],
+      "repo": "group-chat",
+      "revert_sites": [
+        "group-chat/src/GroupChat.sol:389"
+      ],
+      "selector": "0xea74f32b",
+      "signature": "RoundNotStarted(uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "group-chat/src/interfaces/IGroupChat.sol"
+      ],
+      "interfaces": [
+        "IGroupChatErrors"
+      ],
+      "repo": "group-chat",
+      "revert_sites": [
+        "group-chat/src/GroupChat.sol:785"
+      ],
+      "selector": "0xd708ce6e",
+      "signature": "ScopeRejected(address,uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "group-chat/src/interfaces/IGroupChat.sol"
+      ],
+      "interfaces": [
+        "IGroupChatErrors"
+      ],
+      "repo": "group-chat",
+      "revert_sites": [
+        "group-chat/src/GroupChat.sol:791"
+      ],
+      "selector": "0xad763148",
+      "signature": "ScopeSourceFailed(address)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "group-chat/src/interfaces/IGroupChat.sol"
+      ],
+      "interfaces": [
+        "IGroupChatErrors"
+      ],
+      "repo": "group-chat",
+      "revert_sites": [
+        "group-chat/src/GroupChat.sol:849"
+      ],
+      "selector": "0x05dbf84e",
+      "signature": "SourceNotContract(address)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "group-chat/src/interfaces/managers/IBaseManager.sol"
+      ],
+      "interfaces": [
+        "IBaseManagerErrors"
+      ],
+      "repo": "group-chat",
+      "revert_sites": [
+        "group-chat/src/managers/BaseTokenManager.sol:33"
+      ],
+      "selector": "0x518fd31e",
+      "signature": "TokenNotLOVE20(address)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "group-chat/src/interfaces/IGroupChat.sol"
+      ],
+      "interfaces": [
+        "IGroupChatErrors"
+      ],
+      "repo": "group-chat",
+      "revert_sites": [
+        "group-chat/src/GroupChat.sol:864"
+      ],
+      "selector": "0x3f1035e9",
+      "signature": "TooManyMentionedSenderIds(uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "group-chat/src/interfaces/managers/IBaseManager.sol"
+      ],
+      "interfaces": [
+        "IBaseManagerErrors"
+      ],
+      "repo": "group-chat",
+      "revert_sites": [
+        "group-chat/src/managers/BaseManager.sol:79"
+      ],
+      "selector": "0x4cf3a76b",
+      "signature": "UnexpectedManagerERC721Received(address,address,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "group-chat/src/interfaces/sources/ban/IGovVotedBanSource.sol"
+      ],
+      "interfaces": [
+        "IGovVotedBanSourceErrors"
+      ],
+      "repo": "group-chat",
+      "revert_sites": [
+        "group-chat/src/sources/ban/GovVotedBanSource.sol:253",
+        "group-chat/src/sources/ban/GovVotedBanSource.sol:283"
+      ],
+      "selector": "0x4f90f748",
+      "signature": "VoteNotFound(uint256,uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "group-chat/src/interfaces/sources/ban/IGovVotedBanSource.sol"
+      ],
+      "interfaces": [
+        "IGovVotedBanSourceErrors"
+      ],
+      "repo": "group-chat",
+      "revert_sites": [
+        "group-chat/src/sources/ban/GovVotedBanSource.sol:206"
+      ],
+      "selector": "0x96c2cbe9",
+      "signature": "VoteUnchanged(uint256,uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "group-chat/src/interfaces/IGroupAdmin.sol"
+      ],
+      "interfaces": [
+        "IGroupAdminErrors"
+      ],
+      "repo": "group-chat",
+      "revert_sites": [
+        "group-chat/src/GroupAdmin.sol:26"
+      ],
+      "selector": "0x92dbd8d8",
+      "signature": "ZeroMaxAdminIds()"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "group-chat/src/interfaces/IGroupChat.sol"
+      ],
+      "interfaces": [
+        "IGroupChatErrors"
+      ],
+      "repo": "group-chat",
+      "revert_sites": [
+        "group-chat/src/GroupChat.sol:81"
+      ],
+      "selector": "0xbdafa57b",
+      "signature": "ZeroMaxContentLength()"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "group-chat/src/interfaces/IGroupChat.sol"
+      ],
+      "interfaces": [
+        "IGroupChatErrors"
+      ],
+      "repo": "group-chat",
+      "revert_sites": [
+        "group-chat/src/GroupChat.sol:84"
+      ],
+      "selector": "0xc0c81d56",
+      "signature": "ZeroMaxMentionedSenderIds()"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "group-chat/src/interfaces/sources/ban/IGovVotedBanSource.sol"
+      ],
+      "interfaces": [
+        "IGovVotedBanSourceErrors"
+      ],
+      "repo": "group-chat",
+      "revert_sites": [
+        "group-chat/src/sources/ban/GovVotedBanSource.sol:44"
+      ],
+      "selector": "0xa27f04b4",
+      "signature": "ZeroMinSupportToOpposeMultiplier()"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "group-chat/src/interfaces/IGroupChat.sol"
+      ],
+      "interfaces": [
+        "IGroupChatErrors"
+      ],
+      "repo": "group-chat",
+      "revert_sites": [
+        "group-chat/src/GroupChat.sol:78"
+      ],
+      "selector": "0xc7d1b193",
+      "signature": "ZeroPhaseBlocks()"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "group-chat/src/interfaces/managers/IBaseManager.sol"
+      ],
+      "interfaces": [
+        "IBaseManagerErrors"
+      ],
+      "repo": "group-chat",
+      "revert_sites": [
+        "group-chat/src/managers/BaseManager.sol:128"
+      ],
+      "selector": "0x64229cbd",
+      "signature": "ZeroRecentRounds()"
+    },
+    {
+      "declarations": 2,
+      "files": [
+        "group-chat/src/interfaces/IGroupChatBanList.sol",
+        "group-chat/src/interfaces/sources/ban/IGovVotedBanSource.sol"
+      ],
+      "interfaces": [
+        "IGovVotedBanSourceErrors",
+        "IGroupChatBanListErrors"
+      ],
+      "repo": "group-chat",
+      "revert_sites": [
+        "group-chat/src/GroupChatBanList.sol:138",
+        "group-chat/src/sources/ban/GovVotedBanSource.sol:444"
+      ],
+      "selector": "0x16f52684",
+      "signature": "ZeroTargetSenderId()"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "group-chat/src/interfaces/sources/ban/IGovVotedBanSource.sol"
+      ],
+      "interfaces": [
+        "IGovVotedBanSourceErrors"
+      ],
+      "repo": "group-chat",
+      "revert_sites": [
+        "group-chat/src/sources/ban/GovVotedBanSource.sol:222"
+      ],
+      "selector": "0xbeffc593",
+      "signature": "ZeroVoteWeight(uint256,uint256)"
+    }
+  ],
+  "generated_by": "matt-gov/script/check_errors.py",
+  "policy": "local-first: each module declares its own errors; generated catalog only",
+  "shared_signatures": [
+    {
+      "declarations": [
+        "action:IActionExecutorErrors,IActionTargetErrors",
+        "core:ILaunchErrors,IMemberNFTErrors,IMintErrors,IStakeErrors,ISubmitErrors,IVoteErrors"
+      ],
+      "signature": "AlreadyInitialized()"
+    },
+    {
+      "declarations": [
+        "action:IActionExecutorErrors,IActionTargetErrors",
+        "core:ILOVE20TokenErrors,ILaunchErrors,IMemberNFTErrors,IMintErrors,IStakeErrors,ISubmitErrors,IVoteErrors"
+      ],
+      "signature": "DependencyNotContract(address)"
+    },
+    {
+      "declarations": [
+        "action:IGroupRecipientsErrors",
+        "group-chat:IGroupAdminErrors,IGroupChatBanListErrors,IGroupChatErrors,IGroupMemberErrors"
+      ],
+      "signature": "DuplicateMemberId(uint256)"
+    },
+    {
+      "declarations": [
+        "action:IGroupActionManagerErrors,IGroupServiceExecutorErrors",
+        "group-chat:IGovVotedBanSourceErrors,IGroupAdminErrors,IGroupChatDelegateErrors,IGroupChatErrors"
+      ],
+      "signature": "GroupNotExist(uint256)"
+    },
+    {
+      "declarations": [
+        "action:IGroupActionManagerErrors",
+        "core:ISubmitErrors"
+      ],
+      "signature": "NoGovVotes(address)"
+    },
+    {
+      "declarations": [
+        "action:IGroupActionManagerErrors,IGroupServiceExecutorErrors",
+        "group-chat:IGroupChatDelegateErrors,IGroupChatErrors"
+      ],
+      "signature": "NotGroupOwner(uint256)"
+    },
+    {
+      "declarations": [
+        "action:IActionExecutorErrors,IActionTargetErrors",
+        "core:ILaunchErrors,IMintErrors,IStakeErrors,ISubmitErrors,IVoteErrors",
+        "group-chat:IGovVotedBanSourceErrors,IGroupChatDelegateErrors,IGroupChatErrors"
+      ],
+      "signature": "NotMemberOwner(uint256)"
+    },
+    {
+      "declarations": [
+        "action:IActionExecutorErrors",
+        "core:IStakeErrors",
+        "group-chat:IGroupChatErrors"
+      ],
+      "signature": "RoundNotStarted(uint256,uint256)"
+    },
+    {
+      "declarations": [
+        "action:IActionTargetErrors,IGroupActionExecutorErrors,IGroupServiceExecutorErrors,ILpExecutorErrors",
+        "core:IVoteErrors"
+      ],
+      "signature": "TargetDataLengthMismatch(uint256,uint256)"
+    }
+  ],
+  "summary": {
+    "declarations": 277,
+    "repos": {
+      "action": 96,
+      "core": 109,
+      "group-chat": 72,
+      "libs": 0
+    },
+    "signatures": 224,
+    "unique_signatures": 213
+  }
+}

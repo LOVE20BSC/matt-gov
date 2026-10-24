@@ -25,7 +25,7 @@ proposalVotes * 1e18 >= totalVotes * proposalRewardMinVoteRatio
 
 `isProposalIdWithReward` 无论已准备或未准备，均读取 Vote 的 `votesNumByProposalId(tokenAddress, round, proposalId)` 与 `votesNum(tokenAddress, round)` 实时判定。准备后若 `eligibleProposalVotes == 0` 可快速返回 `false`（全轮无达标 Proposal 的缓存优化）。已铸造不影响返回值（仍返回 `true`）。本入口不做 Proposal 存在性校验；无效 `proposalId` 返回 `false`。
 
-三个奖励比例参数统一 `1e18` 精度，例如门槛 `5e16` 表示 5%。`init` 允许 `proposalRewardMinVoteRatio` 为 `0..1e18`，超过 `1e18` 回滚 `InvalidAmount()`；零门槛仍要求 Proposal 有正数票。账本始终满足：
+三个奖励比例参数统一 `1e18` 精度，例如门槛 `5e16` 表示 5%。`init` 允许 `proposalRewardMinVoteRatio` 为 `0..1e18`，超过 `1e18` 回滚 `InvalidProposalRewardMinVoteRatio(proposalRewardMinVoteRatio)`；零门槛仍要求 Proposal 有正数票。账本始终满足：
 
 ```text
 rewardReserved >= rewardMinted + rewardBurned
@@ -75,12 +75,12 @@ if eligibleProposalVotes == 0:
 
 | 条件 | 回滚 |
 | --- | --- |
-| 读取 `(target, targetMode) = ISubmit(submitAddress).proposalTarget(tokenAddress, proposalId)`；`msg.sender != target` | `UnauthorizedCaller()` |
-| `recipient == address(0)` | `InvalidAddress()` |
-| `!IVote(voteAddress).isRoundEnded(round)` | `RoundNotReadyToMint()` |
-| 已结算（独立状态位） | `AlreadyMinted()` |
-| `eligibleProposalVotes[tokenAddress][round] == 0` | `NoRewardAvailable()` |
-| Proposal 不达标 | `NoRewardAvailable()` |
+| 读取 `(target, targetMode) = ISubmit(submitAddress).proposalTarget(tokenAddress, proposalId)`；`msg.sender != target` | `NotProposalTarget(msg.sender, target)` |
+| `recipient == address(0)` | `ZeroRecipientAddress()` |
+| `!IVote(voteAddress).isRoundEnded(round)` | `RoundNotEnded(round)` |
+| 已结算（独立状态位） | `ProposalRewardAlreadyMinted(tokenAddress, round, proposalId)` |
+| `eligibleProposalVotes[tokenAddress][round] == 0` | `ProposalRewardUnavailable(tokenAddress, round, proposalId)` |
+| Proposal 不达标 | `ProposalRewardUnavailable(tokenAddress, round, proposalId)` |
 
 通过后写状态并铸造：
 
@@ -90,7 +90,7 @@ if eligibleProposalVotes == 0:
 
 `eligibleProposalVotes == 0` 在准备阶段已取消完整 Proposal 池（见上），该 Round 任何 Proposal 都不能结算；必须在除法前判零，否则会 panic。
 
-代币铸给 `recipient`，`rewardMinted` 按实际铸造量累计，并以 `ProposalRewardMinted` 留痕；此后该 Proposal 一律回滚 `AlreadyMinted()`。`recipient` 由被授权的 Target 指定，因此行动类 Target 可以直接让 Mint 铸给绑定的 Executor，不必先铸给自己再转一次；行动侧见 [行动铸造链路](../action/07-minting.md#铸造链路)。某个行动的激励无法分配时不在这里作废：全链路没有销毁路径，该笔激励永久停留在未结算状态、预留不释放（详见下段）。无合格 Proposal 的完整池已在准备时取消，不能再次销毁。
+代币铸给 `recipient`，`rewardMinted` 按实际铸造量累计，并以 `ProposalRewardMinted` 留痕；此后该 Proposal 一律回滚 `ProposalRewardAlreadyMinted(tokenAddress, round, proposalId)`。`recipient` 由被授权的 Target 指定，因此行动类 Target 可以直接让 Mint 铸给绑定的 Executor，不必先铸给自己再转一次；行动侧见 [行动铸造链路](../action/07-minting.md#铸造链路)。某个行动的激励无法分配时不在这里作废：全链路没有销毁路径，该笔激励永久停留在未结算状态、预留不释放（详见下段）。无合格 Proposal 的完整池已在准备时取消，不能再次销毁。
 
 ## 治理结算
 
@@ -101,11 +101,11 @@ if eligibleProposalVotes == 0:
 | 条件 | 回滚 |
 | --- | --- |
 | `IMemberNFT(memberNFTAddress).ownerOf(memberId) != msg.sender` | `NotMemberOwner(uint256 memberId)` |
-| `recipient == address(0)` | `InvalidAddress()` |
-| `!IVote(voteAddress).isRoundEnded(round)` | `RoundNotReadyToMint()` |
-| 已铸造（独立状态位） | `AlreadyMinted()` |
-| `memberVotes == 0` | `NoRewardAvailable()` |
-| `voteReward + boostReward + burnReward == 0` | `NoRewardAvailable()` |
+| `recipient == address(0)` | `ZeroRecipientAddress()` |
+| `!IVote(voteAddress).isRoundEnded(round)` | `RoundNotEnded(round)` |
+| 已铸造（独立状态位） | `MemberRewardAlreadyMinted(tokenAddress, round, memberId)` |
+| `memberVotes == 0` | `MemberRewardUnavailable(tokenAddress, round, memberId)` |
+| `voteReward + boostReward + burnReward == 0` | `MemberRewardUnavailable(tokenAddress, round, memberId)` |
 
 通过后写状态、铸造、销毁（若有溢出）、发射额度、发射事件。代币铸给 `recipient`（必须非零；鉴权不变，仍是 `ownerOf(memberId) == msg.sender`，由当前 NFT 持有人指定收款地址）。使用以下公式，金额除法向下取整：
 
@@ -142,7 +142,7 @@ else:
 
 未准备查询返回的金额是按**当前状态计算的投影值**，实际结算金额以准备时冻结的池值为准。查询与结算之间若有新铸造消耗供应量上限，查询投影可能高于最终准备结果；若有准备其他轮次预留池值，查询投影可能低于最终结果。
 
-`mintGovReward` 与 `mintProposalReward` 在结算量为 0 时拒绝 `NoRewardAvailable`，重复保护使用独立状态位，不能用金额是否大于零判断。
+`mintGovReward` 与 `mintProposalReward` 在结算量为 0 时拒绝，分别回滚 `MemberRewardUnavailable(tokenAddress, round, memberId)` 与 `ProposalRewardUnavailable(tokenAddress, round, proposalId)`，重复保护使用独立状态位，不能用金额是否大于零判断。
 
 `mintProposalReward` 没有销毁分支：Mint 只支付，也**不判断**某笔激励该不该作废——那个判断属于各 Executor 的业务账本，而 Executor 侧没有任何销毁入口。无法分配的行动激励因此永久停留在未结算状态：`rewardReserved` 不释放，后续轮次的 `rewardAvailable` 相应被压低，代币永不铸出。`RewardBurned` 只记录 Mint 自己会计意义上的取消（准备期整池取消与治理溢出）。
 
@@ -169,7 +169,7 @@ count = min(floor(launchCredit / threshold), Launch.MAX_LAUNCH_COUNT() - issuedL
 launchCredit -= count * threshold
 ```
 
-`maxSupply` 和 `totalSupplyBeforeMint` 都取自该社区代币；`LAUNCH_RATIO` 使用 `1e18` 精度。`LAUNCH_RATIO` 和 `MAX_LAUNCH_COUNT` 由 `Launch.init` 校验为非零（`ZeroAmount`），Mint 不重复校验。
+`maxSupply` 和 `totalSupplyBeforeMint` 都取自该社区代币；`LAUNCH_RATIO` 使用 `1e18` 精度。`LAUNCH_RATIO` 和 `MAX_LAUNCH_COUNT` 由 `Launch.init` 校验为非零（`ZeroLaunchRatio` / `ZeroMaxLaunchCount`），Mint 不重复校验。
 
 次数消耗或融合不释放累计上限；达到 `MAX_LAUNCH_COUNT` 后不再产生新次数或累计新额度，已有整数次数仍可使用。首币达到上限时根级伴生同步停止（不变式：根级累计恒等于首币累计，见 [Launch 的根级次数与伴生规则](08-launch.md#根级次数与伴生规则)）。
 
@@ -196,11 +196,10 @@ launchCredit -= count * threshold
 
 事件与错误定义见 [`IMint.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/IMint.sol)。
 
-- 初始化时拒绝四个依赖地址为零（`InvalidAddress()`）、从 `voteAddress` 派生的 `phaseAddress` 为零（`InvalidAddress()`）和两项激励比例之和超过 `1e18`（`InvalidAmount()`）；校验顺序按 [通用规则](01-common-rules.md#初始化与安全)，先初始化状态、后参数校验。`maxGovBoostRewardMultiplier` 须满足 `0 < x ≤ 1000`（`InvalidAmount()`），这是整数倍数上限，与比例刻度无关；`proposalRewardMinVoteRatio` 须在 `0..1e18` 范围，超出上界回滚 `InvalidAmount()`。
-- `phaseAddress` 在 `init` 时从 Vote 读取一次并缓存，经同名 getter 暴露，供发布前检查脚本核对与 Vote 一致；`voteAddress` 须先完成 init，否则其 `phaseAddress` 为零、`init` 回滚 `InvalidAddress()`。轮次结束判定直读缓存的 Phase（`round != 0 && IPhase(phaseAddress).currentPhase() > round`），语义与 `Vote.isRoundEnded` 一致，不再经 Vote 二跳。
+- 初始化时四个依赖与从 `voteAddress` 派生的 `phaseAddress` 均要求有代码（零地址同条件，`DependencyNotContract(address)`），且两项激励比例之和不得超过 `1e18`（`InvalidRoundRewardRatios(roundRewardGovRatio, roundRewardProposalRatio)`）；校验顺序按 [通用规则](01-common-rules.md#初始化与安全)，先初始化状态、后参数校验。`maxGovBoostRewardMultiplier` 须满足 `0 < x ≤ 1000`（`InvalidMaxGovBoostRewardMultiplier(maxGovBoostRewardMultiplier)`），这是整数倍数上限，与比例刻度无关；`proposalRewardMinVoteRatio` 须在 `0..1e18` 范围，超出上界回滚 `InvalidProposalRewardMinVoteRatio(proposalRewardMinVoteRatio)`。
+- `phaseAddress` 在 `init` 时从 Vote 读取一次并缓存，经同名 getter 暴露，供发布前检查脚本核对与 Vote 一致；`voteAddress` 须先完成 init，否则其 `phaseAddress` 为零或无代码、`init` 回滚 `DependencyNotContract(phaseAddress)`。轮次结束判定直读缓存的 Phase（`round != 0 && IPhase(phaseAddress).currentPhase() > round`），语义与 `Vote.isRoundEnded` 一致，不再经 Vote 二跳。
 - Mint 的内部准备路径只在首次准备时扫描 Vote 本轮有票 Proposal；实现和验收至少覆盖约 300 个 Proposal 的准备交易。准备成功后，`eligibleProposalVotes[tokenAddress][round]` 只读，不得再次读取 Vote 列表或改写。零额事件行为见[事件](#事件)节。
 - 各项分配向下取整产生的极小舍入余数不单独维护，也不追加结算状态；累计账本只记录实际铸造和明确销毁的额度。
-- `NotEnoughReward()` 与 `NotEnoughRewardToBurn()` 是防御性检查；在正确配置与正常流程下不可达（账本不变式 `rewardReserved >= rewardMinted + rewardBurned` 始终成立）。`_proposalRewardCalculation` 的 `:391 eligibleVotes == 0` 早退、`_govRewardCalculation` 的 `:434 totalVotes == 0` 早退、`_updateLaunchCredit` 的 `:547 threshold == 0` 早退均为防御性分支，在当前账本不变式下不可达（`:391` 能进入时必有 `proposalVotes > 0` 且 `proposalVotes >= minVotes`，从而 `eligibleVotes > 0`；`:434` 能进入时必有 `memberVotes > 0`；`:547` 能进入时必有 `mintAmount > 0` 从而 `maxSupply - totalSupplyBeforeMint > 0`）。
 - 历史来源 `LOVE20TKM/core/src/LOVE20Mint.sol` 只作为行为参考，不替代本文件的账本规则。
 
 验收见 [Core 验收](09-testing.md)。

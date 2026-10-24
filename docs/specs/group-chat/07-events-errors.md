@@ -10,17 +10,30 @@
 
 ## 错误
 
-拒绝不存在的群或成员、重复激活、越权管理、非 owner 发言、未激活、关闭发言、空或超长正文、提及超限/重复、无效引用、非法 mentionAll、无代码规则地址、scope/ban 拒绝和重入。
+错误采用 local-first 模型：每个合约/模块只在自己的 `I<Name>Errors` 接口声明错误，不设中央枚举或全局错误接口，不跨仓导入错误。一个错误只对应一个条件；payload 由主体键和条件值组成，定长，不含字符串或数组。外部依赖的代码检查用 `*NotContract(address dependency)` 并携带失败地址；OZ 标准错误按继承使用；只有不可达分支才用 `assert(false)`，不用裸 `require` / `revert` / 字符串。
+
+| 模块 | 错误 |
+| --- | --- |
+| GroupChat 构造与槽位 | `GroupAdminNotContract(address dependency)`、`GroupDelegateNotContract(address dependency)`、`PhaseNotContract(address dependency)`、`SourceNotContract(address dependency)`、`PluginNotContract(address dependency)`、`GroupAddressMismatch(address expected, address actual)`、`ZeroPhaseBlocks()`、`ZeroMaxContentLength()`、`ZeroMaxMentionedSenderIds()` |
+| GroupChat 状态与鉴权 | `GroupNotExist(uint256 groupId)`、`ChatAlreadyActivated(uint256 groupId)`、`ChatNotActivated(uint256 groupId)`、`PostingNotAllowed(uint256 groupId)`、`RoundNotStarted(uint256 requiredRound, uint256 currentRound)`、`NotGroupOwner(uint256 groupId)`、`NotGroupOperator(uint256 groupId, uint256 operatorId)`、`NotMemberOwner(uint256 memberId)`、`Reentrant()` |
+| GroupChat 内容与规则 | `ContentEmpty()`、`ContentTooLong(uint256 length, uint256 maxLength)`、`TooManyMentionedSenderIds(uint256 length, uint256 maxLength)`、`DuplicateMemberId(uint256 memberId)`、`MessageNotFound(uint256 groupId, uint256 messageId)`、`QuotedMessageNotFound(uint256 groupId, uint256 messageId)`、`MentionAllUnauthorized(uint256 groupId, uint256 senderId)`、`ScopeRejected(address source, uint256 groupId, uint256 senderId)`、`BanRejected(address source, uint256 groupId, uint256 senderId)`、`ScopeSourceFailed(address source)`、`BanSourceFailed(address source)` |
+| GroupAdmin | `GroupDelegateNotContract(address dependency)`、`GroupNotContract(address dependency)`、`ZeroMaxAdminIds()`、`NotGroupOperator(uint256 groupId, uint256 operatorId)`、`GroupNotExist(uint256 groupId)`、`DuplicateMemberId(uint256 memberId)`、`AdminIdsLimitExceeded(uint256 groupId, uint256 count, uint256 max)` |
+| GroupMember / GroupChatBanList | `GroupAdminNotContract(address dependency)`、`NotGroupOperator(uint256 groupId, uint256 operatorId)`、`ZeroTargetSenderId()`、`DuplicateMemberId(uint256 memberId)` |
+| GroupChatDelegate | `GroupNotExist(uint256 groupId)`、`GroupNotContract(address dependency)`、`NotGroupOwner(uint256 groupId)`、`NotMemberOwner(uint256 memberId)`、`DelegatorGroupIdNotAllowed(uint256 groupId, uint256 delegateId)`、`DelegateIsSelfGroup(uint256 groupId)` |
+| 内置 Scope/Ban Source | `GroupMemberNotContract(address dependency)`、`GroupActionExecutorNotContract(address dependency)`、`GroupBanListNotContract(address dependency)`、`GroupNotContract(address dependency)`、`GroupNotExist(uint256 groupId)`、`BanVoteWeightSourceUnavailable(address source)`、`ZeroTargetSenderId()`、`ZeroVoteWeight(uint256 groupId, uint256 voterId)`、`VoteUnchanged(uint256 groupId, uint256 targetSenderId, uint256 voterId)`、`VoteNotFound(uint256 groupId, uint256 targetSenderId, uint256 voterId)`、`BanThresholdTooHigh(uint256 value)`、`ZeroMinSupportToOpposeMultiplier()`、`NotMemberOwner(uint256 memberId)` |
+| Manager | `ManagerDependencyNotContract(address dependency)`、`AlreadyManaged(uint256 groupId)`、`ZeroRecentRounds()`、`ManagerGroupNameUnavailable()`、`ManagerMintCostChanged(uint256 expected, uint256 actual)`、`TokenNotLOVE20(address token)`、`UnexpectedManagerERC721Received(address operator, address from, uint256 tokenId)`、`ManagerGroupNameSpaceTooSmall(uint256 maxNameLength, uint256 required)`、`ActionNotExist(address tokenAddress, uint256 actionId)`；付款/授权失败走 OZ 标准 `SafeERC20FailedOperation(address token)` |
+
+Group Chat 各接口不继承标准错误：`ownerOf` 的 `ERC721NonexistentToken` 按失败契约透传登记，来源 ABI 为 MemberNFT；Manager 的 `SafeERC20FailedOperation` 通过库进入 ABI，token 的 ERC20 标准错误由 token ABI 拥有。
 
 存在性按角色区分：缺失群回 `GroupNotExist(groupId)`；缺失成员角色 ID（sender、member、admin、delegate、mention、voter）回 `ERC721NonexistentToken(id)`，成员/管理员的 `0` 值按缺失处理，都不借用 `GroupNotExist`。`delegateId = 0` 在 `setDelegateId` / `canSetDelegateTo` 中表示撤销或无委托，按[生命周期](01-lifecycle.md)处理，不按缺失回滚。人工黑名单/GovVoted 的目标 sender 只要求非零，不要求 NFT 存在，见 [Chat 类型](05-chat-types.md#黑名单)。
 
 所有权与操作者按角色区分：成员 NFT 所有权统一回 `NotMemberOwner(memberId)`（发言传 `senderId`，delegate 写入口传 `delegateId`，GovVoted voter 传 `voterId`）。群 owner 非 owner 回 `NotGroupOwner(groupId)`；owner/delegate/admin 的复合群鉴权回 `NotGroupOperator(groupId, operatorId)`。delegate 查询缺失 ID 时按[生命周期](01-lifecycle.md)返回无 delegate，不回滚。
 
-数组内重复成员 ID 回 `DuplicateMemberId(memberId)`；`delegateId == groupId` 回 `DelegateIsSelfGroup(groupId)`。
+数组内重复成员 ID 回 `DuplicateMemberId(memberId)`；`delegateId == groupId` 回 `DelegateIsSelfGroup(groupId)`；白名单不允许的 delegate 回 `DelegatorGroupIdNotAllowed(groupId, delegateId)`。`setDelegateId` 先校验这两项再判断幂等，因此无效请求不会被现有相同记录静默吞掉。
 
-旧 `NotChatOwner`、`SenderNotGroupOwner`、`NotChatOwnerOrDelegateIdOwner`、`UnauthorizedGroup*Manager`、`DuplicateMentionedSenderId`、`DuplicateAdminId`、`DelegateIdCannotBeGroupId`、`TargetMemberIdZero`、`SenderNotMemberOwner(uint256)`、`SenderNotDelegateOwner()` 已从接口删除；不得重新引入。
+旧 `NotChatOwner`、`SenderNotGroupOwner`、`NotChatOwnerOrDelegateIdOwner`、`UnauthorizedGroup*Manager`、`DuplicateMentionedSenderId`、`DuplicateAdminId`、`DelegateIdCannotBeGroupId`、`TargetMemberIdZero`、`SenderNotMemberOwner(uint256)`、`SenderNotDelegateOwner()` 已从接口删除；不得重新引入。旧 `InvalidAddress`、`*AddressHasNoCode`、`InvalidMessageId`、`InvalidQuotedMessageId` 及其它无区分度的旧错误名同样删除，不保留兼容别名。
 
-视图行为：`is*`/`can*` 谓词对缺失成员或 delegate 返回 false/0，delegate 枚举查询返回空且 total=0。GroupChat 与 GroupChatDelegate 的群作用域记录/枚举查询缺失群回 `GroupNotExist(groupId)`；成员名单、黑名单等模块的枚举查询按各自规格返回空/0。`canPost` 的 reasonCode 是旧 ABI 的封闭枚举例外，缺失 sender 仍返回 `GroupNotExist.selector`（selector 随错误签名更新），见[发言](03-posting.md#预检查)；不得据此扩展其它入口。
+视图行为：`is*`/`can*` 谓词对缺失成员或 delegate 返回 false/0，delegate 枚举查询返回空且 total=0。GroupChat 与 GroupChatDelegate 的群作用域记录/枚举查询缺失群回 `GroupNotExist(groupId)`；成员名单、黑名单等模块的枚举查询按各自规格返回空/0。`canPost` 返回 `IGroupChat.PostRejectionReason` 封闭枚举，缺失 sender 返回 `SenderNotExist`，不再以错误 selector 作数据，见[发言](03-posting.md#预检查)；不得据此扩展其它入口。
 
 错误定义见 [`IGroupChat.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/IGroupChat.sol)、[`IGroupChatDelegate.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/IGroupChatDelegate.sol)、[`IGroupAdmin.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/IGroupAdmin.sol)、[`IGroupMember.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/IGroupMember.sol)、[`IGroupChatBanList.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/IGroupChatBanList.sol)、[`IGovVotedBanSource.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/sources/ban/IGovVotedBanSource.sol)、[`IBaseManager.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/managers/IBaseManager.sol)、[`IBaseTokenScopeManager.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/managers/IBaseTokenScopeManager.sol) 和 [`IBaseTokenActionScopeManager.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/managers/IBaseTokenActionScopeManager.sol)。
 
@@ -30,8 +43,8 @@
 
 ## 迁移规则
 
-保留旧 `LOVE20TKM/group-chat/src/interfaces/` 中非地址主体功能的事件、错误名/参数和 indexed 字段；只对身份替换所影响的 operator/voter 参数改为 memberId，调用地址可继续作审计。删除默认身份和地址目标路径专属事件/错误，不新增一套平行行为。
+保留旧 `LOVE20TKM/group-chat/src/interfaces/` 中非地址主体功能的事件名、参数、indexed 字段；只对身份替换所影响的 operator/voter 参数改为 memberId，调用地址可继续作审计。错误按本页的 local-first 模型重命名并补齐 payload，不保留旧错误名或兼容别名。删除默认身份和地址目标路径专属事件/错误，不新增一套平行行为。
 
-保留 Activate、SetPostingAllowed、SetScopeSource、SetBanSource、SetBeforePostPlugin、SetAfterPostPlugin、PostMessage、MentionSenderId、MentionAll 和 FailAfterPostPlugin；后者 errorData 仍为捕获到的 bytes。scope/ban 的返回 false 和外部调用失败继续分别报 Rejected 与 SourceFailed，不能误改为静默放行。
+保留 Activate、SetPostingAllowed、SetScopeSource、SetBanSource、SetBeforePostPlugin、SetAfterPostPlugin、PostMessage、MentionSenderId、MentionAll 和 FailAfterPostPlugin；`FailAfterPostPlugin` 记录捕获错误的 `keccak256`、字节长度与首 4 字节 selector（`errorHash`、`errorLength`、`errorSelector`），不写入无界 `bytes`。scope/ban 的返回 false 和外部调用失败继续分别报 `ScopeRejected` / `BanRejected` 与 `ScopeSourceFailed` / `BanSourceFailed`，不能误改为静默放行。
 
 验收见 [Group Chat 验收](08-testing.md)。

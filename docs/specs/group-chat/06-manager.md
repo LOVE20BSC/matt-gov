@@ -4,7 +4,7 @@
 
 保留 TokenMainManager、TokenGovManager、TokenActionMainManager、TokenActionGovManager；每个 Manager 可以管理多个 Chat，不为每个 Chat 部署新 Manager。四个 Manager 同时实现 `IBanVoteWeightSource`，为托管群提供封禁权重；`GovVotedBanSource` 从群 NFT 的持有者解析权重源，因此托管是治理加权封禁成立的前提（见 [类型与资格](05-chat-types.md)）。
 
-同一个 token（token Manager）或 token + actionId（action Manager）只能在同一 Manager 中激活一次。保留 tokenOfGroup/groupIdOfToken、actionOfGroup/groupIdOfAction 及批量、分页查询；行动定位使用已有 `actionOfGroup(groupId)` 返回 token 和 actionId，不另加重复的 getActionId。
+同一个 token（token Manager）或 token + actionId（action Manager）只能在同一 Manager 中激活一次，重复激活回 `AlreadyManaged(groupId)`（`groupId` 为已存在的托管群）。保留 tokenOfGroup/groupIdOfToken、actionOfGroup/groupIdOfAction 及批量、分页查询；行动定位使用已有 `actionOfGroup(groupId)` 返回 token 和 actionId，不另加重复的 getActionId。行动不存在或 actionId 为 0 回 `ActionNotExist(tokenAddress, actionId)`；`RECENT_ROUNDS` 为 0 回 `ZeroRecentRounds()`。
 
 Token Manager 与 Action Manager 的接口分别见 [`IBaseTokenScopeManager.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/managers/IBaseTokenScopeManager.sol) 和 [`IBaseTokenActionScopeManager.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/managers/IBaseTokenActionScopeManager.sol)，两者共享的槽位 getter 与错误在 [`IBaseManager.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/managers/IBaseManager.sol)。两类接口不合并，避免单个 Manager 实现另一类 Manager 的无关方法。
 
@@ -12,10 +12,12 @@ Token Manager 与 Action Manager 的接口分别见 [`IBaseTokenScopeManager.sol
 
 保留旧 BaseManager 的激活交易：
 
-1. 校验 LOVE20 token、存在的 Proposal 及未重复激活，生成唯一名称；保留名称前缀、ASCII 清理/截断、12 位十六进制后缀和最多 8 次重试，长度读取 MemberNFT 配置。MemberNFT 的 `MAX_NAME_LENGTH` 至少为 17 字节（1 字节分隔符 + 12 位十六进制后缀 + 4 字节 Test 前缀），否则 Manager 构造即回滚 `ManagerGroupNameSpaceTooSmall`。
-2. Manager 计算铸造费用，从激活者 msg.sender 转入首币并按需授权 MemberNFT；零费用不转账。付款/授权失败或实际费用与报价不一致则回滚。
+1. 校验 LOVE20 token、存在的 Proposal 及未重复激活，生成唯一名称；保留名称前缀、ASCII 清理/截断、12 位十六进制后缀和最多 8 次重试，长度读取 MemberNFT 配置。代币 `symbol()` 清理后为空时回退到固定标签 `TOKEN`；`symbol()` 调用失败属于协议依赖异常，原样冒泡（首币同样）。MemberNFT 的 `MAX_NAME_LENGTH` 至少为 17 字节（1 字节分隔符 + 12 位十六进制后缀 + 4 字节 Test 前缀），否则 Manager 构造即回滚 `ManagerGroupNameSpaceTooSmall(maxNameLength, required)`。8 次重试仍取不到可用名称回 `ManagerGroupNameUnavailable()`。
+2. Manager 计算铸造费用，从激活者 msg.sender 转入首币并按需授权 MemberNFT；零费用不转账。付款/授权失败由 `SafeERC20` 回滚 `SafeERC20FailedOperation(token)`，实际费用与报价不一致回 `ManagerMintCostChanged(expected, actual)`；非 LOVE20 token 回 `TokenNotLOVE20(token)`。
 3. Manager 铸造并持有 NFT，以其 memberId 为 groupId 记录业务映射；scope 使用 Manager 自身，其他槽位使用构造时固定的模块，然后激活同一个 GroupChat 合约。
 4. 任一步失败整体回滚，付款、NFT、映射和激活不能半完成；激活者只是付费者，不因付费获得 Chat 管理权。
+
+构造时必填依赖无代码（零地址同条件）回 `ManagerDependencyNotContract(dependency)`，并携带失败地址。`onERC721Received` 收到非协议 NFT 合约或非零 `from` 时回 `UnexpectedManagerERC721Received(operator, from, tokenId)`。
 
 BSC MemberNFT 的返回值/费用查询 ABI 与旧 group 不完全相同，迁移时适配接口并保留付款金额校验，不新增补贴、退款账户或代付凭证。
 

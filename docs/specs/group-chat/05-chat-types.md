@@ -19,11 +19,11 @@
 
 ## 黑名单
 
-`targetSenderId` 只要求非零，不要求 MemberNFT 存在（允许预黑名单）；`0` 回 `TargetSenderIdZero`。
+`targetSenderId` 只要求非零，不要求 MemberNFT 存在（允许预黑名单）；`0` 回 `ZeroTargetSenderId()`。
 
 `voteWeightOf(groupId, voterId)` 使用上表权重；两类 token Manager 和两类 action Manager 的 `totalVoteWeight(groupId)` 都取所属社区的当前总有效治理票，不取行动总票数或创建 Round。
 
-权重源不是独立配置项，而是群 NFT 的当前持有者：`GovVotedBanSource` 以 `MemberNFT.ownerOf(groupId)` 解析权重合约，再调用其 `voteWeightOf` / `totalVoteWeight`。四类 Manager 在托管群 NFT 的同时实现 `IBanVoteWeightSource`，因此只有 Manager 托管的 Chat 具备治理加权封禁。owner 型群的持有者（EOA，或未实现该接口的合约钱包）调用写票必然回滚 `BanVoteWeightSourceUnavailable`，只能用人工黑名单；`setBanSource` 只校验地址有代码，误配不会在配置期报错。
+权重源不是独立配置项，而是群 NFT 的当前持有者：`GovVotedBanSource` 以 `MemberNFT.ownerOf(groupId)` 解析权重合约，再调用其 `voteWeightOf` / `totalVoteWeight`。四类 Manager 在托管群 NFT 的同时实现 `IBanVoteWeightSource`，因此只有 Manager 托管的 Chat 具备治理加权封禁。群不存在回 `GroupNotExist(groupId)`；群存在但持有者是 EOA，或未实现该接口的合约钱包时，写票回 `BanVoteWeightSourceUnavailable(source)`（`source` 为解析出的失败权重源地址），只能用人工黑名单；`setBanSource` 只校验地址有代码，误配不会在配置期报错。
 
 GovVotedBanSource 的接口见 [`IGovVotedBanSource.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/sources/ban/IGovVotedBanSource.sol)，其 voter 和 target 均使用 `memberId`。
 
@@ -35,7 +35,7 @@ supportWeight > opposeWeight * 10
 supportWeight * 1e18 >= totalVoteWeight * 3e15
 ```
 
-同时满足才进入黑名单，保留严格比较、0.3% 门槛、stateVersion、无变化和无投票记录的旧处理。投票/撤票/刷新后同步目标名单；`isBanned` 读取已结算名单，不全量扫描重算。跨轮或 Stake 变化不会自动刷新其他人的票。
+同时满足才进入黑名单，保留严格比较、0.3% 门槛、stateVersion 及无变化/无投票记录的处理：重复投票回 `VoteUnchanged(groupId, targetSenderId, voterId)`，撤票或刷新找不到记录回 `VoteNotFound(groupId, targetSenderId, voterId)`，投票权重为 0 回 `ZeroVoteWeight(groupId, voterId)`。构造时 `minSupportToOpposeMultiplier == 0` 回 `ZeroMinSupportToOpposeMultiplier()`，`banThresholdRatio > 1e18` 回 `BanThresholdTooHigh(value)`。投票/撤票/刷新后同步目标名单；`isBanned` 读取已结算名单，不全量扫描重算。跨轮或 Stake 变化不会自动刷新其他人的票。
 
 查询视图对 source 无代码的处理：单条 `voteStatusBySenderId` 返回 `(false, 0, 0)`；批量 `voteStatusBySenderIds`、`isBanned`、`isSenderIdBannedBatch` 不检查 source，直接读已结算名单与权重。已结算值照常可读，权重查询才需要 source 合约存在。
 

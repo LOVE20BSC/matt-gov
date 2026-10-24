@@ -23,15 +23,18 @@ Launch 负责首币部署、LOVE20Token 创建、基础发射与次数账本。T
 | 条件 | 回滚错误 |
 | --- | --- |
 | 重复初始化 | `AlreadyInitialized()` |
-| 任一地址参数（含首币 `distributor`）为零 | `InvalidAddress()` |
-| `launchRatio == 0`、`maxLaunchCount == 0` 或 `tokenSymbolLength == 0` | `ZeroAmount("launchRatio")` / `ZeroAmount("maxLaunchCount")` / `ZeroAmount("tokenSymbolLength")` |
-| `launchRatio > 1e18` | `InvalidAmount()`；恰好 `1e18` 合法 |
-| `launchAmount == 0` | `ZeroAmount("launchAmount")` |
-| `launchAmount > maxSupply` | `InvalidAmount()` |
-| 首币名称或符号为空 | `EmptyString("name")` / `EmptyString("symbol")`，属于 `init` 参数校验 |
-| 首币建池返回零地址 | `InvalidAddress()` |
+| `mintAddress`、`memberNFTAddress`、`rootParentTokenAddress`、`pairFactoryAddress` 任一为零或无代码 | `DependencyNotContract(address)`，载荷为失败依赖 |
+| 首币 `distributor == address(0)` | `ZeroDistributorAddress()` |
+| `launchRatio == 0` | `ZeroLaunchRatio()` |
+| `launchRatio > 1e18` | `InvalidLaunchRatio(launchRatio)`；恰好 `1e18` 合法 |
+| `maxLaunchCount == 0` | `ZeroMaxLaunchCount()` |
+| `tokenSymbolLength == 0` | `ZeroTokenSymbolLength()` |
+| `launchAmount == 0` | `ZeroLaunchAmount()` |
+| `launchAmount > maxSupply` | `InvalidLaunchAmount(launchAmount, maxSupply)` |
+| 首币名称或符号为空 | `TokenNameEmpty()` / `TokenSymbolEmpty()`，属于 `init` 参数校验 |
+| 首币建池时工厂返回零地址 | `PairCreationFailed(rootParentTokenAddress)`；正常 UniswapV2 工厂返回 pair 或回滚 |
 
-`launchAmount` 必须大于零，`maxSupply` 必须不小于 `launchAmount`，即 `0 < launchAmount <= maxSupply`；两者相等是合法配置。零供应代币不可创建：LOVE20Token 构造函数独立拒绝零 `initialSupply`，绕过 `init` 直接部署同样回滚 `InvalidSupply()`。
+`launchAmount` 必须大于零，`maxSupply` 必须不小于 `launchAmount`，即 `0 < launchAmount <= maxSupply`；两者相等是合法配置。零供应代币不可创建：LOVE20Token 构造函数独立拒绝零 `initialSupply`，绕过 `init` 直接部署同样回滚 `ZeroInitialSupply()`。
 
 首币符号不套用 `TOKEN_SYMBOL_LENGTH` 校验：旧实现的第一个代币走 `tokensCount() == 0` 分支，跳过符号校验与测试网 `Test` 前缀（名称仍按 `tokenSymbol + "@" + parentTokenSymbol` 拼接）；BSC 版由 `init` 参数直接给定首币名称和符号，因此首币符号长度可以与配置的子币符号长度不同。
 
@@ -54,7 +57,7 @@ Launch 维护四个查询账本，都由上述两个入口写入：
 
 分页语义与 `Phase.syncObservations` 一致：`offset` 大于或等于总数时返回空数组与真实 `totalCount`，不校验也不回滚；`limit` 大于剩余条数时按剩余条数返回；`reverse` 为 `true` 时按从新到旧返回。未登记过的父币地址返回空数组与 `0`。分页查询都不限制写入条数，链上不提供全量遍历，只按页读取。
 
-子币符号必须全局唯一：`launchToken` 用施加 `Test` 前缀后的最终符号查询 `tokenAddressBySymbol`，已存在则回滚 `TokenSymbolExists()`；首币符号在 `init` 登记时不需要冲突校验。
+子币符号必须全局唯一：`launchToken` 用施加 `Test` 前缀后的最终符号查询 `tokenAddressBySymbol`，已存在则回滚 `TokenSymbolAlreadyExists(keccak256(bytes(finalSymbol)))`；首币符号在 `init` 登记时不需要冲突校验。
 
 ## 发射次数账本
 
@@ -67,7 +70,7 @@ Launch 只保存“成员可用整数次数”和“社区累计已产生次数�
 | `MAX_LAUNCH_COUNT` | 每社区累计次数上限；根级累计由伴生不变式约束在同一上限内 |
 
 - `launchCount` 与 `issuedLaunchCount` 对任意 `tokenAddress`、`memberId` 可查询；未登记的 token 返回 `0`，不校验也不回滚（根父币未登记但承载根级次数，返回真实账本值）。
-- `addLaunchCount` 只允许 Mint 调用，其他调用者回滚 `UnauthorizedCaller()`。校验顺序固定为鉴权 → 参数 → 存在性 → 账本：`count` 必须大于 `0`，否则回滚 `CountMustBeGreaterThanZero()`；`tokenAddress` 必须是已登记 LOVE20 代币，否则回滚 `InvalidTokenAddress()`——根父币不经过本入口，其次数只由首币伴生在同一调用内追加；必须满足 `issuedLaunchCount + count <= MAX_LAUNCH_COUNT`，否则回滚 `LaunchCountLimitReached()`（Mint 已按剩余额度截断，此处是兜底）。上限判断不得依赖加法结果：任何使累计次数超过上限的 `count`（含极端大值）都必须回滚 `LaunchCountLimitReached()`，不能以算术溢出回滚收场。
+- `addLaunchCount` 只允许 Mint 调用，其他调用者回滚 `NotMintContract(msg.sender)`。校验顺序固定为鉴权 → 参数 → 存在性 → 账本：`count` 必须大于 `0`，否则回滚 `ZeroCount()`；`tokenAddress` 必须是已登记 LOVE20 代币，否则回滚 `TokenNotRegistered(tokenAddress)`——根父币不经过本入口，其次数只由首币伴生在同一调用内追加；必须满足 `issuedLaunchCount + count <= MAX_LAUNCH_COUNT`，否则回滚 `LaunchCountLimitExceeded(tokenAddress, count, MAX_LAUNCH_COUNT - issuedLaunchCount)`（载荷为请求量与剩余额度；Mint 已按剩余额度截断，此处是兜底）。上限判断不得依赖加法结果：任何使累计次数超过上限的 `count`（含极端大值）都必须回滚 `LaunchCountLimitExceeded(...)`，不能以算术溢出回滚收场，错误载荷也不得计算 `issuedLaunchCount + count`。
 - 只增加 `launchCount` 与 `issuedLaunchCount`，与治理激励铸造整体回滚；次数被消耗或融合都不释放累计上限。
 - 只有 `init` 校验初始化状态：`addLaunchCount`、`mergeLaunchCount` 和 `launchToken` 不重复校验 `initialized`（未成功初始化的版本不会发布，见 [通用规则](01-common-rules.md#初始化与安全)），它们的失败由各自的权限、参数与存在性校验决定。
 
@@ -76,7 +79,7 @@ Launch 只保存“成员可用整数次数”和“社区累计已产生次数�
 根父币（Router.WETH() 读取）维度的次数称为根级次数：它用于发射与首币平级、父币同为根父币的同级代币。根级次数只作用于首币：首币每次通过 `addLaunchCount` 产生整数次数时，Launch 在同一调用内把同一 `count` 1:1 记入 `launchCount[rootParentTokenAddress][memberId]` 与 `issuedLaunchCount[rootParentTokenAddress]`，并追加一条 `LaunchCountAdded`（`tokenAddress` 为根父币）；其他代币产生次数时不伴生，其他代币也不能产生根级次数。
 
 - 伴生与首币次数增加发生在同一笔交易：`addLaunchCount` 由 Mint 调用并与治理激励铸造整体回滚，根级伴生同样整体回滚。
-- 根父币维度不由 `addLaunchCount` 的外部入口写入：Mint 直接以根父币为 `tokenAddress` 调用会按存在性校验回滚 `InvalidTokenAddress()`。
+- 根父币维度不由 `addLaunchCount` 的外部入口写入：Mint 直接以根父币为 `tokenAddress` 调用会按存在性校验回滚 `TokenNotRegistered(tokenAddress)`。
 - 不变式：`issuedLaunchCount[rootParentTokenAddress] == issuedLaunchCount[firstTokenAddress]`，且两者都不超过 `MAX_LAUNCH_COUNT`。根级发行因此自动有界，不引入独立的根级上限参数。
 - 首币由 `init` 创建、不产生发射次数，根级累计从 `0` 开始；次数消耗与融合都不触发伴生，也不改变 `issuedLaunchCount`。
 
@@ -89,11 +92,11 @@ Launch 只保存“成员可用整数次数”和“社区累计已产生次数�
 | 条件 | 回滚错误 |
 | --- | --- |
 | `sourceMemberId == targetMemberId` | `SourceAndTargetMemberIdsMustBeDifferent(sourceMemberId, targetMemberId)` |
-| `count == 0` | `CountMustBeGreaterThanZero()` |
-| `tokenAddress` 不是已登记 LOVE20 代币且不是根父币 | `InvalidTokenAddress()` |
+| `count == 0` | `ZeroCount()` |
+| `tokenAddress` 不是已登记 LOVE20 代币且不是根父币 | `TokenNotRegistered(tokenAddress)` |
 | 源或目标 `memberId` 不存在（含 `0`） | MemberNFT 的标准错误（`ownerOf` 回滚） |
 | 调用者不持有源 MemberNFT | `NotMemberOwner(sourceMemberId)` |
-| 源可用次数小于 `count` | `NotEnoughLaunchCount()` |
+| 源可用次数小于 `count` | `InsufficientLaunchCount(sourceMemberId, available, count)` |
 
 不存在的 `memberId` 由 MemberNFT 的标准错误经 `ownerOf` 回滚，Launch 不为其新增自有错误；`memberId` 不从 `0` 开始，`0` 永远无效。
 
@@ -105,7 +108,7 @@ Launch 只保存“成员可用整数次数”和“社区累计已产生次数�
 
 `memberId` 必须由调用者当前持有；不用地址默认 NFT 映射。发射只检查账本余量和 NFT 当前所有权，不要求推举资格：旧 `remainingLaunchCount` 中的 `Submit.canSubmit` 门槛已取消，`submitAddress` 依赖同步删除。名称沿用旧 Launch 的 `tokenSymbol + "@" + parentTokenSymbol` 生成方式。
 
-`tokenSymbol` 按 UTF-8 字节校验：字节长度必须等于部署配置的 `TOKEN_SYMBOL_LENGTH`；首字符必须为 ASCII `A-Z` 或汉字；其余字符必须为 ASCII `A-Z`、`0-9` 或汉字。汉字限定为 CJK 统一表意文字基本区 `U+4E00`–`U+9FFF` 的三字节编码；中英数字可混排，纯汉字符号要求配置长度为 3 的倍数（如配置 6 对应两个汉字）。长度口径与旧实现一致（UTF-8 字节数），字符集在旧实现的 ASCII 基础上扩展出汉字。其余任何字节序列——其他多字节字符、不完整的 UTF-8、超出基本区的码点——都回滚 `InvalidTokenSymbol()`。
+`tokenSymbol` 按 UTF-8 字节校验：字节长度必须等于部署配置的 `TOKEN_SYMBOL_LENGTH`；首字符必须为 ASCII `A-Z` 或汉字；其余字符必须为 ASCII `A-Z`、`0-9` 或汉字。汉字限定为 CJK 统一表意文字基本区 `U+4E00`–`U+9FFF` 的三字节编码；中英数字可混排，纯汉字符号要求配置长度为 3 的倍数（如配置 6 对应两个汉字）。长度口径与旧实现一致（UTF-8 字节数），字符集在旧实现的 ASCII 基础上扩展出汉字。字节长度不等于配置值时回滚 `InvalidTokenSymbolLength(length, TOKEN_SYMBOL_LENGTH)`；长度正确但字符集不合法时，其余任何字节序列——其他多字节字符、不完整的 UTF-8、超出基本区的码点——都回滚 `InvalidTokenSymbolCharacters()`。
 
 测试网前缀沿用旧实现：先按配置长度校验 `tokenSymbol`，再读取前缀判定符号——父币为根父币的根级发射取 `firstTokenAddress` 的符号，其余发射取 `parentTokenAddress` 的符号；判定符号前 4 字节等于 `Test` 时给符号加上 `Test` 前缀，然后生成名称。该前缀施加在校验之后，因此测试网子币的实际符号可以超出配置长度；首币不施加该前缀。根级发射改用首币符号判定，因为根父币符号跨网络共用，不能标记测试网。
 
@@ -125,15 +128,16 @@ distributor 自行实现领取与查询逻辑，`claim(tokenAddress)` 只是建�
 
 | 条件 | 回滚错误 |
 | --- | --- |
-| `tokenSymbol` 不合法 | `InvalidTokenSymbol()` |
-| `distributor == address(0)` | `InvalidAddress()` |
-| `Callback` 但 `distributor` 不是合约 | `InvalidDistributorMode()` |
-| `parentTokenAddress` 不是已登记 LOVE20 代币且不是根父币（含零地址） | `InvalidParentToken()` |
+| `tokenSymbol` 字节长度不等于 `TOKEN_SYMBOL_LENGTH` | `InvalidTokenSymbolLength(length, TOKEN_SYMBOL_LENGTH)` |
+| `tokenSymbol` 字符集不合法 | `InvalidTokenSymbolCharacters()` |
+| `distributor == address(0)` | `ZeroDistributorAddress()` |
+| `Callback` 但 `distributor` 不是合约 | `DistributorNotContract(distributor)` |
+| `parentTokenAddress` 不是已登记 LOVE20 代币且不是根父币（含零地址） | `ParentTokenNotRegistered(parentTokenAddress)` |
 | `memberId` 不存在（含 `0`） | MemberNFT 的标准错误（`ownerOf` 回滚） |
 | 调用者不持有 `memberId` | `NotMemberOwner(memberId)` |
-| `launchCount[parentTokenAddress][memberId] == 0` | `NotEnoughLaunchCount()` |
-| 施加 `Test` 前缀后的最终符号已登记 | `TokenSymbolExists()` |
-| 子币建池返回零地址 | `InvalidAddress()` |
+| `launchCount[parentTokenAddress][memberId] == 0` | `InsufficientLaunchCount(memberId, 0, 1)` |
+| 施加 `Test` 前缀后的最终符号已登记 | `TokenSymbolAlreadyExists(keccak256(bytes(finalSymbol)))` |
+| 建池时工厂返回零地址 | `PairCreationFailed(parentTokenAddress)`；正常 UniswapV2 工厂返回 pair 或回滚 |
 
 名称只按 `tokenSymbol + "@" + parentTokenSymbol` 生成，不另存名称账本；根级发射的 `parentTokenSymbol` 取根父币的实际符号（按链读取，不写死）。
 
@@ -163,10 +167,12 @@ Launch 的事件和错误定义见 [`ILaunch.sol`](https://github.com/LOVE20BSC/
 
 LOVE20Token 使用构造函数接收 `name`、`symbol`、`initialSupply`、`maxSupply`、`distributor`、`minter` 和 `parentTokenAddress`；构造函数不属于 Solidity `interface` ABI。其运行时函数、事件和错误以 [`ILOVE20Token.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/ILOVE20Token.sol) 为准。
 
+LOVE20Token 的错误走本地具体错误：零 `initialSupply` 回 `ZeroInitialSupply()`；`initialSupply` 大于 `maxSupply` 回 `InvalidInitialSupply(value, maxSupply)`；零 `distributor` 回 `ZeroDistributorAddress()`；`minter`、`parentTokenAddress` 零地址或无代码统一回 `DependencyNotContract(address)`；`mint` 超出剩余供应回 `MaxSupplyExceeded(amount, remaining)`；非 minter 回 `NotMinter(msg.sender)`。标准 ERC20 错误由 `IERC20Errors` 继承进入 ABI，不重复声明。
+
 - LOVE20Token 不提供 `init`；构造函数直接接收 `name`、`symbol`、`initialSupply`、`maxSupply`、`distributor`、`minter` 和 `parentTokenAddress`。
 - `MemberNFT.init(firstToken)` 由 `Launch.init` 在创建首币时同步调用完成；MemberNFT 不保存 Launch 地址，费用代币地址是唯一外部地址依赖。
 - `mintAddress` 在 `init` 后不可变更，并作为此后每个 LOVE20Token 的 `minter`。升级 Mint 需要连同 `Launch` 一起重部署，已发射代币的 `minter` 不会随之改写。
 
-旧来源 `LOVE20TKM/core/src/LOVE20Launch.sol`（提交见[旧代码基线](../../repositories.md#旧代码基线)）已逐项核对。BSC 版**保留**的旧行为：`isLOVE20Token` 的登记判定、`tokenSymbol` 的字节长度口径（字符集在本版扩展出汉字，见[普通发射](#普通发射)）、`tokenSymbol + "@" + parentTokenSymbol` 名称拼法与测试网 `Test` 前缀、`launchToken` 的“检查—创建—登记”外部调用骨架、代币列表与某社区子币列表的链上枚举（旧 `tokensCount`/`tokensAtIndex`、`childTokensCount`/`childTokensAtIndex` 改为分页查询）、符号到地址账本（旧 `tokenAddressBySymbol` 与 `TokenSymbolExists` 唯一性校验），以及代币地址到父币地址（旧 `LaunchInfo.parentTokenAddress`）。其余整块删除：公平发射募资与认购领取（`contribute`/`withdraw`/`claim`/`claimInfo`）、`LaunchInfo` 的其余 10 个字段、`CLAIM_DELAY_BLOCKS`，以及按发射者或募资状态划分的其余枚举（`childTokensByLauncher*`、`launching*`、`launched*`、`participatedTokens*`）。次数阈值换算、额度余数结转、社区上限、次数融合和根级次数伴生都不在旧实现中，属新设计，见 [Mint 的发射额度](07-mint.md#发射额度的生成) 与[根级次数与伴生规则](#根级次数与伴生规则)。
+旧来源 `LOVE20TKM/core/src/LOVE20Launch.sol`（提交见[旧代码基线](../../repositories.md#旧代码基线)）已逐项核对。BSC 版**保留**的旧行为：`isLOVE20Token` 的登记判定、`tokenSymbol` 的字节长度口径（字符集在本版扩展出汉字，见[普通发射](#普通发射)）、`tokenSymbol + "@" + parentTokenSymbol` 名称拼法与测试网 `Test` 前缀、`launchToken` 的“检查—创建—登记”外部调用骨架、代币列表与某社区子币列表的链上枚举（旧 `tokensCount`/`tokensAtIndex`、`childTokensCount`/`childTokensAtIndex` 改为分页查询）、符号到地址账本（旧 `tokenAddressBySymbol` 与 `TokenSymbolAlreadyExists` 唯一性校验），以及代币地址到父币地址（旧 `LaunchInfo.parentTokenAddress`）。其余整块删除：公平发射募资与认购领取（`contribute`/`withdraw`/`claim`/`claimInfo`）、`LaunchInfo` 的其余 10 个字段、`CLAIM_DELAY_BLOCKS`，以及按发射者或募资状态划分的其余枚举（`childTokensByLauncher*`、`launching*`、`launched*`、`participatedTokens*`）。次数阈值换算、额度余数结转、社区上限、次数融合和根级次数伴生都不在旧实现中，属新设计，见 [Mint 的发射额度](07-mint.md#发射额度的生成) 与[根级次数与伴生规则](#根级次数与伴生规则)。
 
 验收见 [Core 验收](09-testing.md)。

@@ -104,6 +104,7 @@ rg -n 'core\.md|action\.md|group-chat\.md|launchFirstToken|initializeGenesis|TOD
 
 - [ ] 每个公开函数有完整 Solidity 签名
 - [ ] 参数、返回值、可见性、权限、事件和错误均有说明（说明写在模块规格与对账文档里，接口文件本身不写 NatSpec，见[开发规范](dev-standards.md#41-接口文件与声明)）
+- [ ] 错误按[错误与回滚标准](error-standards.md)审查：本模块自己的 `I<Name>Errors`、一条件一错误、主体键+值载荷、无裸 `require`/`revert`、外部边界分类；必填合约依赖只保留 `*NotContract(address)`，`Zero<Field>` 仅用于非合约参数；`python3 matt-gov/script/check_errors.py --check` 为 0 violations（需 Foundry `cast` 在 PATH）
 - [ ] 只读查询说明空值、越界、未开始和不存在对象的行为
 - [ ] 集合读取符合[集合读取函数的设计原则](dev-standards.md#43-集合读取函数)：集合有界才提供全量读取，分页只回定长数据，函数名体现载荷（`Ids`/`Infos`）与筛选条件（`By<key>`/`ByIds`）
 - [ ] 按键取单值的新增函数能说出保留理由（新键 / 该键上无其他入口 / 旧接口保留成员），不是已有入口的投影；按显式 ID 数组批量读的函数写明下标对齐、无效即回滚不补空

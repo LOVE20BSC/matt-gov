@@ -113,8 +113,8 @@
 - 首币发 `TokenLaunched` 且 `launcherMemberId = 0`；一次成功发射只发一个 `TokenLaunched`，不另发消耗事件
 - 只有 `init` 校验初始化状态，`launchToken`、`mergeLaunchCount`、`addLaunchCount` 不重复校验
 - `tokens`/`childTokens` 按创建顺序分页返回且包含首币，`childTokens(rootParentTokenAddress)` 返回首币与根级同级币，`offset` 越界返回空数组与真实总数
-- 施加 `Test` 前缀后的最终符号重复时回滚 `TokenSymbolExists()`，`tokenAddressBySymbol` 命中已登记符号
-- 子币符号按 UTF-8 字节长度（等于 `TOKEN_SYMBOL_LENGTH`）与字符集校验：首字符为 ASCII `A-Z` 或 CJK 基本区汉字（`U+4E00`–`U+9FFF`），其余为 ASCII `A-Z`、`0-9` 或汉字；其他字节序列回滚 `InvalidTokenSymbol()`
+- 施加 `Test` 前缀后的最终符号重复时回滚 `TokenSymbolAlreadyExists(keccak256(bytes(finalSymbol)))`，`tokenAddressBySymbol` 命中已登记符号
+- 子币符号按 UTF-8 字节长度（等于 `TOKEN_SYMBOL_LENGTH`）与字符集校验：首字符为 ASCII `A-Z` 或 CJK 基本区汉字（`U+4E00`–`U+9FFF`），其余为 ASCII `A-Z`、`0-9` 或汉字；长度不符回滚 `InvalidTokenSymbolLength(length, TOKEN_SYMBOL_LENGTH)`，字符集不符回滚 `InvalidTokenSymbolCharacters()`
 - `parentTokenOf` 对首币返回 `rootParentTokenAddress`、对子币（含根级同级币）返回其父币、对未登记地址返回零地址；`isLOVE20Token` 与它一致
 
 ### 根级次数与同级币发射
@@ -272,7 +272,7 @@
 ### GroupService 结算
 **覆盖要求**：覆盖服务代币与行动代币相同或为其直接父币、非直接关系拒绝；覆盖只有当轮已加入服务 Proposal 的群 owner/公共验证者候选 MemberNFT 才能按人结算、未加入角色份额不重分配、所有 GroupAction 总激励作为分母（未准备时按实时账本计算，行动代币轮次被 Mint 准备后才缓存分母；owner 权重按群切片 floor，未覆盖的分母份额不重分配、留在服务合约）、源行动激励查询自行处理验证条件、公共验证者按工作量直接分配，以及按确认后的 owner 治理票占比处理超额销毁；同时覆盖加入资格两类分支（社区激活链群 / 服务轮社区行动集内有效候选申请）、`1e18` 乘数精度、100% 二次分配不下溢，以及逐笔付款与销毁事件可还原全部资产变化。
 
-`totalGroupActionReward == 0` 时不执行除法；覆盖该情形下任何角色结算都回滚 `NoRewardAvailable`、整笔预留激励停留在未结算状态（无销毁入口、预留不释放），owner 超额销毁由 Executor 直接调用服务代币 `burn`。
+`totalGroupActionReward == 0` 时不执行除法；覆盖该情形下任何角色结算都回滚 `MemberActionRewardUnavailable(tokenAddress, actionId, memberId, round)`、整笔预留激励停留在未结算状态（无销毁入口、预留不释放），owner 超额销毁由 Executor 直接调用服务代币 `burn`。
 
 **测试方式**：
 - 单元测试：`action/test/GroupServiceSettlement.t.sol`（治理上限、零分母结算与精度边界）、`action/test/GroupServiceEvents.t.sol`（事件还原）和 `action/test/GroupServiceRecipients.t.sol`（二次分配）的服务结算场景

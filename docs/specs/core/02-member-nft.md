@@ -31,7 +31,7 @@
 
 UTF-8 有效性：拒绝无效起始字节 `0x80-0xC1` 与 `0xF5-0xFF`、过长编码、UTF-16 代理对（U+D800–U+DFFF）、大于 U+10FFFF 的码点和不完整的多字节序列。
 
-唯一性与规范化：仅把 ASCII 大写 `A-Z` 转为小写 `a-z`，不做 Unicode casefold，也不做 NFC/NFKC 规范化；其余字符按 UTF-8 字节精确比较。合约保存铸造时的原始名称用于显示，映射键为规范化后的名称。空名称、超长、含禁止字符和名称重复分别回滚 [接口](#接口) 中对应的错误。
+唯一性与规范化：仅把 ASCII 大写 `A-Z` 转为小写 `a-z`，不做 Unicode casefold，也不做 NFC/NFKC 规范化；其余字符按 UTF-8 字节精确比较。合约保存铸造时的原始名称用于显示，映射键为规范化后的名称。空名称回 `NameEmpty()`；含禁止字符回 `NameInvalidCharacters()`；超长回 `NameTooLong(length, MAX_NAME_LENGTH)`；名称重复回 `NameAlreadyExists(existingId)`。
 
 ## 铸造
 
@@ -41,7 +41,7 @@ UTF-8 有效性：拒绝无效起始字节 `0x80-0xC1` 与 `0xF5-0xFF`、过长�
 
 `init` 无调用者限制，部署与初始化分开的交易存在被抢先绑定错误地址的窗口；对外开放前调用并不能防止抢跑。发布前必须核对初始化状态、首币地址和全部费用参数，错误版本不得发布，需重新部署并核对受影响的依赖；初始化后没有修复或改绑入口。
 
-费用使用首个 LOVE20 代币，计算如下。参数含义见 [初始化参数](00-protocol-model.md#初始化参数)，构造时四个参数均必须大于零；最大名称长度通过构造参数固定，BSC 部署配置使用 `32`。非法构造参数和零首币地址直接回滚，不新增专用错误。
+费用使用首个 LOVE20 代币，计算如下。参数含义见 [初始化参数](00-protocol-model.md#初始化参数)，构造时四个参数均必须大于零；最大名称长度通过构造参数固定，BSC 部署配置使用 `32`。构造参数分别为零时回 `ZeroBaseDivisor()`、`ZeroBytesThreshold()`、`ZeroMultiplier()`、`ZeroMaxNameLength()`；首币地址零地址或无代码回 `DependencyNotContract(address)`。
 
 ```text
 unmintedSupply = maxSupply - totalSupply
@@ -65,7 +65,7 @@ mintCost = byteLength >= bytesThreshold
 
 对外接口见 [`IMemberNFT.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/IMemberNFT.sol)。它沿用旧 `LOVE20Group`，仅去除 group 字样重命名；本合约即 Member 本体，标识符不再重复 member。初始化与铸造接口见 [铸造](#铸造)。
 
-独有函数、事件和错误见 [`IMemberNFT.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/IMemberNFT.sol)；Core 接口继承 `IERC721Enumerable`，实现合约同时继承 `ERC721Enumerable` 和 `IMemberNFT`，由编译器核验接口实现。完整调用 ABI 使用目标合约编译产物，包含 OZ 提供的标准函数、事件和错误。
+独有函数、事件和错误见 [`IMemberNFT.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/IMemberNFT.sol)；Core 接口继承 `IERC721Enumerable`，实现合约同时继承 `ERC721Enumerable` 和 `IMemberNFT`，由编译器核验接口实现。完整调用 ABI 使用目标合约编译产物，包含 OZ 提供的标准函数、事件和错误；扣费调用的 LOVE20Token 的 ERC20 标准错误由 LOVE20Token ABI 拥有，`SafeERC20FailedOperation` 通过库进入 MemberNFT ABI。
 
 ## 持有人枚举
 
