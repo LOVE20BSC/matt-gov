@@ -20,7 +20,7 @@
 | [07-events-errors.md](07-events-errors.md) | 事件、错误与安全 |
 | [08-testing.md](08-testing.md) | 迁移等价性与删除项验收 |
 
-旧 ABI 的身份参数按本目录映射，其他功能和行为保留；需要的是接口对齐与回归，不是新增恢复机制或重设计业务。已确认的 BSC 时间和行动依赖适配不撤销，差异见 [迁移清单](../CHANGES-group-chat.md)。
+旧 ABI 的身份参数按本目录映射；托管群命名按 [Manager](06-manager.md) 的 v2 模板，构造期静态校验按 dev-standards §5.7 下沉到部署脚本；其余功能和行为保留。需要的是接口对齐与回归，不是新增恢复机制或重设计业务。已确认的 BSC 时间和行动依赖适配不撤销，差异见 [迁移清单](../CHANGES-group-chat.md)。
 
 [组织约束](../../../CONTEXT.md)
 

@@ -14,7 +14,7 @@
 
 - 持币判断为 `token.balanceOf(MemberNFT.ownerOf(senderId)) > 0`，任一最小单位即满足；身份解析改为 memberId，“删除地址主体”不删除 ERC20 余额读取。
 - 治理票和 Proposal 投票直接按 memberId 查询；普通/扩展行动的参与来源统一适配为 ActionTarget，不保留旧 Join/ExtensionCenter 地址主体查询。
-- `RECENT_ROUNDS > 0`；保留旧部署值 3。检查当前治理 Round 并逐轮向前，遇 BSC 最小有效 Round 1 停止；有一轮给该行动投票即满足资格。它是发言资格窗口，不是黑名单权重窗口。
+- `RECENT_ROUNDS > 0`；当前部署值 3。检查当前治理 Round 并逐轮向前，遇 BSC 最小有效 Round 1 停止；有一轮给该行动投票即满足资格。它是发言资格窗口，不是黑名单权重窗口。
 - GroupMemberScope 只查名单；组合资格源先查名单，再查 `IGroupActionIndexes.isGroupMember(groupId, senderId)`。标准 GroupAction Executor 覆盖其所有社区和行动。
 
 ## 黑名单
@@ -35,7 +35,7 @@ supportWeight > opposeWeight * 10
 supportWeight * 1e18 >= totalVoteWeight * 3e15
 ```
 
-同时满足才进入黑名单，保留严格比较、0.3% 门槛、stateVersion 及无变化/无投票记录的处理：重复投票回 `VoteUnchanged(groupId, targetSenderId, voterId)`，撤票或刷新找不到记录回 `VoteNotFound(groupId, targetSenderId, voterId)`，投票权重为 0 回 `ZeroVoteWeight(groupId, voterId)`。构造时 `minSupportToOpposeMultiplier == 0` 回 `ZeroMinSupportToOpposeMultiplier()`，`banThresholdRatio > 1e18` 回 `BanThresholdTooHigh(value)`。投票/撤票/刷新后同步目标名单；`isBanned` 读取已结算名单，不全量扫描重算。跨轮或 Stake 变化不会自动刷新其他人的票。
+同时满足才进入黑名单，保留严格比较、0.3% 门槛、stateVersion 及无变化/无投票记录的处理：重复投票回 `VoteUnchanged(groupId, targetSenderId, voterId)`，撤票或刷新找不到记录回 `VoteNotFound(groupId, targetSenderId, voterId)`，投票权重为 0 回 `ZeroVoteWeight(groupId, voterId)`。`minSupportToOpposeMultiplier > 0` 与 `banThresholdRatio <= 1e18`（0 合法）是部署期静态不变量，由部署脚本在广播前校验（dev-standards §5.7）。投票/撤票/刷新后同步目标名单；`isBanned` 读取已结算名单，不全量扫描重算。跨轮或 Stake 变化不会自动刷新其他人的票。
 
 查询视图对 source 无代码的处理：单条 `voteStatusBySenderId` 返回 `(false, 0, 0)`；批量 `voteStatusBySenderIds`、`isBanned`、`isSenderIdBannedBatch` 不检查 source，直接读已结算名单与权重。已结算值照常可读，权重查询才需要 source 合约存在。
 

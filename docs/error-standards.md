@@ -26,10 +26,10 @@
 | `Zero<Field>` | `ZeroTokenAmount()`、`ZeroRecipientAddress()` | 非合约参数的零值（金额/计数/ID/recipient/target）；必填合约依赖用 `*NotContract` |
 | `Invalid<Field>` | `InvalidFeeSettlementRatio(value)`、`InvalidTokenSymbolLength(length, expected)` | 值/格式/范围非法 |
 | `<Subject>Exceeded` | `MaxSupplyExceeded(requested, remaining)`、`GroupCapacityExceeded(groupId, actual, limit)`、`LaunchCountLimitExceeded(tokenAddress, requested, remaining)` | 数值/额度/数量上限 |
-| `Too<Size>` | `ContentTooLong(length, max)`、`TooManyRecipients(count, max)`、`BanThresholdTooHigh(value)` | 长度/基数/标量阈值等尺寸语义 |
+| `Too<Size>` | `ContentTooLong(length, max)`、`TooManyRecipients(count, max)` | 长度/基数等尺寸语义 |
 | `Not<Role>Owner/Operator` | `NotMemberOwner(memberId)`、`NotGroupOperator(groupId, operatorId)` | 角色鉴权 |
 | `Already<State>` | `AlreadyJoined(token, action, member)`、`ChatAlreadyActivated(groupId)` | 重复状态/操作 |
-| `*NotContract` | `GroupDelegateNotContract(address)`、`PhaseNotContract(address)`、`DependencyNotContract(address)` | 依赖无代码（字段级或模块级） |
+| `*NotContract` | `SourceNotContract(address)`、`PluginNotContract(address)`、`DependencyNotContract(address)` | 依赖无代码（合约内字段级或模块级） |
 | `*Unavailable` / `*Failed` | `BanVoteWeightSourceUnavailable(source)` | 外部依赖失败 |
 | `*Rejected` | `ScopeRejected(source, groupId, senderId)` | 策略拒绝 |
 
@@ -38,7 +38,7 @@
 - 新错误禁用 `Only*`、`Must*`、`Cannot*`；`Invalid*` 只用于值本身非法，不用于零值、不存在、未授权或状态不符。
 - 数值/额度/数量上限统一用 `<Subject>Exceeded`；禁止 `Exceeds...` 前缀、`Exceed<Verb>` 动词式名和 `*LimitReached`。
 - 尺寸类条件统一用 `Too<Size>`（`TooLong`/`TooMany`/`TooHigh`/`TooSmall`/`TooShort`/`TooLarge`），不与上限错误混用；缺口统一用 `Insufficient*`。
-- 必填合约依赖的条件是“有代码”，不是“非零”：只保留 `*NotContract(address)`，零地址由 `*NotContract(0)` 覆盖，不再并行声明 `Zero*Address`。字段级 `<Field>NotContract` 与同模块一个 `DependencyNotContract(address)` 均可；后者用地址定位失败依赖。可选依赖零值表示禁用，只在非零时校验代码。`Zero<Field>` 仅用于非合约参数。
+- 合约内必填依赖（含 `init`）的条件是“有代码”，不是“非零”：只保留 `*NotContract(address)`，零地址由 `*NotContract(0)` 覆盖，不再并行声明 `Zero*Address`。字段级 `<Field>NotContract` 与同模块一个 `DependencyNotContract(address)` 均可；后者用地址定位失败依赖。可选依赖零值表示禁用，只在非零时校验代码。`Zero<Field>` 仅用于非合约参数。
 - 错误名描述失败状态，不写“请执行 X”的规则句。
 - 错误名英文；规格与目录中文；不使用超过四个词的介词短语。
 
@@ -125,5 +125,5 @@
 - [ ] 写入口有拒绝表；鉴权最先；无 no-op 先于校验。
 - [ ] 外部边界分类明确；catch 只转译预期 selector；事件错误数据有界。
 - [ ] 标准错误由产生者拥有；调用方未重复继承透传错误，失败契约登记来源与白名单例外；无死声明；目录与检查器通过。
-- [ ] 必填合约依赖只声明 `*NotContract(address)`，没有并行的 `Zero*Address`；`Zero<Field>` 只用于非合约参数。
+- [ ] 合约内必填依赖（含 `init`）只声明 `*NotContract(address)`，没有并行的 `Zero*Address`；`Zero<Field>` 只用于非合约参数。
 - [ ] 每个可达错误有 selector + 载荷测试；mock 与真实接口一致。

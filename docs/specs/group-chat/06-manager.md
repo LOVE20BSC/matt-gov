@@ -4,7 +4,7 @@
 
 保留 TokenMainManager、TokenGovManager、TokenActionMainManager、TokenActionGovManager；每个 Manager 可以管理多个 Chat，不为每个 Chat 部署新 Manager。四个 Manager 同时实现 `IBanVoteWeightSource`，为托管群提供封禁权重；`GovVotedBanSource` 从群 NFT 的持有者解析权重源，因此托管是治理加权封禁成立的前提（见 [类型与资格](05-chat-types.md)）。
 
-同一个 token（token Manager）或 token + actionId（action Manager）只能在同一 Manager 中激活一次，重复激活回 `AlreadyManaged(groupId)`（`groupId` 为已存在的托管群）。保留 tokenOfGroup/groupIdOfToken、actionOfGroup/groupIdOfAction 及批量、分页查询；行动定位使用已有 `actionOfGroup(groupId)` 返回 token 和 actionId，不另加重复的 getActionId。行动不存在或 actionId 为 0 回 `ActionNotExist(tokenAddress, actionId)`；`RECENT_ROUNDS` 为 0 回 `ZeroRecentRounds()`。
+同一个 token（token Manager）或 token + actionId（action Manager）只能在同一 Manager 中激活一次，重复激活回 `AlreadyManaged(groupId)`（`groupId` 为已存在的托管群）。保留 tokenOfGroup/groupIdOfToken、actionOfGroup/groupIdOfAction 及批量、分页查询；行动定位使用已有 `actionOfGroup(groupId)` 返回 token 和 actionId，不另加重复的 getActionId。行动不存在或 actionId 为 0 回 `ActionNotExist(tokenAddress, actionId)`；`RECENT_ROUNDS` 必须 >0，由部署脚本在广播前校验，合约为 0 时该 Manager 的治理资格恒为 false。
 
 Token Manager 与 Action Manager 的接口分别见 [`IBaseTokenScopeManager.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/managers/IBaseTokenScopeManager.sol) 和 [`IBaseTokenActionScopeManager.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/managers/IBaseTokenActionScopeManager.sol)，两者共享的槽位 getter 与错误在 [`IBaseManager.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/managers/IBaseManager.sol)。两类接口不合并，避免单个 Manager 实现另一类 Manager 的无关方法。
 
@@ -12,14 +12,40 @@ Token Manager 与 Action Manager 的接口分别见 [`IBaseTokenScopeManager.sol
 
 保留旧 BaseManager 的激活交易：
 
-1. 校验 LOVE20 token、存在的 Proposal 及未重复激活，生成唯一名称；保留名称前缀、ASCII 清理/截断、12 位十六进制后缀和最多 8 次重试，长度读取 MemberNFT 配置。代币 `symbol()` 清理后为空时回退到固定标签 `TOKEN`。MemberNFT 的 `MAX_NAME_LENGTH` 至少为 17 字节（1 字节分隔符 + 12 位十六进制后缀 + 4 字节 Test 前缀），否则 Manager 构造即回滚 `ManagerGroupNameSpaceTooSmall(maxNameLength, required)`。8 次重试仍取不到可用名称回 `ManagerGroupNameUnavailable()`。
+1. 校验 LOVE20 token、存在的 Proposal 及未重复激活，生成唯一名称；名称规则见下节，最多 8 次重试，长度读取 MemberNFT 配置。名称空间下限 `MAX_NAME_LENGTH ≥ typeCode.length + 9` 字节（类型码 + 1 字节分隔符 + 4 位十六进制随机后缀 + 4 字节 Test 前缀；当前四类 2 字节类型码即 11）是部署期不变量，由部署脚本在广播前校验。8 次重试仍取不到可用名称回 `ManagerGroupNameUnavailable()`。
 2. Manager 计算铸造费用，从激活者 msg.sender 转入首币并按需授权 MemberNFT；零费用不转账。付款/授权失败由 `SafeERC20` 回滚 `SafeERC20FailedOperation(token)`，实际费用与报价不一致回 `ManagerMintCostChanged(expected, actual)`；非 LOVE20 token 回 `TokenNotLOVE20(token)`。
 3. Manager 铸造并持有 NFT，以其 memberId 为 groupId 记录业务映射；scope 使用 Manager 自身，其他槽位使用构造时固定的模块，然后激活同一个 GroupChat 合约。
 4. 任一步失败整体回滚，付款、NFT、映射和激活不能半完成；激活者只是付费者，不因付费获得 Chat 管理权。
 
+## 托管群名称
+
+名称只是展示标签，不是身份来源；token/actionId 从 `Activate` 事件与 `tokenOfGroup` / `actionOfGroup` 读取。
+
+`BaseManager` 只提供通用命名机制，不维护类型清单，也不决定 payload 内容；类型码与 payload 由各 Manager 自己定义。`BaseManager` 不接收 type code 构造参数，具体 Manager 实现 `_typeCode()`；`_typeCode()` 必须非空（源码/测试不变量）。名称空间下限由部署脚本校验。当前四类为 `tm`（TokenMainManager）、`tg`（TokenGovManager）、`am`（TokenActionMainManager）、`ag`（TokenActionGovManager），各 2 字节。沿用同一命名格式时，新增托管类型只需新 Manager 实现自己的 type code 与 payload，不改 `BaseManager`；若类型码长度变化，同步调整部署脚本的名称空间下限（当前四类 2 字节即 11）。若需要不同的命名格式，仍需单独扩展命名机制。
+
+格式为 `type[_payload]_random`：
+
+- `type`：Manager 自己的类型码（当前四类见上）。
+- `payload`：token 类为清洗后的 `symbol()`；action 类为 `symbol()_actionId`，`symbol()` 清洗后为空时只用 actionId。`symbol()` 先清洗为 ASCII 字母数字与 CJK（U+4E00-U+9FFF），其他字符丢弃；清洗后为空且无 action 时没有 payload。
+- 整段 payload 连同 4 位十六进制随机后缀放得下时：`type_payload_<4 位 hex>`，payload 原样保留。
+- 放不下时：payload 整段丢弃（不哈希、不截断），名称为 `type_<随机串>`，随机串填满剩余字节。
+- 随机后缀：有 payload 时固定 4 位十六进制；无 payload 时填满 `MAX_NAME_LENGTH - typeCode.length - 1 - testPrefix` 位。
+- 4 位 hex 后缀只用于同 stem 消歧；定向抢占与后缀长度无关，占满 4 hex 空间需 65,536 次 mint，这是已知取舍。
+
+32 字节、6 位 actionId 下 payload 最大长度：
+
+| Manager | 正常 | Test 模式 |
+| --- | --- | --- |
+| token 类 | 24 字节 symbol | 20 字节 symbol |
+| action 类 | 17 字节 symbol + 6 位 actionId | 13 字节 symbol + 6 位 actionId |
+
+示例：`tm_ABCD_1a2b`、`am_ABCD_42_1a2b`；symbol 超长时 `tm_<29 位 hex>`、`am_<29 位 hex>`；Test 模式超长时 `Testtm_<25 位 hex>`。中文 symbol 整段放得下时保留，放不下时整段丢弃，不切 UTF-8。
+
+部署建议把 `MAX_NAME_LENGTH` 保持在 32–64；payload 丢弃时的随机串长度随 `MAX_NAME_LENGTH` 线性增长。
+
 名称的 Test 前缀按 MemberNFT 的 `LOVE20_TOKEN_ADDRESS` 符号判定；该地址由部署 check 保证已初始化，Manager 不判断其是否为零地址或无代码。
 
-构造时必填依赖无代码（零地址同条件）回 `ManagerDependencyNotContract(dependency)`，并携带失败地址。`onERC721Received` 收到非协议 NFT 合约或非零 `from` 时回 `UnexpectedManagerERC721Received(operator, from, tokenId)`。
+构造期依赖代码、参数与地址关系的静态校验由部署脚本在广播前完成（dev-standards §5.7）。`onERC721Received` 收到非协议 NFT 合约或非零 `from` 时回 `UnexpectedManagerERC721Received(operator, from, tokenId)`。
 
 BSC MemberNFT 的返回值/费用查询 ABI 与旧 group 不完全相同，迁移时适配接口并保留付款金额校验，不新增补贴、退款账户或代付凭证。
 

@@ -12,6 +12,8 @@ Group Chat 是公开链上群聊，保存配置、消息和查询索引；不管
 - NFT 委托实现迁入 group-chat，仅本仓库消费者读取；Core、Action、Launch 不导入或使用该委托作为授权。
 - 按已确认的 BSC 边界接入 Phase 和 ActionTarget/Executor；除此之外不增加、删减群聊功能。
 
+托管群名称模板见 [Manager](06-manager.md)；构造期静态校验由部署脚本在广播前完成（dev-standards §5.7），运行期业务校验仍在合约。
+
 ## 身份
 
 一个 MemberNFT 对应一个 Chat。群主体为 `groupId`，发言主体为 `senderId`；两者可以不同。成员、管理员、delegate、被提及者、黑名单目标和黑名单投票者均用 memberId。

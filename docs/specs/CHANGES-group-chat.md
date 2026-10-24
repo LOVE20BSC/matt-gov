@@ -2,7 +2,16 @@
 
 用户确认：群聊几乎原样迁移，功能、流程、查询和失败行为保持；业务身份统一为 MemberNFT，删除地址主体平行路径，NFT 代理仅作用于群聊。
 
+## 托管群命名 v2 与校验分层（2026-10-25）
+
+- 四个托管 Manager 的群名改为 `type[_payload]_random`：类型码由各 Manager 的 `_typeCode()` 提供（`tm`/`tg`/`am`/`ag`），payload 为清洗后的 symbol 或 `symbol_actionId`；放不下时整段丢弃并用随机串填满，含 payload 时随机后缀固定 4 位 hex。
+- MemberNFT `MAX_NAME_LENGTH` 下限为 `typeCode.length + 9`（当前四类 2 字节类型码即 11），由部署脚本广播前校验。
+- 构造期依赖代码、参数范围与地址关系校验移到部署脚本；`ManagerDependencyNotContract`、`ManagerGroupNameSpaceTooSmall`、`ZeroRecentRounds` 及构造 `*NotContract` 错误删除。下文历史小节保留当时记录。
+- 当前门禁：`forge test`、`build --deny warnings`、`lint`、`check_caller_auth.sh`、部署脚本回归、`check_errors.py --check` 全绿。
+
 ## 错误模型 v3（2026-10-24）
+
+> 本节记录 2026-10-24 的 v3 状态；2026-10-25 起构造期静态校验移到部署脚本，构造错误已删除，见上节。
 
 Group Chat 已全部改为 **local-first** 错误模型：每个合约/模块拥有自己的 `I<Name>Errors`，不设中心枚举、不跨仓导入错误。
 
@@ -93,7 +102,7 @@ Group Chat 门禁：**148 tests 全绿**；`build --deny warnings`、`lint`、`c
 - **移动**：`ActionIdNotExist()` 由 `IBaseManager` 移至 `IBaseTokenActionScopeManager`（selector 不变）
 - **可见性**：`tokenOfGroup` / `groupIdOfToken` / `actionOfGroup` / `groupIdOfAction` 由 `public` 存储改为 `internal` + 显式 getter（selector 不变）
 - **入参名**：批量入参在接口与实现统一为 `_` 后缀，与 `postingAllowed_` 同例，规避与同名 getter 的声明遮蔽（solc 8760）：`addAdmins` / `removeAdmins` 的 `adminIds_`、`addMemberIds` / `removeMemberIds` / `isMemberIdBatch` 的 `memberIds_`、`chatInfos` 的 `groupIds_`、`roundInfos` 的 `rounds_`
-- **新增**：错误 `ManagerGroupNameSpaceTooSmall()`；MemberNFT `MAX_NAME_LENGTH < 17`（1 字节分隔符 + 12 位十六进制后缀 + 4 字节 Test 前缀）时 Manager 构造回滚
+- **新增**：错误 `ManagerGroupNameSpaceTooSmall()`；MemberNFT `MAX_NAME_LENGTH < 17`（1 字节分隔符 + 12 位十六进制后缀 + 4 字节 Test 前缀）时 Manager 构造回滚（已被 2026-10-25 命名 v2 取代，见上）
 
 ### 资格与黑名单源
 

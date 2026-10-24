@@ -2,7 +2,7 @@
 
 ## 群聊 Round
 
-构造时接收 Phase 地址，`currentRound = phase.currentPhase()`，从 1 开始，与治理 Round 一对一。不独立维护 `originBlock` 和 `phaseBlocks`，也不按行动阶段偏移。构造校验 Phase 地址有代码（`PhaseNotContract(phaseAddress)`，零地址同条件）且 `Phase.ORIGIN_PHASE_BLOCKS() != 0`（`ZeroPhaseBlocks()`）。
+构造时接收 Phase 地址，`currentRound = phase.currentPhase()`，从 1 开始，与治理 Round 一对一。不独立维护 `originBlock` 和 `phaseBlocks`，也不按行动阶段偏移。Phase 地址有代码且 `Phase.ORIGIN_PHASE_BLOCKS() != 0` 是部署期静态不变量，由部署脚本在广播前校验（dev-standards §5.7）。
 
 消息创建时记录的 Round 永久固定；后续配置变化不回写消息。
 

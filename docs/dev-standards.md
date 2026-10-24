@@ -183,7 +183,7 @@ EIP-170 限制部署字节码 ≤ 24,576 字节。超过时：
 
 - **本地所有权**：每个合约/模块在自己的本地接口文件中声明 `I<Name>Errors`（通常是 `src/interfaces/I<Name>Errors.sol`，也可与主接口同文件）；实现文件不声明错误；不得从其他仓导入错误定义。新增合约只新增文件，不改任何既有错误声明。
 - **一条件一错误**：一个 selector 只对应一个条件、一个主体；禁止别名与重载。具体错误名优先于通用字段码，不使用中心 `Field`/错误枚举。
-- **命名**：具体、可读，按 `<Subject><State>` / `Zero<Field>` / `Invalid<Field>` / `<Subject>Exceeded` / `Too<Size>` / `Insufficient*` / `Not<Role>Owner|Operator` / `Already<State>` / `*NotContract` / `*Unavailable` / `*Rejected`。数值上限统一 `*Exceeded`；禁止 `Exceeds...` 前缀、`Exceed<Verb>` 动词式名和 `*LimitReached`；尺寸类统一 `Too<Size>`。必填合约依赖只保留 `*NotContract(address)`（字段级或模块级 `DependencyNotContract`；零地址是同一条件），`Zero<Field>` 仅用于非合约参数。新增错误禁用 `Only*`、`Must*`、`Cannot*`；`Invalid*` 只用于值本身非法。
+- **命名**：具体、可读，按 `<Subject><State>` / `Zero<Field>` / `Invalid<Field>` / `<Subject>Exceeded` / `Too<Size>` / `Insufficient*` / `Not<Role>Owner|Operator` / `Already<State>` / `*NotContract` / `*Unavailable` / `*Rejected`。数值上限统一 `*Exceeded`；禁止 `Exceeds...` 前缀、`Exceed<Verb>` 动词式名和 `*LimitReached`；尺寸类统一 `Too<Size>`。合约内必填依赖（含 `init`）只保留 `*NotContract(address)`（字段级或模块级 `DependencyNotContract`；零地址是同一条件），`Zero<Field>` 仅用于非合约参数；部署期静态校验按 §5.7 归部署脚本，不产生合约错误。新增错误禁用 `Only*`、`Must*`、`Cannot*`；`Invalid*` 只用于值本身非法。
 - **载荷**：主体键在前，条件值在后；上限带 `actual/limit`，额度带 `required/available`，外部失败带 `source`；批量带失败元素键或索引；固定大小，禁止字符串与动态数组。
 - **回滚**：禁止裸 `require`、`revert()`、`revert("...")`；`assert` 只用于不可达不变量（L0 Panic，不进错误目录）。
 - **顺序**：鉴权 → 参数 → 存在性 → 状态/资格 → 账本/交互；先命中先回滚。身份解析属于鉴权的一部分；鉴权前不得泄露激活、配置或资格。
@@ -227,6 +227,21 @@ EIP-170 限制部署字节码 ≤ 24,576 字节。超过时：
 - 动手前先检查目标仓库已固定的依赖与 LOVE20BSC 共享库；已有实现满足语义时直接复用并固定版本，不得重复复制。
 - **不含业务逻辑、可跨仓库复用的实现一律放入 `LOVE20BSC/libs`**；只有含业务语义、不具跨仓库复用价值的实现才留在业务仓库，并在对账中写明理由。
 - 新增或修改共享库必须先在 `libs` 提交并推送，再同步各消费仓库的 gitlink 与 `foundry.lock`。
+
+### 5.7 校验分层
+
+按失效时机决定校验位置：部署期静态配置下沉到部署脚本，运行期业务判断留在合约，源码级约束交给测试/CI。
+
+- **部署期静态不变量**：构造参数、部署期固定的依赖配置、不可变地址关系、依赖是否有代码、编译期常量。由部署脚本在**广播前**校验；`2x` check 只做部署后复核与绑定验证，不能替代广播前检查。静态检查集中在部署脚本，业务合约只做运行期判定。
+- **运行期业务不变量**：调用方入参、状态依赖、权限/资格/额度/内容/存在性。必须留在合约；部署脚本看不到未来调用，不能代替。
+- **源码级不变量**：类型码/枚举范围、接口一致性、抽象实现非空。由测试或 CI 覆盖，不写运行时分支。
+
+约束：
+
+- 每项静态不变量必须在部署脚本有对应检查，并在模块规格登记该不变量与校验位置；不要形成“合约 + `1x` deploy + `2x` check”三处重复——`1x` 广播前是主校验，`2x` 是部署后复核。
+- 部署脚本是静态配置校验的信任边界，仅适用于协议自控部署；手工或第三方绕过脚本的部署不受保护。若将来出现 permissionless 部署路径，静态不变量必须回到合约或工厂内。
+- 目标是职责清晰，不以减码为主要理由；24KB 有余量时，运行期输入/状态检查不得因减码删除。
+- 模块规格分别列出部署期、运行期、源码级不变量；部署 README 与参数文件同步。与 5.4 的“初始化只在部署阶段校验”同向。
 
 ## 六、部署脚本组织
 
