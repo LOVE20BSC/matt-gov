@@ -12,10 +12,12 @@ Token Manager 与 Action Manager 的接口分别见 [`IBaseTokenScopeManager.sol
 
 保留旧 BaseManager 的激活交易：
 
-1. 校验 LOVE20 token、存在的 Proposal 及未重复激活，生成唯一名称；保留名称前缀、ASCII 清理/截断、12 位十六进制后缀和最多 8 次重试，长度读取 MemberNFT 配置。代币 `symbol()` 清理后为空时回退到固定标签 `TOKEN`；`symbol()` 调用失败属于协议依赖异常，原样冒泡（首币同样）。MemberNFT 的 `MAX_NAME_LENGTH` 至少为 17 字节（1 字节分隔符 + 12 位十六进制后缀 + 4 字节 Test 前缀），否则 Manager 构造即回滚 `ManagerGroupNameSpaceTooSmall(maxNameLength, required)`。8 次重试仍取不到可用名称回 `ManagerGroupNameUnavailable()`。
+1. 校验 LOVE20 token、存在的 Proposal 及未重复激活，生成唯一名称；保留名称前缀、ASCII 清理/截断、12 位十六进制后缀和最多 8 次重试，长度读取 MemberNFT 配置。代币 `symbol()` 清理后为空时回退到固定标签 `TOKEN`。MemberNFT 的 `MAX_NAME_LENGTH` 至少为 17 字节（1 字节分隔符 + 12 位十六进制后缀 + 4 字节 Test 前缀），否则 Manager 构造即回滚 `ManagerGroupNameSpaceTooSmall(maxNameLength, required)`。8 次重试仍取不到可用名称回 `ManagerGroupNameUnavailable()`。
 2. Manager 计算铸造费用，从激活者 msg.sender 转入首币并按需授权 MemberNFT；零费用不转账。付款/授权失败由 `SafeERC20` 回滚 `SafeERC20FailedOperation(token)`，实际费用与报价不一致回 `ManagerMintCostChanged(expected, actual)`；非 LOVE20 token 回 `TokenNotLOVE20(token)`。
 3. Manager 铸造并持有 NFT，以其 memberId 为 groupId 记录业务映射；scope 使用 Manager 自身，其他槽位使用构造时固定的模块，然后激活同一个 GroupChat 合约。
 4. 任一步失败整体回滚，付款、NFT、映射和激活不能半完成；激活者只是付费者，不因付费获得 Chat 管理权。
+
+名称的 Test 前缀按 MemberNFT 的 `LOVE20_TOKEN_ADDRESS` 符号判定；该地址由部署 check 保证已初始化，Manager 不判断其是否为零地址或无代码。
 
 构造时必填依赖无代码（零地址同条件）回 `ManagerDependencyNotContract(dependency)`，并携带失败地址。`onERC721Received` 收到非协议 NFT 合约或非零 `from` 时回 `UnexpectedManagerERC721Received(operator, from, tokenId)`。
 
