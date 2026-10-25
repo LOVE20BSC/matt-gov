@@ -6,13 +6,13 @@
 
 同一个 token（token Manager）或 token + actionId（action Manager）只能在同一 Manager 中激活一次，重复激活回 `AlreadyManaged(groupId)`（`groupId` 为已存在的托管群）。保留 tokenOfGroup/groupIdOfToken、actionOfGroup/groupIdOfAction 及批量、分页查询；行动定位使用已有 `actionOfGroup(groupId)` 返回 token 和 actionId，不另加重复的 getActionId。行动不存在或 actionId 为 0 回 `ActionNotExist(tokenAddress, actionId)`；`RECENT_ROUNDS` 必须 >0，由部署脚本在广播前校验，合约为 0 时该 Manager 的治理资格恒为 false。
 
-Token Manager 与 Action Manager 的接口分别见 [`IBaseTokenScopeManager.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/managers/IBaseTokenScopeManager.sol) 和 [`IBaseTokenActionScopeManager.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/managers/IBaseTokenActionScopeManager.sol)，两者共享的槽位 getter 与错误在 [`IBaseManager.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/managers/IBaseManager.sol)。两类接口不合并，避免单个 Manager 实现另一类 Manager 的无关方法。
+Token Manager 与 Action Manager 的接口分别见 [`IBaseTokenScopeManager.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/managers/IBaseTokenScopeManager.sol) 和 [`IBaseTokenActionScopeManager.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/managers/IBaseTokenActionScopeManager.sol)，两者共享的槽位 getter、`TYPE_CODE()` 与错误在 [`IBaseManager.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/managers/IBaseManager.sol)。两类接口不合并，避免单个 Manager 实现另一类 Manager 的无关方法。
 
 ## NFT 付款与持有
 
 保留旧 BaseManager 的激活交易：
 
-1. 校验 LOVE20 token、存在的 Proposal 及未重复激活，生成唯一名称；名称规则见下节，最多 8 次重试，长度读取 MemberNFT 配置。名称空间下限 `MAX_NAME_LENGTH ≥ typeCode.length + 9` 字节（类型码 + 1 字节分隔符 + 4 位十六进制随机后缀 + 4 字节 Test 前缀；当前四类 2 字节类型码即 11）是部署期不变量，由部署脚本在广播前校验。8 次重试仍取不到可用名称回 `ManagerGroupNameUnavailable()`。
+1. 校验 LOVE20 token、存在的 Proposal 及未重复激活，生成唯一名称；名称规则见下节，最多 8 次重试，长度读取 MemberNFT 配置。名称空间下限 `MAX_NAME_LENGTH ≥ bytes(TYPE_CODE()).length + 9` 字节（类型码 + 1 字节分隔符 + 4 位十六进制随机后缀 + 4 字节 Test 前缀；当前四类 2 字节类型码即 11）是部署期不变量。广播前 Manager 尚未部署，部署脚本按「当前最长类型码 2 字节」预检 `MAX_NAME_LENGTH ≥ 11`，该假设由 `testT181` 对四个已部署 Manager 的实际 `TYPE_CODE()` 反向锁定（不一致即测试失败）；`21_check.sh` 部署后按每个 Manager 的 `TYPE_CODE()` 独立复核。8 次重试仍取不到可用名称回 `ManagerGroupNameUnavailable()`。
 2. Manager 计算铸造费用，从激活者 msg.sender 转入首币并按需授权 MemberNFT；零费用不转账。付款/授权失败由 `SafeERC20` 回滚 `SafeERC20FailedOperation(token)`，实际费用与报价不一致回 `ManagerMintCostChanged(expected, actual)`；非 LOVE20 token 回 `TokenNotLOVE20(token)`。
 3. Manager 铸造并持有 NFT，以其 memberId 为 groupId 记录业务映射；scope 使用 Manager 自身，其他槽位使用构造时固定的模块，然后激活同一个 GroupChat 合约。
 4. 任一步失败整体回滚，付款、NFT、映射和激活不能半完成；激活者只是付费者，不因付费获得 Chat 管理权。
@@ -21,7 +21,7 @@ Token Manager 与 Action Manager 的接口分别见 [`IBaseTokenScopeManager.sol
 
 名称只是展示标签，不是身份来源；token/actionId 从 `Activate` 事件与 `tokenOfGroup` / `actionOfGroup` 读取。
 
-`BaseManager` 只提供通用命名机制，不维护类型清单，也不决定 payload 内容；类型码与 payload 由各 Manager 自己定义。`BaseManager` 不接收 type code 构造参数，具体 Manager 实现 `_typeCode()`；`_typeCode()` 必须非空（源码/测试不变量）。名称空间下限由部署脚本校验。当前四类为 `tm`（TokenMainManager）、`tg`（TokenGovManager）、`am`（TokenActionMainManager）、`ag`（TokenActionGovManager），各 2 字节。沿用同一命名格式时，新增托管类型只需新 Manager 实现自己的 type code 与 payload，不改 `BaseManager`；若类型码长度变化，同步调整部署脚本的名称空间下限（当前四类 2 字节即 11）。若需要不同的命名格式，仍需单独扩展命名机制。
+`BaseManager` 只提供通用命名机制，不维护类型清单，也不决定 payload 内容；类型码与 payload 由各 Manager 自己定义，不设集中清单。`BaseManager` 不接收 type code 构造参数，具体 Manager 实现 `_typeCode()`，并由 `IBaseManager.TYPE_CODE()` 暴露。四类 Manager 的 `_typeCode()` 必须非空且互异（源码/测试不变量，`testT180` 锁定）。当前四类为 `tm`（TokenMainManager）、`tg`（TokenGovManager）、`am`（TokenActionMainManager）、`ag`（TokenActionGovManager），各 2 字节。沿用同一命名格式时，新增托管类型只需新 Manager 实现自己的 `_typeCode()` 与 payload，不改 `BaseManager`，也不需要在脚本里维护 Manager 清单；只有类型码比当前最长（2 字节）更长时，才需抬高部署脚本的预检常量，并把新 Manager 加入 `testT181` 的类型码核对——漏改时预检偏低，由 `21_check.sh` 部署后拦下。若需要不同的命名格式，仍需单独扩展命名机制。
 
 格式为 `type[_payload]_random`：
 

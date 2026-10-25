@@ -2330,7 +2330,7 @@
       ],
       "repo": "group-chat",
       "revert_sites": [
-        "group-chat/src/managers/BaseTokenActionScopeManager.sol:139"
+        "group-chat/src/managers/BaseTokenActionScopeManager.sol:134"
       ],
       "selector": "0x9c0f73f0",
       "signature": "ActionNotExist(address,uint256)"
@@ -2360,7 +2360,7 @@
       ],
       "repo": "group-chat",
       "revert_sites": [
-        "group-chat/src/managers/BaseManager.sol:98"
+        "group-chat/src/managers/BaseManager.sol:99"
       ],
       "selector": "0xcd0d3eb5",
       "signature": "AlreadyManaged(uint256)"
@@ -2563,7 +2563,7 @@
       ],
       "repo": "group-chat",
       "revert_sites": [
-        "group-chat/src/managers/BaseManager.sol:139"
+        "group-chat/src/managers/BaseManager.sol:140"
       ],
       "selector": "0x4a6464df",
       "signature": "ManagerGroupNameUnavailable()"
@@ -2578,7 +2578,7 @@
       ],
       "repo": "group-chat",
       "revert_sites": [
-        "group-chat/src/managers/BaseManager.sol:86"
+        "group-chat/src/managers/BaseManager.sol:87"
       ],
       "selector": "0xeb6a25aa",
       "signature": "ManagerMintCostChanged(uint256,uint256)"
@@ -2806,7 +2806,7 @@
       ],
       "repo": "group-chat",
       "revert_sites": [
-        "group-chat/src/managers/BaseTokenManager.sol:31"
+        "group-chat/src/managers/BaseTokenManager.sol:27"
       ],
       "selector": "0x518fd31e",
       "signature": "TokenNotLOVE20(address)"
@@ -2836,7 +2836,7 @@
       ],
       "repo": "group-chat",
       "revert_sites": [
-        "group-chat/src/managers/BaseManager.sol:63"
+        "group-chat/src/managers/BaseManager.sol:64"
       ],
       "selector": "0x4cf3a76b",
       "signature": "UnexpectedManagerERC721Received(address,address,uint256)"

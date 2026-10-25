@@ -216,7 +216,7 @@ EIP-170 限制部署字节码 ≤ 24,576 字节。超过时：
 - 顺序：鉴权 → 参数 → 存在性 → 业务 → 账本。非授权方只拿到鉴权错误，不能借错误差异探测内部状态。
 - modifier 就在使用它的文件里定义（Solidity 不能跨文件引用 modifier）；副本必须自己判调用者（`msg.sender` 或 `_is*` 谓词）、有 revert、以 `_;` 收尾，由 `script/check_caller_auth.sh` 校验；错误名按各合约自己的 `I<Name>Errors` 取，允许不同。
 - 一个 modifier 只判一件事；revert 用 `I<Name>Errors` 已声明的自定义错误。
-- 只做判定：不写状态、不发起改变状态的外部调用；鉴权所需的只读查询（`ownerOf`、`ownerOrDelegateIdOf`、`isAdminId`、`proposalTarget` 等）允许，且只能用于判定。接收方守卫（`_onERC721ReceivedFromMint`）不属于调用者鉴权，脚本按名称豁免。
+- 只做判定：不写状态、不发起改变状态的外部调用；鉴权所需的只读查询（`ownerOf`、`ownerOrDelegateIdOf`、`isAdminId`、`proposalTarget` 等）允许，且只能用于判定。接收方回调（`onERC721Received`）不属于调用者鉴权，脚本按名称豁免。
 - modifier 形参占栈：参数多的函数若因此 stack too deep，把函数体拆进私有 `_<name>(...)`，外部函数只留 modifier + 转调（`GroupActionJoin`、`GroupRecipients` 已如此处理），不得改用 `via_ir` 或退回函数体内联判定。
 - 多个 modifier 时 `nonReentrant` 必须最左（`non-reentrant-not-first` 强制），鉴权紧随其后。
 - 判定值函数体还要用（owner 快照、事件）时仍写 modifier，函数体再读一次；多分支判定可委托给 `_is<X>()` 布尔谓词（`_isOperator`、`_isBoundExecutor`），错误仍在 modifier 里抛。业务状态校验（如 `activated`）不进鉴权判定，作为函数体首条紧跟其后。

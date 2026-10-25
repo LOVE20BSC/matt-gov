@@ -4,8 +4,8 @@
 Rules from dev-standards 5.5:
 
 1. A caller check is a condition on `msg.sender`. It must sit in a
-   `modifier only*`, or in an `_is*` predicate used by one. Receiver guards
-   (`_onERC721ReceivedFromMint`) are exempt.
+   `modifier only*`, or in an `_is*` predicate used by one. Receiver callbacks
+   (`onERC721Received`) are exempt.
 2. Every `modifier only*` must test the caller (directly on `msg.sender` or
    through an `_is*` predicate), revert, and end with `_;`.
 
@@ -24,7 +24,7 @@ import re
 import sys
 
 SKIP_DIRS = {"lib", "interfaces"}
-EXEMPT = {"_onERC721ReceivedFromMint"}
+EXEMPT = {"onERC721Received"}
 
 DECL = re.compile(r"\b(modifier|function)\s+(\w+)")
 CALLER_CMP = re.compile(r"(==|!=)\s*msg\.sender|msg\.sender\s*(==|!=)")

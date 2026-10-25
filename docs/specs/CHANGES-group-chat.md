@@ -5,7 +5,7 @@
 ## 托管群命名 v2 与校验分层（2026-10-25）
 
 - 四个托管 Manager 的群名改为 `type[_payload]_random`：类型码由各 Manager 的 `_typeCode()` 提供（`tm`/`tg`/`am`/`ag`），payload 为清洗后的 symbol 或 `symbol_actionId`；放不下时整段丢弃并用随机串填满，含 payload 时随机后缀固定 4 位 hex。
-- MemberNFT `MAX_NAME_LENGTH` 下限为 `typeCode.length + 9`（当前四类 2 字节类型码即 11），由部署脚本广播前校验。
+- MemberNFT `MAX_NAME_LENGTH` 下限为 `bytes(TYPE_CODE()).length + 9`（当前四类 2 字节类型码即 11）。类型码由各 Manager 自己定义、不设集中清单，`IBaseManager` 暴露 `TYPE_CODE()`；部署脚本广播前按「当前最长类型码 2 字节 + 9」预检 11（`testT181` 锁定该假设与四个 Manager 的实际 `TYPE_CODE()` 一致），`21_check.sh` 部署后按各 Manager 的 `TYPE_CODE()` 独立复核；四类类型码非空且互异由 `testT180` 锁定。
 - 构造期依赖代码、参数范围与地址关系校验移到部署脚本；`ManagerDependencyNotContract`、`ManagerGroupNameSpaceTooSmall`、`ZeroRecentRounds` 及构造 `*NotContract` 错误删除。下文历史小节保留当时记录。
 - 当前门禁：`forge test`、`build --deny warnings`、`lint`、`check_caller_auth.sh`、部署脚本回归、`check_errors.py --check` 全绿。
 

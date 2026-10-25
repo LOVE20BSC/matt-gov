@@ -13,7 +13,7 @@
 | 消息 | 提及、mentionAll、引用、ID | 规则和索引一致 |
 | 查询 | Round、sender、mention、分页 | 空值、越界和 reverse 符合最终 ABI；单条缺失消息回 `MessageNotFound(groupId, messageId)` |
 | 预检查 | `canPost` 原因枚举 | 返回 `PostRejectionReason`，缺失 sender 为 `SenderNotExist`，不以 selector 作数据 |
-| 部署期 | 构造参数与依赖绑定 | 依赖有代码、`Phase.ORIGIN_PHASE_BLOCKS() > 0`、`MAX_NAME_LENGTH` 下限、参数范围、MemberNFT 根代币与 `LOVE20_TOKEN_ADDRESS` 一致、`ActionTarget` 根绑定及 submit/vote/stake/launch 与 core 一致，均由部署脚本广播前校验；`21_check.sh` 部署后复核，失败时一键入口回滚地址文件；广播前校验失败则不广播 |
+| 部署期 | 构造参数与依赖绑定 | 依赖有代码、`Phase.ORIGIN_PHASE_BLOCKS() > 0`、`MAX_NAME_LENGTH` 名称空间下限（广播前按「当前最长类型码 2 字节 + 9」预检 11，`testT181` 锁定该假设与四个 Manager 的实际 `TYPE_CODE()` 一致）、参数范围、MemberNFT 根代币与 `LOVE20_TOKEN_ADDRESS` 一致、`ActionTarget` 根绑定及 submit/vote/stake/launch 与 core 一致，均由部署脚本广播前校验；`21_check.sh` 部署后按各 Manager 的 `TYPE_CODE()` 复核名称空间及其余绑定，失败时一键入口回滚地址文件；广播前校验失败则不广播 |
 | 查询 | Phase 重新标定后的历史消息 Round | 旧消息 round 与分轮索引不变，新帖按新参数计算（`testT050B`） |
 | 类型 | 五类资格和黑名单权重 | 使用对应 memberId 和快照来源 |
 | 群组 | 成员名单、Executor 归属、forceExit | 最后关系退出才失去归属，forceExit 不改归属 |
