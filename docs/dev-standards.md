@@ -215,7 +215,7 @@ EIP-170 限制部署字节码 ≤ 24,576 字节。超过时：
 **写函数的调用者校验一律写成 modifier，且是函数体的第一道判定。只判「谁可以调」。**
 
 - 顺序：鉴权 → 参数 → 存在性 → 业务 → 账本。非授权方只拿到鉴权错误，不能借错误差异探测内部状态。
-- modifier 定义在合约自身，或它继承的**唯一**抽象基类里：同一鉴权面被多个合约共用时只在基类写一次，不在各派生合约留副本（Solidity 不能跨文件引用 modifier）。无论写在哪，都必须自己判调用者（`msg.sender` 或 `_is*` 谓词）、有 revert、以 `_;` 收尾，由 `script/check_caller_auth.sh` 校验；错误名按各合约自己的 `I<Name>Errors` 取，允许不同。
+- modifier 定义在合约自身，或它继承的**唯一**抽象基类里：同一鉴权面被多个合约共用时只在基类写一次，不在各派生合约留副本（Solidity 不能跨文件引用 modifier）。**仅为消除 modifier 副本不新建基类** —— 基类必须同时承载该鉴权面的其余成员（入口函数、轮次 getter 等）；十来行的判定留在原处，就近可读优先。无论写在哪，都必须自己判调用者（`msg.sender` 或 `_is*` 谓词）、有 revert、以 `_;` 收尾，由 `script/check_caller_auth.sh` 校验；错误名按各合约自己的 `I<Name>Errors` 取，允许不同。
 - 一个 modifier 只判一件事；revert 用 `I<Name>Errors` 已声明的自定义错误。
 - 只做判定：不写状态、不发起改变状态的外部调用；鉴权所需的只读查询（`ownerOf`、`ownerOrDelegateIdOf`、`isAdminId`、`proposalTarget` 等）允许，且只能用于判定。接收方回调（`onERC721Received`）不属于调用者鉴权，脚本按名称豁免。
 - modifier 形参占栈：参数多的函数若因此 stack too deep，把函数体拆进私有 `_<name>(...)`，外部函数只留 modifier + 转调（`GroupActionJoin`、`GroupRecipients` 已如此处理），不得改用 `via_ir` 或退回函数体内联判定。
