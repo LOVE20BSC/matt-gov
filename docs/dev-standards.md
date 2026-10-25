@@ -303,6 +303,9 @@ script/
 - 配置键统一 **`UPPER_SNAKE_CASE`**：大写英文单词，多词用 `_` 分隔；`NFT`、`LP`、`URL`、`ID`、`RPC` 等缩写视为一个词。地址键以 `_ADDRESS` 结尾，例如 `ACTION_TARGET_ADDRESS`、`GROUP_ACTION_EXECUTOR_ADDRESS`、`MEMBER_NFT_ADDRESS`、`LP_EXECUTOR_ADDRESS`；不写 `ACTIONTARGET_ADDRESS`、`MEMBERNFT_ADDRESS`。禁止首尾或连续下划线；数字随所属单词（`LOVE20_TOKEN_ADDRESS`）。
 - 生产方与消费方必须使用同一键名；跨库地址文件应可直接复制，不得在复制时手工映射。键名是部署接口的一部分，改名须同步生产方、消费方、配置模板、README 与部署回归测试。
 - 该规则只约束部署配置与环境变量键，不改变 Solidity ABI、getter 或合约内 immutable 的命名。
+- **参数文件的键必须显式写出，不靠默认值兜底**：`<代码库名>.params` 里每个键都要出现，空态用显式哨兵值表达（零地址=不挂载/本地部署、空串=未配置），不省略键。`Deploy<X>.s.sol` 用 `vm.envUint`/`vm.envAddress`/`vm.envString` 读取业务参数，缺键在广播前 revert 并指出键名；只有「可选依赖的缺省即为合法终态、且该值有独立互斥校验」时才允许 `vm.envOr`，默认值须与显式哨兵值同义。
+- **参数只来自文件**：`<代码库名>.params` 是唯一取值来源。文件里的键由载入器 `export`，必然覆盖调用方的同名变量；键必须齐全（上一条），所以 `.s.sol` 的 `vm.env*` 不会读到「文件缺键、环境补位」的取值。但在 shell 里直接读参数值的步骤（取密码前的键存在性检查、`2x` 对账）仍需在载入前 `unset` 相关键 —— `${VAR:-}` 不因文件完整而免疫，继承值会让缺键检查与对账一起退化为自证。取值合法性仍只由 `.s.sol` 判定。
+- **同一个值只能有一个来源**：复核步骤（`2x`）用参数文件里的原始值对账，不得再套一层与部署侧相同的默认值展开——两侧共用同一个默认值时，缺键会让期望值与链上值同时变成默认值，复核退化为自证。
 - `.account` 含敏感信息，必须加入 `.gitignore`；其余三个提交进 Git。
 - 部署脚本从这些文件读配置，不得硬编码网络参数或地址。网络切换只切 `network/` 子目录，不改脚本。
 - **跨库依赖地址**：A 依赖 B 已部署合约时，把 B 的各模块 `addresses.<模块名>.params` 复制到 `A/script/network/<net>/`，与 `addresses.<A>.params` 并列，不在 A 的配置文件里重复记录 B 的地址（如 `core` 依赖 `dex` 时只复制 UniswapV2 模块的 `addresses.uniswapv2.params`；根父币由 `Router.WETH()` 读取，无需复制 WETH 模块文件）。这样 B 重新部署后，A 只需复制新地址文件即可同步，避免手工转抄与多处漂移。
