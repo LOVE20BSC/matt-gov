@@ -98,22 +98,22 @@ Rows are grouped by repo + signature; interfaces list every local declaration si
 | core | `LaunchCountLimitExceeded(address,uint256,uint256)` | `0x9affae33` | `ILaunchErrors` | 1 | `core/src/Launch.sol:259` |
 | core | `MaxSupplyExceeded(uint256,uint256)` | `0xea058246` | `ILOVE20TokenErrors` | 1 | `core/src/LOVE20Token.sol:61` |
 | core | `MemberAlreadySubmitted(address,uint256,uint256)` | `0xc3487d0d` | `ISubmitErrors` | 1 | `core/src/Submit.sol:273` |
-| core | `MemberRewardAlreadyMinted(address,uint256,uint256)` | `0xc157061f` | `IMintErrors` | 1 | `core/src/Mint.sol:565` |
-| core | `MemberRewardUnavailable(address,uint256,uint256)` | `0x1392e03a` | `IMintErrors` | 1 | `core/src/Mint.sol:572` |
+| core | `MemberRewardAlreadyMinted(address,uint256,uint256)` | `0xc157061f` | `IMintErrors` | 1 | `core/src/Mint.sol:554` |
+| core | `MemberRewardUnavailable(address,uint256,uint256)` | `0x1392e03a` | `IMintErrors` | 1 | `core/src/Mint.sol:561` |
 | core | `NameAlreadyExists(uint256)` | `0x2350ee53` | `IMemberNFTErrors` | 1 | `core/src/MemberNFT.sol:312` |
 | core | `NameEmpty()` | `0x1ff3ed9d` | `IMemberNFTErrors` | 1 | `core/src/MemberNFT.sol:304` |
 | core | `NameInvalidCharacters()` | `0x9954195a` | `IMemberNFTErrors` | 1 | `core/src/MemberNFT.sol:306` |
 | core | `NameTooLong(uint256,uint256)` | `0x243cf1c9` | `IMemberNFTErrors` | 1 | `core/src/MemberNFT.sol:305` |
 | core | `NoGovVotes(address)` | `0xa0d4ddef` | `ISubmitErrors` | 1 | `core/src/Submit.sol:85` |
-| core | `NoStakedLiquidity(address,uint256)` | `0x42b29552` | `IStakeErrors` | 1 | `core/src/Stake.sol:132`, `core/src/Stake.sol:175`, `core/src/Stake.sol:212`, `core/src/Stake.sol:264` |
+| core | `NoStakedLiquidity(address,uint256)` | `0x42b29552` | `IStakeErrors` | 1 | `core/src/Stake.sol:443` |
 | core | `NoVotingPower(address,uint256)` | `0x8102b749` | `IVoteErrors` | 1 | `core/src/Vote.sol:101` |
 | core | `NotAllowedToStakeAtRoundZero()` | `0xbe9cd064` | `IStakeErrors` | 1 | `core/src/Stake.sol:415` |
-| core | `NotMemberOwner(uint256)` | `0x33393244` | `ILaunchErrors`, `IMintErrors`, `IStakeErrors`, `ISubmitErrors`, `IVoteErrors` | 5 | `core/src/Launch.sol:49`, `core/src/Mint.sol:256`, `core/src/Stake.sol:92`, `core/src/Submit.sol:94`, `core/src/Vote.sol:88` |
+| core | `NotMemberOwner(uint256)` | `0x33393244` | `ILaunchErrors`, `IMintErrors`, `IStakeErrors`, `ISubmitErrors`, `IVoteErrors` | 5 | `core/src/Launch.sol:49`, `core/src/Mint.sol:245`, `core/src/Stake.sol:92`, `core/src/Submit.sol:94`, `core/src/Vote.sol:88` |
 | core | `NotMintContract(address)` | `0x3ab9a846` | `ILaunchErrors` | 1 | `core/src/Launch.sol:44` |
 | core | `NotMinter(address)` | `0x361c31f2` | `ILOVE20TokenErrors` | 1 | `core/src/LOVE20Token.sol:52` |
-| core | `NotProposalTarget(address,address)` | `0xc157502b` | `IMintErrors` | 1 | `core/src/Mint.sol:209` |
+| core | `NotProposalTarget(address,address)` | `0xc157502b` | `IMintErrors` | 1 | `core/src/Mint.sol:198` |
 | core | `PairCreationFailed(address)` | `0x90fa4b05` | `ILaunchErrors` | 1 | `core/src/Launch.sol:367` |
-| core | `PairMissing(address)` | `0xeabd8816` | `IStakeErrors` | 1 | `core/src/Stake.sol:458` |
+| core | `PairMissing(address)` | `0xeabd8816` | `IStakeErrors` | 1 | `core/src/Stake.sol:474` |
 | core | `ParentTokenNotRegistered(address)` | `0x7201021d` | `ILaunchErrors` | 1 | `core/src/Launch.sol:155` |
 | core | `PhaseNotStarted()` | `0xf2469089` | `IPhaseErrors` | 1 | `core/src/Phase.sol:44`, `core/src/Phase.sol:51`, `core/src/Phase.sol:82` |
 | core | `PromisedWaitingPhasesDecreased(uint256,uint256)` | `0x80336ded` | `IStakeErrors` | 1 | `core/src/Stake.sol:114`, `core/src/Stake.sol:134` |
@@ -121,32 +121,32 @@ Rows are grouped by repo + signature; interfaces list every local declaration si
 | core | `ProposalIdsEmpty()` | `0x46b9908e` | `IVoteErrors` | 1 | `core/src/Vote.sol:104` |
 | core | `ProposalNotFound(uint256)` | `0x428d06a9` | `ISubmitErrors` | 1 | `core/src/Submit.sol:164`, `core/src/Submit.sol:178`, `core/src/Submit.sol:254` |
 | core | `ProposalNotSubmitted(address,uint256,uint256)` | `0x354f9b03` | `IVoteErrors` | 1 | `core/src/Vote.sol:259` |
-| core | `ProposalRewardAlreadyMinted(address,uint256,uint256)` | `0xece01b78` | `IMintErrors` | 1 | `core/src/Mint.sol:232` |
-| core | `ProposalRewardUnavailable(address,uint256,uint256)` | `0x6b95e12e` | `IMintErrors` | 1 | `core/src/Mint.sol:238` |
+| core | `ProposalRewardAlreadyMinted(address,uint256,uint256)` | `0xece01b78` | `IMintErrors` | 1 | `core/src/Mint.sol:221` |
+| core | `ProposalRewardUnavailable(address,uint256,uint256)` | `0x6b95e12e` | `IMintErrors` | 1 | `core/src/Mint.sol:227` |
 | core | `ProposalVotesLengthMismatch(uint256,uint256)` | `0xb397cf8c` | `IVoteErrors` | 1 | `core/src/Vote.sol:107` |
-| core | `RoundNotEnded(uint256)` | `0x652d87c5` | `IMintErrors` | 1 | `core/src/Mint.sol:120`, `core/src/Mint.sol:225`, `core/src/Mint.sol:558` |
+| core | `RoundNotEnded(uint256)` | `0x652d87c5` | `IMintErrors` | 1 | `core/src/Mint.sol:120`, `core/src/Mint.sol:214`, `core/src/Mint.sol:547` |
 | core | `RoundNotStarted(uint256,uint256)` | `0xea74f32b` | `IStakeErrors` | 1 | `core/src/Stake.sol:389` |
-| core | `SlippageExceeded(uint256,uint256)` | `0x71c4efed` | `IStakeErrors` | 1 | `core/src/Stake.sol:650` |
+| core | `SlippageExceeded(uint256,uint256)` | `0x71c4efed` | `IStakeErrors` | 1 | `core/src/Stake.sol:666` |
 | core | `SourceAndTargetMemberIdsMustBeDifferent(uint256,uint256)` | `0x1049dc75` | `ILaunchErrors`, `IStakeErrors` | 2 | `core/src/Launch.sol:216`, `core/src/Stake.sol:255` |
 | core | `StakeRightsUsed(address,uint256,uint256)` | `0xd2632e80` | `IStakeErrors` | 1 | `core/src/Stake.sol:179`, `core/src/Stake.sol:268` |
 | core | `SubmitRoundFull(address,uint256,uint256)` | `0x0fe6aa6e` | `ISubmitErrors` | 1 | `core/src/Submit.sol:275` |
 | core | `TargetDataLengthMismatch(uint256,uint256)` | `0x232f36be` | `IVoteErrors` | 1 | `core/src/Vote.sol:110` |
-| core | `TargetPromisedWaitingPhasesTooShort(uint256,uint256)` | `0xe393d50b` | `IStakeErrors` | 1 | `core/src/Stake.sol:475` |
+| core | `TargetPromisedWaitingPhasesTooShort(uint256,uint256)` | `0xe393d50b` | `IStakeErrors` | 1 | `core/src/Stake.sol:491` |
 | core | `TitleEmpty()` | `0x5d0ff12d` | `ISubmitErrors` | 1 | `core/src/Submit.sol:217` |
 | core | `TokenNameEmpty()` | `0x0d7673b5` | `ILaunchErrors` | 1 | `core/src/Launch.sol:355` |
 | core | `TokenNotRegistered(address)` | `0xddef98d7` | `ILaunchErrors`, `IStakeErrors` | 2 | `core/src/Launch.sol:221`, `core/src/Launch.sol:253`, `core/src/Stake.sol:427` |
 | core | `TokenSymbolAlreadyExists(bytes32)` | `0x98f23aa3` | `ILaunchErrors` | 1 | `core/src/Launch.sol:172` |
 | core | `TokenSymbolEmpty()` | `0xf09ce013` | `ILaunchErrors` | 1 | `core/src/Launch.sol:356` |
-| core | `UnstakeAlreadyRequested(address,uint256)` | `0xe8e88f47` | `IStakeErrors` | 1 | `core/src/Stake.sol:112`, `core/src/Stake.sol:131`, `core/src/Stake.sol:174`, `core/src/Stake.sol:262`, `core/src/Stake.sol:263` |
+| core | `UnstakeAlreadyRequested(address,uint256)` | `0xe8e88f47` | `IStakeErrors` | 1 | `core/src/Stake.sol:435` |
 | core | `UnstakeNotRequested(address,uint256)` | `0x44357cd8` | `IStakeErrors` | 1 | `core/src/Stake.sol:211` |
 | core | `VoteLimitExceeded(address,uint256,uint256,uint256,uint256)` | `0xb60c38d3` | `IVoteErrors` | 1 | `core/src/Vote.sol:300` |
 | core | `ZeroBoostAmount()` | `0xbbaa8875` | `IStakeErrors` | 1 | `core/src/Stake.sol:126` |
 | core | `ZeroCount()` | `0x047b9cec` | `ILaunchErrors` | 1 | `core/src/Launch.sol:218`, `core/src/Launch.sol:252` |
 | core | `ZeroDistributorAddress()` | `0x71702079` | `ILOVE20TokenErrors`, `ILaunchErrors` | 2 | `core/src/LOVE20Token.sol:40`, `core/src/Launch.sol:151` |
 | core | `ZeroInitialSupply()` | `0x9243dc6c` | `ILOVE20TokenErrors` | 1 | `core/src/LOVE20Token.sol:38` |
-| core | `ZeroLiquidityMinted()` | `0xf4791324` | `IStakeErrors` | 1 | `core/src/Stake.sol:577` |
+| core | `ZeroLiquidityMinted()` | `0xf4791324` | `IStakeErrors` | 1 | `core/src/Stake.sol:593` |
 | core | `ZeroParentTokenAmount()` | `0xe6e1b13a` | `IStakeErrors` | 1 | `core/src/Stake.sol:105` |
-| core | `ZeroRecipientAddress()` | `0xceef9857` | `IMintErrors` | 1 | `core/src/Mint.sol:221`, `core/src/Mint.sol:554` |
+| core | `ZeroRecipientAddress()` | `0xceef9857` | `IMintErrors` | 1 | `core/src/Mint.sol:210`, `core/src/Mint.sol:543` |
 | core | `ZeroTargetAddress()` | `0xeaf673fd` | `ISubmitErrors` | 1 | `core/src/Submit.sol:218` |
 | core | `ZeroTokenAmount()` | `0x82c4a8c9` | `IStakeErrors` | 1 | `core/src/Stake.sol:104` |
 | core | `ZeroVotes(uint256)` | `0xf9067921` | `IVoteErrors` | 1 | `core/src/Vote.sol:264` |

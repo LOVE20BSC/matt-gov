@@ -1511,7 +1511,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Mint.sol:565"
+        "core/src/Mint.sol:554"
       ],
       "selector": "0xc157061f",
       "signature": "MemberRewardAlreadyMinted(address,uint256,uint256)"
@@ -1526,7 +1526,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Mint.sol:572"
+        "core/src/Mint.sol:561"
       ],
       "selector": "0x1392e03a",
       "signature": "MemberRewardUnavailable(address,uint256,uint256)"
@@ -1616,10 +1616,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Stake.sol:132",
-        "core/src/Stake.sol:175",
-        "core/src/Stake.sol:212",
-        "core/src/Stake.sol:264"
+        "core/src/Stake.sol:443"
       ],
       "selector": "0x42b29552",
       "signature": "NoStakedLiquidity(address,uint256)"
@@ -1673,7 +1670,7 @@
       "repo": "core",
       "revert_sites": [
         "core/src/Launch.sol:49",
-        "core/src/Mint.sol:256",
+        "core/src/Mint.sol:245",
         "core/src/Stake.sol:92",
         "core/src/Submit.sol:94",
         "core/src/Vote.sol:88"
@@ -1721,7 +1718,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Mint.sol:209"
+        "core/src/Mint.sol:198"
       ],
       "selector": "0xc157502b",
       "signature": "NotProposalTarget(address,address)"
@@ -1751,7 +1748,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Stake.sol:458"
+        "core/src/Stake.sol:474"
       ],
       "selector": "0xeabd8816",
       "signature": "PairMissing(address)"
@@ -1876,7 +1873,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Mint.sol:232"
+        "core/src/Mint.sol:221"
       ],
       "selector": "0xece01b78",
       "signature": "ProposalRewardAlreadyMinted(address,uint256,uint256)"
@@ -1891,7 +1888,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Mint.sol:238"
+        "core/src/Mint.sol:227"
       ],
       "selector": "0x6b95e12e",
       "signature": "ProposalRewardUnavailable(address,uint256,uint256)"
@@ -1922,8 +1919,8 @@
       "repo": "core",
       "revert_sites": [
         "core/src/Mint.sol:120",
-        "core/src/Mint.sol:225",
-        "core/src/Mint.sol:558"
+        "core/src/Mint.sol:214",
+        "core/src/Mint.sol:547"
       ],
       "selector": "0x652d87c5",
       "signature": "RoundNotEnded(uint256)"
@@ -1953,7 +1950,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Stake.sol:650"
+        "core/src/Stake.sol:666"
       ],
       "selector": "0x71c4efed",
       "signature": "SlippageExceeded(uint256,uint256)"
@@ -2032,7 +2029,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Stake.sol:475"
+        "core/src/Stake.sol:491"
       ],
       "selector": "0xe393d50b",
       "signature": "TargetPromisedWaitingPhasesTooShort(uint256,uint256)"
@@ -2126,11 +2123,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Stake.sol:112",
-        "core/src/Stake.sol:131",
-        "core/src/Stake.sol:174",
-        "core/src/Stake.sol:262",
-        "core/src/Stake.sol:263"
+        "core/src/Stake.sol:435"
       ],
       "selector": "0xe8e88f47",
       "signature": "UnstakeAlreadyRequested(address,uint256)"
@@ -2239,7 +2232,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Stake.sol:577"
+        "core/src/Stake.sol:593"
       ],
       "selector": "0xf4791324",
       "signature": "ZeroLiquidityMinted()"
@@ -2269,8 +2262,8 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Mint.sol:221",
-        "core/src/Mint.sol:554"
+        "core/src/Mint.sol:210",
+        "core/src/Mint.sol:543"
       ],
       "selector": "0xceef9857",
       "signature": "ZeroRecipientAddress()"
