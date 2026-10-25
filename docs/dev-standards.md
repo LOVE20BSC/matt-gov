@@ -164,6 +164,7 @@ EIP-170 限制部署字节码 ≤ 24,576 字节。超过时：
 - 按成员身份筛选的接口统一用 `ByMemberId`，不再用 `ByAccount`。
 - **比例参数统一 `1e18` 精度**：以 `1e18` 表示 100%；纯比值（如 `withdrawable : fee`）以 `1e18` 表示 1:1。命名用 `*_RATIO` / `*_THRESHOLD`；不得再用千分比、百分比、万分比等刻度。阈值比较一律交叉相乘（如 `a * 1e18 >= b * threshold`），避免先除后比引入截断；当交叉相乘可能溢出时，改用 `Math.mulDiv` 计算 `ceil` 门槛后再比较（数学等价）。历史 `*_PER_THOUSAND` 属旧命名，随该模块下一次接口变更改为 `*_RATIO` 并重定标，不为改名单开提交；新接口不得沿用。
 - **除数不是比例**：手续费结算分母、身份费用除数等「分母」参数按语义命名，保持整数分母，不折算成 `1e18`。判断标准是语义（是否为比值或占比），不是它在公式里是否位于分母位置。
+- **基类用 `<X>Base` 后缀**：`ExecutorBase`、`CompatBase`、`ActionTargetTestBase`、`ManagerBase`／`TokenManagerBase`／`TokenScopeManagerBase`／`TokenActionScopeManagerBase`（接口随之 `I<X>Base`，错误子面 `I<X>BaseErrors`）。读作「X 的基类」；`Base<X>` 会读成「基础的 X」，不采用。迁移模块同样按此改名：规格的「核对来源」继续写旧仓路径（前缀「旧」），不改写成旧仓里的新名。
 
 #### 5.2.1 身份错误（groupId / memberId）
 
