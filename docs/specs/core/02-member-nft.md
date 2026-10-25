@@ -37,11 +37,11 @@ UTF-8 有效性：拒绝无效起始字节 `0x80-0xC1` 与 `0xF5-0xFF`、过长�
 
 接口见 [`IMemberNFT.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/IMemberNFT.sol)。
 
-`init` 只允许第一次成功调用；公开 `initialized()` 初始为 `false`，成功后为 `true`，后续调用回滚 `AlreadyInitialized()`。首币地址不得为零。未初始化时，`mint` 和 `calculateMintCost` 因无法从首币读取数据而回滚。
+`init` 只允许第一次成功调用；公开 `initialized()` 初始为 `false`，成功后为 `true`，后续调用回滚 `AlreadyInitialized()`。首币地址与初始化结果由部署 check 核对，不匹配则重新部署。未初始化时，`mint` 和 `calculateMintCost` 因无法从首币读取数据而回滚。
 
 `init` 无调用者限制，部署与初始化分开的交易存在被抢先绑定错误地址的窗口；对外开放前调用并不能防止抢跑。发布前必须核对初始化状态、首币地址和全部费用参数，错误版本不得发布，需重新部署并核对受影响的依赖；初始化后没有修复或改绑入口。
 
-费用使用首个 LOVE20 代币，计算如下。参数含义见 [初始化参数](00-protocol-model.md#初始化参数)，构造时四个参数均必须大于零；最大名称长度通过构造参数固定，BSC 部署配置使用 `32`。构造参数分别为零时回 `ZeroBaseDivisor()`、`ZeroBytesThreshold()`、`ZeroMultiplier()`、`ZeroMaxNameLength()`；首币地址零地址或无代码回 `DependencyNotContract(address)`。
+费用使用首个 LOVE20 代币，计算如下。参数含义见 [初始化参数](00-protocol-model.md#初始化参数)，四个参数均必须大于零，由 DeployCore 在广播前校验；构造器只保存参数，不做静态校验。最大名称长度通过构造参数固定，BSC 部署配置使用 `32`。`init` 只防重复初始化；首币地址与费用参数由 21_check 核对，不匹配则重新部署。
 
 ```text
 unmintedSupply = maxSupply - totalSupply

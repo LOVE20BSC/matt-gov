@@ -4,7 +4,7 @@ GroupAction 使用 MemberNFT 身份，`groupId` 是群主体的 `memberId`，不
 
 ## 配置与参与接口
 
-旧 `LOVE20TKM/extension-group/src/GroupManager.sol` / `LOVE20TKM/extension-group/src/GroupJoin.sol` 的 extension 地址改为 `tokenAddress + actionId`；不为每个 Proposal 部署 Executor。部署依赖通过 init 绑定，业务配置由 Proposal 创建回调写入。`init(actionTargetAddress, stakeAddress, splits)` 只收 ActionTarget、Stake 和验证阶段分割线：`memberNFTAddress`、`phaseAddress`、`voteAddress` 在 init 内从 `stakeAddress` 的 getter 读取一次并缓存，入参或派生字段为零或无代码统一回滚 `DependencyNotContract(address)`，分割线不合法回滚 `InvalidSplits(index, value)`；激励经 `ActionTarget` 读取，不注入 Mint。分割线由 `SPLITS()` 暴露，只读。
+旧 `LOVE20TKM/extension-group/src/GroupManager.sol` / `LOVE20TKM/extension-group/src/GroupJoin.sol` 的 extension 地址改为 `tokenAddress + actionId`；不为每个 Proposal 部署 Executor。部署依赖通过 init 绑定，业务配置由 Proposal 创建回调写入。`init(actionTargetAddress, stakeAddress, splits)` 只收 ActionTarget、Stake 和验证阶段分割线：`memberNFTAddress`、`phaseAddress`、`voteAddress` 从 `stakeAddress` 的 getter 读取一次并缓存；依赖有代码、Stake 派生值与 Mint 派生图交叉一致及分割线合法性由 `DeployAction` 广播前校验：空数组合法，表示不分层、仅投票第一名作为当轮唯一公共验证者；非空时每项 `0 < split < 1e18` 且严格递增。`21_check.sh` 直接读取 Stake 的派生 getter 与 splits 复核，`init` 只防重复初始化并保存配置。分割线是部署期静态配置，由部署脚本校验、21_check 复核，合约不重复校验；`ActionTarget` 允许提案绑定任意 Executor，非脚本部署的 Executor 由其提案方自担配置风险。激励经 `ActionTarget` 读取，不注入 Mint。分割线由 `SPLITS()` 暴露，只读。
 
 参与、群配置和历史查询接口见 [`IGroupActionExecutor.sol`](https://github.com/LOVE20BSC/action/blob/main/src/interfaces/IGroupActionExecutor.sol)。
 
@@ -76,7 +76,7 @@ openOffset = ceil(verifyPhaseBlocks * splits[rank - 2] / 1e18)
 openBlock = verifyPhaseStartBlock + openOffset
 ```
 
-`splits[0]` 对应第 2 名。`block.number >= openBlock` 才开放，不能因取整提前。读取方用 `SPLITS()` 与 `IPhase.phaseInfo(round + 2)` 的 `(startBlock, phaseBlocks)` 自行计算各名次的开放区块；可开放人数为 `SPLITS().length + 1`，第 1 名在验证阶段起点即可提交。
+`splits[0]` 对应第 2 名。`block.number >= openBlock` 才开放，不能因取整提前。读取方用 `SPLITS()` 与 `IPhase.phaseInfo(round + 2)` 的 `(startBlock, phaseBlocks)` 自行计算各名次的开放区块；可开放人数为 `SPLITS().length + 1`，第 1 名在验证阶段起点即可提交。`SPLITS()` 为空数组时不分层，只有第 1 名作为当轮唯一公共验证者。
 
 首个有效验证批次永久锁定验证者 MemberNFT；NFT 转移后新持有人续验，不能由未经授权候选接管。需完成目标 Round 的全部 Group 验证；无候选或锁定者失联、未完成时，行动层激励为零，底层 Proposal 激励仍可独立铸造或销毁。`generatedActionRewardByGroupId` 与一切行动层分配查询按轮次读取，目标轮未完成验证时返回 0，不因部分批次已计入而返回正值；GroupService 与 GroupAction 阶段划分相同，其读取的轮次已经完成验证，正常不会命中该分支。相关验收见 [组织验收](../../acceptance.md#公共验证者与-round-历史)。
 

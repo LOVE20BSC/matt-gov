@@ -43,7 +43,7 @@ Vote 管理当前治理 Round 的 Proposal 投票和加速快照。Proposal 的�
 
 上述回滚都发生在 `votes` 循环内，载荷携带逐笔上下文的错误因此能定位到具体 Proposal 或累计值，而不是只报一个批次级错误。
 
-`init` 校验顺序：先看初始化状态（`AlreadyInitialized()`），再依次校验 `phaseAddress`、`stakeAddress`、`submitAddress`、`memberNFTAddress` 有代码（零地址同条件，`DependencyNotContract(address)`）。
+`init` 只防重复初始化（`AlreadyInitialized()`）并保存入参；`phaseAddress`、`stakeAddress`、`submitAddress`、`memberNFTAddress` 有代码由 DeployCore 部署后校验、21_check 独立复核。
 
 ## 接口
 
@@ -60,7 +60,6 @@ Vote 管理当前治理 Round 的 Proposal 投票和加速快照。Proposal 的�
 | 错误 | 触发条件 |
 | --- | --- |
 | `AlreadyInitialized()` | 重复初始化 |
-| `DependencyNotContract(address dependency)` | `init` 的任一依赖为零或无代码；载荷为失败地址 |
 | `NotMemberOwner(uint256 memberId)` | `ownerOf(memberId) != msg.sender`；`memberId` 不存在时由 MemberNFT 回滚 `ERC721NonexistentToken` |
 | `NoVotingPower(address tokenAddress, uint256 memberId)` | 本轮票上限为零 |
 | `ProposalIdsEmpty()` | `proposalIds` 为空 |

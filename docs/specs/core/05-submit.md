@@ -130,7 +130,7 @@ Proposal 由合约分配的头部与创建者提供的主体组成，对外以 `
 7. 本社区本轮首笔推举时调用 `Phase.sync()`
 8. `Callback` 时回调 `IProposalTarget.onProposalSubmitted`
 
-初始化校验：`phaseAddress`、`stakeAddress`、`memberNFTAddress` 依次要求有代码（零地址同条件，`DependencyNotContract(address)`）；`submitMinRatio` 在 `1..1e18` 范围（`ZeroSubmitMinRatio()` / `InvalidSubmitMinRatio(value)`）。
+初始化校验：`0 < submitMinRatio <= 1e18` 由 DeployCore 广播前校验，`phaseAddress`、`stakeAddress`、`memberNFTAddress` 有代码由 DeployCore 部署后校验；两者均由 21_check 独立复核；`init` 只防重复初始化并保存入参。
 
 ## 事件与错误
 
@@ -147,9 +147,6 @@ Proposal 由合约分配的头部与创建者提供的主体组成，对外以 `
 | 错误 | 触发条件 |
 | --- | --- |
 | `AlreadyInitialized()` | 重复初始化 |
-| `DependencyNotContract(address dependency)` | `init` 的任一依赖为零或无代码；载荷为失败地址 |
-| `ZeroSubmitMinRatio()` | `init` 的 `submitMinRatio == 0` |
-| `InvalidSubmitMinRatio(uint256 value)` | `init` 的 `submitMinRatio > 1e18`，载荷为该值 |
 | `TitleEmpty()` | `title` 为空 |
 | `ZeroTargetAddress()` | `submitNewProposal` 的 `target` 为零 |
 | `CallbackTargetNotContract(address target)` | `targetMode == Callback` 且 `target.code.length == 0` |

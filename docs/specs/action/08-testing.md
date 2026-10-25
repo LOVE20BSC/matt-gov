@@ -5,7 +5,7 @@
 | 模块 | 必测场景 | 预期 |
 | --- | --- | --- |
 | [ActionTarget](01-action-target.md) | 三类回调、executor 握手、映射、重复创建、非授权调用、加入轮校验、行动列表查询 | 只用关联 Executor，回调失败全回滚，当前投票轮不大于创建轮时注册回滚 `JoinNotOpen`，`votedActions` 与本轮投票一致，`actions`/`actionIdsByExecutor` 与创建绑定一致 |
-| ActionTarget | `init` 只收 Mint、派生依赖与零值拒绝 | `voteAddress`/`submitAddress`/`memberNFTAddress`/`phaseAddress` 从 Mint 读取一次并缓存；`mintAddress` 或任一派生值为零/无代码回滚 `DependencyNotContract(address)` 且不锁定状态，修正后可重试 |
+| ActionTarget | `init` 只收 Mint、派生依赖 | `voteAddress`/`submitAddress`/`memberNFTAddress`/`phaseAddress` 从 Mint 读取一次并缓存；依赖代码与绑定由 `DeployAction` 广播前交叉校验、21_check 直接读取 Stake getter 覆盖，`init` 只防重复初始化 |
 | ActionTarget | forceExit 后正常退出 | forceExit 只清 Target 加入状态；随后 Executor 仍可返还资产、清理群归属，调用 `clearJoinState` 幂等成功 |
 | ActionTarget | 分页顺序契约 | 按 `01-action-target.md` 顺序契约执行：加入态集合的 `offset` 不保证跨调用稳定，删除（swap-and-pop）后同一 `offset` 的返回内容可变化；`offset` 越界返回空数组与真实总数、`limit = 0` 只返回总数 |
 | ActionTarget | Target Data 位置契约 | 创建与推举回调共用同一份 Target Data：第 `0` 项均为 executor 保留项、业务项从第 `1` 项起；投票回调为投票者提供的数据，非空时第 `0` 项为已绑定 Executor、其后为业务项；三类回调转发门禁——`targetData` 非空时第 `0` 项必须为已绑定 Executor 地址（否则回滚），投票回调空数据原样透传；项数、位置与编码由各 Executor 自定并自行拒绝 |
@@ -24,7 +24,7 @@
 | GroupAction | 位置化已验证推导的跨轮稳定性 | 目标轮计分后，后续轮集合变动（含成员退出引起的位移）不改变该轮解码；同轮加入→退出→再加入按该轮最终排列计分与解码；部分批次时余量保持未验证；集合定位失配（槽位与成员不符）按未验证返回、不误判已验证 |
 | GroupAction | 整轮验证计数 | 只有该轮全部群的游标追平成员数后 `roundVerified` 才为真；`verifiedGroupCount` 与该轮群数一致；空轮保持 false（结算先看 `totalFinalScore`）；已完成群的重复提交回滚 `GroupVerificationAlreadyComplete(groupId, round)` |
 | GroupAction | 代币量事件出口 | 参与代币量只由 `Joined`/`Withdrawn` 承载；单笔 `withdraw`/`providerWithdraw` 各发一条带 `providerId` 的 `Withdrawn`；`exit` 按来源逐条发出（自有来源为 0，每个有余额的 Provider 一条）后再发 `Exited`，`Withdrawn` 金额之和等于实际返还总额，`Exited` 带链群 `groupId`、不带金额 |
-| GroupAction | `init` 派生依赖与零校验 | `memberNFTAddress`/`phaseAddress`/`voteAddress` 从 `stakeAddress` 读取一次并缓存，为零/无代码回滚 `DependencyNotContract(address)`；不接收 `mintAddress` |
+| GroupAction | `init` 派生依赖与 splits | `memberNFTAddress`/`phaseAddress`/`voteAddress` 从 `stakeAddress` 读取一次并缓存；依赖代码、Stake 派生图与 splits 空数组/范围/递增性由 `DeployActionTest`/21_check 覆盖；不接收 `mintAddress` |
 | GroupAction | 创建数据与验证信息长度 | Target Data 项数少于 `6`/多于 `7` 回滚 `TargetDataLengthMismatch(6, actual)`/`TargetDataLengthMismatch(7, actual)`，项不是 32 字节回滚 `InvalidTargetDataShape(index, length)`；schema 两数组不等长回滚 `VerificationInfoLengthMismatch(keysLength, descriptionsLength)`，成员值项数不符回滚 `VerificationInfoLengthMismatch(keysLength, valuesLength)` |
 | GroupAction | 参与索引分页与归属计数 | 五条 `g*` 分页查询的 `offset`/`limit`/`reverse`/`total` 符合标准分页契约；`isGroupMember` 与 `gTokenAddressesByGroupIdByMemberId` 同源一致，且都在最后一个关系退出后才归零；`forceExit` 不改动 |
 | GroupAction | 按轮历史两读 | `groupIds`、`memberIdsByGroupId` 按目标轮历史返回，分页契约同 `g*`；`groupIds` 与验证游标衔接，加入阶段结束后该轮结果稳定，`offset` 连续翻页等价于验证游标 |
@@ -41,7 +41,7 @@
 | GroupAction | 未完成验证时的行动层查询 | `generatedActionReward` 与 `generatedActionRewardByGroupId` 按轮次返回 0，部分批次已计入不产生正值，`totalFinalScore` 为零时不除零 |
 | GroupAction | 完整验证后的成员和群激励 | 符合权重与舍入公式 |
 | [GroupService](06-service-executor.md) | 全社区聚合、同币/直接父币、非直接关系 | 分母按 `votedActions` 枚举并过滤 `executor == groupActionExecutorAddress`、逐行动求和；源行动查询自行处理验证条件；非法代币关系回滚 `ActionTokenParentMismatch(actionTokenAddress, serviceTokenAddress, actualParentTokenAddress)`；`ratioForPublicVerifier > 1e18` 回滚 `InvalidRatioForPublicVerifier(value)` |
-| GroupService | `init` 派生依赖与零校验 | `memberNFTAddress`/`phaseAddress`/`launchAddress` 从 `stakeAddress` 读取一次并缓存，`mintAddress` 从 `ActionTarget.mintAddress()` 读取一次并缓存，入参与派生字段为零/无代码统一回滚 `DependencyNotContract(address)`；`mintAddress` 不作为 `init` 参数；不派生 `voteAddress` |
+| GroupService | `init` 派生依赖与绑定 | `memberNFTAddress`/`phaseAddress`/`launchAddress` 从 `stakeAddress` 读取一次并缓存，`mintAddress` 从 `ActionTarget.mintAddress()` 读取一次并缓存；依赖代码、Stake 派生图与 `groupActionExecutorAddress()` 绑定由 `DeployAction`/21_check 覆盖；`mintAddress` 不作为 `init` 参数；不派生 `voteAddress` |
 | GroupService | 加入资格两类分支与 join/exit 边界 | owner 分支 = 成员自身作为链群在社区存在激活行动（`hasActiveGroups`）；候选分支 = 被加入的那一轮的社区行动集内存在有效验证者申请（资格按 `currentJoinRound()` 判定，申请在其创建轮之前不算，对应 `testJoinReadsTheApplicationAtTheJoinedRound`）；晚加入从加入轮起生效、不回填更早轮次；均不满足回滚 `NotQualified(actionTokenAddress, round, memberId)`；重复 `join` 回滚 `AlreadyJoined(serviceTokenAddress, serviceActionId, memberId)`、未加入 `exit` 回滚 `NotJoined(serviceTokenAddress, serviceActionId, memberId)`；`joinInfo` 转发 `isJoinedByRound`，退出不追回已发生轮 |
 | GroupService | 分母实时计算、缓存与零分母结算 | 分母与权重同源；分母对每个入榜行动读一次 `A[a]`（O(votedActions)），权重另读群切片、成员为锁定验证者时再读一次 `A[a]`，群切片按分数现算；**行动代币**那一轮被 Mint 准备后分母才缓存，父币服务 / 子币行动时子币那轮未准备，分母必须保持实时；`D == 0` 时任何角色结算都回滚 `MemberActionRewardUnavailable(tokenAddress, actionId, memberId, round)`，整笔激励停留在未结算状态、预留不释放 |
 | GroupService | 验证者比例（按服务 Proposal 绑定）、owner 治理上限、100% 二次分配 | 验证者按工作量直接分配；owner 超额销毁；分配不超预算、不下溢；`RATIO_FOR_PUBLIC_VERIFIER` 按 `serviceActionId` 读取并与权重计算一致；上限判定按 `cap >= ceilDiv(W, D)` 形式比较（等价于交叉相乘，但不做会溢出的乘法），未触发时无取整粉尘销毁 |

@@ -77,7 +77,7 @@ settlementUnit = floor(withdrawableLp * FEE_SETTLEMENT_RATIO / 1e18)
 单笔处理量      processedFeeLp = settlementUnit
 ```
 
-`FEE_SETTLEMENT_RATIO` 是单笔结算占可提取 LP 的比例，以 `1e18` 表示 100%（配置值 `3e15` 即 0.3%）；初始化时要求 `0 < FEE_SETTLEMENT_RATIO <= 1e18`。
+`FEE_SETTLEMENT_RATIO` 是单笔结算占可提取 LP 的比例，以 `1e18` 表示 100%（配置值 `3e15` 即 0.3%）；部署时要求 `0 < FEE_SETTLEMENT_RATIO <= 1e18` 且不大于目标池费率（当前 `3e15`）。
 
 阈值同时定义「何时开始烧」和「一次烧多少」：达到一个单位就结算一个单位，剩余 `feeLp - settlementUnit` 留待下个 Phase。这样不需要第二个参数。
 
@@ -147,11 +147,8 @@ Vote 每次投票通过 `Stake.validGovVotes(tokenAddress, memberId)` 读取当�
 | 顺序 | 条件 | 回滚错误 |
 | --- | --- | --- |
 | 1 | 已初始化 | `AlreadyInitialized()` |
-| 2 | `phaseAddress`、`memberNFTAddress`、`voteAddress`、`launchAddress`、`routerAddress`、`pairFactoryAddress` 任一为零地址或无代码 | `DependencyNotContract(address)`，载荷为失败依赖 |
-| 3 | `promisedWaitingPhasesMin` 为零 | `ZeroPromisedWaitingPhasesMin()` |
-| 4 | `feeSettlementRatio` 为零 | `ZeroFeeSettlementRatio()` |
-| 5 | `feeSettlementRatio` 大于 `1e18` | `InvalidFeeSettlementRatio(feeSettlementRatio)` |
-| 6 | `promisedWaitingPhasesMin` 大于 `promisedWaitingPhasesMax` | `InvalidPromisedWaitingPhasesRange(promisedWaitingPhasesMin, promisedWaitingPhasesMax)` |
+
+Factory 与 `Router.factory()` 一致、`promisedWaitingPhasesMin > 0`、`0 < feeSettlementRatio <= 目标池费率（当前 3e15）`、`min <= max` 由 DeployCore 广播前校验；六个依赖地址有代码由 DeployCore 部署后校验；两者均由 21_check 独立复核；`init` 只防重复初始化并保存入参。
 
 ### `stakeLiquidity`
 

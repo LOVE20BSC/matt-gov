@@ -25,11 +25,11 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/GroupActionExecutor.sol:789",
+        "action/src/GroupActionExecutor.sol:762",
         "action/src/GroupActionManager.sol:108",
         "action/src/GroupActionVerify.sol:196",
-        "action/src/GroupServiceExecutor.sol:813",
-        "action/src/LpExecutor.sol:554"
+        "action/src/GroupServiceExecutor.sol:795",
+        "action/src/LpExecutor.sol:539"
       ],
       "selector": "0x36c193ae",
       "signature": "ActionNotCreated(address,uint256)"
@@ -44,7 +44,7 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/GroupServiceExecutor.sol:529"
+        "action/src/GroupServiceExecutor.sol:511"
       ],
       "selector": "0x4757480b",
       "signature": "ActionTokenParentMismatch(address,address,address)"
@@ -59,7 +59,7 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/ActionTarget.sol:461"
+        "action/src/ActionTarget.sol:446"
       ],
       "selector": "0xca699de2",
       "signature": "AlreadyCreated(address,uint256)"
@@ -91,10 +91,10 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/ActionTarget.sol:52",
+        "action/src/ActionTarget.sol:53",
         "action/src/GroupActionExecutor.sol:70",
         "action/src/GroupServiceExecutor.sol:83",
-        "action/src/LpExecutor.sol:106"
+        "action/src/LpExecutor.sol:107"
       ],
       "selector": "0x0dc149f0",
       "signature": "AlreadyInitialized()"
@@ -109,7 +109,7 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/GroupServiceExecutor.sol:192"
+        "action/src/GroupServiceExecutor.sol:170"
       ],
       "selector": "0x8a8846f7",
       "signature": "AlreadyJoined(address,uint256,uint256)"
@@ -124,9 +124,9 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/GroupActionExecutor.sol:710",
-        "action/src/GroupServiceExecutor.sol:398",
-        "action/src/LpExecutor.sol:407"
+        "action/src/GroupActionExecutor.sol:683",
+        "action/src/GroupServiceExecutor.sol:376",
+        "action/src/LpExecutor.sol:392"
       ],
       "selector": "0x81b5b207",
       "signature": "BatchLengthMismatch(uint256,uint256)"
@@ -192,44 +192,6 @@
       "signature": "DeactivationLockedInActivatedRound(uint256,uint256)"
     },
     {
-      "declarations": 2,
-      "files": [
-        "action/src/interfaces/IActionExecutor.sol",
-        "action/src/interfaces/IActionTarget.sol"
-      ],
-      "interfaces": [
-        "IActionExecutorErrors",
-        "IActionTargetErrors"
-      ],
-      "repo": "action",
-      "revert_sites": [
-        "action/src/ActionTarget.sol:57",
-        "action/src/ActionTarget.sol:66",
-        "action/src/ActionTarget.sol:69",
-        "action/src/ActionTarget.sol:72",
-        "action/src/ActionTarget.sol:75",
-        "action/src/GroupActionExecutor.sol:75",
-        "action/src/GroupActionExecutor.sol:78",
-        "action/src/GroupActionExecutor.sol:86",
-        "action/src/GroupActionExecutor.sol:89",
-        "action/src/GroupActionExecutor.sol:92",
-        "action/src/GroupServiceExecutor.sol:103",
-        "action/src/GroupServiceExecutor.sol:106",
-        "action/src/GroupServiceExecutor.sol:109",
-        "action/src/GroupServiceExecutor.sol:112",
-        "action/src/GroupServiceExecutor.sol:88",
-        "action/src/GroupServiceExecutor.sol:91",
-        "action/src/GroupServiceExecutor.sol:94",
-        "action/src/LpExecutor.sol:111",
-        "action/src/LpExecutor.sol:114",
-        "action/src/LpExecutor.sol:121",
-        "action/src/LpExecutor.sol:124",
-        "action/src/LpExecutor.sol:127"
-      ],
-      "selector": "0x53516c3b",
-      "signature": "DependencyNotContract(address)"
-    },
-    {
       "declarations": 1,
       "files": [
         "action/src/interfaces/IGroupActionExecutor.sol"
@@ -285,7 +247,7 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/ActionTarget.sol:458"
+        "action/src/ActionTarget.sol:443"
       ],
       "selector": "0x4042953c",
       "signature": "ExecutorHandshakeFailed(address)"
@@ -300,7 +262,7 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/ActionTarget.sol:451"
+        "action/src/ActionTarget.sol:436"
       ],
       "selector": "0xa6585817",
       "signature": "ExecutorNotContract(address)"
@@ -315,7 +277,7 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/ActionTarget.sol:455"
+        "action/src/ActionTarget.sol:440"
       ],
       "selector": "0x77523042",
       "signature": "ExecutorTargetMismatch(address,address)"
@@ -459,7 +421,7 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/LpExecutor.sol:209"
+        "action/src/LpExecutor.sol:194"
       ],
       "selector": "0x39a246e7",
       "signature": "InsufficientGovRatio(uint256,uint256)"
@@ -504,7 +466,7 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/LpExecutor.sol:161"
+        "action/src/LpExecutor.sol:146"
       ],
       "selector": "0x17318f81",
       "signature": "InvalidJoinTokenFactory(address,address)"
@@ -549,7 +511,7 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/LpExecutor.sol:164"
+        "action/src/LpExecutor.sol:149"
       ],
       "selector": "0x30a418eb",
       "signature": "InvalidMinGovRatio(uint256)"
@@ -579,25 +541,10 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/GroupServiceExecutor.sol:524"
+        "action/src/GroupServiceExecutor.sol:506"
       ],
       "selector": "0x790182dd",
       "signature": "InvalidRatioForPublicVerifier(uint256)"
-    },
-    {
-      "declarations": 1,
-      "files": [
-        "action/src/interfaces/IGroupActionExecutor.sol"
-      ],
-      "interfaces": [
-        "IGroupActionExecutorErrors"
-      ],
-      "repo": "action",
-      "revert_sites": [
-        "action/src/GroupActionExecutor.sol:100"
-      ],
-      "selector": "0xba660bff",
-      "signature": "InvalidSplits(uint256,uint256)"
     },
     {
       "declarations": 4,
@@ -615,13 +562,13 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/ActionTarget.sol:447",
-        "action/src/ActionTarget.sol:500",
-        "action/src/ActionTarget.sol:529",
+        "action/src/ActionTarget.sol:432",
+        "action/src/ActionTarget.sol:485",
+        "action/src/ActionTarget.sol:514",
         "action/src/GroupActionManager.sol:60",
         "action/src/GroupActionVerify.sol:406",
-        "action/src/GroupServiceExecutor.sol:512",
-        "action/src/LpExecutor.sol:149"
+        "action/src/GroupServiceExecutor.sol:494",
+        "action/src/LpExecutor.sol:134"
       ],
       "selector": "0x9c2b3988",
       "signature": "InvalidTargetDataShape(uint256,uint256)"
@@ -636,7 +583,7 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/ActionTarget.sol:136"
+        "action/src/ActionTarget.sol:121"
       ],
       "selector": "0x81013803",
       "signature": "JoinNotOpen(address,uint256,uint256,uint256)"
@@ -651,10 +598,10 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/GroupActionExecutor.sol:818",
-        "action/src/GroupServiceExecutor.sol:831",
-        "action/src/GroupServiceExecutor.sol:841",
-        "action/src/LpExecutor.sol:581"
+        "action/src/GroupActionExecutor.sol:791",
+        "action/src/GroupServiceExecutor.sol:813",
+        "action/src/GroupServiceExecutor.sol:823",
+        "action/src/LpExecutor.sol:566"
       ],
       "selector": "0x4cd933ce",
       "signature": "MemberActionRewardUnavailable(address,uint256,uint256,uint256)"
@@ -741,8 +688,8 @@
       "repo": "action",
       "revert_sites": [
         "action/src/GroupActionJoin.sol:205",
-        "action/src/GroupServiceExecutor.sol:486",
-        "action/src/LpExecutor.sol:289"
+        "action/src/GroupServiceExecutor.sol:468",
+        "action/src/LpExecutor.sol:274"
       ],
       "selector": "0x847d1a6f",
       "signature": "NotJoined(address,uint256,uint256)"
@@ -759,7 +706,7 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/ActionTarget.sol:108",
+        "action/src/ActionTarget.sol:93",
         "action/src/GroupActionExecutor.sol:39",
         "action/src/GroupActionJoin.sol:35",
         "action/src/GroupActionVerify.sol:36",
@@ -779,7 +726,7 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/GroupServiceExecutor.sol:197"
+        "action/src/GroupServiceExecutor.sol:175"
       ],
       "selector": "0xd52b235e",
       "signature": "NotQualified(address,uint256,uint256)"
@@ -794,7 +741,7 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/ActionTarget.sol:94"
+        "action/src/ActionTarget.sol:79"
       ],
       "selector": "0x3c7708ea",
       "signature": "NotSubmit(address)"
@@ -809,7 +756,7 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/ActionTarget.sol:101"
+        "action/src/ActionTarget.sol:86"
       ],
       "selector": "0x20edde6a",
       "signature": "NotVote(address)"
@@ -839,7 +786,7 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/ActionTarget.sol:285"
+        "action/src/ActionTarget.sol:270"
       ],
       "selector": "0x82bbc7fd",
       "signature": "ProposalNotVoted(address,uint256)"
@@ -944,9 +891,9 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/GroupActionExecutor.sol:800",
-        "action/src/GroupServiceExecutor.sol:824",
-        "action/src/LpExecutor.sol:565"
+        "action/src/GroupActionExecutor.sol:773",
+        "action/src/GroupServiceExecutor.sol:806",
+        "action/src/LpExecutor.sol:550"
       ],
       "selector": "0xf41a3e9f",
       "signature": "RewardAlreadyMinted(address,uint256,uint256,uint256)"
@@ -961,9 +908,9 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/GroupActionExecutor.sol:796",
-        "action/src/GroupServiceExecutor.sol:820",
-        "action/src/LpExecutor.sol:561"
+        "action/src/GroupActionExecutor.sol:769",
+        "action/src/GroupServiceExecutor.sol:802",
+        "action/src/LpExecutor.sol:546"
       ],
       "selector": "0x45297019",
       "signature": "RoundAfterMintWindow(uint256,uint256)"
@@ -978,9 +925,9 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/GroupActionExecutor.sol:792",
-        "action/src/GroupServiceExecutor.sol:816",
-        "action/src/LpExecutor.sol:557"
+        "action/src/GroupActionExecutor.sol:765",
+        "action/src/GroupServiceExecutor.sol:798",
+        "action/src/LpExecutor.sol:542"
       ],
       "selector": "0x1edd1ded",
       "signature": "RoundBeforeActionCreated(uint256,uint256)"
@@ -995,20 +942,20 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/GroupActionExecutor.sol:117",
-        "action/src/GroupActionExecutor.sol:648",
-        "action/src/GroupActionExecutor.sol:656",
-        "action/src/GroupActionExecutor.sol:664",
+        "action/src/GroupActionExecutor.sol:621",
+        "action/src/GroupActionExecutor.sol:629",
+        "action/src/GroupActionExecutor.sol:637",
+        "action/src/GroupActionExecutor.sol:90",
         "action/src/GroupActionStorage.sol:181",
         "action/src/GroupActionVerify.sol:526",
-        "action/src/GroupServiceExecutor.sol:133",
-        "action/src/GroupServiceExecutor.sol:141",
-        "action/src/GroupServiceExecutor.sol:149",
-        "action/src/GroupServiceExecutor.sol:157",
+        "action/src/GroupServiceExecutor.sol:111",
+        "action/src/GroupServiceExecutor.sol:119",
+        "action/src/GroupServiceExecutor.sol:127",
+        "action/src/GroupServiceExecutor.sol:135",
         "action/src/GroupServiceStorage.sol:65",
-        "action/src/LpExecutor.sol:439",
-        "action/src/LpExecutor.sol:447",
-        "action/src/LpExecutor.sol:455"
+        "action/src/LpExecutor.sol:424",
+        "action/src/LpExecutor.sol:432",
+        "action/src/LpExecutor.sol:440"
       ],
       "selector": "0xea74f32b",
       "signature": "RoundNotStarted(uint256,uint256)"
@@ -1068,8 +1015,8 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/ActionTarget.sol:504",
-        "action/src/ActionTarget.sol:533"
+        "action/src/ActionTarget.sol:489",
+        "action/src/ActionTarget.sol:518"
       ],
       "selector": "0xb4d298bc",
       "signature": "TargetDataExecutorMismatch(address,address)"
@@ -1090,15 +1037,15 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/ActionTarget.sol:444",
-        "action/src/ActionTarget.sol:497",
+        "action/src/ActionTarget.sol:429",
+        "action/src/ActionTarget.sol:482",
         "action/src/GroupActionManager.sol:52",
         "action/src/GroupActionManager.sol:55",
         "action/src/GroupActionVerify.sol:403",
-        "action/src/GroupServiceExecutor.sol:507",
-        "action/src/GroupServiceExecutor.sol:559",
-        "action/src/LpExecutor.sol:144",
-        "action/src/LpExecutor.sol:187"
+        "action/src/GroupServiceExecutor.sol:489",
+        "action/src/GroupServiceExecutor.sol:541",
+        "action/src/LpExecutor.sol:129",
+        "action/src/LpExecutor.sol:172"
       ],
       "selector": "0x232f36be",
       "signature": "TargetDataLengthMismatch(uint256,uint256)"
@@ -1128,7 +1075,7 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/ActionTarget.sol:87"
+        "action/src/ActionTarget.sol:72"
       ],
       "selector": "0x89d3c18e",
       "signature": "UnauthorizedExecutor(address,uint256)"
@@ -1143,8 +1090,8 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/ActionTarget.sol:494",
-        "action/src/ActionTarget.sol:525"
+        "action/src/ActionTarget.sol:479",
+        "action/src/ActionTarget.sol:510"
       ],
       "selector": "0x283a3095",
       "signature": "UnboundProposal(address,uint256)"
@@ -1223,7 +1170,7 @@
       "repo": "action",
       "revert_sites": [
         "action/src/GroupActionJoin.sol:129",
-        "action/src/LpExecutor.sol:254"
+        "action/src/LpExecutor.sol:239"
       ],
       "selector": "0xbffdd230",
       "signature": "WithdrawAmountExceeded(uint256,uint256)"
@@ -1238,7 +1185,7 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/GroupServiceExecutor.sol:521"
+        "action/src/GroupServiceExecutor.sol:503"
       ],
       "selector": "0x95bf90a9",
       "signature": "ZeroActionTokenAddress()"
@@ -1256,7 +1203,7 @@
       "repo": "action",
       "revert_sites": [
         "action/src/GroupActionManager.sol:70",
-        "action/src/LpExecutor.sol:158"
+        "action/src/LpExecutor.sol:143"
       ],
       "selector": "0x8a1b296f",
       "signature": "ZeroJoinTokenAddress()"
@@ -1276,8 +1223,8 @@
         "action/src/GroupActionJoin.sol:123",
         "action/src/GroupActionJoin.sol:162",
         "action/src/GroupActionJoin.sol:65",
-        "action/src/LpExecutor.sol:199",
-        "action/src/LpExecutor.sol:248"
+        "action/src/LpExecutor.sol:184",
+        "action/src/LpExecutor.sol:233"
       ],
       "selector": "0x4ae8f898",
       "signature": "ZeroParticipationAmount()"
@@ -1348,11 +1295,11 @@
       "repo": "core",
       "revert_sites": [
         "core/src/Launch.sol:79",
-        "core/src/MemberNFT.sol:74",
-        "core/src/Mint.sol:88",
-        "core/src/Stake.sol:72",
-        "core/src/Submit.sol:50",
-        "core/src/Vote.sol:76"
+        "core/src/MemberNFT.sol:71",
+        "core/src/Mint.sol:89",
+        "core/src/Stake.sol:73",
+        "core/src/Submit.sol:51",
+        "core/src/Vote.sol:77"
       ],
       "selector": "0x0dc149f0",
       "signature": "AlreadyInitialized()"
@@ -1367,58 +1314,23 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Submit.sol:234"
+        "core/src/Submit.sol:220"
       ],
       "selector": "0x5816a336",
       "signature": "CallbackTargetNotContract(address)"
     },
     {
-      "declarations": 7,
+      "declarations": 1,
       "files": [
-        "core/src/interfaces/ILOVE20Token.sol",
-        "core/src/interfaces/ILaunch.sol",
-        "core/src/interfaces/IMemberNFT.sol",
-        "core/src/interfaces/IMint.sol",
-        "core/src/interfaces/IStake.sol",
-        "core/src/interfaces/ISubmit.sol",
-        "core/src/interfaces/IVote.sol"
+        "core/src/interfaces/ILOVE20Token.sol"
       ],
       "interfaces": [
-        "ILOVE20TokenErrors",
-        "ILaunchErrors",
-        "IMemberNFTErrors",
-        "IMintErrors",
-        "IStakeErrors",
-        "ISubmitErrors",
-        "IVoteErrors"
+        "ILOVE20TokenErrors"
       ],
       "repo": "core",
       "revert_sites": [
         "core/src/LOVE20Token.sol:41",
-        "core/src/LOVE20Token.sol:42",
-        "core/src/Launch.sol:80",
-        "core/src/Launch.sol:82",
-        "core/src/Launch.sol:85",
-        "core/src/Launch.sol:88",
-        "core/src/MemberNFT.sol:75",
-        "core/src/Mint.sol:102",
-        "core/src/Mint.sol:107",
-        "core/src/Mint.sol:93",
-        "core/src/Mint.sol:96",
-        "core/src/Mint.sol:99",
-        "core/src/Stake.sol:73",
-        "core/src/Stake.sol:74",
-        "core/src/Stake.sol:75",
-        "core/src/Stake.sol:76",
-        "core/src/Stake.sol:77",
-        "core/src/Stake.sol:78",
-        "core/src/Submit.sol:53",
-        "core/src/Submit.sol:56",
-        "core/src/Submit.sol:59",
-        "core/src/Vote.sol:79",
-        "core/src/Vote.sol:82",
-        "core/src/Vote.sol:85",
-        "core/src/Vote.sol:88"
+        "core/src/LOVE20Token.sol:42"
       ],
       "selector": "0x53516c3b",
       "signature": "DependencyNotContract(address)"
@@ -1433,7 +1345,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Launch.sol:469"
+        "core/src/Launch.sol:450"
       ],
       "selector": "0x7c7610b0",
       "signature": "DistributorNotContract(address)"
@@ -1448,8 +1360,8 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Launch.sol:178",
-        "core/src/Launch.sol:247"
+        "core/src/Launch.sol:159",
+        "core/src/Launch.sol:228"
       ],
       "selector": "0x750e6e06",
       "signature": "InsufficientLaunchCount(uint256,uint256,uint256)"
@@ -1464,7 +1376,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Submit.sol:102"
+        "core/src/Submit.sol:88"
       ],
       "selector": "0x6898aba8",
       "signature": "InsufficientSubmitPower(address,uint256,uint256,uint256)"
@@ -1479,40 +1391,10 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Stake.sol:233"
+        "core/src/Stake.sol:221"
       ],
       "selector": "0x84d77e73",
       "signature": "InsufficientWaitingPhases(uint256,uint256)"
-    },
-    {
-      "declarations": 1,
-      "files": [
-        "core/src/interfaces/IPhase.sol"
-      ],
-      "interfaces": [
-        "IPhaseErrors"
-      ],
-      "repo": "core",
-      "revert_sites": [
-        "core/src/Phase.sol:38"
-      ],
-      "selector": "0xc5e1715a",
-      "signature": "InvalidAdjustThreshold(uint256)"
-    },
-    {
-      "declarations": 1,
-      "files": [
-        "core/src/interfaces/IStake.sol"
-      ],
-      "interfaces": [
-        "IStakeErrors"
-      ],
-      "repo": "core",
-      "revert_sites": [
-        "core/src/Stake.sol:81"
-      ],
-      "selector": "0xb9e48ba5",
-      "signature": "InvalidFeeSettlementRatio(uint256)"
     },
     {
       "declarations": 1,
@@ -1532,51 +1414,6 @@
     {
       "declarations": 1,
       "files": [
-        "core/src/interfaces/ILaunch.sol"
-      ],
-      "interfaces": [
-        "ILaunchErrors"
-      ],
-      "repo": "core",
-      "revert_sites": [
-        "core/src/Launch.sol:97"
-      ],
-      "selector": "0xfa953e3c",
-      "signature": "InvalidLaunchAmount(uint256,uint256)"
-    },
-    {
-      "declarations": 1,
-      "files": [
-        "core/src/interfaces/ILaunch.sol"
-      ],
-      "interfaces": [
-        "ILaunchErrors"
-      ],
-      "repo": "core",
-      "revert_sites": [
-        "core/src/Launch.sol:92"
-      ],
-      "selector": "0xfcb552f8",
-      "signature": "InvalidLaunchRatio(uint256)"
-    },
-    {
-      "declarations": 1,
-      "files": [
-        "core/src/interfaces/IMint.sol"
-      ],
-      "interfaces": [
-        "IMintErrors"
-      ],
-      "repo": "core",
-      "revert_sites": [
-        "core/src/Mint.sol:119"
-      ],
-      "selector": "0xc0ad323e",
-      "signature": "InvalidMaxGovBoostRewardMultiplier(uint256)"
-    },
-    {
-      "declarations": 1,
-      "files": [
         "core/src/interfaces/IStake.sol"
       ],
       "interfaces": [
@@ -1584,7 +1421,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Stake.sol:432"
+        "core/src/Stake.sol:420"
       ],
       "selector": "0x50a046ad",
       "signature": "InvalidPromisedWaitingPhases(uint256,uint256,uint256)"
@@ -1592,66 +1429,6 @@
     {
       "declarations": 1,
       "files": [
-        "core/src/interfaces/IStake.sol"
-      ],
-      "interfaces": [
-        "IStakeErrors"
-      ],
-      "repo": "core",
-      "revert_sites": [
-        "core/src/Stake.sol:83"
-      ],
-      "selector": "0x57558ec0",
-      "signature": "InvalidPromisedWaitingPhasesRange(uint256,uint256)"
-    },
-    {
-      "declarations": 1,
-      "files": [
-        "core/src/interfaces/IMint.sol"
-      ],
-      "interfaces": [
-        "IMintErrors"
-      ],
-      "repo": "core",
-      "revert_sites": [
-        "core/src/Mint.sol:111"
-      ],
-      "selector": "0xaa32f24b",
-      "signature": "InvalidProposalRewardMinVoteRatio(uint256)"
-    },
-    {
-      "declarations": 1,
-      "files": [
-        "core/src/interfaces/IMint.sol"
-      ],
-      "interfaces": [
-        "IMintErrors"
-      ],
-      "repo": "core",
-      "revert_sites": [
-        "core/src/Mint.sol:115"
-      ],
-      "selector": "0xbee153b6",
-      "signature": "InvalidRoundRewardRatios(uint256,uint256)"
-    },
-    {
-      "declarations": 1,
-      "files": [
-        "core/src/interfaces/ISubmit.sol"
-      ],
-      "interfaces": [
-        "ISubmitErrors"
-      ],
-      "repo": "core",
-      "revert_sites": [
-        "core/src/Submit.sol:65"
-      ],
-      "selector": "0xfd18623e",
-      "signature": "InvalidSubmitMinRatio(uint256)"
-    },
-    {
-      "declarations": 1,
-      "files": [
         "core/src/interfaces/ILaunch.sol"
       ],
       "interfaces": [
@@ -1659,7 +1436,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Launch.sol:411"
+        "core/src/Launch.sol:392"
       ],
       "selector": "0x7e279c58",
       "signature": "InvalidTokenSymbolCharacters()"
@@ -1674,7 +1451,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Launch.sol:410"
+        "core/src/Launch.sol:391"
       ],
       "selector": "0x18a4669e",
       "signature": "InvalidTokenSymbolLength(uint256,uint256)"
@@ -1689,7 +1466,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Launch.sol:278"
+        "core/src/Launch.sol:259"
       ],
       "selector": "0x9affae33",
       "signature": "LaunchCountLimitExceeded(address,uint256,uint256)"
@@ -1719,7 +1496,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Submit.sol:287"
+        "core/src/Submit.sol:273"
       ],
       "selector": "0xc3487d0d",
       "signature": "MemberAlreadySubmitted(address,uint256,uint256)"
@@ -1734,7 +1511,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Mint.sol:592"
+        "core/src/Mint.sol:565"
       ],
       "selector": "0xc157061f",
       "signature": "MemberRewardAlreadyMinted(address,uint256,uint256)"
@@ -1749,7 +1526,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Mint.sol:599"
+        "core/src/Mint.sol:572"
       ],
       "selector": "0x1392e03a",
       "signature": "MemberRewardUnavailable(address,uint256,uint256)"
@@ -1764,7 +1541,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/MemberNFT.sol:316"
+        "core/src/MemberNFT.sol:312"
       ],
       "selector": "0x2350ee53",
       "signature": "NameAlreadyExists(uint256)"
@@ -1779,7 +1556,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/MemberNFT.sol:308"
+        "core/src/MemberNFT.sol:304"
       ],
       "selector": "0x1ff3ed9d",
       "signature": "NameEmpty()"
@@ -1794,7 +1571,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/MemberNFT.sol:310"
+        "core/src/MemberNFT.sol:306"
       ],
       "selector": "0x9954195a",
       "signature": "NameInvalidCharacters()"
@@ -1809,7 +1586,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/MemberNFT.sol:309"
+        "core/src/MemberNFT.sol:305"
       ],
       "selector": "0x243cf1c9",
       "signature": "NameTooLong(uint256,uint256)"
@@ -1824,7 +1601,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Submit.sol:99"
+        "core/src/Submit.sol:85"
       ],
       "selector": "0xa0d4ddef",
       "signature": "NoGovVotes(address)"
@@ -1839,10 +1616,10 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Stake.sol:144",
-        "core/src/Stake.sol:187",
-        "core/src/Stake.sol:224",
-        "core/src/Stake.sol:276"
+        "core/src/Stake.sol:132",
+        "core/src/Stake.sol:175",
+        "core/src/Stake.sol:212",
+        "core/src/Stake.sol:264"
       ],
       "selector": "0x42b29552",
       "signature": "NoStakedLiquidity(address,uint256)"
@@ -1857,7 +1634,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Vote.sol:112"
+        "core/src/Vote.sol:101"
       ],
       "selector": "0x8102b749",
       "signature": "NoVotingPower(address,uint256)"
@@ -1872,7 +1649,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Stake.sol:427"
+        "core/src/Stake.sol:415"
       ],
       "selector": "0xbe9cd064",
       "signature": "NotAllowedToStakeAtRoundZero()"
@@ -1896,10 +1673,10 @@
       "repo": "core",
       "revert_sites": [
         "core/src/Launch.sol:49",
-        "core/src/Mint.sol:283",
-        "core/src/Stake.sol:104",
-        "core/src/Submit.sol:108",
-        "core/src/Vote.sol:99"
+        "core/src/Mint.sol:256",
+        "core/src/Stake.sol:92",
+        "core/src/Submit.sol:94",
+        "core/src/Vote.sol:88"
       ],
       "selector": "0x33393244",
       "signature": "NotMemberOwner(uint256)"
@@ -1944,7 +1721,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Mint.sol:236"
+        "core/src/Mint.sol:209"
       ],
       "selector": "0xc157502b",
       "signature": "NotProposalTarget(address,address)"
@@ -1959,7 +1736,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Launch.sol:386"
+        "core/src/Launch.sol:367"
       ],
       "selector": "0x90fa4b05",
       "signature": "PairCreationFailed(address)"
@@ -1974,7 +1751,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Stake.sol:470"
+        "core/src/Stake.sol:458"
       ],
       "selector": "0xeabd8816",
       "signature": "PairMissing(address)"
@@ -1989,7 +1766,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Launch.sol:174"
+        "core/src/Launch.sol:155"
       ],
       "selector": "0x7201021d",
       "signature": "ParentTokenNotRegistered(address)"
@@ -2004,9 +1781,9 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Phase.sol:50",
-        "core/src/Phase.sol:57",
-        "core/src/Phase.sol:88"
+        "core/src/Phase.sol:44",
+        "core/src/Phase.sol:51",
+        "core/src/Phase.sol:82"
       ],
       "selector": "0xf2469089",
       "signature": "PhaseNotStarted()"
@@ -2021,8 +1798,8 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Stake.sol:126",
-        "core/src/Stake.sol:146"
+        "core/src/Stake.sol:114",
+        "core/src/Stake.sol:134"
       ],
       "selector": "0x80336ded",
       "signature": "PromisedWaitingPhasesDecreased(uint256,uint256)"
@@ -2037,7 +1814,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Submit.sol:282"
+        "core/src/Submit.sol:268"
       ],
       "selector": "0x9dcaa584",
       "signature": "ProposalAlreadySubmitted(address,uint256,uint256)"
@@ -2052,7 +1829,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Vote.sol:115"
+        "core/src/Vote.sol:104"
       ],
       "selector": "0x46b9908e",
       "signature": "ProposalIdsEmpty()"
@@ -2067,9 +1844,9 @@
       ],
       "repo": "core",
       "revert_sites": [
+        "core/src/Submit.sol:164",
         "core/src/Submit.sol:178",
-        "core/src/Submit.sol:192",
-        "core/src/Submit.sol:268"
+        "core/src/Submit.sol:254"
       ],
       "selector": "0x428d06a9",
       "signature": "ProposalNotFound(uint256)"
@@ -2084,7 +1861,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Vote.sol:270"
+        "core/src/Vote.sol:259"
       ],
       "selector": "0x354f9b03",
       "signature": "ProposalNotSubmitted(address,uint256,uint256)"
@@ -2099,7 +1876,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Mint.sol:259"
+        "core/src/Mint.sol:232"
       ],
       "selector": "0xece01b78",
       "signature": "ProposalRewardAlreadyMinted(address,uint256,uint256)"
@@ -2114,7 +1891,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Mint.sol:265"
+        "core/src/Mint.sol:238"
       ],
       "selector": "0x6b95e12e",
       "signature": "ProposalRewardUnavailable(address,uint256,uint256)"
@@ -2129,7 +1906,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Vote.sol:118"
+        "core/src/Vote.sol:107"
       ],
       "selector": "0xb397cf8c",
       "signature": "ProposalVotesLengthMismatch(uint256,uint256)"
@@ -2144,9 +1921,9 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Mint.sol:147",
-        "core/src/Mint.sol:252",
-        "core/src/Mint.sol:585"
+        "core/src/Mint.sol:120",
+        "core/src/Mint.sol:225",
+        "core/src/Mint.sol:558"
       ],
       "selector": "0x652d87c5",
       "signature": "RoundNotEnded(uint256)"
@@ -2161,7 +1938,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Stake.sol:401"
+        "core/src/Stake.sol:389"
       ],
       "selector": "0xea74f32b",
       "signature": "RoundNotStarted(uint256,uint256)"
@@ -2176,7 +1953,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Stake.sol:662"
+        "core/src/Stake.sol:650"
       ],
       "selector": "0x71c4efed",
       "signature": "SlippageExceeded(uint256,uint256)"
@@ -2193,8 +1970,8 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Launch.sol:235",
-        "core/src/Stake.sol:267"
+        "core/src/Launch.sol:216",
+        "core/src/Stake.sol:255"
       ],
       "selector": "0x1049dc75",
       "signature": "SourceAndTargetMemberIdsMustBeDifferent(uint256,uint256)"
@@ -2209,8 +1986,8 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Stake.sol:191",
-        "core/src/Stake.sol:280"
+        "core/src/Stake.sol:179",
+        "core/src/Stake.sol:268"
       ],
       "selector": "0xd2632e80",
       "signature": "StakeRightsUsed(address,uint256,uint256)"
@@ -2225,7 +2002,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Submit.sol:289"
+        "core/src/Submit.sol:275"
       ],
       "selector": "0x0fe6aa6e",
       "signature": "SubmitRoundFull(address,uint256,uint256)"
@@ -2240,7 +2017,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Vote.sol:121"
+        "core/src/Vote.sol:110"
       ],
       "selector": "0x232f36be",
       "signature": "TargetDataLengthMismatch(uint256,uint256)"
@@ -2255,7 +2032,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Stake.sol:487"
+        "core/src/Stake.sol:475"
       ],
       "selector": "0xe393d50b",
       "signature": "TargetPromisedWaitingPhasesTooShort(uint256,uint256)"
@@ -2270,7 +2047,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Submit.sol:231"
+        "core/src/Submit.sol:217"
       ],
       "selector": "0x5d0ff12d",
       "signature": "TitleEmpty()"
@@ -2285,7 +2062,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Launch.sol:374"
+        "core/src/Launch.sol:355"
       ],
       "selector": "0x0d7673b5",
       "signature": "TokenNameEmpty()"
@@ -2302,9 +2079,9 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Launch.sol:240",
-        "core/src/Launch.sol:272",
-        "core/src/Stake.sol:439"
+        "core/src/Launch.sol:221",
+        "core/src/Launch.sol:253",
+        "core/src/Stake.sol:427"
       ],
       "selector": "0xddef98d7",
       "signature": "TokenNotRegistered(address)"
@@ -2319,7 +2096,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Launch.sol:191"
+        "core/src/Launch.sol:172"
       ],
       "selector": "0x98f23aa3",
       "signature": "TokenSymbolAlreadyExists(bytes32)"
@@ -2334,7 +2111,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Launch.sol:375"
+        "core/src/Launch.sol:356"
       ],
       "selector": "0xf09ce013",
       "signature": "TokenSymbolEmpty()"
@@ -2349,11 +2126,11 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Stake.sol:124",
-        "core/src/Stake.sol:143",
-        "core/src/Stake.sol:186",
-        "core/src/Stake.sol:274",
-        "core/src/Stake.sol:275"
+        "core/src/Stake.sol:112",
+        "core/src/Stake.sol:131",
+        "core/src/Stake.sol:174",
+        "core/src/Stake.sol:262",
+        "core/src/Stake.sol:263"
       ],
       "selector": "0xe8e88f47",
       "signature": "UnstakeAlreadyRequested(address,uint256)"
@@ -2368,7 +2145,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Stake.sol:223"
+        "core/src/Stake.sol:211"
       ],
       "selector": "0x44357cd8",
       "signature": "UnstakeNotRequested(address,uint256)"
@@ -2383,40 +2160,10 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Vote.sol:311"
+        "core/src/Vote.sol:300"
       ],
       "selector": "0xb60c38d3",
       "signature": "VoteLimitExceeded(address,uint256,uint256,uint256,uint256)"
-    },
-    {
-      "declarations": 1,
-      "files": [
-        "core/src/interfaces/IPhase.sol"
-      ],
-      "interfaces": [
-        "IPhaseErrors"
-      ],
-      "repo": "core",
-      "revert_sites": [
-        "core/src/Phase.sol:37"
-      ],
-      "selector": "0x6aebcbb4",
-      "signature": "ZeroAdjustThreshold()"
-    },
-    {
-      "declarations": 1,
-      "files": [
-        "core/src/interfaces/IMemberNFT.sol"
-      ],
-      "interfaces": [
-        "IMemberNFTErrors"
-      ],
-      "repo": "core",
-      "revert_sites": [
-        "core/src/MemberNFT.sol:63"
-      ],
-      "selector": "0xa2962ced",
-      "signature": "ZeroBaseDivisor()"
     },
     {
       "declarations": 1,
@@ -2428,25 +2175,10 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Stake.sol:138"
+        "core/src/Stake.sol:126"
       ],
       "selector": "0xbbaa8875",
       "signature": "ZeroBoostAmount()"
-    },
-    {
-      "declarations": 1,
-      "files": [
-        "core/src/interfaces/IMemberNFT.sol"
-      ],
-      "interfaces": [
-        "IMemberNFTErrors"
-      ],
-      "repo": "core",
-      "revert_sites": [
-        "core/src/MemberNFT.sol:64"
-      ],
-      "selector": "0x4e9ecf5e",
-      "signature": "ZeroBytesThreshold()"
     },
     {
       "declarations": 1,
@@ -2458,8 +2190,8 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Launch.sol:237",
-        "core/src/Launch.sol:271"
+        "core/src/Launch.sol:218",
+        "core/src/Launch.sol:252"
       ],
       "selector": "0x047b9cec",
       "signature": "ZeroCount()"
@@ -2477,26 +2209,10 @@
       "repo": "core",
       "revert_sites": [
         "core/src/LOVE20Token.sol:40",
-        "core/src/Launch.sol:170",
-        "core/src/Launch.sol:90"
+        "core/src/Launch.sol:151"
       ],
       "selector": "0x71702079",
       "signature": "ZeroDistributorAddress()"
-    },
-    {
-      "declarations": 1,
-      "files": [
-        "core/src/interfaces/IStake.sol"
-      ],
-      "interfaces": [
-        "IStakeErrors"
-      ],
-      "repo": "core",
-      "revert_sites": [
-        "core/src/Stake.sol:80"
-      ],
-      "selector": "0xa5c1f133",
-      "signature": "ZeroFeeSettlementRatio()"
     },
     {
       "declarations": 1,
@@ -2516,36 +2232,6 @@
     {
       "declarations": 1,
       "files": [
-        "core/src/interfaces/ILaunch.sol"
-      ],
-      "interfaces": [
-        "ILaunchErrors"
-      ],
-      "repo": "core",
-      "revert_sites": [
-        "core/src/Launch.sol:95"
-      ],
-      "selector": "0x581dbf66",
-      "signature": "ZeroLaunchAmount()"
-    },
-    {
-      "declarations": 1,
-      "files": [
-        "core/src/interfaces/ILaunch.sol"
-      ],
-      "interfaces": [
-        "ILaunchErrors"
-      ],
-      "repo": "core",
-      "revert_sites": [
-        "core/src/Launch.sol:91"
-      ],
-      "selector": "0xeb7716f3",
-      "signature": "ZeroLaunchRatio()"
-    },
-    {
-      "declarations": 1,
-      "files": [
         "core/src/interfaces/IStake.sol"
       ],
       "interfaces": [
@@ -2553,7 +2239,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Stake.sol:589"
+        "core/src/Stake.sol:577"
       ],
       "selector": "0xf4791324",
       "signature": "ZeroLiquidityMinted()"
@@ -2561,81 +2247,6 @@
     {
       "declarations": 1,
       "files": [
-        "core/src/interfaces/ILaunch.sol"
-      ],
-      "interfaces": [
-        "ILaunchErrors"
-      ],
-      "repo": "core",
-      "revert_sites": [
-        "core/src/Launch.sol:93"
-      ],
-      "selector": "0x77bfa46c",
-      "signature": "ZeroMaxLaunchCount()"
-    },
-    {
-      "declarations": 1,
-      "files": [
-        "core/src/interfaces/IMemberNFT.sol"
-      ],
-      "interfaces": [
-        "IMemberNFTErrors"
-      ],
-      "repo": "core",
-      "revert_sites": [
-        "core/src/MemberNFT.sol:66"
-      ],
-      "selector": "0xb4ba1345",
-      "signature": "ZeroMaxNameLength()"
-    },
-    {
-      "declarations": 1,
-      "files": [
-        "core/src/interfaces/IMemberNFT.sol"
-      ],
-      "interfaces": [
-        "IMemberNFTErrors"
-      ],
-      "repo": "core",
-      "revert_sites": [
-        "core/src/MemberNFT.sol:65"
-      ],
-      "selector": "0xcdcf71c0",
-      "signature": "ZeroMultiplier()"
-    },
-    {
-      "declarations": 1,
-      "files": [
-        "core/src/interfaces/IPhase.sol"
-      ],
-      "interfaces": [
-        "IPhaseErrors"
-      ],
-      "repo": "core",
-      "revert_sites": [
-        "core/src/Phase.sol:34"
-      ],
-      "selector": "0xbd93f9e4",
-      "signature": "ZeroOriginBlocks()"
-    },
-    {
-      "declarations": 1,
-      "files": [
-        "core/src/interfaces/IPhase.sol"
-      ],
-      "interfaces": [
-        "IPhaseErrors"
-      ],
-      "repo": "core",
-      "revert_sites": [
-        "core/src/Phase.sol:35"
-      ],
-      "selector": "0xa3385939",
-      "signature": "ZeroOriginPhaseBlocks()"
-    },
-    {
-      "declarations": 1,
-      "files": [
         "core/src/interfaces/IStake.sol"
       ],
       "interfaces": [
@@ -2643,25 +2254,10 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Stake.sol:117"
+        "core/src/Stake.sol:105"
       ],
       "selector": "0xe6e1b13a",
       "signature": "ZeroParentTokenAmount()"
-    },
-    {
-      "declarations": 1,
-      "files": [
-        "core/src/interfaces/IStake.sol"
-      ],
-      "interfaces": [
-        "IStakeErrors"
-      ],
-      "repo": "core",
-      "revert_sites": [
-        "core/src/Stake.sol:79"
-      ],
-      "selector": "0x457c87de",
-      "signature": "ZeroPromisedWaitingPhasesMin()"
     },
     {
       "declarations": 1,
@@ -2673,8 +2269,8 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Mint.sol:248",
-        "core/src/Mint.sol:581"
+        "core/src/Mint.sol:221",
+        "core/src/Mint.sol:554"
       ],
       "selector": "0xceef9857",
       "signature": "ZeroRecipientAddress()"
@@ -2689,55 +2285,10 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Submit.sol:62"
-      ],
-      "selector": "0x61250527",
-      "signature": "ZeroSubmitMinRatio()"
-    },
-    {
-      "declarations": 1,
-      "files": [
-        "core/src/interfaces/IPhase.sol"
-      ],
-      "interfaces": [
-        "IPhaseErrors"
-      ],
-      "repo": "core",
-      "revert_sites": [
-        "core/src/Phase.sol:39"
-      ],
-      "selector": "0xa382b380",
-      "signature": "ZeroSyncObservationLimit()"
-    },
-    {
-      "declarations": 1,
-      "files": [
-        "core/src/interfaces/ISubmit.sol"
-      ],
-      "interfaces": [
-        "ISubmitErrors"
-      ],
-      "repo": "core",
-      "revert_sites": [
-        "core/src/Submit.sol:232"
+        "core/src/Submit.sol:218"
       ],
       "selector": "0xeaf673fd",
       "signature": "ZeroTargetAddress()"
-    },
-    {
-      "declarations": 1,
-      "files": [
-        "core/src/interfaces/IPhase.sol"
-      ],
-      "interfaces": [
-        "IPhaseErrors"
-      ],
-      "repo": "core",
-      "revert_sites": [
-        "core/src/Phase.sol:36"
-      ],
-      "selector": "0x88b280aa",
-      "signature": "ZeroTargetSeconds()"
     },
     {
       "declarations": 1,
@@ -2749,25 +2300,10 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Stake.sol:116"
+        "core/src/Stake.sol:104"
       ],
       "selector": "0x82c4a8c9",
       "signature": "ZeroTokenAmount()"
-    },
-    {
-      "declarations": 1,
-      "files": [
-        "core/src/interfaces/ILaunch.sol"
-      ],
-      "interfaces": [
-        "ILaunchErrors"
-      ],
-      "repo": "core",
-      "revert_sites": [
-        "core/src/Launch.sol:94"
-      ],
-      "selector": "0x480b0ce8",
-      "signature": "ZeroTokenSymbolLength()"
     },
     {
       "declarations": 1,
@@ -2779,7 +2315,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Vote.sol:275"
+        "core/src/Vote.sol:264"
       ],
       "selector": "0xf9067921",
       "signature": "ZeroVotes(uint256)"
@@ -2809,7 +2345,7 @@
       ],
       "repo": "group-chat",
       "revert_sites": [
-        "group-chat/src/GroupAdmin.sol:123"
+        "group-chat/src/GroupAdmin.sol:124"
       ],
       "selector": "0x2ffd6226",
       "signature": "AdminIdsLimitExceeded(uint256,uint256,uint256)"
@@ -2824,7 +2360,7 @@
       ],
       "repo": "group-chat",
       "revert_sites": [
-        "group-chat/src/managers/BaseManager.sol:97"
+        "group-chat/src/managers/BaseManager.sol:98"
       ],
       "selector": "0xcd0d3eb5",
       "signature": "AlreadyManaged(uint256)"
@@ -2839,7 +2375,7 @@
       ],
       "repo": "group-chat",
       "revert_sites": [
-        "group-chat/src/GroupChat.sol:765"
+        "group-chat/src/GroupChat.sol:766"
       ],
       "selector": "0x490d7c64",
       "signature": "BanRejected(address,uint256,uint256)"
@@ -2854,7 +2390,7 @@
       ],
       "repo": "group-chat",
       "revert_sites": [
-        "group-chat/src/GroupChat.sol:771"
+        "group-chat/src/GroupChat.sol:772"
       ],
       "selector": "0xbd5abe8f",
       "signature": "BanSourceFailed(address)"
@@ -2869,9 +2405,9 @@
       ],
       "repo": "group-chat",
       "revert_sites": [
-        "group-chat/src/sources/ban/GovVotedBanSource.sol:384",
-        "group-chat/src/sources/ban/GovVotedBanSource.sol:400",
-        "group-chat/src/sources/ban/GovVotedBanSource.sol:408"
+        "group-chat/src/sources/ban/GovVotedBanSource.sol:385",
+        "group-chat/src/sources/ban/GovVotedBanSource.sol:401",
+        "group-chat/src/sources/ban/GovVotedBanSource.sol:409"
       ],
       "selector": "0x0410fb1d",
       "signature": "BanVoteWeightSourceUnavailable(address)"
@@ -2886,7 +2422,7 @@
       ],
       "repo": "group-chat",
       "revert_sites": [
-        "group-chat/src/GroupChat.sol:115"
+        "group-chat/src/GroupChat.sol:116"
       ],
       "selector": "0x7dd7c968",
       "signature": "ChatAlreadyActivated(uint256)"
@@ -2901,8 +2437,8 @@
       ],
       "repo": "group-chat",
       "revert_sites": [
-        "group-chat/src/GroupChat.sol:221",
-        "group-chat/src/GroupChat.sol:702"
+        "group-chat/src/GroupChat.sol:222",
+        "group-chat/src/GroupChat.sol:703"
       ],
       "selector": "0xba67ced4",
       "signature": "ChatNotActivated(uint256)"
@@ -2917,7 +2453,7 @@
       ],
       "repo": "group-chat",
       "revert_sites": [
-        "group-chat/src/GroupChat.sol:228"
+        "group-chat/src/GroupChat.sol:229"
       ],
       "selector": "0x85a5c617",
       "signature": "ContentEmpty()"
@@ -2932,7 +2468,7 @@
       ],
       "repo": "group-chat",
       "revert_sites": [
-        "group-chat/src/GroupChat.sol:231"
+        "group-chat/src/GroupChat.sol:232"
       ],
       "selector": "0x9f588bb4",
       "signature": "ContentTooLong(uint256,uint256)"
@@ -2947,8 +2483,8 @@
       ],
       "repo": "group-chat",
       "revert_sites": [
-        "group-chat/src/GroupChatDelegate.sol:128",
-        "group-chat/src/GroupChatDelegate.sol:47"
+        "group-chat/src/GroupChatDelegate.sol:129",
+        "group-chat/src/GroupChatDelegate.sol:48"
       ],
       "selector": "0x419b0664",
       "signature": "DelegateIsSelfGroup(uint256)"
@@ -2963,7 +2499,7 @@
       ],
       "repo": "group-chat",
       "revert_sites": [
-        "group-chat/src/GroupChatDelegate.sol:50"
+        "group-chat/src/GroupChatDelegate.sol:51"
       ],
       "selector": "0x00f76a02",
       "signature": "DelegatorGroupIdNotAllowed(uint256,uint256)"
@@ -2984,10 +2520,10 @@
       ],
       "repo": "group-chat",
       "revert_sites": [
-        "group-chat/src/GroupAdmin.sol:99",
-        "group-chat/src/GroupChat.sol:848",
-        "group-chat/src/GroupChatBanList.sol:112",
-        "group-chat/src/GroupMember.sol:78"
+        "group-chat/src/GroupAdmin.sol:100",
+        "group-chat/src/GroupChat.sol:849",
+        "group-chat/src/GroupChatBanList.sol:113",
+        "group-chat/src/GroupMember.sol:79"
       ],
       "selector": "0x1a494813",
       "signature": "DuplicateMemberId(uint256)"
@@ -3008,11 +2544,11 @@
       ],
       "repo": "group-chat",
       "revert_sites": [
-        "group-chat/src/GroupAdmin.sol:154",
-        "group-chat/src/GroupChat.sol:820",
-        "group-chat/src/GroupChatDelegate.sol:280",
-        "group-chat/src/GroupChatDelegate.sol:291",
-        "group-chat/src/sources/ban/GovVotedBanSource.sol:381"
+        "group-chat/src/GroupAdmin.sol:155",
+        "group-chat/src/GroupChat.sol:821",
+        "group-chat/src/GroupChatDelegate.sol:281",
+        "group-chat/src/GroupChatDelegate.sol:292",
+        "group-chat/src/sources/ban/GovVotedBanSource.sol:382"
       ],
       "selector": "0xfeddf96a",
       "signature": "GroupNotExist(uint256)"
@@ -3027,7 +2563,7 @@
       ],
       "repo": "group-chat",
       "revert_sites": [
-        "group-chat/src/managers/BaseManager.sol:138"
+        "group-chat/src/managers/BaseManager.sol:139"
       ],
       "selector": "0x4a6464df",
       "signature": "ManagerGroupNameUnavailable()"
@@ -3042,7 +2578,7 @@
       ],
       "repo": "group-chat",
       "revert_sites": [
-        "group-chat/src/managers/BaseManager.sol:85"
+        "group-chat/src/managers/BaseManager.sol:86"
       ],
       "selector": "0xeb6a25aa",
       "signature": "ManagerMintCostChanged(uint256,uint256)"
@@ -3057,7 +2593,7 @@
       ],
       "repo": "group-chat",
       "revert_sites": [
-        "group-chat/src/GroupChat.sol:713"
+        "group-chat/src/GroupChat.sol:714"
       ],
       "selector": "0x340c79cd",
       "signature": "MentionAllUnauthorized(uint256,uint256)"
@@ -3072,7 +2608,7 @@
       ],
       "repo": "group-chat",
       "revert_sites": [
-        "group-chat/src/GroupChat.sol:379"
+        "group-chat/src/GroupChat.sol:380"
       ],
       "selector": "0xf90c4bc6",
       "signature": "MessageNotFound(uint256,uint256)"
@@ -3093,10 +2629,10 @@
       ],
       "repo": "group-chat",
       "revert_sites": [
-        "group-chat/src/GroupAdmin.sol:146",
-        "group-chat/src/GroupChat.sol:694",
-        "group-chat/src/GroupChatBanList.sol:144",
-        "group-chat/src/GroupMember.sol:93"
+        "group-chat/src/GroupAdmin.sol:147",
+        "group-chat/src/GroupChat.sol:695",
+        "group-chat/src/GroupChatBanList.sol:145",
+        "group-chat/src/GroupMember.sol:94"
       ],
       "selector": "0x20e5d297",
       "signature": "NotGroupOperator(uint256,uint256)"
@@ -3113,8 +2649,8 @@
       ],
       "repo": "group-chat",
       "revert_sites": [
-        "group-chat/src/GroupChat.sol:99",
-        "group-chat/src/GroupChatDelegate.sol:31"
+        "group-chat/src/GroupChat.sol:100",
+        "group-chat/src/GroupChatDelegate.sol:32"
       ],
       "selector": "0x54a55079",
       "signature": "NotGroupOwner(uint256)"
@@ -3133,9 +2669,9 @@
       ],
       "repo": "group-chat",
       "revert_sites": [
-        "group-chat/src/GroupChat.sol:92",
-        "group-chat/src/GroupChatDelegate.sol:38",
-        "group-chat/src/sources/ban/GovVotedBanSource.sol:189"
+        "group-chat/src/GroupChat.sol:93",
+        "group-chat/src/GroupChatDelegate.sol:39",
+        "group-chat/src/sources/ban/GovVotedBanSource.sol:190"
       ],
       "selector": "0x33393244",
       "signature": "NotMemberOwner(uint256)"
@@ -3150,7 +2686,7 @@
       ],
       "repo": "group-chat",
       "revert_sites": [
-        "group-chat/src/GroupChat.sol:832"
+        "group-chat/src/GroupChat.sol:833"
       ],
       "selector": "0x54752274",
       "signature": "PluginNotContract(address)"
@@ -3165,7 +2701,7 @@
       ],
       "repo": "group-chat",
       "revert_sites": [
-        "group-chat/src/GroupChat.sol:224"
+        "group-chat/src/GroupChat.sol:225"
       ],
       "selector": "0x27dcd12b",
       "signature": "PostingNotAllowed(uint256)"
@@ -3180,7 +2716,7 @@
       ],
       "repo": "group-chat",
       "revert_sites": [
-        "group-chat/src/GroupChat.sol:932"
+        "group-chat/src/GroupChat.sol:933"
       ],
       "selector": "0xaeb2440f",
       "signature": "QuotedMessageNotFound(uint256,uint256)"
@@ -3195,7 +2731,7 @@
       ],
       "repo": "group-chat",
       "revert_sites": [
-        "group-chat/src/GroupChat.sol:83"
+        "group-chat/src/GroupChat.sol:84"
       ],
       "selector": "0xed3ba6a6",
       "signature": "Reentrant()"
@@ -3210,7 +2746,7 @@
       ],
       "repo": "group-chat",
       "revert_sites": [
-        "group-chat/src/GroupChat.sol:366"
+        "group-chat/src/GroupChat.sol:367"
       ],
       "selector": "0xea74f32b",
       "signature": "RoundNotStarted(uint256,uint256)"
@@ -3225,7 +2761,7 @@
       ],
       "repo": "group-chat",
       "revert_sites": [
-        "group-chat/src/GroupChat.sol:762"
+        "group-chat/src/GroupChat.sol:763"
       ],
       "selector": "0xd708ce6e",
       "signature": "ScopeRejected(address,uint256,uint256)"
@@ -3240,7 +2776,7 @@
       ],
       "repo": "group-chat",
       "revert_sites": [
-        "group-chat/src/GroupChat.sol:768"
+        "group-chat/src/GroupChat.sol:769"
       ],
       "selector": "0xad763148",
       "signature": "ScopeSourceFailed(address)"
@@ -3255,7 +2791,7 @@
       ],
       "repo": "group-chat",
       "revert_sites": [
-        "group-chat/src/GroupChat.sol:826"
+        "group-chat/src/GroupChat.sol:827"
       ],
       "selector": "0x05dbf84e",
       "signature": "SourceNotContract(address)"
@@ -3285,7 +2821,7 @@
       ],
       "repo": "group-chat",
       "revert_sites": [
-        "group-chat/src/GroupChat.sol:841"
+        "group-chat/src/GroupChat.sol:842"
       ],
       "selector": "0x3f1035e9",
       "signature": "TooManyMentionedSenderIds(uint256,uint256)"
@@ -3300,7 +2836,7 @@
       ],
       "repo": "group-chat",
       "revert_sites": [
-        "group-chat/src/managers/BaseManager.sol:62"
+        "group-chat/src/managers/BaseManager.sol:63"
       ],
       "selector": "0x4cf3a76b",
       "signature": "UnexpectedManagerERC721Received(address,address,uint256)"
@@ -3315,8 +2851,8 @@
       ],
       "repo": "group-chat",
       "revert_sites": [
-        "group-chat/src/sources/ban/GovVotedBanSource.sol:244",
-        "group-chat/src/sources/ban/GovVotedBanSource.sol:274"
+        "group-chat/src/sources/ban/GovVotedBanSource.sol:245",
+        "group-chat/src/sources/ban/GovVotedBanSource.sol:275"
       ],
       "selector": "0x4f90f748",
       "signature": "VoteNotFound(uint256,uint256,uint256)"
@@ -3331,7 +2867,7 @@
       ],
       "repo": "group-chat",
       "revert_sites": [
-        "group-chat/src/sources/ban/GovVotedBanSource.sol:197"
+        "group-chat/src/sources/ban/GovVotedBanSource.sol:198"
       ],
       "selector": "0x96c2cbe9",
       "signature": "VoteUnchanged(uint256,uint256,uint256)"
@@ -3348,8 +2884,8 @@
       ],
       "repo": "group-chat",
       "revert_sites": [
-        "group-chat/src/GroupChatBanList.sol:135",
-        "group-chat/src/sources/ban/GovVotedBanSource.sol:435"
+        "group-chat/src/GroupChatBanList.sol:136",
+        "group-chat/src/sources/ban/GovVotedBanSource.sol:436"
       ],
       "selector": "0x16f52684",
       "signature": "ZeroTargetSenderId()"
@@ -3364,7 +2900,7 @@
       ],
       "repo": "group-chat",
       "revert_sites": [
-        "group-chat/src/sources/ban/GovVotedBanSource.sol:213"
+        "group-chat/src/sources/ban/GovVotedBanSource.sol:214"
       ],
       "selector": "0xbeffc593",
       "signature": "ZeroVoteWeight(uint256,uint256)"
@@ -3379,13 +2915,6 @@
         "core:ILaunchErrors,IMemberNFTErrors,IMintErrors,IStakeErrors,ISubmitErrors,IVoteErrors"
       ],
       "signature": "AlreadyInitialized()"
-    },
-    {
-      "declarations": [
-        "action:IActionExecutorErrors,IActionTargetErrors",
-        "core:ILOVE20TokenErrors,ILaunchErrors,IMemberNFTErrors,IMintErrors,IStakeErrors,ISubmitErrors,IVoteErrors"
-      ],
-      "signature": "DependencyNotContract(address)"
     },
     {
       "declarations": [
@@ -3440,14 +2969,14 @@
     }
   ],
   "summary": {
-    "declarations": 254,
+    "declarations": 220,
     "repos": {
-      "action": 96,
-      "core": 109,
+      "action": 93,
+      "core": 78,
       "group-chat": 49,
       "libs": 0
     },
-    "signatures": 207,
-    "unique_signatures": 196
+    "signatures": 180,
+    "unique_signatures": 170
   }
 }

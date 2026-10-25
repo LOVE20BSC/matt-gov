@@ -25,7 +25,7 @@ proposalVotes * 1e18 >= totalVotes * proposalRewardMinVoteRatio
 
 `isProposalIdWithReward` 无论已准备或未准备，均读取 Vote 的 `votesNumByProposalId(tokenAddress, round, proposalId)` 与 `votesNum(tokenAddress, round)` 实时判定。准备后若 `eligibleProposalVotes == 0` 可快速返回 `false`（全轮无达标 Proposal 的缓存优化）。已铸造不影响返回值（仍返回 `true`）。本入口不做 Proposal 存在性校验；无效 `proposalId` 返回 `false`。
 
-三个奖励比例参数统一 `1e18` 精度，例如门槛 `5e16` 表示 5%。`init` 允许 `proposalRewardMinVoteRatio` 为 `0..1e18`，超过 `1e18` 回滚 `InvalidProposalRewardMinVoteRatio(proposalRewardMinVoteRatio)`；零门槛仍要求 Proposal 有正数票。账本始终满足：
+三个奖励比例参数统一 `1e18` 精度，例如门槛 `5e16` 表示 5%。`proposalRewardMinVoteRatio` 允许 `0..1e18`，上界由 DeployCore 广播前校验、21_check 复核；零门槛仍要求 Proposal 有正数票。账本始终满足：
 
 ```text
 rewardReserved >= rewardMinted + rewardBurned
@@ -169,7 +169,7 @@ count = min(floor(launchCredit / threshold), Launch.MAX_LAUNCH_COUNT() - issuedL
 launchCredit -= count * threshold
 ```
 
-`maxSupply` 和 `totalSupplyBeforeMint` 都取自该社区代币；`LAUNCH_RATIO` 使用 `1e18` 精度。`LAUNCH_RATIO` 和 `MAX_LAUNCH_COUNT` 由 `Launch.init` 校验为非零（`ZeroLaunchRatio` / `ZeroMaxLaunchCount`），Mint 不重复校验。
+`maxSupply` 和 `totalSupplyBeforeMint` 都取自该社区代币；`LAUNCH_RATIO` 使用 `1e18` 精度。`LAUNCH_RATIO` 和 `MAX_LAUNCH_COUNT` 为非零/上界由 DeployCore 广播前校验、21_check 复核，Mint 不重复校验。
 
 次数消耗或融合不释放累计上限；达到 `MAX_LAUNCH_COUNT` 后不再产生新次数或累计新额度，已有整数次数仍可使用。首币达到上限时根级伴生同步停止（不变式：根级累计恒等于首币累计，见 [Launch 的根级次数与伴生规则](08-launch.md#根级次数与伴生规则)）。
 
@@ -196,8 +196,8 @@ launchCredit -= count * threshold
 
 事件与错误定义见 [`IMint.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/IMint.sol)。
 
-- 初始化时四个依赖与从 `voteAddress` 派生的 `phaseAddress` 均要求有代码（零地址同条件，`DependencyNotContract(address)`），且两项激励比例之和不得超过 `1e18`（`InvalidRoundRewardRatios(roundRewardGovRatio, roundRewardProposalRatio)`）；校验顺序按 [通用规则](01-common-rules.md#初始化与安全)，先初始化状态、后参数校验。`maxGovBoostRewardMultiplier` 须满足 `0 < x ≤ 1000`（`InvalidMaxGovBoostRewardMultiplier(maxGovBoostRewardMultiplier)`），这是整数倍数上限，与比例刻度无关；`proposalRewardMinVoteRatio` 须在 `0..1e18` 范围，超出上界回滚 `InvalidProposalRewardMinVoteRatio(proposalRewardMinVoteRatio)`。
-- `phaseAddress` 在 `init` 时从 Vote 读取一次并缓存，经同名 getter 暴露，供发布前检查脚本核对与 Vote 一致；`voteAddress` 须先完成 init，否则其 `phaseAddress` 为零或无代码、`init` 回滚 `DependencyNotContract(phaseAddress)`。轮次结束判定直读缓存的 Phase（`round != 0 && IPhase(phaseAddress).currentPhase() > round`），语义与 `Vote.isRoundEnded` 一致，不再经 Vote 二跳。
+- 两项激励比例之和 `<= 1e18`、`0 < maxGovBoostRewardMultiplier <= 1000`、`proposalRewardMinVoteRatio <= 1e18` 由 DeployCore 广播前校验；四个依赖有代码与 `phaseAddress` 非零由 DeployCore 部署后校验；两者均由 21_check 独立复核；`init` 只防重复初始化并缓存入参。
+- `phaseAddress` 在 `init` 时从 Vote 读取一次并缓存，经同名 getter 暴露，供发布前检查脚本核对与 Vote 一致；`voteAddress` 须先完成 init，否则缓存为零，部署 check 会发现并重新部署。轮次结束判定直读缓存的 Phase（`round != 0 && IPhase(phaseAddress).currentPhase() > round`），语义与 `Vote.isRoundEnded` 一致，不再经 Vote 二跳。
 - Mint 的内部准备路径只在首次准备时扫描 Vote 本轮有票 Proposal；实现和验收至少覆盖约 300 个 Proposal 的准备交易。准备成功后，`eligibleProposalVotes[tokenAddress][round]` 只读，不得再次读取 Vote 列表或改写。零额事件行为见[事件](#事件)节。
 - 各项分配向下取整产生的极小舍入余数不单独维护，也不追加结算状态；累计账本只记录实际铸造和明确销毁的额度。
 - 历史来源 `LOVE20TKM/core/src/LOVE20Mint.sol` 只作为行为参考，不替代本文件的账本规则。

@@ -2,6 +2,12 @@
 
 本文档列出 BSC Action 相对于 LOVE20TKM 旧协议的所有变更。保留项直接引用旧代码位置，避免重复描述。
 
+## 校验分层（2026-10-25）
+
+- `ActionTarget`、`LpExecutor`、`GroupActionExecutor`、`GroupServiceExecutor` 的 `init` 依赖代码、派生的非零检查和 splits 空数组/范围/递增检查，移到 `DeployAction` 广播前校验与 `21_check.sh` 部署后复核；`DeployAction` 额外交叉核对 Mint/Stake 的派生图与 Vote/Submit 绑定，21_check 直接读取 Stake 的派生 getter；`init` 只防重复初始化并保存入参。
+- `DeployAction` 部署后核对 `GroupActionExecutor.actionTarget` 与 `GroupServiceExecutor.groupActionExecutorAddress`；后者为本次新增 getter。
+- 删除 `DependencyNotContract(address)` 与 `InvalidSplits(index,value)`；错误模型 v3 小节中的对应记录保留为当时状态。
+
 ## 错误模型 v3（2026-10-24）
 
 Action 已全部改为 **local-first** 错误模型：每个合约/模块拥有自己的 `I<Name>Errors`，不设中心枚举、不跨仓导入错误。三个 Executor 共享的条件保留在同一本地基座 `IActionExecutorErrors`；执行器专属条件留在各自错误接口。

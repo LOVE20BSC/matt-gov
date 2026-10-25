@@ -232,7 +232,7 @@ EIP-170 限制部署字节码 ≤ 24,576 字节。超过时：
 
 按失效时机决定校验位置：部署期静态配置下沉到部署脚本，运行期业务判断留在合约，源码级约束交给测试/CI。
 
-- **部署期静态不变量**：构造参数、部署期固定的依赖配置、不可变地址关系、依赖是否有代码、编译期常量。由部署脚本在**广播前**校验；`2x` check 只做部署后复核与绑定验证，不能替代广播前检查。静态检查集中在部署脚本，业务合约只做运行期判定。
+- **部署期静态不变量**：构造参数、部署期固定的依赖配置、不可变地址关系、依赖是否有代码、编译期常量。由部署脚本在**广播前**校验；`2x` check 只做部署后复核与绑定验证，不能替代广播前检查。静态检查集中在 Solidity 部署脚本的广播前阶段，shell 只做编排，业务合约只做运行期判定。
 - **运行期业务不变量**：调用方入参、状态依赖、权限/资格/额度/内容/存在性。必须留在合约；部署脚本看不到未来调用，不能代替。
 - **源码级不变量**：类型码/枚举范围、接口一致性、抽象实现非空。由测试或 CI 覆盖，不写运行时分支。
 
@@ -241,7 +241,7 @@ EIP-170 限制部署字节码 ≤ 24,576 字节。超过时：
 - 每项静态不变量必须在部署脚本有对应检查，并在模块规格登记该不变量与校验位置；不要形成“合约 + `1x` deploy + `2x` check”三处重复——`1x` 广播前是主校验，`2x` 是部署后复核。
 - 部署脚本是静态配置校验的信任边界，仅适用于协议自控部署；手工或第三方绕过脚本的部署不受保护。若将来出现 permissionless 部署路径，静态不变量必须回到合约或工厂内。
 - 目标是职责清晰，不以减码为主要理由；24KB 有余量时，运行期输入/状态检查不得因减码删除。
-- 模块规格分别列出部署期、运行期、源码级不变量；部署 README 与参数文件同步。与 5.4 的“初始化只在部署阶段校验”同向。
+- 模块规格分别列出部署期、运行期、源码级不变量；部署 README 与参数文件同步。与 5.4 的“初始化只在部署阶段校验”同向；Solidity 脚本与 shell 的内部分工见 6.3。
 
 ## 六、部署脚本组织
 
@@ -255,7 +255,8 @@ script/
 │   ├── 11_deploy.sh               # 合约部署与初始化（自载入部署输入）
 │   ├── 21_check.sh                # 部署与初始化正确性校验（自载入校验文件）
 │   ├── 31_verify.sh               # 合约开源验证（自载入网络与地址文件）
-│   └── Deploy<Xxx>.s.sol          # Foundry 部署脚本
+│   ├── Deploy<Xxx>.s.sol          # Foundry 部署、初始化与部署期校验
+│   └── Check<Xxx>.s.sol           # 可选：21_check 调用的只读绑定检查
 └── network/
     ├── anvil31337_dev/            # 本地 anvil · dev
     └── <链名><链id>_<部署类型>/    # 其它网络按需新建，见 6.2
@@ -266,12 +267,12 @@ script/
 - **`one_click_deploy.sh` 必需**：一键部署本代码库的全部合约。后续新增合约/模块时额外增加 `one_click_deploy_xxx.sh`（只部署该部分）。
 - **步骤脚本只做自己那一步、互不调用**（`11_deploy.sh` 不得调用 `21_check.sh`）；顺序编排与失败处理（如校验失败不得覆盖上次已保存的地址）只放在 `one_click_deploy.sh` 一类入口脚本里。
 - **步骤脚本自包含**：统一 `<step>.sh <network>` 一种调用形态，网络目录校验、配置存在性检查、文件载入、链 ID 核对都在步骤内完成；不依赖调用方预载环境，也没有文件互相 source。入口脚本不 source 任何文件，只做编排。共享 `00_init.sh` 一类的环境初始化文件不再单设，其职责并入 `11_deploy.sh`。
-- **步骤编号**：deploy 步骤以 `1` 开头、check 以 `2` 开头、verify 以 `3` 开头，第二位为模块序号——`1x` 部署、`2x` 校验、`3x` 验证同属模块 `x`（如 `dex`：WETH 模块 `11_deploy_weth`/`21_check_weth`，UniswapV2 模块 `12_deploy_uniswapv2`/`22_check_uniswapv2`/`32_verify`；单模块仓库即 `11`/`21`/`31`）。无可验证合约的模块不设 verify 步骤。
+- **步骤编号**：deploy 步骤以 `1` 开头、check 以 `2` 开头、verify 以 `3` 开头，第二位为模块序号——`1x` 部署、`2x` 校验、`3x` 验证同属模块 `x`（如 `dex`：WETH 模块 `11_deploy_weth`/`21_check_weth`/`31_verify_weth`，UniswapV2 模块 `12_deploy_uniswapv2`/`22_check_uniswapv2`/`32_verify`；单模块仓库即 `11`/`21`/`31`）。无可验证合约的模块不设 verify 步骤。
 - 新增合约/模块 = 一套自包含脚本（`one_click_deploy_<x>.sh` + 自己的步骤脚本 + 自己的参数文件），各模块的部署输入互不要求存在——部署模块 A 不会因模块 B 的参数缺失或变动而失败。
 - **账户签名统一走 keystore**：`.account` 是必需文件，提供 `KEYSTORE_ACCOUNT` 与 `ACCOUNT_ADDRESS`；不按链 ID 提供 `--unlocked` 回退，本地链与公共网络同一签名路径。
 - **keystore 密码口径**：`KEYSTORE_PASSWORD` 非空时直接用于解锁，部署全程无交互；留空或未配时由 macOS `osascript` 弹窗读取（全程仅一次）；非 macOS 环境没有 `osascript`，必须预设 `KEYSTORE_PASSWORD`，脚本在缺失时明确报错，不静默退出。**入口脚本不继承调用方环境变量里的密码**：`one_click_deploy.sh` 先重置 `KEYSTORE_PASSWORD` 再读 `.account`、最后才交互，避免上次运行的残留值被静默复用；因此 `KEYSTORE_PASSWORD=xxx ./one_click_deploy.sh <net>` 不生效，非交互场景请把密码写进 `.account`。
 - **密码不得进入进程参数**：`forge script --password` 会把明文放进 `/proc/<pid>/cmdline`（权限 0444，本机所有用户可读）；改用 `--password-file` 指向权限 600 的临时文件，广播结束或脚本退出时删除。环境变量（`/proc/<pid>/environ`，0400）只对同一用户可读，而 `.account` 本身就是明文密码、同一用户已能直接读取，因此作为环境变量传递不增加泄露面。部署回归测试须断言 `--password` 不出现在 forge 参数里。
-- **被依赖方地址在 shell 层广播前校验**：从配置文件读入的被依赖方地址（如 `FACTORY_ADDRESS`/`ROUTER_ADDRESS`、`MINT_ADDRESS`/`STAKE_ADDRESS`、已配置的 `WETH_ADDRESS`）由 `11_deploy.sh` 以 `cast code` 校验为已部署合约，避免白广播本库合约；脚本内派生的值（如 `Router.WETH()`）在模拟阶段校验。
+- **被依赖方地址由 `.s.sol` 在广播前校验**：从配置文件读入的被依赖方地址（如 `FACTORY_ADDRESS`/`ROUTER_ADDRESS`、`MINT_ADDRESS`/`STAKE_ADDRESS`、已配置的 `WETH_ADDRESS`）由 `Deploy<X>.s.sol` 在 `startBroadcast()` 前校验代码与地址关系；脚本内派生的值（如 `Router.WETH()`）同样在广播前校验。`11_deploy.sh` 只保留编排所需的文件、链 ID、账户和密码检查；存量脚本的 `cast code` 快速失败逐步删除，不作为长期第二份校验。
 - **键集合断言**：每个 check 步骤（`2x`）断言其地址文件的键集合等于期望合约集合（逐一对应、无多无缺）。键名漏改会让后续变量静默为空，逐项链上调用要到很后面才以难以定位的形式失败；显式断言把「漏改」变成即时失败。
 - 下列职责**各自独立成文件**，由 `one_click_deploy.sh` 统一调用，也可按实际情况单独执行其中任一文件：
 
@@ -307,3 +308,16 @@ script/
 - **跨库依赖地址**：A 依赖 B 已部署合约时，把 B 的各模块 `addresses.<模块名>.params` 复制到 `A/script/network/<net>/`，与 `addresses.<A>.params` 并列，不在 A 的配置文件里重复记录 B 的地址（如 `core` 依赖 `dex` 时只复制 UniswapV2 模块的 `addresses.uniswapv2.params`；根父币由 `Router.WETH()` 读取，无需复制 WETH 模块文件）。这样 B 重新部署后，A 只需复制新地址文件即可同步，避免手工转抄与多处漂移。
 - 部署脚本按依赖顺序 `source` 各 `addresses.*.params`：先被依赖方，再本库。
 - 可在依赖地址文件顶部注释记录来源提交或部署时间，便于版本追踪与对账。
+
+### 6.3 Solidity 脚本与 shell 边界
+
+目标：每个部署期不变量只有一个主校验点；Solidity 表达“部署什么、必须满足什么”，shell 表达“如何安全执行和收尾”。
+
+- **`Deploy<X>.s.sol`**：`_loadConfig`、广播前 `_validateConfig`、`_deploy`、部署后 `_validateDeployment`；`run` 在 `startBroadcast()` 前完成全部静态校验，在 `stopBroadcast()` 后校验完整绑定图。不处理 keystore、密码、环境文件加载或最终地址文件。
+- **`11_deploy.sh`**：只做自包含加载、链 ID/账户/密码临时文件、调用 forge、地址文件原子写入、失败日志与恢复。不复制 `.s.sol` 的参数/依赖/绑定校验；`cast` 仅用于编排所需检查（文件、链、账户）。
+- **`21_check.sh`**：独立、只读、可重复运行；从链上重新读取，不导入部署脚本的私有逻辑。字节码/库比对留在 shell；绑定检查可调用只读 `Check<X>.s.sol`。`2x` 是独立复核，不是 `1x` 的复制。
+- **地址清单**：`.s.sol` 输出 `KEY=VALUE` 或写临时文件；`11_deploy.sh` 在全部校验通过后原子替换最终文件。广播前失败不触碰旧文件；广播后失败保留日志与 broadcast 产物。
+- **权限开放路径**：用户/工厂可直接部署或初始化的合约，静态校验仍按 5.7 留在合约或工厂内，shell/Solidity 部署脚本只作额外保护。
+- **测试**：每个 `_validateConfig` 不变量至少一个负向测试；`_validateDeployment` 覆盖正向绑定图；shell 回归覆盖密码、原子文件和失败恢复；全栈 E2E 覆盖 `2x`。
+
+不为消除 lint 警告而全仓禁用 lint；只对静态校验移除的构造/init 行做窄范围抑制。

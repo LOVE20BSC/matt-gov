@@ -23,18 +23,10 @@ Launch 负责首币部署、LOVE20Token 创建、基础发射与次数账本。T
 | 条件 | 回滚错误 |
 | --- | --- |
 | 重复初始化 | `AlreadyInitialized()` |
-| `mintAddress`、`memberNFTAddress`、`rootParentTokenAddress`、`pairFactoryAddress` 任一为零或无代码 | `DependencyNotContract(address)`，载荷为失败依赖 |
-| 首币 `distributor == address(0)` | `ZeroDistributorAddress()` |
-| `launchRatio == 0` | `ZeroLaunchRatio()` |
-| `launchRatio > 1e18` | `InvalidLaunchRatio(launchRatio)`；恰好 `1e18` 合法 |
-| `maxLaunchCount == 0` | `ZeroMaxLaunchCount()` |
-| `tokenSymbolLength == 0` | `ZeroTokenSymbolLength()` |
-| `launchAmount == 0` | `ZeroLaunchAmount()` |
-| `launchAmount > maxSupply` | `InvalidLaunchAmount(launchAmount, maxSupply)` |
-| 首币名称或符号为空 | `TokenNameEmpty()` / `TokenSymbolEmpty()`，属于 `init` 参数校验 |
+| 首币名称或符号为空 | `TokenNameEmpty()` / `TokenSymbolEmpty()`，由首币创建路径校验 |
 | 首币建池时工厂返回零地址 | `PairCreationFailed(rootParentTokenAddress)`；正常 UniswapV2 工厂返回 pair 或回滚 |
 
-`launchAmount` 必须大于零，`maxSupply` 必须不小于 `launchAmount`，即 `0 < launchAmount <= maxSupply`；两者相等是合法配置。零供应代币不可创建：LOVE20Token 构造函数独立拒绝零 `initialSupply`，绕过 `init` 直接部署同样回滚 `ZeroInitialSupply()`。
+`0 < launchRatio <= 1e18`、`maxLaunchCount > 0`、`tokenSymbolLength > 0`、`0 < launchAmount <= maxSupply`、首币 `distributor != 0` 由 DeployCore 广播前校验；四个依赖地址有代码由 DeployCore 部署后校验；两者均由 21_check 独立复核；`init` 只防重复初始化并保存配置。首币创建仍经过 LOVE20Token 构造函数，零供应、供应上限和零 distributor 由该构造函数独立拒绝（权限开放发射路径不能依赖部署脚本）。
 
 首币符号不套用 `TOKEN_SYMBOL_LENGTH` 校验：旧实现的第一个代币走 `tokensCount() == 0` 分支，跳过符号校验与测试网 `Test` 前缀（名称仍按 `tokenSymbol + "@" + parentTokenSymbol` 拼接）；BSC 版由 `init` 参数直接给定首币名称和符号，因此首币符号长度可以与配置的子币符号长度不同。
 

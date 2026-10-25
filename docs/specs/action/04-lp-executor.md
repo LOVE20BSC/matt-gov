@@ -14,9 +14,10 @@ Target Data 是无键数组，按位置读取。第 `0` 项是 ActionTarget 保�
 
 校验与回滚：
 
+`init` 只防重复初始化；ActionTarget、Stake 及从 Stake 派生的 MemberNFT、Phase、Pair Factory 有代码由 `DeployAction` 广播前校验；`21_check.sh` 直接读取 Stake 的派生 getter 与 core 地址文件复核。
+
 | 条件 | 回滚错误 |
 | --- | --- |
-| `init` 入参 ActionTarget、Stake 或从 Stake 派生的 MemberNFT、Phase、Pair Factory 为零或无代码 | `DependencyNotContract(address)`，载荷为失败依赖 |
 | `targetData` 项数不是 `4` | `TargetDataLengthMismatch(4, targetData.length)` |
 | 第 `0`～`3` 项不是 32 字节 | `InvalidTargetDataShape(index, length)` |
 | 投票回调 Target Data 超过保留的 executor 一项（无投票业务项） | `TargetDataLengthMismatch(1, targetData.length)` |

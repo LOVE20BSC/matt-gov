@@ -2,6 +2,12 @@
 
 本文档列出 BSC Core 相对于 LOVE20TKM 旧协议的所有变更。保留项直接引用旧代码位置，避免重复描述。
 
+## 校验分层（2026-10-25）
+
+- `MemberNFT`、`Phase` 的构造参数零值/范围检查，以及 `Vote`、`Mint`、`Submit`、`Stake`、`Launch`、`MemberNFT.init` 的依赖代码、派生值和静态参数检查，移到部署脚本：参数范围由 `DeployCore` 广播前校验，依赖代码/派生值由 `DeployCore` 部署后校验；`21_check.sh` 独立复核；`DeployCore` 另校验 `Router.factory() == FACTORY_ADDRESS`，部署后核对完整绑定图与首币 `totalSupply`/distributor 余额；合约侧 `init` 只防重复初始化并保存入参。
+- 删除上述已不再使用的构造/init 错误；`LOVE20Token` 构造函数因 Launch 权限开放创建，保留全部参数/依赖检查；`Launch._createToken` 的每次发射业务校验保留。
+- 以下错误模型 v3 小节中的构造/init 错误名保留为当时记录，不再出现在当前 ABI。
+
 ## 错误模型 v3（2026-10-24）
 
 Core 已全部改为 **local-first** 错误模型：每个合约/模块在自己的 `I<Name>Errors` 中声明具体错误，不使用中心 `Field` 枚举、`IProtocolErrors` 或跨仓错误接口。新增合约只新增错误文件，不改既有 `*Errors.sol`。

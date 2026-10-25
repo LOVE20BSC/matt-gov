@@ -21,7 +21,7 @@ Phase 维护连续的无语义时间片、同步观测和动态校准，不内�
 
 完整 ABI 见 [`IPhase.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/IPhase.sol)。
 
-`Phase` 本身不提供 `init`。未开始的 Phase 回 `PhaseNotStarted()`；构造参数为零时按字段回 `ZeroOriginBlocks()`、`ZeroOriginPhaseBlocks()`、`ZeroTargetSeconds()`、`ZeroAdjustThreshold()`、`ZeroSyncObservationLimit()`；`ADJUST_THRESHOLD` 超出 `1e18` 回 `InvalidAdjustThreshold(value)`；内部索引不变量用 `assert`（Panic）。完整 selector 以接口文件为准。
+`Phase` 本身不提供 `init`。未开始的 Phase 回 `PhaseNotStarted()`；构造参数非零与 `ADJUST_THRESHOLD <= 1e18` 由 DeployCore 在广播前校验，`21_check` 部署后复核，构造器只保存参数；内部索引不变量用 `assert`（Panic）。完整 selector 以接口文件为准。
 
 ## 同步
 
