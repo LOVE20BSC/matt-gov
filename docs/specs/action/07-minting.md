@@ -40,7 +40,7 @@ Core 的预留、铸造和取消额度账本见 [Mint](../core/07-mint.md)，不
 | `TargetDataLengthMismatch(uint256 expected, uint256 actual)` | Target Data 项数与约定不符（GroupAction 少于 6 报 `expected = 6`，多于 7 报 `expected = 7`；LP/GroupService 固定 4；投票回调最多 1/2） |
 | `InvalidTargetDataShape(uint256 index, uint256 length)` | 第 `index` 项不是 `abi.encode` 的 32 字节形态 |
 | `VerificationInfoLengthMismatch(uint256 expected, uint256 actual)` | 验证信息 schema 两数组不等长，或成员值项数与 schema 不符 |
-| `DescriptionTooLong(uint256 length, uint256 maxLength)` | 群描述或候选人申请说明超过 1024 字节 |
+| `DescriptionTooLong(uint256 length, uint256 maxLength)` | 群描述或验证者申请说明超过 1024 字节 |
 | `InvalidMaxJoinAmountRatio(uint256 value)` / `InvalidActivationMinGovRatio(uint256 value)` / `InvalidRatioForPublicVerifier(uint256 value)` | 创建回调的比例超出 `1e18`（按字段分别报错） |
 | `InvalidMinGovRatio(uint256 value)` / `InvalidJoinTokenFactory(address joinToken, address factory)` | LP 最小治理比例超过 `1e18` / 参与代币不是该工厂登记的交易对 |
 | `InvalidMinJoinAmount(uint256 minAmount)` / `InvalidMaxJoinAmount(uint256 minAmount, uint256 maxAmount)` | 群最小加入量为零 / 非零最大加入量低于最小加入量 |
@@ -61,9 +61,9 @@ Core 的预留、铸造和取消额度账本见 [Mint](../core/07-mint.md)，不
 | `OriginScoresEmpty()` / `VerificationBatchTooLarge(uint256 count, uint256 maxCount)` / `ScoreLimitExceeded(uint256 index, uint256 score, uint256 maxScore)` | 验证批次为空 / 超过 100 项 / 原始分超过 100 |
 | `ScoreCountExceeded(uint256 startIndex, uint256 count, uint256 memberCount)` | 验证批次越过该群成员总数 |
 | `StartIndexMismatch(uint256 expected, uint256 actual)` | 验证批次跳跃、重复或乱序；`expected` 为该群当前已验证数量，`actual` 为调用者传入的 `startIndex` |
-| `ZeroVerifyVotes(address tokenAddress, uint256 memberId)` | 候选人没有有效治理票 |
-| `NoActiveApplication(uint256 memberId)` | 没有当前申请或申请已失效 |
-| `CandidateNotRanked(uint256 memberId, uint256 round)` / `CandidateNotOpen(uint256 memberId, uint256 round)` | 未进入当轮排名 / 分割窗口未开 |
+| `ZeroVerifyVotes(address tokenAddress, uint256 verifierId)` | 验证者没有有效治理票 |
+| `NoActiveApplication(uint256 verifierId)` | 没有当前申请或申请已失效 |
+| `VerifierNotRanked(uint256 verifierId, uint256 round)` / `VerifierNotOpen(uint256 verifierId, uint256 round)` | 未进入当轮排名 / 分割窗口未开 |
 | `GroupVerificationAlreadyComplete(uint256 groupId, uint256 round)` | 已完成验证的群重复提交 |
 | `VerifierAlreadyLocked(address tokenAddress, uint256 actionId, uint256 round)` | 锁定后更换验证者 |
 | `UnknownSourceAction(address sourceTokenAddress, uint256 sourceActionId)` | 二次分配配置的源行动不是本 Executor 创建 |

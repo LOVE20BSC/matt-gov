@@ -11,6 +11,9 @@
 | `forceExit` | `forceClearJoinState` |
 | `Joined` / `Withdrawn` / `Exited` | `GroupActionJoined` / `GroupActionWithdrawn` / `GroupActionExited`、`LpJoined` / `LpWithdrawn` / `LpExited`、`ServiceJoined` / `ServiceExited` |
 | `DistributeRecipient` | `RecipientPaid` |
+| `candidateMemberId` | `verifierId` |
+| `CandidateNotRanked` | `VerifierNotRanked` |
+| `CandidateNotOpen` | `VerifierNotOpen` |
 
 ## 校验分层（2026-10-25）
 

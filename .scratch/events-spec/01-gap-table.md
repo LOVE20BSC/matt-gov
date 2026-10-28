@@ -83,11 +83,11 @@
 | 24 | `VerifierApplicationCancelled` `IGroupActionVerify:29` | `VerifierApplicationCancelled` | 保留 | 不变 | — |
 | 25 | `VerifierStakeDeposited` `IGroupActionVerify:36` | `VerifierStakeDeposited` | 保留 | 不变 | — |
 | 26 | `VerifierStakeRefunded` `IGroupActionVerify:43` | `VerifierStakeRefunded` | 保留 | 不变 | — |
-| 27 | `VerifierLocked` `IGroupActionVerify:50` | `VerifierLocked` | 改形 | `memberId` 改为 indexed；indexed 改为 `tokenAddress`、`actionId`、`memberId`（`round` 改非 indexed） | 与同组其他 verifier 事件对齐 |
+| 27 | `VerifierLocked` `IGroupActionVerify:50` | `VerifierLocked` | 改形 | `memberId` → `verifierId` 并改为 indexed；indexed 改为 `tokenAddress`、`actionId`、`verifierId`（`round` 改非 indexed） | 与同组其他 verifier 事件对齐 |
 | — | — | `GroupActionCreated` | 新增 | `tokenAddress` i、`actionId` i、`joinTokenAddress`、`activationStakeAmount`、`maxJoinAmountRatio`、`activationMinGovRatio`、`verifierStakeAmount`、`verificationKeys[]`、`verificationDescriptions[]` | 覆盖 `GroupActionManager.onProposalCreated` 的 8 项静默写；由 `GroupActionExecutor` 发射；schema 字段需上限 |
 | — | — | `ServiceActionCreated` | 新增 | `tokenAddress` i、`actionId` i、`actionTokenAddress`、`govRatioMultiplier`、`ratioForPublicVerifier` | 覆盖 `GroupServiceExecutor.onProposalCreated` 的 4 项静默写 |
 | — | — | `LpActionCreated` | 新增 | `tokenAddress` i、`actionId` i、`joinTokenAddress`、`govRatioMultiplier`、`minGovRatio` | 覆盖 `LpExecutor.onProposalCreated` 的 4 项静默写 |
-| — | — | `ApplicationVoteRecorded` | 新增 | `tokenAddress` i、`actionId` i、`applicationId` i、`round`、`candidateMemberId`、`votesAdded`、`totalVotes` | 覆盖 `GroupActionVerify.onProposalVoted` 的票数与排名静默写；排名由票数折叠；投票人由同 tx 的 `VoteCast` 关联 |
+| — | — | `ApplicationVoteRecorded` | 新增 | `tokenAddress` i、`actionId` i、`voterId`、`round`、`applicationId` i、`verifierId`、`votesAdded`、`totalVotes` | 覆盖 `GroupActionVerify.onProposalVoted` 的票数、投票名册与排名静默写；排名与名册都由事件流折叠 |
 
 ---
 
@@ -130,7 +130,7 @@
 | `GroupActionCreated` | `GroupActionExecutor` | `onProposalCreated` | 8 项 action 配置 + verification schema | `GroupActionManager.onProposalCreated` 全部静默写；域对象创建事实 |
 | `ServiceActionCreated` | `GroupServiceExecutor` | `onProposalCreated` | 4 项 service 配置 | `GroupServiceExecutor.onProposalCreated` 全部静默写；域对象创建事实 |
 | `LpActionCreated` | `LpExecutor` | `onProposalCreated` | 3 项 LP 配置 | `LpExecutor.onProposalCreated` 全部静默写；域对象创建事实 |
-| `ApplicationVoteRecorded` | `GroupActionVerify` | `onProposalVoted` | `applicationId`、`candidateMemberId`、`votesAdded`、`totalVotes` | 票数/排名静默写 |
+| `ApplicationVoteRecorded` | `GroupActionVerify` | `onProposalVoted` | `voterId`、`applicationId`、`verifierId`、`votesAdded`、`totalVotes` | 票数、投票名册与排名的静默写 |
 | `ProviderQuotaRefunded` | `GroupActionJoin` | `_refundProviders` | `providerId`、`memberId`、`amount` | 复用 `Withdrawn` 的语义漂移 |
 
 ---

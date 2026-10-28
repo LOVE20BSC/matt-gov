@@ -224,7 +224,7 @@ ERC-20 / ERC-721 标准事件保持不变，不进入本规范正文。`AddHolde
 | action.participation | 根键 → actionId → memberId → round → groupId → providerId → 数值/布尔 → 文本数组 | `GroupActionJoined`、`GroupActionWithdrawn`、`GroupActionExited`、`LpJoined`、`LpWithdrawn`、`LpExited`、`ServiceJoined`、`ServiceExited`、`JoinStateRegistered`、`JoinStateCleared`、`MemberRewardMinted` |
 | action.round | 根键 → actionId → round → 数值 | `ActionRewardMinted` |
 | action.quota | 根键 → actionId → groupId → providerId → memberId → 数值 | `ProviderQuotaAdded`、`ProviderQuotaRemoved`、`ProviderQuotaRefunded` |
-| action.verification | 根键 → actionId → memberId/groupId → round → applicationId/verifierId → 次级 id（候选成员 / 上一申请）→ 数值/布尔 → 文本/数组 | `OriginScoresSubmitted`、`VerifierApplicationSubmitted`、`VerifierApplicationCancelled`、`VerifierStakeDeposited`、`VerifierStakeRefunded`、`VerifierLocked`、`ApplicationVoteRecorded` |
+| action.verification | 根键 → actionId → 主体 id（`memberId`/`groupId`/`voterId`/`verifierId`）→ round → `applicationId`/`verifierId` → 次级 id（被投的验证者 / 上一申请）→ 数值/布尔 → 文本/数组 | `OriginScoresSubmitted`、`VerifierApplicationSubmitted`、`VerifierApplicationCancelled`、`VerifierStakeDeposited`、`VerifierStakeRefunded`、`VerifierLocked`、`ApplicationVoteRecorded` |
 | action.recipients | 根键 → sourceActionId → round → groupId → 新表 → 旧表 | `RecipientTableChanged` |
 | action.service | 根键 → serviceActionId → round → 对象链（groupId 或 actionTokenAddress）→ 源链/角色 → 数值 | `RecipientPaid`、`ServiceRewardsDistributed` |
 | gc.management | 根键 → 对象标识（id 或对象地址）→ actor id → actor 地址 → 新值组 → 旧值组 | `AdminChanged`、`MemberStatusChanged`、`SenderBanChanged`、`GroupChatActivated`、`PostingAllowedChanged`、`ScopeSourceChanged`、`BanSourceChanged`、`BeforePostPluginChanged`、`AfterPostPluginChanged`、`DelegateChanged`、`DelegationCleared` |
@@ -262,7 +262,7 @@ ERC-20 / ERC-721 标准事件保持不变，不进入本规范正文。`AddHolde
 角色词表是封闭的：同一角色在全协议只用一种写法。
 
 - `<role>` 表示地址，`<role>Id` 表示协议 id；同一角色同时出现地址与 id 时必须成对，且 **id 在地址之前**（`operatorId` → `operator`、`ownerId` → `owner`、`senderId` → `sender`）。
-- 固定取值包括：`tokenAddress`、`sender` / `senderId`、`owner` / `ownerId`、`operator` / `operatorId`、`admin` / `adminId`、`delegate` / `delegateId`、`delegateOwner`、`memberId`、`voterId`、`submitterId`、`recipientId`、`providerId`、`verifierId`、`launcherMemberId`、`authorId`、`targetSenderId`、`mentionedSenderId`、`candidateMemberId`、`sourceMemberId` / `targetMemberId`。
+- 固定取值包括：`tokenAddress`、`sender` / `senderId`、`owner` / `ownerId`、`operator` / `operatorId`、`admin` / `adminId`、`delegate` / `delegateId`、`delegateOwner`、`memberId`、`voterId`、`submitterId`、`recipientId`、`providerId`、`verifierId`、`launcherMemberId`、`authorId`、`targetSenderId`、`mentionedSenderId`、`sourceMemberId` / `targetMemberId`。
 - 角色 id 的旧值加 `prev` 前缀（`prevDelegateId`）；成员 id 一律写 `memberId`，不得写成 `id`（`MemberMinted` 已统一）。
 - 对象 id 一律写 `<object>Id`：`actionId`、`proposalId`、`applicationId`、`previousApplicationId`、`messageId`、`quotedMessageId`、`groupId`、`serviceActionId` / `sourceActionId`。对象 id 不登记为角色。
 - 对象地址与 actor 地址分列：`executor`、`distributor`、`recipient`、`target`、`joinTokenAddress`、`actionTokenAddress`、`sourceAddress`、`pluginAddress`、`to` / `from` 是对象或对手方地址，不占 actor 槽位。

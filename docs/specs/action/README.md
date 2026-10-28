@@ -9,7 +9,7 @@ Action 实现社群行动 Proposal 类型，包括 LP、GroupAction 和 GroupSer
 | [02-phase-model.md](02-phase-model.md) | 阶段、Round 和服务验证复用 |
 | [03-participation.md](03-participation.md) | 参与资产来源、Provider 额度与撤回 |
 | [04-lp-executor.md](04-lp-executor.md) | LP 时间权重和激励上限 |
-| [05-group-action-executor.md](05-group-action-executor.md) | GroupAction 索引、历史、候选和验证 |
+| [05-group-action-executor.md](05-group-action-executor.md) | GroupAction 索引、历史、验证者申请和验证 |
 | [06-service-executor.md](06-service-executor.md) | 服务聚合与二次分配 |
 | [07-minting.md](07-minting.md) | 铸造链路、事件和错误 |
 | [08-testing.md](08-testing.md) | 验收 |

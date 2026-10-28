@@ -197,7 +197,7 @@ rg -n 'core\.md|action\.md|group-chat\.md|launchFirstToken|initializeGenesis|TOD
 - [ ] 加入、追加、Provider 额度资产、部分撤回、退出的账本互不抵扣
 - [ ] Group Action 参与索引的加入、退出、归属计数在最后一个关系退出后归零
 - [ ] Round 历史的懒继承不会把退出状态错误继承
-- [ ] 候选排名、分割线、批次游标和永久锁定规则可执行
+- [ ] 验证者排名、分割线、批次游标和永久锁定规则可执行
 - [ ] 验证不完整时行动层激励为零，底层 Proposal 激励仍可独立处理
 - [ ] Service 只复用已完成验证的 Group Action，聚合范围和代币关系明确
 - [ ] 全量扫描、批量铸造和二次分配有可执行边界

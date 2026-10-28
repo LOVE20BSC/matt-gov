@@ -16,7 +16,7 @@
 |---|---|---|---|
 | group-chat | 完成（未提交） | 162 passed / 0 failed | 已修：`AdminChanged` 合并为单事件（新增/刷新/删除均一条）；`SenderMentioned.messageId` 改 indexed；`GroupChatActivated` 携带初始 5 项配置并移除激活时的 4 个 Set* 冗余 emit；`MessagePosted` 含 content/quote/hasQuote/mentionAll；`MentionAll` 删除；delegate 快照旧+新。 |
 | core | 完成（未提交） | 474 passed / 0 failed | 23 行全部落地；复核补 `authorId`（原 `author`）；name/symbol 上限落为 `MAX_TOKEN_NAME_LENGTH=96` / `MAX_TOKEN_SYMBOL_LENGTH=32`；title/details 1024B、targetData 16 KiB/16；`VoteCast` boost 快照、`GovRewardMinted` 去 `burnReward`、删除 holder 事件。 |
-| action | 完成（未提交） | 457 passed / 0 failed | 34 文件；`ActionRegistered`、三个 `*ActionCreated`、域前缀拆名、`GroupActivated` 初始 config、`GroupConfigChanged` 旧+新、`RecipientTableChanged` 旧+新+remarks、`ApplicationVoteRecorded`、`ProviderQuotaRefunded`、`VerifierLocked` indexed、LP 清仓 `LpWithdrawn`+`LpExited`、`forceClearJoinState` 仅改名；库 emit 按规范 §4.1。 |
+| action | 完成（未提交） | 461 passed / 0 failed | 34 文件；`ActionRegistered`、三个 `*ActionCreated`、域前缀拆名、`GroupActivated` 初始 config、`GroupConfigChanged` 旧+新、`RecipientTableChanged` 旧+新+remarks、`ApplicationVoteRecorded`（带 `voterId` 与投票名册）、`ProviderQuotaRefunded`、`VerifierLocked` indexed、LP 清仓 `LpWithdrawn`+`LpExited`、`forceClearJoinState` 仅改名；库 emit 按规范 §4.1。 |
 
 ## Review 修复（2026-10-26）
 

@@ -11,9 +11,9 @@
 | 符号 | 含义 |
 | --- | --- |
 | `A[a]` | 源 GroupAction a 的行动层分配总额，即 `generatedActionReward` 返回的 proposalReward；按群切片 floor 后其和不超过 `A[a]` |
-| `r` / `RATIO_FOR_PUBLIC_VERIFIER` | 服务 Proposal 绑定的公共验证者比例，`1e18` 精度；各源行动统一取该值（不再由候选在申请时自报） |
+| `r` / `RATIO_FOR_PUBLIC_VERIFIER` | 服务 Proposal 绑定的公共验证者比例，`1e18` 精度；各源行动统一取该值（不再由验证者在申请时自报） |
 | `totalGroupActionReward` | `actionTokenAddress` 社区本轮全部 GroupAction 的 `A[a]` 之和，即本服务轮次的分母 |
-| `publicVerifierId[a]` | 行动 a 在目标轮锁定的公共验证者 memberId |
+| `publicVerifierId[a]` | 行动 a 在目标轮锁定的公共验证者 verifierId |
 | `m` | 结算主体 memberId；作为群 owner 时也是 groupId |
 | `groupReward(a, m)` | Group m 在行动 a 的成员激励总和；与 `A[a]`、`D` 同源，同一时刻从同一份账本读出 |
 | `serviceReward` | 本服务 Proposal 的整笔激励 |
@@ -49,13 +49,13 @@ owner 权重按群切片 floor 后汇总，因此 `Σ_m ownerWeightNumerator(m) 
 
 `init(actionTargetAddress, stakeAddress, groupActionExecutorAddress)` 只收 ActionTarget、Stake 和 GroupAction Executor：入参与 `memberNFTAddress`、`phaseAddress`、`launchAddress`、`mintAddress`（从 `stakeAddress`/`ActionTarget` 读取一次并缓存）有代码由 `DeployAction` 广播前校验；`21_check.sh` 复核 Stake 派生 getter、ActionTarget 与 `groupActionExecutorAddress()`；`init` 只防重复初始化并保存配置。`groupActionExecutorAddress()` 暴露绑定，供 21_check 核对 `GroupServiceExecutor -> GroupActionExecutor` 关系。
 
-**加入与退出**：`join(serviceTokenAddress, serviceActionId, memberId)` 校验当前 NFT 持有人，资格为两类之一——该成员（自身作为链群主体）在 `actionTokenAddress` 社区存在激活行动，以 GroupAction Executor 的 `hasActiveGroups(actionTokenAddress, memberId)` 一次判定；或在该轮社区行动集（与分母枚举同源）中存在有效公共验证者竞选申请，逐个读 `verifierApplication(actionTokenAddress, actionId, round, memberId)` 的 `applicationId != 0`（申请自其提交轮起常设，必须按**被加入轮**判断它当时是否已生效；无申请返回零值结构体、不回滚）。满足其一即可，不要求该轮已选出公共验证者；均不满足回滚 `NotQualified(actionTokenAddress, round, memberId)`。重复 `join` 回滚 `AlreadyJoined(serviceTokenAddress, serviceActionId, memberId)`，未加入 `exit` 回滚 `NotJoined(serviceTokenAddress, serviceActionId, memberId)`。服务资格按轮快照由 ActionTarget 持有：`joinInfo(serviceTokenAddress, serviceActionId, round, memberId)` 转发 `isJoinedByRound`、返回该轮快照是否已加入，Executor 不自建副本；退出只写当时轮快照，不追回已发生轮。加入与退出分别发 `ServiceJoined` / `ServiceExited`（均只带服务根键、`serviceActionId`、`memberId` 与 `round`，不带金额）。共同准备/铸造/销毁 ABI 见 [行动铸造](07-minting.md#铸造链路)。
+**加入与退出**：`join(serviceTokenAddress, serviceActionId, memberId)` 校验当前 NFT 持有人，资格为两类之一——该成员（自身作为链群主体）在 `actionTokenAddress` 社区存在激活行动，以 GroupAction Executor 的 `hasActiveGroups(actionTokenAddress, memberId)` 一次判定；或在该轮社区行动集（与分母枚举同源）中存在有效公共验证者竞选申请，逐个读 `verifierApplication(actionTokenAddress, actionId, round, verifierId)` 的 `applicationId != 0`（申请自其提交轮起常设，必须按**被加入轮**判断它当时是否已生效；无申请返回零值结构体、不回滚）。满足其一即可，不要求该轮已选出公共验证者；均不满足回滚 `NotQualified(actionTokenAddress, round, memberId)`。重复 `join` 回滚 `AlreadyJoined(serviceTokenAddress, serviceActionId, memberId)`，未加入 `exit` 回滚 `NotJoined(serviceTokenAddress, serviceActionId, memberId)`。服务资格按轮快照由 ActionTarget 持有：`joinInfo(serviceTokenAddress, serviceActionId, round, memberId)` 转发 `isJoinedByRound`、返回该轮快照是否已加入，Executor 不自建副本；退出只写当时轮快照，不追回已发生轮。加入与退出分别发 `ServiceJoined` / `ServiceExited`（均只带服务根键、`serviceActionId`、`memberId` 与 `round`，不带金额）。共同准备/铸造/销毁 ABI 见 [行动铸造](07-minting.md#铸造链路)。
 
 **加入窗口**：服务 Proposal 是持续存在的，创建之后**每一轮都可以加入**，不限于创建轮——`createdRound` 只是下界。快照自加入轮起持续有效直到 `exit`，因此某轮结算只包含「在该轮或更早加入、且尚未退出」的成员；晚加入的人拿不到更早轮次的分成，但也无需重复加入。资格判定用**被加入的那一轮**的社区行动集（`currentJoinRound()`），不是创建轮的行动集。下界由 ActionTarget 的 `registerJoinState` 兜住：当前轮 `<= createdRound` 时回滚 `JoinNotOpen`，Executor 不重复判断。
 
 基座 `joinedAmount` 族代理社区激活质押：`joinedAmount(serviceTokenAddress, serviceActionId, round)` 返回 `totalStaked(actionTokenAddress)`（`round > currentJoinRound()` 返回 0），`joinedAmountByMemberId(serviceTokenAddress, serviceActionId, round, memberId)` 返回 `totalStakedByMemberId(actionTokenAddress, memberId)`，`joinedAmountTokenAddress(serviceTokenAddress, serviceActionId)` 返回 `ACTION_TOKEN_ADDRESS(serviceTokenAddress, serviceActionId)`；社区激活质押为当前值，没有按轮历史。
 
-[组织验收](../../acceptance.md#groupservice-结算) 还要求：只有本轮加入服务 Proposal 的群 owner/候选 MemberNFT 可按人结算，未加入角色份额不重分配。每个角色先检查自己的分子，为零只跳过该角色，不影响同一 memberId 的另一角色；两个分子都为零时不读取分母，视图返回全零，结算入口按零额规则回滚 `MemberActionRewardUnavailable(tokenAddress, actionId, memberId, round)`（见 [统一链路](07-minting.md#铸造链路)）。`totalGroupActionReward == 0` 时该轮没有分配路径（判据与 GroupAction 同型：轮次不等于 `createdRound` 或超过 `currentMintRound()` 时不适用，否则看 `D == 0`），任何角色结算都回滚 `MemberActionRewardUnavailable(tokenAddress, actionId, memberId, round)`，整笔服务激励停留在未结算状态、预留不释放。结算只在分母非零且**行动代币**轮次已准备时写分母缓存；零分母的失败结算不写任何状态，因此该轮在账本产出激励之前一直不可结算。
+[组织验收](../../acceptance.md#groupservice-结算) 还要求：只有本轮加入服务 Proposal 的群 owner/验证者 MemberNFT 可按人结算，未加入角色份额不重分配。每个角色先检查自己的分子，为零只跳过该角色，不影响同一 memberId 的另一角色；两个分子都为零时不读取分母，视图返回全零，结算入口按零额规则回滚 `MemberActionRewardUnavailable(tokenAddress, actionId, memberId, round)`（见 [统一链路](07-minting.md#铸造链路)）。`totalGroupActionReward == 0` 时该轮没有分配路径（判据与 GroupAction 同型：轮次不等于 `createdRound` 或超过 `currentMintRound()` 时不适用，否则看 `D == 0`），任何角色结算都回滚 `MemberActionRewardUnavailable(tokenAddress, actionId, memberId, round)`，整笔服务激励停留在未结算状态、预留不释放。结算只在分母非零且**行动代币**轮次已准备时写分母缓存；零分母的失败结算不写任何状态，因此该轮在账本产出激励之前一直不可结算。
 
 ## 治理上限
 
