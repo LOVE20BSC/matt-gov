@@ -21,6 +21,7 @@
 | Manager | 转出 NFT、approve、重配、付费者接管 | 不新增这些入口，普通 owner Chat 不受此限制 |
 | 群内委托 | 管理管理员、成员、人工黑名单；调用 Core/Action/Launch | 保留原群内权限，但委托不能授权任何群外业务 |
 | 黑名单 | 当前行动 Vote Round、全社区分母、权重归零刷新 | 不使用创建 Round；保留 settledWeight、改票/撤票/刷新与 stateVersion |
+| 黑名单 | 社区权重按当前 Round 读取 | 两类 token Manager 与两类 action Manager 的 `voteWeightOf` / `totalVoteWeight` 都取 `IPhase.currentPhase()` 对应的票权，不取行动总票数或创建 Round；Manager 的 `PHASE_ADDRESS` 在构造时从 `IStake.phaseAddress()` 派生，`21_check.sh` 复核 `Stake.phaseAddress == PHASE_ADDRESS` |
 | 黑名单 | 管理员身份不绕过封禁 | admin 的成员 NFT 被 ban 后发言回 `BanRejected(source, groupId, senderId)`；以群 NFT 发言仍可（`testT121B`） |
 | 持币 | 首币余额 0、1、2 个最小单位 | 0 不满足持币分支，1、2 满足；其他资格分支照常 |
 

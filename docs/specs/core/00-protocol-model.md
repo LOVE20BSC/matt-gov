@@ -61,4 +61,4 @@ MemberNFT 的首币地址由 `Launch.init` 在创建首币时同步调用 `Membe
   - 取时点值（单值历史，如 Stake 的 `validGovVotes`、`validBoostShares` 及其社区口径 `totalValidGovVotes`、`totalValidBoostShares`）：传入尚未开始的未来 Round 回滚 `RoundNotStarted(requiredRound, currentRound)`，不得把最近一条记录当作未来轮的值返回。
   - 取该轮记录集合（如 Submit 的 `submitInfos`）：未来 Round 与无记录的已开始 Round 一致，返回空集合与 `0`，不回滚。
   - 两种口径都只针对历史查询；写入口校验未来轮不属于本节，按各模块条件表执行。
-  - **消费方一律读当前 Round**：协议内部的写路径与结算路径按 `IPhase.currentPhase()` 读这些时点账本——Submit 的推举门槛、Vote 的票上限与加速快照、LpExecutor 与 GroupServiceExecutor 的治理上限、GroupActionManager 的激活门槛都是「读当前」。参数里的 `round` 服务历史查询、事件对账与索引器重建，不改变结算口径；需要冻结结果的（如 LP 的 `_govRatioAtMint`）在写入时存下当前值，事后查询返回该记录。
+  - **消费方一律读当前 Round**：协议内部的写路径与结算路径按 `IPhase.currentPhase()` 读这些时点账本——Submit 的推举门槛、Vote 的票上限与加速快照、LpExecutor 与 GroupServiceExecutor 的治理上限、GroupActionManager 的激活门槛、GroupActionVerify 的申请资格，以及 group-chat 四个 Manager 的 `voteWeightOf` / `totalVoteWeight`，都是「读当前」。参数里的 `round` 服务历史查询、事件对账与索引器重建，不改变结算口径；需要冻结结果的（如 LP 的 `_govRatioAtMint`）在写入时存下当前值，事后查询返回该记录。
