@@ -31,7 +31,7 @@ Phase 维护连续的无语义时间片、同步观测和动态校准，不内�
 
 每轮首个成功推举仍自动调用 `sync`；如果已经有人同步，自动调用无操作返回，不能阻塞推举。没有推举时任何人仍可同步；投票和铸造本身不触发同步。无人调用也不停止 Phase 推进。
 
-首次有效同步只记录观测；调整时发出 `PhaseAdjusted`。新参数不得改变当前或过去 Phase 的编号和边界，不能通过校准重获本轮同步机会。`adjusted = false` 时，`newPhaseBlocks` 返回当前值。
+首次有效同步只记录观测；每次有效同步发出 `PhaseSynchronized(phase, phaseBlocks)`（只含这两个字段，块高与时间由日志元数据承担），调整时另发 `PhaseAdjusted`。新参数不得改变当前或过去 Phase 的编号和边界，不能通过校准重获本轮同步机会。`adjusted = false` 时，`newPhaseBlocks` 返回当前值。
 
 ## 校准
 

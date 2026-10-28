@@ -73,7 +73,7 @@ Proposal 由合约分配的头部与创建者提供的主体组成，对外以 `
 
 前两个只回 `proposalId`，详情走 [`proposalInfosByIds`](#按-id-批量取详情)。`submitInfos` 的每条记录含 `submitterId` 与 `proposalId`，「本轮推举了哪些提案」与「谁推举了哪个提案」由同一条读路径给出，不再拆成两个入口。某 Round 尚无推举或尚未开始时，`submitInfos` 返回空数组与 `0`，不回滚（取该轮记录集合的口径，见[跨模块约定](00-protocol-model.md#实现约束)）。
 
-**分页只回定长数据**：页内成员由别人决定，`ProposalBody` 的 `title`/`details`/`targetData` 都不设长度上限，一旦分页回本体，某条大 `targetData` 的 Proposal 就能把包含它的整页顶到调用方 gas 上限之上，而且跳不过去——只能反复调小 `limit` 试探。需要详情时走 [按 id 批量取详情](#按-id-批量取详情)。`SubmitInfo` 全为 `uint256` 字段，分页回记录不触这条红线。
+**分页只回定长数据**：页内成员由别人决定，`ProposalBody` 的 `title`/`details`（各 ≤1024 字节）与 `targetData`（≤16 KiB、≤16 项）虽有链上上限，但仍足以把整页顶高，一旦分页回本体，某条大 `targetData` 的 Proposal 就能把包含它的整页顶到调用方 gas 上限之上，而且跳不过去——只能反复调小 `limit` 试探。需要详情时走 [按 id 批量取详情](#按-id-批量取详情)。`SubmitInfo` 全为 `uint256` 字段，分页回记录不触这条红线。
 
 分页与批量查询都不校验 `tokenAddress` 是否已登记，也不校验 `memberId` 是否存在，与 [Proposal](#proposal) 一节的口径一致。
 
@@ -87,7 +87,7 @@ Proposal 由合约分配的头部与创建者提供的主体组成，对外以 `
 
 `submitInfos` 分页与两条方向单键（`proposalIdBySubmitter`、`submitterIdByProposalId`）的分工：分页是集合的完整读取路径，两条单键是它在两把唯一键上的定点通道，三者读到的是同一份推举记录，不各自维护状态。
 
-`proposalTarget(tokenAddress, proposalId)` 回该 Proposal 的 `target` 与 `targetMode`，未分配过的 ID 同样回滚 `ProposalNotFound(proposalId)`。它是 `proposalInfosByIds` 之外的轻量取值入口，供每笔投票都要判断回调目标的 Vote 使用：整条 `ProposalInfo` 含无上限的 `title`/`details`/`targetData`，随正文大小线性变贵（实测每笔 3 万～9 万 gas），而 Vote 只需要这两个字段。按 `migration-standards.md`「按键取单值」的第四种情况加入——先量后加，省下的开销与调用方自身的写入开销同量级。
+`proposalTarget(tokenAddress, proposalId)` 回该 Proposal 的 `target` 与 `targetMode`，未分配过的 ID 同样回滚 `ProposalNotFound(proposalId)`。它是 `proposalInfosByIds` 之外的轻量取值入口，供每笔投票都要判断回调目标的 Vote 使用：整条 `ProposalInfo` 含较大的 `title`/`details`/`targetData`（上限 1024B / 16 KiB / 16 项），随正文大小线性变贵（实测每笔 3 万～9 万 gas），而 Vote 只需要这两个字段。按 `migration-standards.md`「按键取单值」的第四种情况加入——先量后加，省下的开销与调用方自身的写入开销同量级。
 
 ## 推举
 
@@ -136,11 +136,11 @@ Proposal 由合约分配的头部与创建者提供的主体组成，对外以 `
 
 事件与错误定义见 [`ISubmit.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/ISubmit.sol)。
 
-`ProposalCreated` 由 `submitNewProposal` 的创建段发出，包含 `author`（创建者 `memberId`）、`title`、`details`、`target`、`targetMode`；不含 `round`、不含 `targetData`。
+`ProposalCreated` 由 `submitNewProposal` 的创建段发出，字段顺序为 `tokenAddress`、`proposalId`、`authorId`、`target`、`targetMode`、`targetData`、`title`、`details`；不含 `round`。创建者一律写作 `authorId`（创建者 `memberId`），不再使用 `author`。
+
+动态字段带上限，属于事件契约：`title`、`details` 各不超过 `1024` 字节（`MAX_TITLE_LENGTH` / `MAX_DETAILS_LENGTH`），`targetData` 总量不超过 `16 KiB` 且不超过 `16` 个元素；超限分别回滚 `TitleTooLong(length, maxLength)`、`DetailsTooLong(length, maxLength)`、`TargetDataTooLarge(totalLength, maxLength)`、`TargetDataTooMany(count, maxCount)`。事件已携带 `targetData`，提案的执行载荷可由事件流直接重建，无需按 id 回读。代价是创建交易的日志体量随 `targetData` 线性增长（LOG 数据约 8 gas/byte，16 KiB 上限下最坏约 +131k gas），这是「用 gas 换可重建」的有意取舍。
 
 `ProposalSubmitted` 由推举段发出，`submitNewProposal` 与 `submit` 各发一次，包含 `round`（= `currentRound()`）、`submitterId`、`proposalId`。走 `submitNewProposal` 时同一笔内先 `ProposalCreated`、后 `ProposalSubmitted`。
-
-`targetData` 无法从事件重建，需按 id 批量回读 `proposalInfosByIds(tokenAddress, [proposalId])`。
 
 错误：
 
@@ -148,6 +148,10 @@ Proposal 由合约分配的头部与创建者提供的主体组成，对外以 `
 | --- | --- |
 | `AlreadyInitialized()` | 重复初始化 |
 | `TitleEmpty()` | `title` 为空 |
+| `TitleTooLong(uint256 length, uint256 maxLength)` | `title` 字节数超过 `MAX_TITLE_LENGTH`（1024） |
+| `DetailsTooLong(uint256 length, uint256 maxLength)` | `details` 字节数超过 `MAX_DETAILS_LENGTH`（1024） |
+| `TargetDataTooMany(uint256 count, uint256 maxCount)` | `targetData` 元素数超过 `MAX_TARGET_DATA_COUNT`（16） |
+| `TargetDataTooLarge(uint256 totalLength, uint256 maxLength)` | `targetData` 总字节数超过 `MAX_TARGET_DATA_BYTES`（16 KiB） |
 | `ZeroTargetAddress()` | `submitNewProposal` 的 `target` 为零 |
 | `CallbackTargetNotContract(address target)` | `targetMode == Callback` 且 `target.code.length == 0` |
 | `NotMemberOwner(uint256 memberId)` | `ownerOf(memberId) != msg.sender`；`memberId` 不存在时由 MemberNFT 回滚 `ERC721NonexistentToken` |

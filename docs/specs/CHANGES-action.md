@@ -2,6 +2,16 @@
 
 本文档列出 BSC Action 相对于 LOVE20TKM 旧协议的所有变更。保留项直接引用旧代码位置，避免重复描述。
 
+## 事件与接口改名（2026-10-27）
+
+事件规范 v1.1 重命名了本文其他小节记录的迁移时点名称；正文保留当时名称，现行名称以 [规格](README.md) 与各仓 `src/interfaces/` 为准：
+
+| 本文旧名 | 现行名称 |
+|---|---|
+| `forceExit` | `forceClearJoinState` |
+| `Joined` / `Withdrawn` / `Exited` | `GroupActionJoined` / `GroupActionWithdrawn` / `GroupActionExited`、`LpJoined` / `LpWithdrawn` / `LpExited`、`ServiceJoined` / `ServiceExited` |
+| `DistributeRecipient` | `RecipientPaid` |
+
 ## 校验分层（2026-10-25）
 
 - `ActionTarget`、`LpExecutor`、`GroupActionExecutor`、`GroupServiceExecutor` 的 `init` 依赖代码、派生的非零检查和 splits 空数组/范围/递增检查，移到 `DeployAction` 广播前校验与 `21_check.sh` 部署后复核；`DeployAction` 额外交叉核对 Mint/Stake 的派生图与 Vote/Submit 绑定，21_check 直接读取 Stake 的派生 getter；`init` 只防重复初始化并保存入参。

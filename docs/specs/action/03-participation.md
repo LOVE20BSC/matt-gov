@@ -21,7 +21,7 @@ Provider 提供的是额度：Provider 授予、追加或收回额度，成员�
 
 - 自有资产与各 Provider 额度资产可同时存在，撤回只能撤回自己那份：`withdraw` 只减少自有账本，由成员当前持有人调用；`providerWithdraw` 只减少指定 Provider 账本，由该 Provider 当前持有人调用。两者不互相抵扣，也不影响其他来源；成员总参与量（自有 + 全部 Provider）归零时才自动退出行动。LP 的部分撤回规则见 [LP Executor](04-lp-executor.md#部分撤回)。
 - `providerWithdraw` 代币始终返还该 Provider 当前持有人；撤回后成员总参与量为零时，合约自动完成成员退出、清除群归属并调用 `ActionTarget.clearJoinState`，否则成员保持加入。
-- 成员 `exit` 结清全部来源：自有资产返还成员当前持有人；Provider 来源**不转出合约**，按资金归属恢复为该 Provider 对该成员的可用额度（已投入 → 可用额度），成员日后可用同一额度再次加入，Provider 仍可随时用 `providerQuotaRemove` 取回。代币量只由 `Joined` 与 `Withdrawn` 承载：`exit` 按来源逐条发出 `Withdrawn`（自有来源 `providerId = 0`，每个有余额的 Provider 各一条且带其 `providerId`），`Exited` 只表示成员退出这一状态变化（带链群 `groupId`），不带金额；单笔 `withdraw` / `providerWithdraw` 只影响一个来源，各发一条 `Withdrawn`。
+- 成员 `exit` 结清全部来源：自有资产返还成员当前持有人；Provider 来源**不转出合约**，按资金归属恢复为该 Provider 对该成员的可用额度（已投入 → 可用额度），成员日后可用同一额度再次加入，Provider 仍可随时用 `providerQuotaRemove` 取回。代币量只由 `GroupActionJoined` 与 `GroupActionWithdrawn` 承载：`exit` 对自有金额发一条 `GroupActionWithdrawn`（`providerId = 0`），对每个有余额的 Provider 发一条 `ProviderQuotaRefunded`；`GroupActionExited` 只表示成员退出这一状态变化（带链群 `groupId`），不带金额；单笔 `withdraw` / `providerWithdraw` 只影响一个来源，各发一条 `GroupActionWithdrawn`。Provider 来源在 `exit` 中恢复为可用额度、不是转账，由 `ProviderQuotaRefunded` 记录。
 - 同一成员已归属其他链群回 `AlreadyInOtherGroup(memberId, existingGroupId, requestedGroupId)`；未加入时退出回 `NotJoined(tokenAddress, actionId, memberId)`。
 - 加入阶段内撤回更新当轮参与权；阶段结束后不得回写该 Round 历史。
 - 正常加入/退出与应急清理见 [ActionTarget](01-action-target.md)，资金处理由 Executor 完成。

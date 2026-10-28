@@ -36,7 +36,7 @@ Vote 管理当前治理 Round 的 Proposal 投票和加速快照。Proposal 的�
    3. 记录加速快照：首投记全量，后续只补正增量
    4. 累加票数，维护本轮有票 Proposal 与投票者集合
    5. **额度**：成员本轮累计票数不超过票上限（`VoteLimitExceeded(tokenAddress, round, memberId, cumulativeVotes, maxVotes)`，`cumulativeVotes` 为加上本笔后的成员累计票数）
-   6. 发出 `Voted` 事件
+   6. 发出 `VoteCast` 事件（含本次 `votes`、成员加速快照 `voterBoost` 与全局 `totalVoterBoost`）
    7. `Callback` 且 `target` 非零时回调 `IProposalTarget.onProposalVoted`，失败回滚整笔
 
 额度按整批累计判定：同一批里先投的票数计入后投的判定基准，超过上限的那笔回滚整批。

@@ -21,37 +21,37 @@
   - `IGroupActionExecutor`: `join(tokenAddress, actionId, groupId, memberId, amount, providerId, verificationInfos)` — 多了 `groupId` 与 `providerId`
   - `IGroupServiceExecutor`: `join(serviceTokenAddress, serviceActionId, memberId)` — 无 `amount` 与 `verificationInfos`
 - `withdraw` — 部分撤回接口，LP 和 GroupAction 需要，GroupService 不需要
-- 事件 — 各 Executor 的业务字段不同，各自声明 `Joined/Withdrawn/Exited` 事件
+- 事件 — 各 Executor 的业务字段不同，按域前缀各自声明 `GroupActionJoined`/`GroupActionWithdrawn`/`GroupActionExited`、`LpJoined`/`LpWithdrawn`/`LpExited`、`ServiceJoined`/`ServiceExited`
 - `currentVerifyRound()` — 仅 GroupAction / GroupService 的四阶段流水线提供；LP 不声明
 
 ## 与 ActionTarget 的事件分层
 
 **ActionTarget 层事件**（加入态登记，与登记函数同名系；完整定义见 [`IActionTargetEvents`](https://github.com/LOVE20BSC/action/blob/main/src/interfaces/IActionTarget.sol)）：
 ```solidity
-event ActionCreated(address indexed tokenAddress, uint256 indexed actionId, address indexed executor, uint256 round);
+event ActionRegistered(address indexed tokenAddress, uint256 indexed actionId, uint256 round, address indexed executor);
 event JoinStateRegistered(address indexed tokenAddress, uint256 indexed actionId, uint256 indexed memberId, uint256 round);
 event JoinStateCleared(address indexed tokenAddress, uint256 indexed actionId, uint256 indexed memberId, uint256 round, bool forced);
 event ActionRewardMinted(address indexed tokenAddress, uint256 indexed actionId, uint256 indexed round, uint256 amount);
 ```
 
-ActionTarget 不发出 `Withdrawn`：部分撤回不改变加入状态，该事件只由 Executor 层发出。`JoinStateCleared` 的 `forced` 区分 Executor 正常清理与 `forceExit` 应急清理，不再单设 `ForceExited` 事件。
+ActionTarget 不发出 `*Withdrawn`：部分撤回不改变加入状态，该事件只由 Executor 层发出。`JoinStateCleared` 的 `forced` 区分 Executor 正常清理（`forced = false`）与 `forceClearJoinState` 兜底清理（`forced = true`），不再单设 `ForceExited` 事件。`ActionRegistered` 在转发创建回调之前发出：先登记注册表事实，再进入 Executor 的 `onProposalCreated`（域对象创建事件 `GroupActionCreated` / `ServiceActionCreated` / `LpActionCreated` 在回调内发出）。
 
 **Executor 层事件示例**（业务细节记录，各 Executor 字段不同）：
 
-- **ILpExecutor.Joined**: 包含 `amount`（LP 无 Provider 额度来源，字段更简洁）
+- **ILpExecutor.LpJoined**: 包含 `amount`（LP 无 Provider 额度来源，字段更简洁）
 ```solidity
-event Joined(address indexed tokenAddress, uint256 indexed actionId, 
+event LpJoined(address indexed tokenAddress, uint256 indexed actionId,
     uint256 indexed memberId, uint256 round, uint256 amount);
 ```
 
-- **IGroupActionExecutor.Joined**: 包含 `amount, providerId, groupId`
+- **IGroupActionExecutor.GroupActionJoined**: 包含 `groupId, providerId, amount` 与 `verificationValues`
 ```solidity
-event Joined(address indexed tokenAddress, uint256 indexed actionId, 
-    uint256 indexed memberId, uint256 round, uint256 amount, 
-    uint256 providerId, uint256 groupId);
+event GroupActionJoined(address indexed tokenAddress, uint256 indexed actionId,
+    uint256 indexed memberId, uint256 round, uint256 groupId,
+    uint256 providerId, uint256 amount, string[] verificationValues);
 ```
 
-两层事件名称不同（ActionTarget 层为加入态登记事件 `JoinStateRegistered`/`JoinStateCleared`，Executor 层为业务事件 `Joined`/`Exited`），各自记录各自层级的信息。参见 [ADR-003](../../adr/003-action-target-interface-simplification.md)。
+两层事件名称不同（ActionTarget 层为加入态登记事件 `JoinStateRegistered`/`JoinStateCleared`，Executor 层为按域前缀的业务事件 `GroupActionJoined`/`LpJoined`/`ServiceJoined` 等），各自记录各自层级的信息。参见 [ADR-003](../../adr/003-action-target-interface-simplification.md)。
 
 ## 接口定义
 

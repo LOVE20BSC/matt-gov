@@ -180,8 +180,8 @@ launchCredit -= count * threshold
 - **`RewardPrepared(address indexed tokenAddress, uint256 indexed round, uint256 govReward, uint256 proposalReward, uint256 eligibleProposalVotes, uint256 rewardReserved, uint256 rewardBurned)`**  
   准备完成后发射。`govReward` 与 `proposalReward` 为本轮冻结池值；`eligibleProposalVotes` 为缓存的达标票数之和（`eligibleProposalVotes == 0` 时该字段为 0）；`rewardReserved` 与 `rewardBurned` 为准备完成后的**累计值**（不是增量）。`totalVotes == 0` 时两池与 `eligibleProposalVotes` 均为 0，`rewardReserved` 与 `rewardBurned` 不变。
 
-- **`GovernanceRewardMinted(address indexed tokenAddress, uint256 indexed round, uint256 indexed memberId, uint256 voteReward, uint256 boostReward, uint256 burnReward)`**  
-  治理结算成功后发射。`memberId` 为被结算成员；三项金额按公式计算（`totalBoost == 0` 时 `boostReward` 与 `burnReward` 均为 0）。
+- **`GovRewardMinted(address indexed tokenAddress, uint256 indexed round, uint256 indexed memberId, uint256 voteReward, uint256 boostReward)`**  
+  治理结算成功后发射。`memberId` 为被结算成员；两项金额按公式计算（`totalBoost == 0` 时 `boostReward` 为 0）。事件不携带 `burnReward`：加速上限溢出产生的销毁由同笔的 `RewardBurned(BoostOverflow)` 承载，避免同一金额重复表达。
 
 - **`ProposalRewardMinted(address indexed tokenAddress, uint256 indexed round, uint256 indexed proposalId, address recipient, uint256 amount)`**  
   Proposal 以 `burn = false` 结算成功后发射。`recipient` 为调用者指定的收款地址（行动类为绑定的 Executor）；`amount` 为实际铸造量。

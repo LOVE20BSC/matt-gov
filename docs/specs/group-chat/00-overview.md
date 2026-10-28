@@ -8,6 +8,7 @@ Group Chat 是公开链上群聊，保存配置、消息和查询索引；不管
 
 - GroupNFT 依赖统一为 Core MemberNFT；业务主体一律为 memberId。
 - 删除 `postAsDefaultSender`、GroupDefaults 依赖、地址黑名单目标、地址投票者、地址/ID 双轨批量接口及其状态、索引、错误和事件。
+- 事件按统一规范重命名：`Activate` → `GroupChatActivated`、`Set*` → `*Changed`、`PostMessage` → `MessagePosted` 等，详见 [事件](07-events-errors.md#事件)。
 - 非身份地址继续存在：ERC20/合约地址、付款地址、owner 快照、调用者审计字段、ERC721 接收回调参数不能误删。
 - NFT 委托实现迁入 group-chat，仅本仓库消费者读取；Core、Action、Launch 不导入或使用该委托作为授权。
 - 按已确认的 BSC 边界接入 Phase 和 ActionTarget/Executor；除此之外不增加、删减群聊功能。

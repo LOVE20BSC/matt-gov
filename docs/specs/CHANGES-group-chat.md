@@ -2,6 +2,13 @@
 
 用户确认：群聊几乎原样迁移，功能、流程、查询和失败行为保持；业务身份统一为 MemberNFT，删除地址主体平行路径，NFT 代理仅作用于群聊。
 
+## 事件与基类改名（2026-10-27）
+
+事件规范 v1.1 与基类后缀规则（`dev-standards.md` §5.2）重命名了本文其他小节记录的迁移时点名称；正文保留当时名称，现行名称以 [规格](README.md) 与 `group-chat/src/interfaces/` 为准：
+
+- 事件：`Activate` → `GroupChatActivated`；`SetPostingAllowed` / `SetScopeSource` / `SetBanSource` / `SetBeforePostPlugin` / `SetAfterPostPlugin` → `*Changed`；`PostMessage` → `MessagePosted`；`MentionSenderId` → `SenderMentioned`；`MentionAll` 并入 `MessagePosted.mentionAll`；`FailAfterPostPlugin` → `AfterPostPluginFailed`；`SetAdmin` / `SetAdminSnapshot` → `AdminChanged`；`SetMemberId` → `MemberStatusChanged`；`SetSenderIdBan` → `SenderBanChanged`；`SetSenderIdBanVote` → `SenderBanVoteCast`；`SetDelegateId` → `DelegateChanged`；`ClearDelegatedGroupId` → `DelegationCleared`；`SetDelegatorWhitelistEnabled` → `DelegatorWhitelistChanged`；`SetAllowedDelegatorGroupId` → `DelegatorGroupPermissionChanged`；`ChangeStateVersion` → `StateVersionChanged`；`forceExit` → `forceClearJoinState`。
+- 基类：`BaseManager` → `ManagerBase`、`BaseTokenManager` → `TokenManagerBase`、`BaseTokenScopeManager` → `TokenScopeManagerBase`、`BaseTokenActionScopeManager` → `TokenActionScopeManagerBase`，接口同理（`IBaseManager` → `IManagerBase` 等）。
+
 ## 托管群命名 v2 与校验分层（2026-10-25）
 
 - 四个托管 Manager 的群名改为 `type[_payload]_random`：类型码由各 Manager 的 `_typeCode()` 提供（`tm`/`tg`/`am`/`ag`），payload 为清洗后的 symbol 或 `symbol_actionId`；放不下时整段丢弃并用随机串填满，含 payload 时随机后缀固定 4 位 hex。

@@ -8,7 +8,7 @@
 
 完整 ABI 见 [`ILpExecutor.sol`](https://github.com/LOVE20BSC/action/blob/main/src/interfaces/ILpExecutor.sol)。
 
-Target Data 是无键数组，按位置读取。第 `0` 项是 ActionTarget 保留的 executor，本 Executor 的项从第 `1` 项起固定为：`targetData[1] = abi.encode(address joinTokenAddress)`、`targetData[2] = abi.encode(uint256 govRatioMultiplier)`、`targetData[3] = abi.encode(uint256 minGovRatio)`，项数必须为 `4`。项数、位置与校验均由本 Executor 负责，ActionTarget 只原样透传。LP 必须是已配置 Pair Factory 登记的交易对，V2 不要求交易对包含激励代币。两个治理比例使用 `1e18` 精度，`minGovRatio <= 1e18`。LP 无验证阶段，验证信息不迁移。
+Target Data 是无键数组，按位置读取。第 `0` 项是 ActionTarget 保留的 executor，本 Executor 的项从第 `1` 项起固定为：`targetData[1] = abi.encode(address joinTokenAddress)`、`targetData[2] = abi.encode(uint256 govRatioMultiplier)`、`targetData[3] = abi.encode(uint256 minGovRatio)`，项数必须为 `4`。项数、位置与校验均由本 Executor 负责，ActionTarget 只原样透传。创建回调成功时，本 Executor 在同一笔内发出 `LpActionCreated(tokenAddress, actionId, joinTokenAddress, govRatioMultiplier, minGovRatio)`，携带三项初始配置的全量；注册表事实由 ActionTarget 的 `ActionRegistered` 承担。LP 必须是已配置 Pair Factory 登记的交易对，V2 不要求交易对包含激励代币。两个治理比例使用 `1e18` 精度，`minGovRatio <= 1e18`。LP 无验证阶段，验证信息不迁移。
 
 写操作要求调用者持有 memberId；加入/追加金额为正，首次加入满足 `minGovRatio`。LP 从调用者转入 Executor，撤回时转给当前持有人。首次加入时调用 `ActionTarget.registerJoinState`；全额撤回与 `exit` 都调用 `ActionTarget.clearJoinState`；失败全部回滚。激励接口见 [行动铸造](07-minting.md#铸造链路)。
 
@@ -65,7 +65,7 @@ totalDeduction -= deductionReduction
 
 所有右侧均使用撤回前值。减少成员扣减和总扣减的数量必须相同；全额撤回时公式自然取尽剩余扣减，不留余数。部分撤回保留原加入区块/金额数组作为记录，不逐笔缩放；数组之和不再代表当前余额。
 
-全额撤回（`amount == joinedAmount`）与 `exit` 一样按退出处理：清空当前 Round 的上述数组与扣减、把该成员余额记录为零，调用 `ActionTarget.clearJoinState`，不删除过去 Round。事件按入口区分：撤回发 `Withdrawn`，`exit` 发 `Exited`；加入态清理由 ActionTarget 的 `JoinStateCleared` 统一留痕。
+全额撤回（`amount == joinedAmount`）与 `exit` 一样按退出处理：清空当前 Round 的上述数组与扣减、把该成员余额记录为零，调用 `ActionTarget.clearJoinState`，不删除过去 Round。事件按事实拆分：只要清仓路径执行（全额撤回或 `exit`），统一发两条——`LpWithdrawn(tokenAddress, actionId, memberId, round, amount)` 记录金额事实，`LpExited(tokenAddress, actionId, memberId, round)` 记录生命周期事实，`exit` 的 `LpWithdrawn.amount` 为本次返还金额；部分撤回只发 `LpWithdrawn`、不发 `LpExited`。加入态清理由 ActionTarget 的 `JoinStateCleared` 统一留痕。清仓顺序固定为：清自身状态 → 退款转账 → 发 `LpWithdrawn` → 回调 `ActionTarget.clearJoinState`（发 `JoinStateCleared(forced=false)`）→ 发 `LpExited`；`LpExited` 是无金额终态标记，必须最后发（见[事件规范 §4.4](../../event-standards.md#44-正常退出与注册表兜底清理)）。
 
 例（最小单位）：余额 7、扣减 3，撤回 2 后扣减减少 0，剩余余额 5、扣减 3；再 `exit` 取尽剩余扣减 3。
 

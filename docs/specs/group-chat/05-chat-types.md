@@ -39,11 +39,11 @@ supportWeight * 1e18 >= totalVoteWeight * 3e15
 
 查询视图对 source 无代码的处理：单条 `voteStatusBySenderId` 返回 `(false, 0, 0)`；批量 `voteStatusBySenderIds`、`isBanned`、`isSenderIdBannedBatch` 不检查 source，直接读已结算名单与权重。已结算值照常可读，权重查询才需要 source 合约存在。
 
-## forceExit 与资格
+## forceClearJoinState 与资格
 
 采用组合资格源的群组，满足以下任一条件即可通过成员资格检查：在该群的成员名单中，或仍在该群下参加至少一个 GroupAction。仅名单型资格源只看成员名单。
 
-- ActionTarget.forceExit 不修改 GroupAction 的群归属，所以不会取消上述群组资格；但会取消代币社区/行动 Chat 中由该行动加入状态提供的资格。持币、治理票、近期投票等其他条件仍独立判断。
+- ActionTarget.forceClearJoinState 不修改 GroupAction 的群归属与 Executor 仓位，所以不会取消上述群组资格；但会取消代币社区/行动 Chat 中由该行动加入状态提供的资格。持币、治理票、近期投票等其他条件仍独立判断。
 - GroupAction 实际退出（包括 Provider 额度撤回至总参与量为零）后，若成员已不在该群下参加任何行动，便不再满足行动归属条件；名单仍有效时，仍能通过成员资格检查。
 
 例：成员同时在群成员名单中、也在该群下参加一个行动。退出该行动后，因为仍在名单中，成员资格仍成立。实际发言还须通过发言开关、黑名单等检查。

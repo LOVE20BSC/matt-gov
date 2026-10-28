@@ -105,6 +105,8 @@ rg -n 'core\.md|action\.md|group-chat\.md|launchFirstToken|initializeGenesis|TOD
 - [ ] 每个公开函数有完整 Solidity 签名
 - [ ] 参数、返回值、可见性、权限、事件和错误均有说明（说明写在模块规格与对账文档里，接口文件本身不写 NatSpec，见[开发规范](dev-standards.md#41-接口文件与声明)）
 - [ ] 错误按[错误与回滚标准](error-standards.md)审查：本模块自己的 `I<Name>Errors`、一条件一错误、主体键+值载荷、无裸 `require`/`revert`、外部边界分类；合约内必填依赖（含 `init`）只保留 `*NotContract(address)`，`Zero<Field>` 仅用于非合约参数；部署期静态校验按 [§5.7](dev-standards.md#57-校验分层) 归部署脚本；`python3 matt-gov/script/check_errors.py --check` 为 0 violations（需 Foundry `cast` 在 PATH）
+- [ ] 规格与标准里带类型和参数名的错误引用与 `src` 声明逐字段一致（改名要同一次落两侧：`inputs[].name` 也是 ABI 的一部分）；`python3 matt-gov/script/check_doc_payloads.py` 输出 `mismatches: 0`
+- [ ] 每个声明的错误至少被一处测试引用（selector 或载荷断言）；`python3 matt-gov/script/check_error_tests.py` 输出 `untested errors: 0`
 - [ ] 只读查询说明空值、越界、未开始和不存在对象的行为
 - [ ] 集合读取符合[集合读取函数的设计原则](dev-standards.md#43-集合读取函数)：集合有界才提供全量读取，分页只回定长数据，函数名体现载荷（`Ids`/`Infos`）与筛选条件（`By<key>`/`ByIds`）
 - [ ] 按键取单值的新增函数能说出保留理由（新键 / 该键上无其他入口 / 旧接口保留成员），不是已有入口的投影；按显式 ID 数组批量读的函数写明下标对齐、无效即回滚不补空
@@ -141,7 +143,7 @@ rg -n 'core\.md|action\.md|group-chat\.md|launchFirstToken|initializeGenesis|TOD
 | 回调 | `core/05`、`core/06`、`action/01`、CHANGES | 签名、参数顺序、透传数据（两侧都是 Target Data）、失败回滚是否一致 |
 | 激励 | `core/07`、`action/07`、`acceptance.md` | 预留、铸造、销毁和分配是否守恒 |
 | 发射 | `core/00`、`core/08`、`acceptance.md`、CHANGES | `Launch.init`、首币、次数和阈值是否一致 |
-| 参与 | `action/01`、`action/03`、Group Chat 类型 | 加入/退出、forceExit、资产和资格来源是否一致 |
+| 参与 | `action/01`、`action/03`、Group Chat 类型 | 加入/退出、forceClearJoinState、资产和资格来源是否一致 |
 | 群聊身份 | `CONTEXT.md`、Group Chat 全部模块 | owner、delegate、sender、admin 是否都按 NFT 身份运行 |
 | 仓库边界 | `repositories.md`、各 README、规格依赖 | 是否存在越界 import、循环依赖或运行时依赖误标 |
 | 验收 | `acceptance.md`、各 testing 文件、CHANGES | 每个承诺是否都有测试和证据位置 |
@@ -188,7 +190,7 @@ rg -n 'core\.md|action\.md|group-chat\.md|launchFirstToken|initializeGenesis|TOD
 
 ### Action
 
-- [ ] `ActionTarget` 只负责映射、回调、通用加入/退出状态和 forceExit
+- [ ] `ActionTarget` 只负责映射、回调、通用加入/退出状态和 forceClearJoinState
 - [ ] `executor` 保留项在第 `0` 项、其余 Target Data 项由各 Executor 自定并校验、编码位置固定
 - [ ] `proposalId == actionId` 的别名边界清楚
 - [ ] LP、Group Action、Service 的阶段映射分别可推导
@@ -210,7 +212,7 @@ rg -n 'core\.md|action\.md|group-chat\.md|launchFirstToken|initializeGenesis|TOD
 - [ ] `beforePost` 失败回滚，`afterPost` 失败保留消息并记录错误
 - [ ] 消息、提及、引用、分页和 Round 索引的边界明确
 - [ ] 五类 Chat 的资格和黑名单权重来源逐一对应
-- [ ] Group Action 归属资格与 ActionTarget.forceExit 的差异明确
+- [ ] Group Action 归属资格与 ActionTarget.forceClearJoinState 的差异明确
 - [ ] 黑名单双阈值、撤票、刷新和权重快照可复现
 
 ### Compatibility
@@ -273,7 +275,7 @@ LOVE20TKM/<repo>/<path>[#<function-or-symbol>]
 - [ ] 用户可控数组和集合有写入上限
 - [ ] 历史扫描、Proposal 聚合和索引清理有界
 - [ ] 批量接口记录最大成功规模和首次失败规模
-- [ ] 永久锁定、失联验证者和 forceExit 等不可逆取舍有运维说明
+- [ ] 永久锁定、失联验证者和 forceClearJoinState 等不可逆取舍有运维说明
 
 ## 八、问题分级与放行门槛
 

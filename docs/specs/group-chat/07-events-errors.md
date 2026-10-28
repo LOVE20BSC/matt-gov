@@ -2,26 +2,26 @@
 
 ## 事件
 
-覆盖激活、发言开关、四个规则槽位、发言、提及、mention-all、after 插件失败、Delegate 设置/撤销、成员/管理员变化和 Manager 创建/激活。
+覆盖激活、发言开关、四个规则槽位、发言（含提及与 mention-all 标志）、after 插件失败、Delegate 设置/撤销、成员/管理员变化和 Manager 创建/激活。
 
-配置事件应包含 `groupId`、新旧地址、操作 `memberId` 和调用地址；消息事件应包含 `groupId`、`senderId`、`senderAddress`、`round` 和 `messageId`。地址只用于审计，不作业务主体。
+配置事件应包含 `groupId`、新旧地址、操作 `memberId` 和调用地址；消息事件应包含 `groupId`、`messageId`、`senderId`（三者 indexed）、`sender`、`round` 与正文/引用字段。地址只用于审计，不作业务主体。
 
 事件定义见 [`IGroupChat.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/IGroupChat.sol)、[`IGroupChatDelegate.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/IGroupChatDelegate.sol)、[`IGroupAdmin.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/IGroupAdmin.sol)、[`IGroupMember.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/IGroupMember.sol)、[`IGroupChatBanList.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/IGroupChatBanList.sol)、[`IGovVotedBanSource.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/sources/ban/IGovVotedBanSource.sol)、[`IManagerBase.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/managers/IManagerBase.sol)、[`ITokenScopeManagerBase.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/managers/ITokenScopeManagerBase.sol) 和 [`ITokenActionScopeManagerBase.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/managers/ITokenActionScopeManagerBase.sol)。
 
 ## 错误
 
-错误采用 local-first 模型：每个合约/模块只在自己的 `I<Name>Errors` 接口声明错误，不设中央枚举或全局错误接口，不跨仓导入错误。一个错误只对应一个条件；payload 由主体键和条件值组成，定长，不含字符串或数组。运行期地址检查（source/plugin、token 等）用 `*NotContract(address dependency)` / `TokenNotLOVE20(address token)` 并携带失败地址；构造期依赖代码、参数与地址关系的静态校验由部署脚本在广播前完成（dev-standards §5.7），错误表只列运行期错误。OZ 标准错误按继承使用；只有不可达分支才用 `assert(false)`，不用裸 `require` / `revert` / 字符串。
+错误采用 local-first 模型：每个合约/模块只在自己的 `I<Name>Errors` 接口声明错误，不设中央枚举或全局错误接口，不跨仓导入错误。一个错误只对应一个条件；payload 由主体键和条件值组成，定长，不含字符串或数组。运行期地址检查（source/plugin、token 等）用 `*NotContract(address dependency)` / `TokenNotLOVE20(address tokenAddress)` 并携带失败地址；构造期依赖代码、参数与地址关系的静态校验由部署脚本在广播前完成（dev-standards §5.7），错误表只列运行期错误。OZ 标准错误按继承使用；只有不可达分支才用 `assert(false)`，不用裸 `require` / `revert` / 字符串。
 
 | 模块 | 错误 |
 | --- | --- |
 | GroupChat 槽位 | `SourceNotContract(address dependency)`、`PluginNotContract(address dependency)` |
 | GroupChat 状态与鉴权 | `GroupNotExist(uint256 groupId)`、`ChatAlreadyActivated(uint256 groupId)`、`ChatNotActivated(uint256 groupId)`、`PostingNotAllowed(uint256 groupId)`、`RoundNotStarted(uint256 requiredRound, uint256 currentRound)`、`NotGroupOwner(uint256 groupId)`、`NotGroupOperator(uint256 groupId, uint256 operatorId)`、`NotMemberOwner(uint256 memberId)`、`Reentrant()` |
 | GroupChat 内容与规则 | `ContentEmpty()`、`ContentTooLong(uint256 length, uint256 maxLength)`、`TooManyMentionedSenderIds(uint256 length, uint256 maxLength)`、`DuplicateMemberId(uint256 memberId)`、`MessageNotFound(uint256 groupId, uint256 messageId)`、`QuotedMessageNotFound(uint256 groupId, uint256 messageId)`、`MentionAllUnauthorized(uint256 groupId, uint256 senderId)`、`ScopeRejected(address source, uint256 groupId, uint256 senderId)`、`BanRejected(address source, uint256 groupId, uint256 senderId)`、`ScopeSourceFailed(address source)`、`BanSourceFailed(address source)` |
-| GroupAdmin | `NotGroupOperator(uint256 groupId, uint256 operatorId)`、`GroupNotExist(uint256 groupId)`、`DuplicateMemberId(uint256 memberId)`、`AdminIdsLimitExceeded(uint256 groupId, uint256 count, uint256 max)` |
+| GroupAdmin | `NotGroupOperator(uint256 groupId, uint256 operatorId)`、`GroupNotExist(uint256 groupId)`、`DuplicateMemberId(uint256 memberId)`、`AdminIdsLimitExceeded(uint256 groupId, uint256 count, uint256 maxCount)` |
 | GroupMember / GroupChatBanList | `NotGroupOperator(uint256 groupId, uint256 operatorId)`、`ZeroTargetSenderId()`、`DuplicateMemberId(uint256 memberId)` |
 | GroupChatDelegate | `GroupNotExist(uint256 groupId)`、`NotGroupOwner(uint256 groupId)`、`NotMemberOwner(uint256 memberId)`、`DelegatorGroupIdNotAllowed(uint256 groupId, uint256 delegateId)`、`DelegateIsSelfGroup(uint256 groupId)` |
 | 内置 Scope/Ban Source | `GroupNotExist(uint256 groupId)`、`BanVoteWeightSourceUnavailable(address source)`、`ZeroTargetSenderId()`、`ZeroVoteWeight(uint256 groupId, uint256 voterId)`、`VoteUnchanged(uint256 groupId, uint256 targetSenderId, uint256 voterId)`、`VoteNotFound(uint256 groupId, uint256 targetSenderId, uint256 voterId)`、`NotMemberOwner(uint256 memberId)` |
-| Manager | `AlreadyManaged(uint256 groupId)`、`ManagerGroupNameUnavailable()`、`ManagerMintCostChanged(uint256 expected, uint256 actual)`、`TokenNotLOVE20(address token)`、`UnexpectedManagerERC721Received(address operator, address from, uint256 tokenId)`、`ActionNotExist(address tokenAddress, uint256 actionId)`；付款/授权失败走 OZ 标准 `SafeERC20FailedOperation(address token)` |
+| Manager | `AlreadyManaged(uint256 groupId)`、`ManagerGroupNameUnavailable()`、`ManagerMintCostChanged(uint256 expected, uint256 actual)`、`TokenNotLOVE20(address tokenAddress)`、`UnexpectedManagerERC721Received(address operator, address from, uint256 tokenId)`、`ActionNotExist(address tokenAddress, uint256 actionId)`；付款/授权失败走 OZ 标准 `SafeERC20FailedOperation(address token)` |
 
 Group Chat 各接口不继承标准错误：`ownerOf` 的 `ERC721NonexistentToken` 按失败契约透传登记，来源 ABI 为 MemberNFT；Manager 的 `SafeERC20FailedOperation` 通过库进入 ABI，token 的 ERC20 标准错误由 token ABI 拥有。
 
@@ -41,10 +41,19 @@ Group Chat 各接口不继承标准错误：`ownerOf` 的 `ERC721NonexistentToke
 
 消息只增不改；配置和消息写入防重入；规则源、插件、Manager 不能越权修改核心状态；无升级管理员或隐含后门。
 
-## 迁移规则
+## 命名与迁移规则
 
-保留旧 `LOVE20TKM/group-chat/src/interfaces/` 中非地址主体功能的事件名、参数、indexed 字段；只对身份替换所影响的 operator/voter 参数改为 memberId，调用地址可继续作审计。错误按本页的 local-first 模型重命名并补齐 payload，不保留旧错误名或兼容别名。删除默认身份和地址目标路径专属事件/错误，不新增一套平行行为。
+事件名按 `<Object><PastParticiple>` 统一，不沿用旧 `LOVE20TKM` 的 `Activate` / `Set*` / `PostMessage` 族；身份主体统一为 memberId，调用地址仅作审计。错误按本页的 local-first 模型命名并补齐 payload，不保留旧错误名或兼容别名。删除默认身份和地址目标路径专属事件/错误，不新增一套平行行为。
 
-保留 Activate、SetPostingAllowed、SetScopeSource、SetBanSource、SetBeforePostPlugin、SetAfterPostPlugin、PostMessage、MentionSenderId、MentionAll 和 FailAfterPostPlugin；`FailAfterPostPlugin` 记录捕获错误的 `keccak256`、字节长度与首 4 字节 selector（`errorHash`、`errorLength`、`errorSelector`），不写入无界 `bytes`。scope/ban 的返回 false 和外部调用失败继续分别报 `ScopeRejected` / `BanRejected` 与 `ScopeSourceFailed` / `BanSourceFailed`，不能误改为静默放行。
+当前事件集：
+
+- 激活与配置：`GroupChatActivated`（首次激活即写入初始 5 项配置：`postingAllowed`、`scopeSource`、`banSource`、`beforePostPlugin`、`afterPostPlugin`）、`PostingAllowedChanged`、`ScopeSourceChanged`、`BanSourceChanged`、`BeforePostPluginChanged`、`AfterPostPluginChanged`。配置变更保留 `prev*` 旧值；仅布尔取反可推的旧值省略。
+- 消息：`MessagePosted`（带 `content`、`quotedMessageId` 与 `hasQuote`、`mentionAll`；indexed 为 `groupId`、`messageId`、`senderId`，`sender` 入 payload）、`SenderMentioned`（每提及一条）、`AfterPostPluginFailed`（捕获型失败）。不再单设 `MentionAll`：mention-all 已并入 `MessagePosted.mentionAll`。
+- 管理与成员：`AdminChanged`（已合并旧 `SetAdminSnapshot`，同时带 `listed`、`prevListed` 与新旧 `groupOwnerSnapshot`/`adminOwnerSnapshot`）、`MemberStatusChanged`。
+- 黑名单：`SenderBanChanged`（管理员封禁列表）、`SenderBanVoteCast`（投票，保留累计 `supportWeight`/`opposeWeight`/`stateVersion`）、`GovSenderBanChanged`（治理投票结果）、`StateVersionChanged`。
+- Delegate：`DelegateChanged`、`DelegationCleared`、`DelegatorWhitelistChanged`、`DelegatorGroupPermissionChanged`。
+- Manager 链路：`TokenGroupActivated`（`tokenAddress`/`groupId`/`operator` indexed）、`TokenActionGroupActivated`（`tokenAddress`/`actionId`/`groupId` indexed，`operator` 入 payload）。
+
+`AfterPostPluginFailed` 记录捕获错误的 `keccak256`、字节长度与首 4 字节 selector（`errorHash`、`errorLength`、`errorSelector`），不写入无界 `bytes`。scope/ban 的返回 false 和外部调用失败继续分别报 `ScopeRejected` / `BanRejected` 与 `ScopeSourceFailed` / `BanSourceFailed`，不能误改为静默放行。
 
 验收见 [Group Chat 验收](08-testing.md)。

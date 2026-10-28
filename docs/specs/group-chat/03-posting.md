@@ -17,12 +17,12 @@
 
 ## 消息与插件
 
-分配新 messageId，追加消息并更新 sender、mention、mention-all、round 索引，发出 `PostMessage` 及提及事件。
+分配新 messageId，追加消息并更新 sender、mention、mention-all、round 索引，发出 `MessagePosted`（带正文 `content`、`quotedMessageId` + `hasQuote`、`mentionAll`）及 `SenderMentioned`；mention-all 不再单发事件。事件携带正文后，消息内容可由事件流直接重建，不必按 messageId 回读；代价是每条消息的日志体量随 `content` 线性增长（LOG 数据约 8 gas/byte，`MAX_CONTENT_LENGTH` 上限 4096 字节时最坏约 +33k gas），短消息可忽略，这是「用 gas 换可重建」的有意取舍。
 
 | 失败位置 | 结果 |
 | --- | --- |
 | beforePostPlugin | 整笔发言回滚 |
-| afterPostPlugin | 消息与通知事件保留；捕获错误并发出 `FailAfterPostPlugin(groupId, messageId, pluginAddress, round, errorHash, errorLength, errorSelector)` |
+| afterPostPlugin | 消息与通知事件保留；捕获错误并发出 `AfterPostPluginFailed(groupId, messageId, pluginAddress, round, errorHash, errorLength, errorSelector)` |
 
 after 插件在消息及通知事件之后调用。捕获到的外部错误数据只记录 `keccak256(errorData)`、字节长度与首 4 字节 selector（`errorHash`、`errorLength`、`errorSelector`），不把无界 `bytes` 写入事件。上述是业务容错要求，不代表无限 Gas 或任意错误数据都天然可安全捕获。
 

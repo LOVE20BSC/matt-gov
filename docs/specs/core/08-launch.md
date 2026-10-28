@@ -102,7 +102,7 @@ Launch 只保存“成员可用整数次数”和“社区累计已产生次数�
 
 `tokenSymbol` 按 UTF-8 字节校验：字节长度必须等于部署配置的 `TOKEN_SYMBOL_LENGTH`；首字符必须为 ASCII `A-Z` 或汉字；其余字符必须为 ASCII `A-Z`、`0-9` 或汉字。汉字限定为 CJK 统一表意文字基本区 `U+4E00`–`U+9FFF` 的三字节编码；中英数字可混排，纯汉字符号要求配置长度为 3 的倍数（如配置 6 对应两个汉字）。长度口径与旧实现一致（UTF-8 字节数），字符集在旧实现的 ASCII 基础上扩展出汉字。字节长度不等于配置值时回滚 `InvalidTokenSymbolLength(length, TOKEN_SYMBOL_LENGTH)`；长度正确但字符集不合法时，其余任何字节序列——其他多字节字符、不完整的 UTF-8、超出基本区的码点——都回滚 `InvalidTokenSymbolCharacters()`。
 
-测试网前缀沿用旧实现：先按配置长度校验 `tokenSymbol`，再读取前缀判定符号——父币为根父币的根级发射取 `firstTokenAddress` 的符号，其余发射取 `parentTokenAddress` 的符号；判定符号前 4 字节等于 `Test` 时给符号加上 `Test` 前缀，然后生成名称。该前缀施加在校验之后，因此测试网子币的实际符号可以超出配置长度；首币不施加该前缀。根级发射改用首币符号判定，因为根父币符号跨网络共用，不能标记测试网。
+测试网前缀沿用旧实现：先按配置长度校验 `tokenSymbol`，再读取前缀判定符号——父币为根父币的根级发射取 `firstTokenAddress` 的符号，其余发射取 `parentTokenAddress` 的符号；判定符号前 4 字节等于 `Test` 时给符号加上 `Test` 前缀，然后生成名称。该前缀施加在校验之后，因此测试网子币的**配置长度**可以超出实际符号长度；但施加前缀后的最终符号仍受 `MAX_TOKEN_SYMBOL_LENGTH = 32` 约束，超出即回滚 `TokenSymbolTooLong(length, 32)`。因此测试网要求 `tokenSymbolLength + 4 <= 32`，部署脚本在配置校验阶段校验该不等式。首币不施加该前缀。根级发射改用首币符号判定，因为根父币符号跨网络共用，不能标记测试网。
 
 普通发射的社区必须与 `parentTokenAddress` 一致，父币必须是已登记 LOVE20 代币或根父币，`distributor` 非零。父币为根父币的发射称为根级发射：消耗根级次数，创建与首币平级、父币同为根父币的同级币；除父币与次数维度外，创建、登记、子币列表、Pair、分发与回调与普通发射完全一致。分发支持 `NoCallback` 和 `Callback` 两种模式。普通发射携带一个 `bytes[] distributorData` 数组；可以为空，不设长度上限，元素内容与编码由 distributor 自行约定：Launch 只原样透传，不遍历、不解析。
 
@@ -110,7 +110,7 @@ Launch 只保存“成员可用整数次数”和“社区累计已产生次数�
 
 `NoCallback` 不调用回调，且忽略 `distributorData`（不校验是否为空）；`Callback` 要求 `distributor` 为合约并调用 `onTokenLaunched`，原样透传 `distributorData`，回调失败则整笔发射回滚。首币使用旧 Burn `Airdrop`，固定采用 `NoCallback`；普通发射才可选择 `Callback`。
 
-回调仅由 Launch 调用，发生于代币创建、首批供应到账、代币登记与次数扣减之后；`launcherMemberId` 取本次 `memberId`。distributor 校验调用方并防止同一 token 重复处理；Launch 不开放额外的补触发回调入口。两种模式均允许非零合约接收，EOA 仅允许 NoCallback。
+回调仅由 Launch 调用，发生于代币创建、首批供应到账、代币登记与次数扣减之后；`TokenLaunched.launcherMemberId` 取本次 `memberId`。distributor 校验调用方并防止同一 token 重复处理；Launch 不开放额外的补触发回调入口。两种模式均允许非零合约接收，EOA 仅允许 NoCallback。
 
 distributor 自行实现领取与查询逻辑，`claim(tokenAddress)` 只是建议接口，不是协议必需 ABI。发射者负责选择分发目标，承担其失败和 Gas 耗尽风险。
 
@@ -122,6 +122,8 @@ distributor 自行实现领取与查询逻辑，`claim(tokenAddress)` 只是建�
 | --- | --- |
 | `tokenSymbol` 字节长度不等于 `TOKEN_SYMBOL_LENGTH` | `InvalidTokenSymbolLength(length, TOKEN_SYMBOL_LENGTH)` |
 | `tokenSymbol` 字符集不合法 | `InvalidTokenSymbolCharacters()` |
+| name 超过 `MAX_TOKEN_NAME_LENGTH` | `TokenNameTooLong(length, MAX_TOKEN_NAME_LENGTH)` |
+| symbol 超过 `MAX_TOKEN_SYMBOL_LENGTH` | `TokenSymbolTooLong(length, MAX_TOKEN_SYMBOL_LENGTH)` |
 | `distributor == address(0)` | `ZeroDistributorAddress()` |
 | `Callback` 但 `distributor` 不是合约 | `DistributorNotContract(distributor)` |
 | `parentTokenAddress` 不是已登记 LOVE20 代币且不是根父币（含零地址） | `ParentTokenNotRegistered(parentTokenAddress)` |
@@ -135,19 +137,21 @@ distributor 自行实现领取与查询逻辑，`claim(tokenAddress)` 只是建�
 
 ## 事件
 
-事件契约如下；`TokenLaunched` 的 `tokenAddress`、`parentTokenAddress` 和 `launcherMemberId` 带 `indexed`，其余字段用于链下重建。
+事件契约如下；`GenesisTokenCreated` 的 `tokenAddress`、`parentTokenAddress` 带 `indexed`；`TokenLaunched` 的 `tokenAddress`、`parentTokenAddress`、`launcherMemberId` 带 `indexed`；其余字段用于链下重建。创世与普通发起拆成两个事件，`TokenLaunched` 不携带哨兵 `launcherMemberId = 0`。
 
 | 事件 | 触发入口 | 字段取值 |
 | --- | --- | --- |
-| `TokenLaunched(tokenAddress, parentTokenAddress, launcherMemberId, distributor, name, symbol)` | `init` 创建首币；`launchToken` 每次成功发射 | `tokenAddress` 为新创建的代币地址；`parentTokenAddress` 首币与根级发射为 `rootParentTokenAddress`、其余发射为本次 `parentTokenAddress`；`launcherMemberId` 首币为 `0`（没有发起成员），普通发射为本次 `memberId`；`distributor` 为首批供应接收者；`name` 和 `symbol` 与最终部署的 LOVE20Token 完全一致，子币为加 `Test` 前缀后的最终值，首币为 `init` 参数原值。发出时机在代币创建、首批供应到账、代币登记与次数扣减之后 |
-| `LaunchCountAdded(tokenAddress, memberId, count)` | `addLaunchCount`（首币次数附带根级伴生） | `tokenAddress` 为次数账本维度：社区代币，或首币伴生时的根父币；`count` 为本次新增次数 |
-| `LaunchCountMerged(tokenAddress, sourceMemberId, targetMemberId, count)` | `mergeLaunchCount` | `count` 为本次融合转移的次数 |
+| `GenesisTokenCreated(tokenAddress, parentTokenAddress, distributor, name, symbol)` | `init` 创建首币 | `tokenAddress` 为首币地址；`parentTokenAddress` 为 `rootParentTokenAddress`；`distributor` 为首批供应接收者；`name` 和 `symbol` 为 `init` 参数原值。无 launcher 字段 |
+| `TokenLaunched(tokenAddress, parentTokenAddress, launcherMemberId, distributor, distributorMode, name, symbol)` | `launchToken` 每次成功发射 | `tokenAddress` 为新创建的代币地址；`parentTokenAddress` 根级发射为 `rootParentTokenAddress`、其余发射为本次 `parentTokenAddress`；`launcherMemberId` 为本次 `memberId`；`distributor` 为首批供应接收者；`distributorMode` 为本次分发模式；`name` 和 `symbol` 与最终部署的 LOVE20Token 完全一致（子币为加 `Test` 前缀后的最终值）。发出时机在代币创建、首批供应到账、代币登记与次数扣减之后，先于 distributor 回调 |
+| `LaunchCountAdded(tokenAddress, memberId, count, issuedCount, memberRemaining)` | `addLaunchCount`（首币次数附带根级伴生） | `tokenAddress` 为次数账本维度：社区代币，或首币伴生时的根父币；`count` 为本次新增次数；`issuedCount` 为该账本累计已产生次数（后置值）；`memberRemaining` 为该成员在本账本的可用余额（后置值） |
+| `LaunchCountMerged(tokenAddress, sourceMemberId, targetMemberId, count, sourceRemaining, targetRemaining)` | `mergeLaunchCount` | `count` 为本次融合转移的次数；`sourceRemaining` / `targetRemaining` 为融合后源、目标成员的可用余额 |
+| `LaunchCountConsumed(tokenAddress, memberId, count, remaining)` | `launchToken` 扣减次数后 | `count` 为本次消耗次数（当前恒为 `1`）；`remaining` 为扣减后该成员在该账本维度的可用余额。发出时机早于 `TokenLaunched` 与 distributor 回调 |
 
-次数消耗不单独发事件：`launchToken` 每次成功都发 `TokenLaunched`，且每次发射恰消耗一次次数，因此消耗历史可由 `TokenLaunched` 重建，余量可用 `launchCount` 直接查询；再发一个消耗事件只会重复同一笔交易的同一事实。
+次数消耗独立成事件：`LaunchCountConsumed` 记录 `launchToken` 的扣减事实（含后置余量），`TokenLaunched` 只记录发射结果；索引器按 `LaunchCountConsumed` 折叠余量，无需回查 `launchCount`。
 
-- 首币由 `init` 发出 `TokenLaunched`（`launcherMemberId = 0`）；`init`、`launchToken`、`addLaunchCount`、`mergeLaunchCount` 之外的入口不产生上述事件。
-- `TokenLaunched` 同时记录创建和发射所需的代币元数据；不再另发旧 `ILOVE20TokenFactory` 的 `TokenCreate`。
-- 链上查询覆盖全部已发射代币、某社区的子币列表和符号到地址（见 [代币登记与查询](#代币登记与查询)）；按成员聚合的发射历史仍由 `TokenLaunched` 的 `launcherMemberId` 链下索引。
+- 首币由 `init` 发出 `GenesisTokenCreated`（无 launcher 字段）；普通发射由 `launchToken` 发出 `TokenLaunched`；`init`、`launchToken`、`addLaunchCount`、`mergeLaunchCount` 之外的入口不产生上述事件。
+- `GenesisTokenCreated` 与 `TokenLaunched` 同时记录创建所需的代币元数据；不再另发旧 `ILOVE20TokenFactory` 的 `TokenCreate`。
+- 链上查询覆盖全部已发射代币、某社区的子币列表和符号到地址（见 [代币登记与查询](#代币登记与查询)）；按成员聚合的发射历史由 `TokenLaunched` 的 `launcherMemberId` 链下索引，首币不进入该索引。
 
 ## LOVE20Token 创建
 

@@ -18,7 +18,7 @@ Core 的预留、铸造和取消额度账本见 [Mint](../core/07-mint.md)，不
 
 事件和错误定义分别见 [`IActionTarget.sol`](https://github.com/LOVE20BSC/action/blob/main/src/interfaces/IActionTarget.sol)、[`IActionExecutor.sol`](https://github.com/LOVE20BSC/action/blob/main/src/interfaces/IActionExecutor.sol)、[`ILpExecutor.sol`](https://github.com/LOVE20BSC/action/blob/main/src/interfaces/ILpExecutor.sol)、[`IGroupActionExecutor.sol`](https://github.com/LOVE20BSC/action/blob/main/src/interfaces/IGroupActionExecutor.sol) 与按业务模块拆分的 [`IGroupActionVerify.sol`](https://github.com/LOVE20BSC/action/blob/main/src/interfaces/IGroupActionVerify.sol)、[`IGroupActionJoin.sol`](https://github.com/LOVE20BSC/action/blob/main/src/interfaces/IGroupActionJoin.sol)、[`IGroupActionManager.sol`](https://github.com/LOVE20BSC/action/blob/main/src/interfaces/IGroupActionManager.sol)、[`IGroupActionIndexes.sol`](https://github.com/LOVE20BSC/action/blob/main/src/interfaces/IGroupActionIndexes.sol)、[`IGroupRecipients.sol`](https://github.com/LOVE20BSC/action/blob/main/src/interfaces/IGroupRecipients.sol) 和 [`IGroupServiceExecutor.sol`](https://github.com/LOVE20BSC/action/blob/main/src/interfaces/IGroupServiceExecutor.sol)。错误按**局部优先**声明：每个合约/模块拥有自己的 `I<Name>Errors`，不设中心枚举或跨仓库错误接口，错误名自带字段（如 `ZeroJoinTokenAddress`）；模块只在拒绝条件与载荷完全相同时复用另一个本地 `Errors` 接口（如三个 Executor 的 `NotActionTarget(caller)`、`NotMemberOwner(memberId)` 与结算族错误）。每个接口只声明自身合约实际拥有的事件和错误：三个 Executor 共用且签名一致的 1 个事件（`MemberRewardMinted`）与 10 个错误（`AlreadyInitialized`、`NotActionTarget`、`ActionNotCreated`、`NotMemberOwner`、`RewardAlreadyMinted`、`MemberActionRewardUnavailable`、`BatchLengthMismatch`、`RoundNotStarted`、`RoundBeforeActionCreated`、`RoundAfterMintWindow`）声明在基座 `IActionExecutor` 的子接口中，由三个 Executor 继承；`ActionRewardMinted` 只由 ActionTarget 发出，声明在 `IActionTargetEvents`，各 Executor 不声明。执行器专属错误留在各自 `Errors` 子接口（如链群加入代币 `ZeroJoinTokenAddress`、Target Data 形状、比例、分割线、群管理与验证错误），不上提基座；`ActionNotCreated` 被三个 Executor 与链群管理、验证者申请共用，按同签名共用规则声明在基座。Executor 与 ActionTarget 的接口默认不继承标准错误：`ownerOf`/转账的 `ERC721NonexistentToken`、ERC20 标准错误按透传登记，来源 ABI 为 MemberNFT/LOVE20Token；`SafeERC20FailedOperation` 通过 `SafeERC20` 进入执行器 ABI。只有顶层集成面确需自包含 ABI 时才白名单继承。
 
-事件按 BSC 业务主体使用 `memberId`；事件中的地址仅表示代币、合约或调用审计地址。行动级事件（`ActionCreated`、`ActionRewardMinted`）不含 `memberId`，它们的主体是行动或服务提案本身。
+事件按 BSC 业务主体使用 `memberId`；事件中的地址仅表示代币、合约或调用审计地址。行动级事件（`ActionRegistered`、`ActionRewardMinted`、`GroupActionCreated`、`ServiceActionCreated`、`LpActionCreated`）不含 `memberId`，它们的主体是行动或服务提案本身。
 
 | 错误 | 拒绝条件 |
 | --- | --- |
@@ -40,25 +40,25 @@ Core 的预留、铸造和取消额度账本见 [Mint](../core/07-mint.md)，不
 | `TargetDataLengthMismatch(uint256 expected, uint256 actual)` | Target Data 项数与约定不符（GroupAction 少于 6 报 `expected = 6`，多于 7 报 `expected = 7`；LP/GroupService 固定 4；投票回调最多 1/2） |
 | `InvalidTargetDataShape(uint256 index, uint256 length)` | 第 `index` 项不是 `abi.encode` 的 32 字节形态 |
 | `VerificationInfoLengthMismatch(uint256 expected, uint256 actual)` | 验证信息 schema 两数组不等长，或成员值项数与 schema 不符 |
-| `DescriptionTooLong(uint256 length, uint256 max)` | 群描述或候选人申请说明超过 1024 字节 |
+| `DescriptionTooLong(uint256 length, uint256 maxLength)` | 群描述或候选人申请说明超过 1024 字节 |
 | `InvalidMaxJoinAmountRatio(uint256 value)` / `InvalidActivationMinGovRatio(uint256 value)` / `InvalidRatioForPublicVerifier(uint256 value)` | 创建回调的比例超出 `1e18`（按字段分别报错） |
 | `InvalidMinGovRatio(uint256 value)` / `InvalidJoinTokenFactory(address joinToken, address factory)` | LP 最小治理比例超过 `1e18` / 参与代币不是该工厂登记的交易对 |
-| `InvalidMinJoinAmount(uint256 min)` / `InvalidMaxJoinAmount(uint256 min, uint256 max)` | 群最小加入量为零 / 非零最大加入量低于最小加入量 |
+| `InvalidMinJoinAmount(uint256 minAmount)` / `InvalidMaxJoinAmount(uint256 minAmount, uint256 maxAmount)` | 群最小加入量为零 / 非零最大加入量低于最小加入量 |
 | `GroupAlreadyActivated(uint256 groupId)` / `GroupNotActive(uint256 groupId)` / `GroupNotExist(uint256 groupId)` | 重复激活 / 在未激活链群上操作 / 群身份不存在 |
 | `DeactivationLockedInActivatedRound(uint256 groupId, uint256 round)` | 在链群激活的同一加入轮停用 |
 | `InsufficientActivationMinGovRatio(uint256 groupId, uint256 required, uint256 actual)` | 群 owner 的治理票占比低于激活下限 |
 | `NoGovVotes(address tokenAddress)` | 激励代币没有全局治理票，无法计算激活下限 |
 | `ZeroParticipationAmount()` | 加入、撤回或 Provider 撤回金额为零 |
-| `BelowMinJoinAmount(uint256 actual, uint256 min)` | 首次加入量低于群最小加入量 |
+| `BelowMinJoinAmount(uint256 actual, uint256 minAmount)` | 首次加入量低于群最小加入量 |
 | `WithdrawAmountExceeded(uint256 amount, uint256 joined)` / `ProviderWithdrawAmountExceeded(uint256 amount, uint256 invested)` | 撤回超过自有余额 / 超过该 Provider 已投入量 |
 | `GroupMaxJoinAmountExceeded(uint256 memberId, uint256 actual, uint256 limit)` / `ActionMaxJoinAmountExceeded(uint256 memberId, uint256 actual, uint256 limit)` | 加入后的成员总量超过群上限 / 行动上限 |
 | `GroupCapacityExceeded(uint256 groupId, uint256 actual, uint256 limit)` | 加入后的群总量超过 `maxCapacity` |
-| `GroupAccountsFull(uint256 groupId, uint256 count, uint256 max)` | 首次加入时群成员数已达 `maxAccounts` |
+| `GroupAccountsFull(uint256 groupId, uint256 count, uint256 maxCount)` | 首次加入时群成员数已达 `maxAccounts` |
 | `AlreadyInOtherGroup(uint256 memberId, uint256 existingGroupId, uint256 requestedGroupId)` | 同一行动内成员已归属其他链群 |
 | `NotJoined(address tokenAddress, uint256 actionId, uint256 memberId)` / `AlreadyJoined(address tokenAddress, uint256 actionId, uint256 memberId)` | 未加入时退出 / 重复加入服务 Proposal |
 | `QuotaArrayLengthMismatch(uint256 memberIdsLength, uint256 amountsLength)` / `QuotaMemberIsProvider(uint256 providerId)` / `ZeroQuotaAmount(uint256 memberId)` / `QuotaNotGranted(uint256 groupId, uint256 providerId, uint256 memberId)` | Provider 额度批量参数不合法 |
 | `InsufficientProviderQuota(uint256 providerId, uint256 required, uint256 available)` | Provider 额度不足 |
-| `OriginScoresEmpty()` / `VerificationBatchTooLarge(uint256 count, uint256 max)` / `ScoreLimitExceeded(uint256 index, uint256 score, uint256 max)` | 验证批次为空 / 超过 100 项 / 原始分超过 100 |
+| `OriginScoresEmpty()` / `VerificationBatchTooLarge(uint256 count, uint256 maxCount)` / `ScoreLimitExceeded(uint256 index, uint256 score, uint256 maxScore)` | 验证批次为空 / 超过 100 项 / 原始分超过 100 |
 | `ScoreCountExceeded(uint256 startIndex, uint256 count, uint256 memberCount)` | 验证批次越过该群成员总数 |
 | `StartIndexMismatch(uint256 expected, uint256 actual)` | 验证批次跳跃、重复或乱序；`expected` 为该群当前已验证数量，`actual` 为调用者传入的 `startIndex` |
 | `ZeroVerifyVotes(address tokenAddress, uint256 memberId)` | 候选人没有有效治理票 |
@@ -68,7 +68,7 @@ Core 的预留、铸造和取消额度账本见 [Mint](../core/07-mint.md)，不
 | `VerifierAlreadyLocked(address tokenAddress, uint256 actionId, uint256 round)` | 锁定后更换验证者 |
 | `UnknownSourceAction(address sourceTokenAddress, uint256 sourceActionId)` | 二次分配配置的源行动不是本 Executor 创建 |
 | `RecipientArrayLengthMismatch(uint256 recipientIdsLength, uint256 ratiosLength, uint256 remarksLength)` | 二次分配三数组不等长 |
-| `TooManyRecipients(uint256 count, uint256 max)` / `ZeroRecipientRatio(uint256 recipientId)` / `DuplicateMemberId(uint256 memberId)` / `RecipientIsGroupId(uint256 groupId, uint256 recipientId)` | 接收人配置不合法 |
+| `TooManyRecipients(uint256 count, uint256 maxCount)` / `ZeroRecipientRatio(uint256 recipientId)` / `DuplicateMemberId(uint256 memberId)` / `RecipientIsGroupId(uint256 groupId, uint256 recipientId)` | 接收人配置不合法 |
 | `DistributionOverflow(uint256 configured, uint256 available)` | 配置比例总和超过 `1e18` 时拒绝；正好 `1e18` 合法 |
 | `RewardAlreadyMinted(tokenAddress, actionId, memberId, round)` | 重复成员结算（Executor 层；行动级的重复铸造由 Mint 回滚 `ProposalRewardAlreadyMinted(tokenAddress, round, proposalId)`） |
 | `MemberActionRewardUnavailable(tokenAddress, actionId, memberId, round)` | 成员结算无产出：`mintAmount` 与 `burnAmount` 均为 0（无有效参与、目标轮未完成验证或零分、行动激励为零）；有销毁量即允许结算，不置位已结算、不发事件 |

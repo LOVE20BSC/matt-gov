@@ -2,6 +2,10 @@
 
 本文档列出 BSC Core 相对于 LOVE20TKM 旧协议的所有变更。保留项直接引用旧代码位置，避免重复描述。
 
+## 事件与接口改名（2026-10-27）
+
+事件规范 v1.1 重命名了本文其他小节记录的迁移时点名称；正文保留当时名称，现行名称以 [规格](README.md) 与 `core/src/interfaces/` 为准：`StakeLiquidity` → `LiquidityStaked`、`StakeBoost` → `BoostStaked`、`Unstake` → `Unstaked`、`Withdraw` → `StakeWithdrawn`、`StakeMerged` → `StakesMerged`、`Mint` → `MemberMinted`、`Voted` → `VoteCast`、`GovernanceRewardMinted` → `GovRewardMinted`、`TokenMint` / `TokenBurn` → `TokenMinted` / `TokenBurned`。
+
 ## 校验分层（2026-10-25）
 
 - `MemberNFT`、`Phase` 的构造参数零值/范围检查，以及 `Vote`、`Mint`、`Submit`、`Stake`、`Launch`、`MemberNFT.init` 的依赖代码、派生值和静态参数检查，移到部署脚本：参数范围由 `DeployCore` 广播前校验，依赖代码/派生值由 `DeployCore` 部署后校验；`21_check.sh` 独立复核；`DeployCore` 另校验 `Router.factory() == FACTORY_ADDRESS`，部署后核对完整绑定图与首币 `totalSupply`/distributor 余额；合约侧 `init` 只防重复初始化并保存入参。

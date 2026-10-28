@@ -26,9 +26,9 @@
 | `Zero<Field>` | `ZeroTokenAmount()`、`ZeroRecipientAddress()` | 非合约参数的零值（金额/计数/ID/recipient/target）；必填合约依赖用 `*NotContract` |
 | `Invalid<Field>` | `InvalidFeeSettlementRatio(value)`、`InvalidTokenSymbolLength(length, expected)` | 值/格式/范围非法 |
 | `<Subject>Exceeded` | `MaxSupplyExceeded(requested, remaining)`、`GroupCapacityExceeded(groupId, actual, limit)`、`LaunchCountLimitExceeded(tokenAddress, requested, remaining)` | 数值/额度/数量上限 |
-| `Too<Size>` | `ContentTooLong(length, max)`、`TooManyRecipients(count, max)` | 长度/基数等尺寸语义 |
+| `Too<Size>` | `ContentTooLong(length, maxLength)`、`TooManyRecipients(count, maxCount)` | 长度/基数等尺寸语义 |
 | `Not<Role>Owner/Operator` | `NotMemberOwner(memberId)`、`NotGroupOperator(groupId, operatorId)` | 角色鉴权 |
-| `Already<State>` | `AlreadyJoined(token, action, member)`、`ChatAlreadyActivated(groupId)` | 重复状态/操作 |
+| `Already<State>` | `AlreadyJoined(tokenAddress, actionId, memberId)`、`ChatAlreadyActivated(groupId)` | 重复状态/操作 |
 | `*NotContract` | `SourceNotContract(address)`、`PluginNotContract(address)`、`DependencyNotContract(address)` | 依赖无代码（合约内字段级或模块级） |
 | `*Unavailable` / `*Failed` | `BanVoteWeightSourceUnavailable(source)` | 外部依赖失败 |
 | `*Rejected` | `ScopeRejected(source, groupId, senderId)` | 策略拒绝 |
@@ -48,26 +48,29 @@
 - 上限：`actual + limit`；额度：`required + available`；外部：`source`；批量：失败元素键或索引。
 - 只允许定长标量、地址、枚举、`bytes32`；禁止字符串与动态数组。
 - 相邻字段单位必须一致；不一致时拆错误或把单位写进字段名。
+- 边界参数用限定名：`length → maxLength`、`count → maxCount`、`score → maxScore`、`amount → minAmount / maxAmount`、`phases → minPhases / maxPhases`；禁止裸 `min` / `max`。旧仓错误多数没有 payload，迁移时补 payload 即按新命名，不沿用旧参数名。
 - 不在鉴权前泄露激活、配置、资格等非公开状态；身份存在性本身公开，可按身份规则直接报。
 - 没有行动价值时省略载荷；不要为了“信息完整”增加无法被调用方使用的字段。
 
 ## 五、失败契约
 
-每个外部写入口在模块规格中有一张表：
+每个外部写入口在模块规格里写明**校验顺序与错误集合**：按 层 → 条件 → 错误 逐条读出即可，编号列表是首选形态，长叙述里分句列出同样成立；不需要另建矩阵，载荷与测试覆盖都不在规格里重复登记（见本节末两条）。
 
-| # | 层 | 条件 | 错误 | 载荷 | 测试 |
-|---|---|---|---|---|---|
-| 1 | 鉴权 | 调用者不是 member owner | `NotMemberOwner(memberId)` | memberId | `test...` |
-| 2 | 参数 | amount == 0 | `ZeroTokenAmount()` | 无 | `test...` |
-| 3 | 存在 | token 未注册 | `TokenNotRegistered(tokenAddress)` | tokenAddress | `test...` |
-| 4 | 状态 | 已申请解锁 | `UnstakeAlreadyRequested(tokenAddress, memberId)` | tokenAddress, memberId | `test...` |
-| 5 | 资格/上限 | 新总额超过上限 | `GroupCapacityExceeded(groupId, actual, limit)` | groupId, actual, limit | `test...` |
-| 6 | 外部 | 转账失败 | `SafeERC20FailedOperation(token)` | token | `test...` |
+```text
+1. 鉴权  调用者不是 member owner   → NotMemberOwner(memberId)
+2. 参数  amount == 0               → ZeroTokenAmount()
+3. 存在  token 未注册              → TokenNotRegistered(tokenAddress)
+4. 状态  已申请解锁                 → UnstakeAlreadyRequested(tokenAddress, memberId)
+5. 资格  新总额超过上限             → GroupCapacityExceeded(groupId, actual, limit)
+6. 外部  转账失败                   → SafeERC20FailedOperation(token)
+```
 
 顺序固定为：**鉴权 → 参数 → 存在性 → 状态/资格 → 账本/交互 → 不变量**；先命中先回滚，同一入口内不重排。
 
 - 身份解析属于鉴权：函数主体就是鉴权键时，先解析主体；不存在回 `*NotExist`/标准 ERC721 错误，存在但非持有人回 `Not<Role>Owner`。这不是泄露，身份存在性公开。
-- 模块规格可定义不同顺序，但必须写明理由并落入拒绝表；未写明的按上序执行。
+- 模块规格可定义不同顺序，但必须写明理由并写进该入口的校验顺序；未写明的按上序执行。
+- 载荷以 `I<Name>Errors` 的声明为唯一来源。规格里引用错误时可以写出类型与参数名（`<Error>(<type> <name>, …)`），此时 `script/check_doc_payloads.py` 校验它与声明逐字段一致；不写也不影响完整性。
+- 测试覆盖由 `script/check_error_tests.py` 保证：每个错误至少被一处测试引用（`<Error>.selector` 或同一 `expectRevert` 载荷）。规格不登记测试名——测试名会改，写进规格只会腐烂。
 - 依赖校验：必填合约依赖统一用 `*NotContract(address)`；零地址不单独成错误，部署脚本需要区分“漏配”时按 payload `0` 处理，不增加链上 selector。
 - 标准错误透传不进本模块 Errors：每个模块用一张“透传来源”表登记 selector 与来源接口/合约 ABI，不要求每个入口重复；测试直接断言来源 selector，不要求本模块 ABI 自带。
 
@@ -107,7 +110,7 @@
 
 | 测试类 | 要求 |
 |---|---|
-| 失败契约 | 每个可达错误一条 selector + 载荷断言 |
+| 失败契约 | 每个可达错误一条 selector + 载荷断言（引用存在性由 `check_error_tests.py` 卡） |
 | 优先级 | 每个多条件入口至少 auth-vs-input、input-vs-state；批量加 shape-vs-element |
 | 批量 | 形状错误、首元素、后元素、整批回滚 |
 | 外部 | 预期缺失、非预期 revert 原样冒泡、回调伪造、事件数据上限 |
@@ -122,7 +125,7 @@
 - [ ] 一条件一错误；无别名/重载/通用多义名。
 - [ ] 载荷含主体键/实际值与上限；批量错误能定位元素；无字符串/动态数组。
 - [ ] 无裸 `require`/`revert`；`assert` 仅不可达不变量。
-- [ ] 写入口有拒绝表；鉴权最先；无 no-op 先于校验。
+- [ ] 写入口写明校验顺序与错误集合（编号列表或逐条叙述，可按 层 → 条件 → 错误 读出）；鉴权最先；无 no-op 先于校验。
 - [ ] 外部边界分类明确；catch 只转译预期 selector；事件错误数据有界。
 - [ ] 标准错误由产生者拥有；调用方未重复继承透传错误，失败契约登记来源与白名单例外；无死声明；目录与检查器通过。
 - [ ] 合约内必填依赖（含 `init`）只声明 `*NotContract(address)`，没有并行的 `Zero*Address`；`Zero<Field>` 只用于非合约参数。
