@@ -48,12 +48,14 @@ Group Chat 各接口不继承标准错误：`ownerOf` 的 `ERC721NonexistentToke
 当前事件集：
 
 - 激活与配置：`GroupChatActivated`（首次激活即写入初始 5 项配置：`postingAllowed`、`scopeSource`、`banSource`、`beforePostPlugin`、`afterPostPlugin`）、`PostingAllowedChanged`、`ScopeSourceChanged`、`BanSourceChanged`、`BeforePostPluginChanged`、`AfterPostPluginChanged`。配置变更保留 `prev*` 旧值；仅布尔取反可推的旧值省略。
-- 消息：`MessagePosted`（带 `content`、`quotedMessageId` 与 `hasQuote`、`mentionAll`；indexed 为 `groupId`、`messageId`、`senderId`，`sender` 入 payload）、`SenderMentioned`（每提及一条）、`AfterPostPluginFailed`（捕获型失败）。不再单设 `MentionAll`：mention-all 已并入 `MessagePosted.mentionAll`。
+- 消息：`MessagePosted`（带 `content`、`quotedMessageId` 与 `hasQuote`、`mentionAll` 与 `mentionedSenderCount`；indexed 为 `groupId`、`messageId`、`senderId`，`sender` 入 payload）、`SenderMentioned`（每提及一条，紧跟同消息的 `MessagePosted`、按入参顺序）、`AfterPostPluginFailed`（捕获型失败）。不再单设 `MentionAll`：mention-all 已并入 `MessagePosted.mentionAll`。
 - 管理与成员：`AdminChanged`（已合并旧 `SetAdminSnapshot`，同时带 `listed`、`prevListed` 与新旧 `groupOwnerSnapshot`/`adminOwnerSnapshot`）、`MemberStatusChanged`。
 - 黑名单：`SenderBanChanged`（管理员封禁列表）、`SenderBanVoteCast`（投票，保留累计 `supportWeight`/`opposeWeight`/`stateVersion`）、`GovSenderBanChanged`（治理投票结果）、`StateVersionChanged`。
 - Delegate：`DelegateChanged`、`DelegationCleared`、`DelegatorWhitelistChanged`、`DelegatorGroupPermissionChanged`。
 - Manager 链路：`TokenGroupActivated`（`tokenAddress`/`groupId`/`operator` indexed）、`TokenActionGroupActivated`（`tokenAddress`/`actionId`/`groupId` indexed，`operator` 入 payload）。
 
 `AfterPostPluginFailed` 记录捕获错误的 `keccak256`、字节长度与首 4 字节 selector（`errorHash`、`errorLength`、`errorSelector`），不写入无界 `bytes`。scope/ban 的返回 false 和外部调用失败继续分别报 `ScopeRejected` / `BanRejected` 与 `ScopeSourceFailed` / `BanSourceFailed`，不能误改为静默放行。
+
+`MessagePosted` 的两个派生锚点是有意冗余，按事件规范 §8.1 登记：`hasQuote` 与 `quotedMessageId != 0` 严格恒等，保留布尔是为了让消费方不必把 `0` 读作「不存在」（§3.6 的显式布尔）；`mentionedSenderCount` 与 `mentionedSenderIds.length` 同源，并等于该消息后续 `SenderMentioned` 的条数，使单条消息的提及列表长度不依赖「下一条 `MessagePosted` 之前」的区间约定。折叠规则：`SenderMentioned` 紧跟同 `messageId` 的 `MessagePosted` 且按入参顺序，`mentionedSenderIds` 由该区间内的 `SenderMentioned.mentionedSenderId` 顺序拼出，条数必须等于 `mentionedSenderCount`。
 
 验收见 [Group Chat 验收](08-testing.md)。

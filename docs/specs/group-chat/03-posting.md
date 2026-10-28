@@ -17,7 +17,7 @@
 
 ## 消息与插件
 
-分配新 messageId，追加消息并更新 sender、mention、mention-all、round 索引，发出 `MessagePosted`（带正文 `content`、`quotedMessageId` + `hasQuote`、`mentionAll`）及 `SenderMentioned`；mention-all 不再单发事件。事件携带正文后，消息内容可由事件流直接重建，不必按 messageId 回读；代价是每条消息的日志体量随 `content` 线性增长（LOG 数据约 8 gas/byte，`MAX_CONTENT_LENGTH` 上限 4096 字节时最坏约 +33k gas），短消息可忽略，这是「用 gas 换可重建」的有意取舍。
+分配新 messageId，追加消息并更新 sender、mention、mention-all、round 索引，发出 `MessagePosted`（带正文 `content`、`quotedMessageId` + `hasQuote`、`mentionAll`、`mentionedSenderCount`）及紧随其后、按入参顺序的逐条 `SenderMentioned`；mention-all 不再单发事件。`mentionedSenderCount` 恒等于该消息的提及条数，也恒等于紧随其后、同 `messageId` 的 `SenderMentioned` 条数，使单条消息不必依赖「下一条 `MessagePosted` 之前」的区间约定即可自证提及列表长度；`hasQuote` 与 `quotedMessageId != 0` 严格恒等，保留布尔只为避免把 `0` 读作「不存在」的哨兵。事件携带正文后，消息内容可由事件流直接重建，不必按 messageId 回读；代价是每条消息的日志体量随 `content` 线性增长（LOG 数据约 8 gas/byte，`MAX_CONTENT_LENGTH` 上限 4096 字节时最坏约 +33k gas），短消息可忽略，这是「用 gas 换可重建」的有意取舍。
 
 | 失败位置 | 结果 |
 | --- | --- |

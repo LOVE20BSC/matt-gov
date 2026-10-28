@@ -14,7 +14,7 @@
 
 | 仓 | 状态 | 测试 | 备注 |
 |---|---|---|---|
-| group-chat | 完成（未提交） | 162 passed / 0 failed | 已修：`AdminChanged` 合并为单事件（新增/刷新/删除均一条）；`SenderMentioned.messageId` 改 indexed；`GroupChatActivated` 携带初始 5 项配置并移除激活时的 4 个 Set* 冗余 emit；`MessagePosted` 含 content/quote/hasQuote/mentionAll；`MentionAll` 删除；delegate 快照旧+新。 |
+| group-chat | 完成（未提交） | 162 passed / 0 failed | 已修：`AdminChanged` 合并为单事件（新增/刷新/删除均一条）；`SenderMentioned.messageId` 改 indexed；`GroupChatActivated` 携带初始 5 项配置并移除激活时的 4 个 Set* 冗余 emit；`MessagePosted` 含 content/quote/hasQuote/mentionAll/mentionedSenderCount；`MentionAll` 删除；delegate 快照旧+新。 |
 | core | 完成（未提交） | 474 passed / 0 failed | 23 行全部落地；复核补 `authorId`（原 `author`）；name/symbol 上限落为 `MAX_TOKEN_NAME_LENGTH=96` / `MAX_TOKEN_SYMBOL_LENGTH=32`；title/details 1024B、targetData 16 KiB/16；`VoteCast` boost 快照、`GovRewardMinted` 去 `burnReward`、删除 holder 事件。 |
 | action | 完成（未提交） | 461 passed / 0 failed | 34 文件；`ActionRegistered`、三个 `*ActionCreated`、域前缀拆名、`GroupActivated` 初始 config、`GroupConfigChanged` 旧+新、`RecipientTableChanged` 旧+新+remarks、`ApplicationVoteRecorded`（带 `voterId` 与投票名册）、`ProviderQuotaRefunded`、`VerifierLocked` indexed、LP 清仓 `LpWithdrawn`+`LpExited`、`forceClearJoinState` 仅改名；库 emit 按规范 §4.1。 |
 
@@ -29,7 +29,7 @@
 - 去重：`Launch._addLaunchCount`、`Stake._govVotesOf`、`LpExecutor._emitLpTerminal`、`GovVotedBanSource` 版本事件包装；`GroupConfigChanged` emit helper 统一 memory。
 - 规范 §4.4 正常退出顺序改为「clearJoinState（JoinStateCleared）→ *Exited」，与代码/Q17 父先子一致。
 - ABI 基线：三仓各自 `script/check-events.py` + `script/events-baseline.txt`；checker 通过（core 28 / action 34 / group-chat 23，concrete 合约含继承的标准事件）。
-- 保留的 judgement-call 未改：`GroupActionManager` 两段长度检查、stack-too-deep 的 `_emit*` 包装、`MessagePosted.hasQuote`（规范要求）、`GovSenderBanChanged` 命名（规范要求）、`Vote._vote` 分块。
+- 保留的 judgement-call 未改：`GroupActionManager` 两段长度检查、stack-too-deep 的 `_emit*` 包装、`MessagePosted.hasQuote` 与 `mentionedSenderCount`（§3.6/§3.1 要求的有意冗余）、`GovSenderBanChanged` 命名（规范要求）、`Vote._vote` 分块。
 
 ## 第二轮修复（2026-10-26）
 
@@ -110,6 +110,8 @@
 | `GroupChatActivated` | `groupId` / `ownerId` | 群就是群主的 MemberNFT，`ownerId` 必然等于 `groupId`；保留 `ownerId` 是为满足 §6.4 的 id/address 成对，不是冗余 |
 | `StakesMerged` | `targetGovVotes` ≡ `targetLiquidityShares` × `targetPromisedWaitingPhases` | 同事件内两个字段的乘积；保留派生值让消费方免于复算 |
 | `StakesMerged` | `prevSourceGovVotes` ≡ `liquiditySharesMerged` × `prevSourcePromisedWaitingPhases` | 同上；`prevSource*` 是融合前源成员状态，源被清空后只能由此处取 |
+| `MessagePosted` | `hasQuote` ≡ (`quotedMessageId` != 0) | §3.6 禁哨兵：省略布尔就得把 `0` 读作「不存在」；保留派生布尔让消费方不必解读哨兵 |
+| `MessagePosted` | `mentionedSenderCount` ≡ 紧随其后、同 `messageId` 的 `SenderMentioned` 条数 | §3.1 条数锚点：让单条消息无须依赖「下一条 `MessagePosted` 之前」的区间约定即可自证提及列表长度 |
 
 `BoostStaked.boostAmount` / `boostSharesAdded` 的旧豁免已撤销：该字段 2026-10-28 直接删除，`boostAmount` 本身就是份额增量。
 

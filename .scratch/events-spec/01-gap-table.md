@@ -101,7 +101,7 @@
 | 4 | `SetBanSource` `IGroupChat:44` | `BanSourceChanged` | 改名 | 保留 `prevSourceAddress` | — |
 | 5 | `SetBeforePostPlugin` `IGroupChat:52` | `BeforePostPluginChanged` | 改名 | 保留 `prevPluginAddress` | — |
 | 6 | `SetAfterPostPlugin` `IGroupChat:60` | `AfterPostPluginChanged` | 改名 | 保留 `prevPluginAddress` | — |
-| 7 | `PostMessage` `IGroupChat:68` | `MessagePosted` | 改形 | 增 `content`（已有 `MAX_CONTENT_LENGTH`）、`quotedMessageId` + `hasQuote`、`mentionAll`；indexed 改为 `groupId`、`messageId`、`senderId`（`senderAddress` 改非 indexed） | 覆盖消息正文/引用/mentionAll 静默写；见 O5 |
+| 7 | `PostMessage` `IGroupChat:68` | `MessagePosted` | 改形 | 增 `content`（已有 `MAX_CONTENT_LENGTH`）、`quotedMessageId` + `hasQuote`、`mentionAll`、`mentionedSenderCount`（= 紧随其后同 `messageId` 的 `SenderMentioned` 条数）；indexed 改为 `groupId`、`messageId`、`senderId`（`senderAddress` 改非 indexed） | 覆盖消息正文/引用/mentionAll 静默写；见 O5 |
 | 8 | `MentionSenderId` `IGroupChat:76` | `SenderMentioned` | 改名 | 不变：`groupId` i、`mentionedSenderId` i、`messageId` i | 每提及一条，符合 Q8 |
 | 9 | `MentionAll` `IGroupChat:78` | — | 删除 | 并入 `MessagePosted.mentionAll` | 避免同一事实两条事件 |
 | 10 | `FailAfterPostPlugin` `IGroupChat:80` | `AfterPostPluginFailed` | 改名 | 不变（`errorHash`/`errorLength`/`errorSelector`） | Q26 捕获型失败事实 |

@@ -86,7 +86,7 @@
 | ChatConfig | 开关发言 | `PostingAllowedChanged` | postingAllowed | 布尔旧值可推 |
 | ChatConfig | 换 scope/ban source | `ScopeSourceChanged` / `BanSourceChanged` | 新/旧地址 | 已有 prev |
 | ChatConfig | 换插件 | `BeforePostPluginChanged` / `AfterPostPluginChanged` | 新/旧地址 | 已有 prev |
-| Message | 发消息 | `MessagePosted` | 消息正文、引用、mentionAll、sender、round、messageId | 增 content/quoted/hasQuote/mentionAll；indexed 调整 |
+| Message | 发消息 | `MessagePosted` | 消息正文、引用、mentionAll、提及条数、sender、round、messageId | 增 content/quoted/hasQuote/mentionAll/mentionedSenderCount；indexed 调整 |
 | Message | 提及 | `SenderMentioned` | 被提及 sender、messageId | 每提及一条 |
 | Message | afterPost 失败 | `AfterPostPluginFailed` | plugin、messageId、error 指纹 | 捕获型失败事实 |
 | AdminSet | 增加/刷新/移除 | `AdminChanged` | adminId、listed、两个 owner 快照旧/新 | 合并 `SetAdminSnapshot`；转移失效由 core `Transfer` 推导 |
