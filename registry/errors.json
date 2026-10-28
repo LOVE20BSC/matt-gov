@@ -154,7 +154,7 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/GroupActionVerify.sol:517"
+        "action/src/GroupActionVerify.sol:518"
       ],
       "selector": "0xe51d364b",
       "signature": "CandidateNotOpen(uint256,uint256)"
@@ -169,7 +169,7 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/GroupActionVerify.sol:507"
+        "action/src/GroupActionVerify.sol:508"
       ],
       "selector": "0x39676b4a",
       "signature": "CandidateNotRanked(uint256,uint256)"
@@ -389,7 +389,7 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/GroupActionVerify.sol:657"
+        "action/src/GroupActionVerify.sol:659"
       ],
       "selector": "0xec3ddd72",
       "signature": "GroupVerificationAlreadyComplete(uint256,uint256)"
@@ -616,7 +616,7 @@
       "revert_sites": [
         "action/src/GroupActionVerify.sol:190",
         "action/src/GroupActionVerify.sol:367",
-        "action/src/GroupActionVerify.sol:497"
+        "action/src/GroupActionVerify.sol:498"
       ],
       "selector": "0xcda5095d",
       "signature": "NoActiveApplication(uint256)"
@@ -767,7 +767,7 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/GroupActionVerify.sol:631"
+        "action/src/GroupActionVerify.sol:632"
       ],
       "selector": "0xaafa066e",
       "signature": "OriginScoresEmpty()"
@@ -958,7 +958,7 @@
         "action/src/ExecutorBase.sol:71",
         "action/src/GroupActionExecutor.sol:80",
         "action/src/GroupActionStorage.sol:182",
-        "action/src/GroupActionVerify.sol:483",
+        "action/src/GroupActionVerify.sol:484",
         "action/src/GroupServiceExecutor.sol:103",
         "action/src/GroupServiceStorage.sol:65"
       ],
@@ -975,7 +975,7 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/GroupActionVerify.sol:663"
+        "action/src/GroupActionVerify.sol:665"
       ],
       "selector": "0xc6f0561d",
       "signature": "ScoreCountExceeded(uint256,uint256,uint256)"
@@ -990,7 +990,7 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/GroupActionVerify.sol:669"
+        "action/src/GroupActionVerify.sol:671"
       ],
       "selector": "0x743bbb84",
       "signature": "ScoreLimitExceeded(uint256,uint256,uint256)"
@@ -1005,7 +1005,7 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/GroupActionVerify.sol:660"
+        "action/src/GroupActionVerify.sol:662"
       ],
       "selector": "0xdadbe49c",
       "signature": "StartIndexMismatch(uint256,uint256)"
@@ -1156,7 +1156,7 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/GroupActionVerify.sol:634"
+        "action/src/GroupActionVerify.sol:635"
       ],
       "selector": "0x3b91a8c8",
       "signature": "VerificationBatchTooLarge(uint256,uint256)"
@@ -1232,7 +1232,7 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/GroupActionVerify.sol:644"
+        "action/src/GroupActionVerify.sol:646"
       ],
       "selector": "0xa4ab638a",
       "signature": "VerifierAlreadyLocked(address,uint256,uint256)"

@@ -67,7 +67,7 @@
 | ProviderQuota | 退出回填 | `ProviderQuotaRefunded`（新增） | provider、member、amount | 替代 `Withdrawn` 复用 |
 | Verification | 申请/取消/替换 | `VerifierApplicationSubmitted` / `VerifierApplicationCancelled` | application、description、previousApplication、hasPreviousApplication | 增 description/previousApplicationId/hasPreviousApplication |
 | Verification | 质押/退款 | `VerifierStakeDeposited` / `VerifierStakeRefunded` | stake、member | — |
-| Verification | 提交原始分 | `OriginScoresSubmitted` | scores、锁定 verifier、累计 final/total/roundVerified | 增累计字段；逐成员 finalScore 可折叠 |
+| Verification | 提交原始分 | `OriginScoresSubmitted` | scores、锁定 verifier、累计 final/total/verifiedGroupCount、roundVerified、groupVerified | 增累计字段；逐成员 finalScore 可折叠；`groupVerified` 只标本批是否收尾该群，与整轮 `roundVerified` 分开 |
 | Verification | 投票（提案对候选） | `ApplicationVoteRecorded`（新增） | application、candidate、votesAdded、totalVotes | 排名由票数折叠 |
 | Verification | 锁定 | `VerifierLocked` | memberId | indexed 对齐 |
 | RecipientTable | 设置表 | `RecipientTableChanged` | 旧/新 recipientIds、ratios、remarks | 旧+新；三数组加限 |

@@ -78,7 +78,7 @@
 | 19 | `ServiceRewardDistributed` `IGroupServiceExecutor:17` | `ServiceRewardsDistributed` | 改名 | 不变 | `cacheDenominator` 为派生缓存（§7） |
 | 20 | `Joined` `IGroupServiceExecutor:29` | `ServiceJoined` | 改名 | 不变 | — |
 | 21 | `Exited` `IGroupServiceExecutor:35` | `ServiceExited` | 改名 | 不变 | 与 LP 的 `Exited` topic0 冲突随改名消除 |
-| 22 | `OriginScoresSubmitted` `IGroupActionVerify:13` | `OriginScoresSubmitted` | 改形 | 增 `totalFinalScore`、`verifiedGroupCount`、`roundVerified`（后置累计） | 逐成员 finalScore 由 raw scores + `GroupActionJoined.amount` 推导；见 O10 |
+| 22 | `OriginScoresSubmitted` `IGroupActionVerify:13` | `OriginScoresSubmitted` | 改形 | 增 `totalFinalScore`、`verifiedGroupCount`、`roundVerified`（后置累计）与 `groupVerified`（本批是否收尾该群） | 逐成员 finalScore 由 raw scores + `GroupActionJoined.amount` 推导；见 O10 |
 | 23 | `VerifierApplicationSubmitted` `IGroupActionVerify:22` | `VerifierApplicationSubmitted` | 改形 | 增 `description`（≤1024B）、`previousApplicationId`（被替换的旧申请）与 `hasPreviousApplication` | 覆盖替换动作静默写 |
 | 24 | `VerifierApplicationCancelled` `IGroupActionVerify:29` | `VerifierApplicationCancelled` | 保留 | 不变 | — |
 | 25 | `VerifierStakeDeposited` `IGroupActionVerify:36` | `VerifierStakeDeposited` | 保留 | 不变 | — |
