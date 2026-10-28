@@ -118,14 +118,14 @@ OZ 5 的标准回滚由固定依赖提供：`IERC721Errors`、`ERC721OutOfBounds
 | `PROMISED_WAITING_PHASES_MIN()`、`PROMISED_WAITING_PHASES_MAX()` | 同名 | 保留 |
 | `MAX_WITHDRAWABLE_TO_FEE_RATIO()` | 旧在 `ILOVE20SLToken`/`ILOVE20TokenFactory` | 跨接口迁移（手续费重分类阈值改由 Stake 持有，并同时用作单笔结算量） |
 | `pairAddress(address tokenAddress)`、`totalBurnedToken(address tokenAddress)`、`totalParentTokenBurned(address tokenAddress)` | 无 | 新增 |
-| `globalGovVotes(address tokenAddress)` | `govVotesNum(address tokenAddress)` | 改名（`global` 前缀区分社区总量与成员量） |
+| `totalValidGovVotes(address tokenAddress, uint256 round)`、`totalValidGovVotesAdded` / `Removed` | `govVotesNum(address tokenAddress)` | 改名+改参（加 `round`，并拆成累计 `Added` / `Removed` 两个账本，`total` 为二者之差） |
 | `stakeData(tokenAddress, uint256 memberId) returns (liquidityShares, boostShares, promisedWaitingPhases, unlockRequestPhase, tokenAmountForLiquidity, parentTokenAmountForLiquidity)` | `accountStakeStatus(tokenAddress, address account) returns (AccountStakeStatus)` | 改名+改参（主体改 `memberId`；结构体展开为标量并追加两项现算 LP 数量） |
-| `validGovVotes(tokenAddress, uint256 memberId)` | `validGovVotes(tokenAddress, address account)` | 改参 |
-| `globalStakeData(address tokenAddress) returns (totalLiquidityShares, totalLp, withdrawableLp, feeLp, totalBoostShares, tokenAmountForLiquidity, parentTokenAmountForLiquidity)` | 无 | 新增（社区总量；`lastSqrtKOfLp` 只作内部结算基准，不对外） |
+| `validGovVotes(tokenAddress, uint256 round, uint256 memberId)` | `validGovVotes(tokenAddress, address account)` | 改参（主体改 `memberId`，2026-10-28 增加 `round`，改由轮次账本提供时点值） |
+| `totalStakeData(address tokenAddress) returns (totalLiquidityShares, totalLp, withdrawableLp, feeLp, totalBoostShares, tokenAmountForLiquidity, parentTokenAmountForLiquidity)` | 无 | 新增（社区总量；`lastSqrtKOfLp` 只作内部结算基准，不对外） |
 | `canWithdraw(tokenAddress, uint256 memberId)` | 无 | 新增 |
-| `cumulatedBoostShares(tokenAddress, uint256 round, uint256 memberId)` | `cumulatedTokenAmountByAccount(tokenAddress, uint256 round, address account)` | 改名+改参（语义：累计代币量 → 累计 boost 份额） |
-| `globalBoostUpdatedRounds(tokenAddress, uint256 offset, uint256 limit, bool reverse) returns (uint256[] rounds, uint256 totalCount)` | `stakeTokenUpdatedRoundsCount(tokenAddress)` + `stakeTokenUpdatedRoundsAtIndex(tokenAddress, uint256 index)` | 合并+改名+改参 |
-| `boostUpdatedRounds(tokenAddress, uint256 memberId, uint256 offset, uint256 limit, bool reverse) returns (uint256[] rounds, uint256 totalCount)` | `stakeTokenUpdatedRoundsByAccountCount(tokenAddress, address account)` + `stakeTokenUpdatedRoundsByAccountAtIndex(tokenAddress, address account, uint256 index)` | 合并+改名+改参 |
+| `validBoostShares(tokenAddress, uint256 round, uint256 memberId)` | `cumulatedTokenAmountByAccount(tokenAddress, uint256 round, address account)` | 改名+改参（语义：累计代币量 → 当轮有效加速份额；申请解锁即归零，属时点量） |
+| `totalValidBoostShares(tokenAddress, uint256 round)`、`totalValidBoostSharesAdded` / `Removed` | 无 | 新增（社区口径；`total` 为两条累计账本之差） |
+| 无 | `stakeTokenUpdatedRoundsCount(tokenAddress)` + `stakeTokenUpdatedRoundsAtIndex(tokenAddress, uint256 index)`、`stakeTokenUpdatedRoundsByAccountCount` / `AtIndex` 两对 | 删除（「哪些 Round 发生过变更」由 `BoostStaked`/`Unstaked`/`StakesMerged` 的 `round` 折叠得到，属派生缓存，接口不再枚举） |
 | 无 | `initialStakeRound(tokenAddress)` | 删除 |
 | 无 | `caculateGovVotes(uint256 lpAmount, uint256 promisedWaitingPhases)` | 删除（旧名含拼写错误，且不再对外承诺票数公式） |
 | 无 | `cumulatedTokenAmount(tokenAddress, uint256 round)` | 删除（按成员版本改语义保留，去掉全局版本） |

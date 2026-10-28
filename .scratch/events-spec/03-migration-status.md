@@ -108,9 +108,28 @@
 | 事件 | 成对字段 | 理由 |
 |---|---|---|
 | `GroupChatActivated` | `groupId` / `ownerId` | 群就是群主的 MemberNFT，`ownerId` 必然等于 `groupId`；保留 `ownerId` 是为满足 §6.4 的 id/address 成对，不是冗余 |
-| `BoostStaked` | `boostAmount` / `boostSharesAdded` | boost 份额按 1:1 记账（`member.boostShares += boostAmount`），增量恒等于金额 |
+| `StakesMerged` | `targetGovVotes` ≡ `targetLiquidityShares` × `targetPromisedWaitingPhases` | 同事件内两个字段的乘积；保留派生值让消费方免于复算 |
+| `StakesMerged` | `prevSourceGovVotes` ≡ `liquiditySharesMerged` × `prevSourcePromisedWaitingPhases` | 同上；`prevSource*` 是融合前源成员状态，源被清空后只能由此处取 |
+
+`BoostStaked.boostAmount` / `boostSharesAdded` 的旧豁免已撤销：该字段 2026-10-28 直接删除，`boostAmount` 本身就是份额增量。
 
 成员份额与全局总量（`boostShares` / `totalBoostShares`、`liquidityShares` / `totalLiquidityShares`）**不豁免**：单成员夹具下它们必然相等，测试必须再引入一个成员让二者分开。
+
+### 2026-10-28 增补：加速份额统一为 valid 口径
+
+「累计加速份额」在语义上是**当轮有效值**（申请解锁即归零），与 `validGovVotes` 同一词根，故整族改名：
+
+| 旧 | 新 |
+|---|---|
+| `cumulatedBoostShares(token, round, memberId)` | `validBoostShares(token, round, memberId)` |
+| `_boostHistoryByMember` | `_validBoostSharesByMember` |
+| `_globalBoostHistory` | `_totalValidBoostSharesAdded` / `_totalValidBoostSharesRemoved`（`total` 为二者之差） |
+| 事件字段 `totalCumulatedBoostShares` | `totalValidBoostShares` |
+| —（新增） | `totalValidBoostShares(token, round)`，社区口径，与成员口径同款 `RoundNotStarted` 守卫 |
+
+`globalBoostUpdatedRounds` / `boostUpdatedRounds` 随后**直接删除**（2026-10-28 同日决定）：全仓零生产调用方，「哪些 Round 发生过变更」完全可由 `BoostStaked`/`Unstaked`/`StakesMerged` 的 `round` 折叠得到，属派生缓存（§6.9）。删除后 `Stake` 不再 import `Pagination`。
+
+新增的不变量：`totalValidBoostShares(token, round) == Σ_m validBoostShares(token, round, m)`，事件里的 `totalValidBoostShares` 必须等于该查询结果。
 
 ## 待收尾
 

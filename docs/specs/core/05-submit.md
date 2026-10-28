@@ -91,9 +91,9 @@ Proposal 由合约分配的头部与创建者提供的主体组成，对外以 `
 
 ## 推举
 
-推举门槛沿用旧 Submit：从 Stake 读取当前成员 `validGovVotes(tokenAddress, memberId)` 与社区 `globalGovVotes(tokenAddress)`；成员和社区票数均为正，且 `validGovVotes >= ceil(globalGovVotes * SUBMIT_MIN_RATIO / 1e18)`。初始化门槛范围为 `1..1e18`（`1e18` 表示 100%）。
+推举门槛沿用旧 Submit：从 Stake 读取当前成员 `validGovVotes(tokenAddress, currentRound, memberId)` 与社区 `totalValidGovVotes(tokenAddress, currentRound)`；成员和社区票数均为正，且 `validGovVotes >= ceil(totalValidGovVotes * SUBMIT_MIN_RATIO / 1e18)`。初始化门槛范围为 `1..1e18`（`1e18` 表示 100%）。
 
-`canSubmit` 实现：`Math.mulDiv` 按全精度计算 `requiredVotes = ceil(globalGovVotes * SUBMIT_MIN_RATIO / 1e18)`，`requiredVotes == 0`（社区票数为零）或 `validGovVotes < requiredVotes` 时返回 `false`，否则返回 `true`；`Ceil` 保证门槛不被截断，全精度乘法避免大票数溢出。它只判断票权门槛，不判断本轮成员名额、提案去重或社区推举总数。两个写入口复用同一组读数：社区票数为零时回滚 `NoGovVotes(tokenAddress)`，否则票权不足回滚 `InsufficientSubmitPower(tokenAddress, memberId, validVotes, requiredVotes)`。
+`canSubmit` 实现：`Math.mulDiv` 按全精度计算 `requiredVotes = ceil(totalValidGovVotes * SUBMIT_MIN_RATIO / 1e18)`，`requiredVotes == 0`（社区票数为零）或 `validGovVotes < requiredVotes` 时返回 `false`，否则返回 `true`；`Ceil` 保证门槛不被截断，全精度乘法避免大票数溢出。它只判断票权门槛，不判断本轮成员名额、提案去重或社区推举总数。两个写入口复用同一组读数：社区票数为零时回滚 `NoGovVotes(tokenAddress)`，否则票权不足回滚 `InsufficientSubmitPower(tokenAddress, memberId, validVotes, requiredVotes)`。
 
 调用者必须持有 `memberId`。每个成员每社区每 Round 最多推举一个 Proposal，同一 Proposal 同轮只能被推举一次；两个入口共用这两条约束——`submitNewProposal` 在创建后立即推举，因此同样占用本 Round 的名额，创建不是免额度的旁路。每社区每轮首个成功推举自动调用 `Phase.sync()`；`sync` 已同步时无操作返回、不会回滚，但若失败则按外部调用失败处理，整笔交易回滚。`submit` 推举已有 Proposal 不重复触发创建回调。
 
@@ -157,7 +157,7 @@ Proposal 由合约分配的头部与创建者提供的主体组成，对外以 `
 | `NotMemberOwner(uint256 memberId)` | `ownerOf(memberId) != msg.sender`；`memberId` 不存在时由 MemberNFT 回滚 `ERC721NonexistentToken` |
 | `ProposalNotFound(uint256 proposalId)` | `proposalInfosByIds` 传入未分配过的 ID；`submit` 的 `proposalId` 不存在 |
 | `NoGovVotes(address tokenAddress)` | 社区治理票数为零，无法计算推举门槛；两个入口共用 |
-| `InsufficientSubmitPower(address tokenAddress, uint256 memberId, uint256 validVotes, uint256 requiredVotes)` | 社区票数非零但成员票权不足；`requiredVotes` 为 `ceil(globalGovVotes * SUBMIT_MIN_RATIO / 1e18)`；两个入口共用 |
+| `InsufficientSubmitPower(address tokenAddress, uint256 memberId, uint256 validVotes, uint256 requiredVotes)` | 社区票数非零但成员票权不足；`requiredVotes` 为 `ceil(totalValidGovVotes * SUBMIT_MIN_RATIO / 1e18)`；两个入口共用 |
 | `SubmitRoundFull(address tokenAddress, uint256 round, uint256 limit)` | 本社区本 Round 已推举数达到 `limit`（1,000）；两个入口共用 |
 | `ProposalAlreadySubmitted(address tokenAddress, uint256 round, uint256 proposalId)` | `submit` 中同一 Proposal 同轮重复推举 |
 | `MemberAlreadySubmitted(address tokenAddress, uint256 round, uint256 memberId)` | 同一成员同社区同轮已推举过；两个入口共用 |

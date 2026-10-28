@@ -16,8 +16,8 @@ Vote 管理当前治理 Round 的 Proposal 投票和加速快照。Proposal 的�
 | --- | --- |
 | 当前 Round | `IPhase(phaseAddress).currentPhase()` |
 | 成员身份 | `IMemberNFT(memberNFTAddress).ownerOf(memberId)` |
-| 本轮票上限 | `IStake(stakeAddress).validGovVotes(tokenAddress, memberId)` |
-| 加速快照 | `IStake(stakeAddress).cumulatedBoostShares(tokenAddress, round, memberId)` |
+| 本轮票上限 | `IStake(stakeAddress).validGovVotes(tokenAddress, currentRound, memberId)` |
+| 加速快照 | `IStake(stakeAddress).validBoostShares(tokenAddress, round, memberId)` |
 | 推举状态 | `ISubmit(submitAddress).isSubmitted(tokenAddress, round, proposalId)` |
 | 回调目标与模式 | `ISubmit(submitAddress).proposalTarget(tokenAddress, proposalId)` |
 

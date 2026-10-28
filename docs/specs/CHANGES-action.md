@@ -208,7 +208,7 @@ effectiveAmount = joinedAmount - deduction
 #### 治理票上限
 参考旧版的 `govRatioMultiplier` 和 `govRatioCap` 计算：
 ```text
-govRatio = validGovVotes(memberId) × 1e18 / totalGovVotes
+govRatio = validGovVotes(currentPhase, memberId) × 1e18 / totalValidGovVotes(currentPhase)
 govRatioCap = govRatio × govRatioMultiplier / 1e18
 effectiveRatio = min(effectiveLpRatio, govRatioCap)
 ```

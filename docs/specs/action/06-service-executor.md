@@ -63,7 +63,7 @@ owner 权重按群切片 floor 后汇总，因此 `Σ_m ownerWeightNumerator(m) 
 
 ```text
 W(m)   = (1e18 - r) * ownerWeightNumerator(m)                            // 不提前取整
-govRatio(m) = globalGovVotes == 0 ? 0 : mulDiv(validGovVotes(actionTokenAddress, m), 1e18, globalGovVotes)
+govRatio(m) = totalValidGovVotes == 0 ? 0 : mulDiv(validGovVotes(actionTokenAddress, currentPhase, m), 1e18, totalValidGovVotes)
 cap(m)      = multiplier == 0 ? 上限关闭 : mulDiv(govRatio(m), multiplier, 1e18)
 
 actualOwnerReward(m) = (multiplier == 0 || cap(m) >= ceilDiv(W(m), D))
@@ -74,7 +74,7 @@ ownerOverflow(m) = theoreticalOwnerReward(m) - actualOwnerReward(m)
 
 上限判定等价于交叉相乘 `cap(m) * D >= W(m)`，即 `cap(m) >= ceilDiv(W(m), D)`；实现对 ratio 不先取整，但按后一形式比较：除法形式不会溢出，任意 `govRatioMultiplier`（含极大值）都不会让结算回滚并锁死该行动。上限未触发时 `actualOwnerReward == theoreticalOwnerReward`，不产生取整粉尘销毁；触发时按 `cap(m)` 全额向下取整。
 
-其中 `theoreticalOwnerReward(m)` 使用上节权重公式；治理票读取 `Stake.validGovVotes(actionTokenAddress, m)` 和 `Stake.globalGovVotes(actionTokenAddress)`。上限启用且总治理票为零时只销毁 owner 理论激励；乘数为零直接关闭上限。结算使用服务铸造时 `actionTokenAddress` 社区最新的有效治理票；已结算的查询返回记录结果，不重新套用后续票权。
+其中 `theoreticalOwnerReward(m)` 使用上节权重公式；治理票按**铸造时的当前 Round** 读取 `Stake.validGovVotes(actionTokenAddress, currentPhase, m)` 和 `Stake.totalValidGovVotes(actionTokenAddress, currentPhase)`，`currentPhase = IPhase.currentPhase()`，不是被结算的 `round`。上限启用且总治理票为零时只销毁 owner 理论激励；乘数为零直接关闭上限。已结算的查询返回记录结果，不重新套用后续票权。
 
 `GOV_RATIO_MULTIPLIER` 与 `RATIO_FOR_PUBLIC_VERIFIER` 来自服务 Proposal 创建回调的 `targetData[2]`、`targetData[3]`；owner 超额按每个 owner 单独记入 `ownerBurned`。服务代币已经由 Mint 直接铸给 Executor 后，销毁直接调用该代币的 `burn(amount)`；不重复修改 Core Mint 的 `rewardBurned`。服务 Proposal 本轮没有激励时由 Mint 的内部 Round 准备逻辑处理，Executor 不重复判断。
 

@@ -1,7 +1,7 @@
 # LOVE20BSC 事件统一规范 · 逐事件差距表
 
 日期：2026-10-26  
-状态：已确认（2026-10-26）；本表只做设计裁决，不改代码  
+状态：已确认（2026-10-26）；本表只做设计裁决，不改代码。**2026-10-28 修订**：O11 改判、`LaunchCountConsumed.count` 删除、stake 系补全局总量、`lpTransferred` → `lpToMember`、`boostSharesAdded` 删除（见 O11/O15 与各事件行）  
 基线：`core/src` 23 个声明、`action/src` 27 个声明、`group-chat/src` 23 个声明，共 73 个声明 / 66 个唯一名；全部有发射点；`libs/src` 无事件；`dex` 排除。  
 规则索引：见 `matt-gov/docs/event-standards.md`（正文已写）；本文引用裁决编号 Q1–Q32。
 
@@ -30,22 +30,22 @@
 | 3 | `TokenLaunched` `ILaunch:45` | `GenesisTokenCreated` + `TokenLaunched` | 拆分 | 创世：`tokenAddress` i、`parent` i、`distributor`、`name`、`symbol`；发起：`tokenAddress` i、`parent` i、`launcherMemberId` i、`distributor`、`distributorMode`、`name`、`symbol` | 去掉 `launcherMemberId=0` 哨兵；补 `distributorMode` |
 | 4 | `LaunchCountAdded` `ILaunch:53` | `LaunchCountAdded` | 改形 | 增 `issuedCount`（该账本累计）、`memberRemaining`（成员余额） | 首 token 镜像双发是两个独立账本，保留 |
 | 5 | `LaunchCountMerged` `ILaunch:54` | `LaunchCountMerged` | 改形 | 增 `sourceRemaining`、`targetRemaining` | 转账型合并的双方后置余额 |
-| — | — | `LaunchCountConsumed` | 新增 | `tokenAddress` i、`memberId` i、`count`、`remaining` | 覆盖 `Launch.sol:161` 的扣减缺口；由 `Launch.launchToken` 发射 |
+| — | — | `LaunchCountConsumed` | 新增 | `tokenAddress` i、`memberId` i、`remaining` | 覆盖 `Launch.sol:161` 的扣减缺口；由 `Launch.launchToken` 发射；`count` 恒为 1，2026-10-28 删除 |
 | 6 | `Mint` `IMemberNFT:8` | `MemberMinted` | 改名 | 字段不变，顺序调整：`cost` 前移到 `name` 之前；`id` 改名为 `memberId`（`memberId` i、`owner` i、`cost`、`name`、`normalizedName`） | 顺序按 §6.1 core.member 族：对象 id → 角色 → 数值 → 文本；`id` 与全协议的 `memberId` 同义，按 §6.4 统一 |
 | 7 | `AddHolder` `IMemberNFT:16` | `HolderAdded` 或删除 | 删除（已确认） | 若保留：`holder` i、`totalHolders` | 持有人集合可由 ERC721 `Transfer` 折叠；`totalHolders` 为冗余累计；见开放项 O1 |
 | 8 | `RemoveHolder` `IMemberNFT:18` | `HolderRemoved` 或删除 | 删除（已确认） | 若保留：`holder` i、`totalHolders` | 同上 |
 | 9 | `RewardPrepared` `IMint:11` | `RewardPrepared` | 保留 | 不变（含累计 `rewardReserved`/`rewardBurned`） | 零票分支与正常分支同 schema；原因由同 tx 的 `RewardBurned` 区分 |
-| 10 | `GovRewardMinted` `IMint:20` | `GovRewardMinted` | 改形 | 删 `burnReward`（由 `RewardBurned` 承载）；保留 `voteReward`、`boostReward` | `_launchCredit` 增量 = `voteReward+boostReward`，可由本事件推导 |
+| 10 | `GovRewardMinted` `IMint:20` | `GovRewardMinted` | 改形 | 保留 `voteReward`、`boostReward`、`burnReward`（2026-10-28 改判，见 O11） | `_launchCredit` 增量 = `voteReward+boostReward`，可由本事件推导 |
 | 11 | `ProposalRewardMinted` `IMint:28` | `ProposalRewardMinted` | 保留 | 不变：`tokenAddress` i、`round` i、`proposalId` i、`recipient`、`amount` | `recipient` 为地址 |
 | 12 | `RewardBurned` `IMint:35` | `RewardBurned` | 保留 | 不变：`tokenAddress` i、`round` i、`amount`、`reason` | `reason` 为有界 enum |
 | 13 | `PhaseSynchronized` `IPhase:9` | `PhaseSynchronized` | 改形 | 删 `blockNumber`、`timestamp`、`adjusted`；保留 `phase` i、`phaseBlocks` | 块高/时间为日志元数据；`adjusted` 由同 tx 的 `PhaseAdjusted` 推导 |
 | 14 | `PhaseAdjusted` `IPhase:16` | `PhaseAdjusted` | 保留 | 不变：`effectivePhase` i、`oldPhaseBlocks`、`newPhaseBlocks` | 新 segment `startBlock` 由日志块高推导 |
-| 15 | `StakeLiquidity` `IStake:44` | `LiquidityStaked` | 改名+改形 | 增 `totalLiquidityShares`（全局后置）；其余不变 | LP 基准（`lastFeeLp` 等）为派生缓存，见 §7 |
-| 16 | `StakeBoost` `IStake:58` | `BoostStaked` | 改名+改形 | 增 `totalBoostShares`（全局后置） | — |
-| 17 | `Unstake` `IStake:69` | `Unstaked` | 改名 | 不变 | `unlockRequestPhase = round`，文档化 |
-| 18 | `Withdraw` `IStake:78` | `StakeWithdrawn` | 改名+改形 | 增 `lpBurned`、`lpTransferred`、`totalLiquidityShares`、`totalBoostShares` | 覆盖 LP 派发方式；基准为派生缓存 |
-| 19 | `FeesSettled` `IStake:88` | `FeesSettled` | 保留 | 不变 | 无实现手续费的 early-return 仅写派生缓存，不发事件（§7） |
-| 20 | `StakeMerged` `IStake:95` | `StakesMerged` | 改名+改形 | 增 `targetGovVotes`、`targetLiquidityShares`、`targetBoostShares`、`targetPromisedWaitingPhases`；indexed 改为 `tokenAddress`、`sourceMemberId`、`targetMemberId`（`round` 改非 indexed） | 修复 target 未 indexed 的不一致 |
+| 15 | `StakeLiquidity` `IStake:44` | `LiquidityStaked` | 改名+改形 | 增 `totalLiquidityShares`、`totalValidGovVotes`（全局后置）；其余不变 | LP 基准（`lastFeeLp` 等）为派生缓存，见 §7 |
+| 16 | `StakeBoost` `IStake:58` | `BoostStaked` | 改名+改形 | 增 `totalBoostShares`、`totalValidBoostShares`、`totalValidGovVotes`；删与 `boostAmount` 恒等的 `boostSharesAdded` | 余额总量与当轮有效总量并存，见 O15 |
+| 17 | `Unstake` `IStake:69` | `Unstaked` | 改名+改形 | 增 `totalValidBoostShares`、`totalValidGovVotes` | `unlockRequestPhase = round`，文档化 |
+| 18 | `Withdraw` `IStake:78` | `StakeWithdrawn` | 改名+改形 | 增 `lpBurned`、`lpToMember`、`totalLiquidityShares`、`totalBoostShares` | 覆盖 LP 派发方式；基准为派生缓存；`lpTransferred` 2026-10-28 改名为 `lpToMember` |
+| 19 | `FeesSettled` `IStake:88` | `FeesSettled` | 改形 | 增 `totalBurnedToken`、`totalParentTokenBurned`（累计） | 无实现手续费的 early-return 仅写派生缓存，不发事件（§7） |
+| 20 | `StakeMerged` `IStake:95` | `StakesMerged` | 改名+改形 | 增 `targetGovVotes`、`targetLiquidityShares`、`targetBoostShares`、`targetPromisedWaitingPhases`、`prevSourceGovVotes`、`prevSourcePromisedWaitingPhases`、`totalValidGovVotes`；indexed 改为 `tokenAddress`、`sourceMemberId`、`targetMemberId`（`round` 改非 indexed） | 修复 target 未 indexed 的不一致；源被清空后其旧状态只能由 `prevSource*` 承载 |
 | 21 | `ProposalCreated` `ISubmit:47` | `ProposalCreated` | 改形 | 增 `targetData`（`bytes[]`，新增链上总字节/元素上限）；`title`/`details` 加上限 | `targetData` 是提案可执行载荷，当前只有 calldata 有；见开放项 O4 |
 | 22 | `ProposalSubmitted` `ISubmit:57` | `ProposalSubmitted` | 保留 | 不变：`tokenAddress` i、`round`、`submitterId` i、`proposalId` i | — |
 | 23 | `Voted` `IVote:19` | `VoteCast` | 改名+改形 | 增 `voterBoost`（成员本轮快照）、`totalVoterBoost`（全局快照） | 覆盖 `Vote.sol:274-280` 的 boost 快照缺口 |
@@ -126,7 +126,7 @@
 | 事件 | 发射者 | 触发 | 关键字段 | 覆盖的缺口 |
 |---|---|---|---|---|
 | `GenesisTokenCreated` | `Launch` | `Launch.init` | `tokenAddress` i、`parent` i、`distributor`、`name`、`symbol` | 创世哨兵 `launcherMemberId=0` |
-| `LaunchCountConsumed` | `Launch` | `launchToken` 扣减后 | `tokenAddress` i、`memberId` i、`count`、`remaining` | `Launch.sol:161` 静默扣减 |
+| `LaunchCountConsumed` | `Launch` | `launchToken` 扣减后 | `tokenAddress` i、`memberId` i、`remaining` | `Launch.sol:161` 静默扣减 |
 | `GroupActionCreated` | `GroupActionExecutor` | `onProposalCreated` | 8 项 action 配置 + verification schema | `GroupActionManager.onProposalCreated` 全部静默写；域对象创建事实 |
 | `ServiceActionCreated` | `GroupServiceExecutor` | `onProposalCreated` | 4 项 service 配置 | `GroupServiceExecutor.onProposalCreated` 全部静默写；域对象创建事实 |
 | `LpActionCreated` | `LpExecutor` | `onProposalCreated` | 3 项 LP 配置 | `LpExecutor.onProposalCreated` 全部静默写；域对象创建事实 |
@@ -211,10 +211,11 @@
 | O8 | `LpExecutor.withdraw` 全额提取是否补发 `LpExited`？ | 已确认：只要 `_clearJoinState` 执行（全额 withdraw 或 exit），统一发 `LpWithdrawn` + `LpExited`；`exit()` 补 `LpWithdrawn` | 两处 emit + 测试；纳入事件重构 |
 | O9 | `forceExit` 的语义与命名 | 已改判：executor 故障时的兜底，只清 ActionTarget 注册表并发 `JoinStateCleared(forced=true)`；**不回调 executor**、不结算资金、不发 `*Exited`；重命名 `forceClearJoinState`（现有 `clearJoinState` 是 executor 回调，不能复用） | 防止有问题的 executor 永久污染成员行动清单；不新增失败事件；实现仅为改名与文档 |
 | O10 | `OriginScoresSubmitted` 的逐成员 finalScore / LP 的 `_govRatioAtMint` 是否补字段？ | 先按派生缓存；若要求绝对自足再补 | 事件体积 vs 折叠复杂度 |
-| O11 | `GovRewardMinted.burnReward` 是否删除？ | 删除，由 `RewardBurned` 承载 | 少一个重复金额字段 |
+| O11 | `GovRewardMinted.burnReward` 是否删除？ | **2026-10-28 改判：保留**。`RewardBurned` 不带 `memberId`，成员归属只能由 `GovRewardMinted` 给出；且 `voteReward + boostReward == 0 && burnReward > 0` 可达，事件名 `Minted` 会失真 | 多一个与 `RewardBurned` 同值的字段，属有意冗余（§3.1） |
 | O12 | 需新增的链上上限：`TokenLaunched.name/symbol`（init 路径）、`ProposalCreated.title/details`、`verificationKeys/Descriptions`、`verificationValues`、`remarks`、`targetData` | 全部加上限并写入规范；具体数值见 O4–O7 | 接口级校验变更 |
 | O13 | `PostMessage` indexed 是否改为 `groupId, messageId, senderId`？ | 是；`senderAddress` 入 payload | 提高按消息 id 过滤能力；地址过滤需后置 |
 | O14 | `VerifierLocked` / `StakesMerged` indexed 对齐 | 按 §1/§2 执行 | 修复同组不一致 |
+| O15 | 加速份额是否需要成员级「有效值」字段？ | 不需要：`BoostStaked`/`StakesMerged`/`StakeWithdrawn` 三个时点上 `boostShares` 就是有效值，`Unstaked` 之后有效值恒为 0（由事件名承载）。全局侧相反，`totalBoostShares` 与 `totalValidBoostShares` 会分叉，两者并存 | 成员级不新增字段；全局新增一个总量 |
 
 ---
 

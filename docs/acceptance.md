@@ -59,7 +59,7 @@
 - 激励结算精度无损失
 
 ### 行动公式零值边界
-**覆盖要求**：覆盖 LP 时间扣减封顶、`totalEffectiveAmount` 为零，以及治理上限启用时 `totalGovVotes` 为零；覆盖链群 `totalVotes`/`totalFinalScore` 为零时不除零且行动层激励为零，并验证底层 Proposal 激励仍可独立处理。`govRatioMultiplier == 0` 时不得因治理票为零错误地清零 LP 或服务激励。
+**覆盖要求**：覆盖 LP 时间扣减封顶、`totalEffectiveAmount` 为零，以及治理上限启用时 `totalValidGovVotes` 为零；覆盖链群 `totalVotes`/`totalFinalScore` 为零时不除零且行动层激励为零，并验证底层 Proposal 激励仍可独立处理。`govRatioMultiplier == 0` 时不得因治理票为零错误地清零 LP 或服务激励。
 
 **测试方式**：
 - 单元测试：边界值参数化测试

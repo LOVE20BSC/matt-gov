@@ -71,11 +71,11 @@ totalDeduction -= deductionReduction
 
 ## 治理上限与分配
 
-成员与社区治理票均在铸造时读取 `Stake.validGovVotes(tokenAddress, memberId)` 和 `Stake.globalGovVotes(tokenAddress)`。已铸造轮次的 `govRatio` 返回当时记录，不受后续质押变化影响。
+成员与社区治理票都在**铸造时按当前 Round** 读取：`Stake.validGovVotes(tokenAddress, currentPhase, memberId)` 与 `Stake.totalValidGovVotes(tokenAddress, currentPhase)`，其中 `currentPhase = IPhase.currentPhase()`。被结算的 `round`（`mintRound = currentPhase - 2`）不参与这张票权——旧版读的 `validGovVotes(tokenAddress, memberId)` / `globalGovVotes(tokenAddress)` 同样是当前值，口径不变。结果按被结算轮冻结在 `_govRatioAtMint[tokenAddress][actionId][round][memberId]`，`govRatio` 查询返回该记录，不重新套用后续质押变化。
 
 ```text
 theoreticalReward = floor(proposalReward * effectiveAmount / totalEffectiveAmount)
-govRatio = floor(validGovVotes * 1e18 / totalGovVotes)
+govRatio = floor(validGovVotes * 1e18 / totalValidGovVotes)
 govRatioCap = floor(govRatio * govRatioMultiplier / 1e18)
 mintReward = effectiveLpRatio <= govRatioCap
     ? theoreticalReward

@@ -120,8 +120,8 @@ Core 门禁：**446 tests 全绿**；`build --deny warnings`、`lint`、`check_c
 - **错误改名与承接**：`NotEnoughWaitingBlocks` → `NotEnoughWaitingPhases`；删除 `InvalidToAddress()`、`RoundHasNotStartedYet()`，后者的「轮次尚未开始」语义由 `InvalidPhase(uint256)` 承接（与 `IPhaseErrors` 同名同参数）；`SlippageExceeded` 的两个参数分别是请求容差与实际偏离；`SourceAndTargetMustBeDifferent()` 在 `ILaunch`、`IStake` 重复且无载荷，统一为 `SourceAndTargetMemberIdsMustBeDifferent(sourceMemberId, targetMemberId)`；`SourceHasUsedStakeRightsInCurrentRound()` / `MemberHasUsedStakeRightsInCurrentRound()` 是同一条件按调用角色换名，统一为 `StakeRightsUsedInCurrentRound(memberId)`
 - **新增事件**：`FeesSettled`、`StakeMerged`
 - **事件改名与改字段**：`StakeToken` → `StakeBoost`；`StakeLiquidity` 增加 `tokenAmountDesired`/`parentTokenAmountDesired` 并保留实际入池量；`StakeLiquidity`/`Unstake`/`Withdraw`/`StakeBoost` 的账户参数由 `address account` 改为 `uint256 memberId`
-- **新增函数**：`init`、`settleFees`、`mergeStake`、`canWithdraw`、`globalStakeData`、`pairAddress`、`totalBurnedToken`、`totalParentTokenBurned` 及 6 个依赖 getter
-- **函数改名与改参**：`govVotesNum` → `globalGovVotes`；`accountStakeStatus` → `stakeData`；`cumulatedTokenAmountByAccount` → `cumulatedBoostShares`；`stakeTokenUpdatedRoundsCount`/`AtIndex` 与 `...ByAccountCount`/`AtIndex` 两对 → 分页 `globalBoostUpdatedRounds`/`boostUpdatedRounds`；`stakeToken` → `stakeBoost`；`unstake`/`withdraw` 由 `(address)` 改为 `(address, uint256 memberId)`
+- **新增函数**：`init`、`settleFees`、`mergeStake`、`canWithdraw`、`totalStakeData`、`pairAddress`、`totalBurnedToken`、`totalParentTokenBurned` 及 6 个依赖 getter
+- **函数改名与改参**：`govVotesNum` → `totalValidGovVotes`；`accountStakeStatus` → `stakeData`；`cumulatedTokenAmountByAccount` → `validBoostShares`（同时新增社区口径 `totalValidBoostShares` 与 `totalValidBoostSharesAdded`/`Removed`）；`stakeTokenUpdatedRoundsCount`/`AtIndex` 与 `...ByAccountCount`/`AtIndex` 两对删除（「哪些 Round 发生过变更」由 `BoostStaked`/`Unstaked`/`StakesMerged` 的 `round` 折叠得到，链上不再枚举）；`stakeToken` → `stakeBoost`；`unstake`/`withdraw` 由 `(address)` 改为 `(address, uint256 memberId)`
 - **删除函数**：`caculateGovVotes`、`cumulatedTokenAmount`、`initialStakeRound`
 - **删除错误**：`InvalidMemberId()`；`memberId == 0` 与不存在的 `memberId` 同走 `MemberNFT.ownerOf` 的标准错误（`ERC721NonexistentToken`），鉴权先于参数校验，不再保留专门的零值错误
 - **新增 DEX 依赖声明**：`IPair`、`IPairFactory`、`IRouter` 三个最小外部接口，落在 `core/src/interfaces/`，**不进入 `matt-gov/interfaces/`**（它们不是 LOVE20 自有 ABI，而是外部部署的调用面，仓库不引入 Uniswap 依赖）；增删 LP 直接经 Pair，Router 只用于父币手续费换币，Factory 的 `createPair` 由 `Launch` 在创建代币（首币与子币）时调用、`getPair` 由 `Stake` 在首次质押时读取——旧 `LOVE20TokenFactory.createToken` 也是创建代币时一并 `createPair`，BSC 把这个位置随 TokenFactory 一起并入了 `Launch`
@@ -187,7 +187,7 @@ Core 门禁：**446 tests 全绿**；`build --deny warnings`、`lint`、`check_c
   - **不设单条详情入口**：读一条传单元素数组，避免出现只差一个字母、返回值却是两种东西的近名对
   - **命名记号**：数组返回值在名字里体现载荷——`Ids` 只回轻量标识、`Infos` 回记录本体，裸集合名不用于返回数组的函数；筛选条件进名字（默认全量不标记、`By<key>` 按键、`ByIds` 显式 ID 数组）；是否分页不进名字，由入参 `(offset, limit, reverse)` 决定，不为同一集合另设无窗口的全量重载
   - 旧 `actionsAtIndex`/`actionSubmitsAtIndex` 直接在枚举里回结构体，改为「分页回标识 + 按 id 批量取详情」
-  - **命名依据**：分页记号沿用 core 已实现集合读取的复数集合名（`syncObservations`、`holders`、`tokens`、`childTokens`、`boostUpdatedRounds`）与 group-chat 里轻量标识带 `Ids` 的先例（`votedSenderIds`、`memberIds`）；「按显式 ID 数组取记录」沿用 group-chat 的 `chatInfos`/`roundInfos`（复数 + `Infos`）。仓库现有 28 个分页函数全部以参数 `(offset, limit, reverse)` 表意，名字里不带任何分页记号，本接口沿用同一口径
+  - **命名依据**：分页记号沿用 core 已实现集合读取的复数集合名（`syncObservations`、`holders`、`tokens`、`childTokens`）与 group-chat 里轻量标识带 `Ids` 的先例（`votedSenderIds`、`memberIds`）；「按显式 ID 数组取记录」沿用 group-chat 的 `chatInfos`/`roundInfos`（复数 + `Infos`）。仓库现有 28 个分页函数全部以参数 `(offset, limit, reverse)` 表意，名字里不带任何分页记号，本接口沿用同一口径
 
 #### 新增与改名错误（相对旧代码，用于精准 revert）
 | 错误名 | 触发条件 | Selector |
@@ -218,14 +218,14 @@ Core 门禁：**446 tests 全绿**；`build --deny warnings`、`lint`、`check_c
 ### ✅ 保留逻辑
 - 投票流程和票数记录：参考 `LOVE20TKM/core/src/LOVE20Vote.sol`
 - 投票增量机制（同一 Round 可多次投票，累计不得超过票上限）
-- 票上限来自 `Stake.validGovVotes`，与旧 `maxVotesNum` 同源
+- 票上限来自 `Stake.validGovVotes`，与旧 `maxVotesNum` 同源；该入口按 `round` 取时点值，Vote 传当前 Round，历史值同样可查
 
 ### 🔄 关键变化
 - **主体身份**：`voterAddress` → `voterId (memberId)`
 - **权限校验**：`msg.sender` → `MemberNFT.ownerOf(voterId) == msg.sender`（新增 `NotMemberOwner(uint256)`）
 - **初始化**：旧 `constructor(originBlocks, phaseBlocks)` 与 `initialize(stakeAddress_, submitAddress_)` → `init(phaseAddress, stakeAddress, submitAddress, memberNFTAddress)`，四个依赖地址都做非零校验（`InvalidAddress()`）
 - **时间源**：旧继承 `Phase` 基类的 `currentRound()` → 读 `IPhase(phaseAddress).currentPhase()`，并新增 `isRoundEnded(round)`（`round == 0` 返回 `false`）
-- **加速快照（新增能力）**：旧 Vote 不保存质押快照，BSC 新增 `stakedAmountOfVotersByMemberId` 与 `stakedAmountOfVoters`，供 Mint 的 `memberBoost` 与 `totalBoost` 读取。首投记入 `Stake.cumulatedBoostShares(tokenAddress, round, memberId)` 全量，之后再次投票只补记高于已记值的正增量，未增加不更新；质押增加但没有后续投票不更新快照
+- **加速快照（新增能力）**：旧 Vote 不保存质押快照，BSC 新增 `stakedAmountOfVotersByMemberId` 与 `stakedAmountOfVoters`，供 Mint 的 `memberBoost` 与 `totalBoost` 读取。首投记入 `Stake.validBoostShares(tokenAddress, round, memberId)` 全量，之后再次投票只补记高于已记值的正增量，未增加不更新；质押增加但没有后续投票不更新快照
 - **Target 回调（新增能力）**：每笔投票在状态写完后回调 `IProposalTarget.onProposalVoted`，转发 `round`、`voterId`、本次增量票数与 Target Data；`NoCallback` 或 `target` 为零时跳过，回调失败整笔回滚。目标与模式从 `ISubmit.proposalTarget` 读取，不读整条 `ProposalInfo`
 - **批量入参加 Target Data**：`vote` 增加 `memberId` 与 `targetData`；`targetData` 可传空外层数组，表示每笔回调都使用空 Target Data，传入时必须与 `proposalIds` 等长
 - **枚举改分页**：6 个 `*Count`/`AtIndex` → 3 个分页入口，与 Submit、Stake、Phase 同一口径

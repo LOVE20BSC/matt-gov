@@ -43,6 +43,8 @@
 
 - 必须使用事实增量模型：只携带该事实产生的字段，不重复未变化字段。
 - 涉及累计值时可以携带发射时点的累计值（总量、余额、累计奖励等）；该值必须等于按日志顺序折叠出的结果，且不得替代增量字段。
+- 一个聚合量被多个事件改变时（例如 `Stake` 的治理票总量、加速份额总量），**每个改变点都应当携带后置总量**；只在一部分改变点携带属于族内漂移，消费方无法判断字段缺失是「没变」还是「没记」。只在单个事件上变化的聚合量（如 `Stake.totalBurnedToken`）同样在改变它的事件上携带总量，使该维度有可直接对账的锚点。
+- 同一金额出现在两条事件中不构成重复表达，前提是两条事件描述的是不同事实、且各自需要该金额：`GovRewardMinted.burnReward` 与同笔 `RewardBurned(BoostOverflow).amount` 同值，前者给出成员归属（`RewardBurned` 不带 `memberId`），后者记全局销毁账本。此类跨事件冗余必须在模块规格中登记理由。
 - 同一事实不得由多条事件重复表达；同一状态维度的不同迁移可以拆成不同事件类（例如 `Activated` 与 `Deactivated`）。
 
 ### 3.2 可重建的业务投影
@@ -400,14 +402,14 @@ v1 基线：
 
 ## 8. 可执行化
 
-1. 每个事件至少一个测试断言：发射条件、发射次数、字段顺序、indexed 布局、**字段取值**。同一事件内两个同类型字段必须由**取值可区分**的夹具断言——把两个实参互换后测试仍通过，等于没有断言。协议上恒等的成对字段免于此条，但必须满足其一并在 `.scratch/events-spec/03-migration-status.md` 的「恒等对」清单登记理由（迁移冻结后该清单并入本文 §7 的对象表，随对象表一起维护）：(a) §6.4 的 `<role>Id` / `<role>` 成对槽位，且该 id 必然等于另一字段（`GroupChatActivated.ownerId` ≡ `groupId`，因为群就是群主的 MemberNFT）；(b) 1:1 记账使增量字段恒等于金额字段（`BoostStaked.boostAmount` ≡ `boostSharesAdded`）。
+1. 每个事件至少一个测试断言：发射条件、发射次数、字段顺序、indexed 布局、**字段取值**。同一事件内两个同类型字段必须由**取值可区分**的夹具断言——把两个实参互换后测试仍通过，等于没有断言。协议上恒等的成对字段免于此条，但必须满足其一并在 `.scratch/events-spec/03-migration-status.md` 的「恒等对」清单登记理由（迁移冻结后该清单并入本文 §7 的对象表，随对象表一起维护）：(a) §6.4 的 `<role>Id` / `<role>` 成对槽位，且该 id 必然等于另一字段（`GroupChatActivated.ownerId` ≡ `groupId`，因为群就是群主的 MemberNFT）；(b) 1:1 记账使两个字段恒等，或同事件内两个字段的乘积恒等于第三个字段（`StakesMerged.targetGovVotes` ≡ `targetLiquidityShares × targetPromisedWaitingPhases`、`prevSourceGovVotes` ≡ `liquiditySharesMerged × prevSourcePromisedWaitingPhases`）——后者保留派生值是为了让消费方免于复算，属有意冗余。两个字段只是「本次夹具恰好同值」不构成恒等，必须改夹具让它们分开。
 2. 每个仓库维护两份事件表：从 ABI 生成的「事件清单」基线 `script/events/events-baseline.txt`，以及「事件 → 族」映射 `script/events/event-families.txt`。检查器 `<repo>/script/events/check-events.py` 校验族覆盖、根键首字段与 `round` 锚点，并对比 ABI 基线；新增/修改/删除事件必须显式更新两份表。检查器内的族槽位表是 §6.1 的**逐仓切片**，只登记本仓发射的族，全量以本文为准；切片之外的部分（ABI 扫描、基线比对、槽位判定）三仓逐字节相同。各仓 `.github/workflows/ci.yml` 在 push/PR 运行该检查器。
 3. 新增或修改事件时，必须同步更新覆盖矩阵与本文的对象模型；只改代码不改模型视为规范缺陷。
 4. 事件声明与 emit 点不写注释；语义只写在本文。
 5. 事件签名以各仓 `src/interfaces/` 为准；本文不复制签名。
 6. 共享事件类的全部发射者必须在本文 §4.2 与 ABI 基线中列明。
 7. 顺序测试必须覆盖依赖序（§3.4 第 5 条），至少：`RewardBurned → RewardPrepared`、`FeesSettled → StakeWithdrawn`、`TokenMinted`/`LaunchCountAdded` → 依赖它们的 `GovRewardMinted`。
-8. 累计值测试必须断言 `cumulative == fold`，至少覆盖 `RewardPrepared.rewardBurned`/`rewardReserved`、`OriginScoresSubmitted.totalFinalScore`、`LaunchCountAdded.issuedCount`、`ApplicationVoteRecorded.totalVotes`。
+8. 累计值测试必须断言 `cumulative == fold`，至少覆盖 `RewardPrepared.rewardBurned`/`rewardReserved`、`OriginScoresSubmitted.totalFinalScore`、`LaunchCountAdded.issuedCount`、`ApplicationVoteRecorded.totalVotes`、`FeesSettled.totalBurnedToken`/`totalParentTokenBurned`，以及按事件逐个枚举的聚合量：`totalValidGovVotes` 在 `LiquidityStaked`/`BoostStaked`/`Unstaked`/`StakesMerged`；`totalValidBoostShares` 在 `BoostStaked`/`Unstaked`；`totalBoostShares` 在 `BoostStaked`/`StakeWithdrawn`；`totalLiquidityShares` 在 `LiquidityStaked`/`StakeWithdrawn`。两个 `valid*` 总量必须等于同轮 `Added - Removed`，两个余额/份额总量必须等于 `totalStakeData` 的同名字段——只断言其中一个锚点不算覆盖。
 9. 例外路径测试必须逐条覆盖 E1–E4：
    - E1：`TokenMinted → GenesisTokenCreated`/`TokenLaunched`，事件中的地址与部署地址一致；
    - E2：mock 返回值与预计算不同，事件报告实际返回值；
