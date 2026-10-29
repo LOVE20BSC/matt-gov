@@ -145,6 +145,12 @@
 - **清理**：删除 `GroupChatDelegate` 重复的 `IMemberNFT` import。
 - **门禁**：`forge build --force --deny warnings`、`forge lint` 通过；`forge test` **168 / 168**；`check-events.py` 21 条 / 19 个唯一事件名；`check_errors.py --check` violations 0；`check_doc_payloads.py` mismatches 0；`check_error_tests.py` untested 0；`check_caller_auth.py` 0；`deploy_scripts_test.py` 13/13。
 
+## 2026-10-29 emit 统一具名参数
+
+- **规则**：`event-standards.md` §6.11 要求所有 `emit` 使用 kv 具名参数（`emit E({field: value})`），含测试与 mock；`emit E({` 与 `});` 各自独占一行，每个参数独占一行；零字段事件只能写 `emit E()`。键名与顺序由 ABI 声明锁定；三仓 `check-events.py` 扫描 `src/`、`test/`、`script/`（`log_*` 豁免）。`dex` 整体豁免（上游源码零修改）。
+- **落地**：三仓 143 处 emit 全部改写（core 33 / action 90 / group-chat 20），并修正 4 处存量键序漂移（`StakesMerged`、`ActionRegistered`、`RecipientTableChanged`、`ServiceRewardsDistributed`）；另把 25 处「一行多字段 / 花括号同行」改为一行一字段（涉及 12 个文件，含原批次未触及的 `LOVE20Token.sol`、`Launch.sol`、`LpExecutor.sol`）。HEAD 与工作树编译产物逐字节一致（592 个工件，其中 292 个非空字节码），事件基线与 families 不变。
+- **门禁**：`forge build --force --deny warnings`、`forge lint` 三仓通过；`forge test` **1102 / 1102**（473 / 461 / 168）；`check-events.py` 28 / 34 / 21 且 emit style OK；`deploy_scripts_test.py` 37 / 48 / 13；`check_doc_payloads.py` 0；`check_error_tests.py` untested 0；`check_caller_auth.sh` 0；`check_errors.py --check` 0（registry 按本批行号重生成，diff 仅 `file:line`）。
+
 ## 待收尾
 
 1. **提交授权**：三仓需要提交后，才能把 `action/lib/core` 指向新 core、把 `group-chat/lib/action` 指向新 action；随后重跑跨仓集成测试。用户未授权前不提交。
