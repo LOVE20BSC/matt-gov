@@ -113,6 +113,38 @@ def selector_of(signature: str, cache: dict[str, str]) -> str:
     return out
 
 
+def error_params_one_per_line(clean: str, match: re.Match) -> bool:
+    """True when a multi-parameter `error` declaration puts each parameter on its own line."""
+    open_paren = clean.index("(", match.start())
+    close_paren = match.end() - 1
+    while clean[close_paren] != ")":
+        close_paren -= 1
+    starts, depth, seg = [], 0, open_paren + 1
+    for i in range(seg, close_paren + 1):
+        if i < close_paren:
+            ch = clean[i]
+            if ch in "([{":
+                depth += 1
+                continue
+            if ch in ")]}":
+                depth -= 1
+                continue
+            if ch != "," or depth:
+                continue
+        entry = clean[seg:i]
+        if entry.strip():
+            starts.append(seg + len(entry) - len(entry.lstrip()))
+        seg = i + 1
+    if len(starts) < 2:
+        return True
+    lines = [line_of(clean, start) for start in starts]
+    open_line = line_of(clean, open_paren)
+    close_line = line_of(clean, close_paren)
+    if not (open_line < lines[0] and lines[-1] < close_line):
+        return False
+    return all(lines[i] > lines[i - 1] for i in range(1, len(lines)))
+
+
 def collect() -> tuple[list[dict], list[str], dict]:
     declarations: list[dict] = []
     violations: list[str] = []
@@ -168,6 +200,10 @@ def collect() -> tuple[list[dict], list[str], dict]:
                 line = line_of(clean, m.start())
                 if "/interfaces/" not in f"/{loc}":
                     violations.append(f"{loc}:{line}: error {name} declared outside src/interfaces")
+                if not error_params_one_per_line(clean, m):
+                    violations.append(
+                        f"{loc}:{line}: error {name} must put each parameter on its own line"
+                    )
                 signature = canonical_signature(name, params)
                 if "?" in signature:
                     violations.append(
