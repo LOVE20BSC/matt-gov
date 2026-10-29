@@ -63,8 +63,8 @@
 | JoinState | 注册/清除（注册表） | `JoinStateRegistered` / `JoinStateCleared` | 三张 ActionTarget 索引 | 与 executor 的 join/exit 是两条事实；`forceClearJoinState`（原 `forceExit`）是 owner 兜底，只清注册表、不回调 executor |
 | JoinState | 加入 | `GroupActionJoined` | 加入轮、组、金额、provider、verificationValues | 含 verificationValues（≤16×1024）；空数组＝本次无新值 |
 | JoinState | 提取/退出 | `GroupActionWithdrawn` / `GroupActionExited` | 金额、组、退出轮 | — |
-| ProviderQuota | 配额增加/移除 | `ProviderQuotaAdded` / `ProviderQuotaRemoved` | quota、provider 索引 | 增 `quotaTotal`；块高用日志元数据 |
-| ProviderQuota | 退出回填 | `ProviderQuotaRefunded`（新增） | provider、member、amount | 替代 `Withdrawn` 复用 |
+| ProviderQuota | 配额增加/移除 | `ProviderQuotaAdded` / `ProviderQuotaRemoved` | quota、provider 索引 | 两条事件都带 `quotaTotal`（后置授权额度），`providerQuotaWithdraw` 的 `Removed` 不隐含归零（可部分撤回）；`providerQuotaWithdraw` 按链群只撤回未使用额度、参与量不变；`providerQuotaRemove` 收回整笔授权：已投入部分发 `GroupActionWithdrawn`、授权清零发 `ProviderQuotaRemoved`（`quotaTotal = 0`）；`used` 由参与族 `GroupActionJoined`/`GroupActionWithdrawn` + `ProviderQuotaRestored` 折叠，且只计成员当前所属链群（旧群行恒 0）；块高用日志元数据 |
+| ProviderQuota | 退出恢复 | `ProviderQuotaRestored`（新增） | provider、member、amount | 替代 `Withdrawn` 复用；只恢复可用额度、不转账 |
 | Verification | 申请/取消/替换 | `VerifierApplicationSubmitted` / `VerifierApplicationCancelled` | application、description、previousApplication、hasPreviousApplication | 增 description/previousApplicationId/hasPreviousApplication |
 | Verification | 质押/退款 | `VerifierStakeDeposited` / `VerifierStakeRefunded` | stake、member | — |
 | Verification | 提交原始分 | `OriginScoresSubmitted` | scores、锁定 verifier、累计 final/total/verifiedGroupCount、roundVerified、groupVerified | 增累计字段；逐成员 finalScore 可折叠；`groupVerified` 只标本批是否收尾该群，与整轮 `roundVerified` 分开 |
@@ -113,7 +113,7 @@
 6. **额度**：`LaunchCountAdded`/`LaunchCountMerged`/`LaunchCountConsumed` 折叠 = 成员余额 + 发行总量（含首 token 的根账本镜像）。
 7. **奖励**：`RewardPrepared`/`GovRewardMinted`/`ProposalRewardMinted`/`RewardBurned` 折叠 = 奖池、minted、burned、成员 entitlement；`_launchCredit` 按 §7 派生。
 8. **Action 配置**：`ActionRegistered` + 三个 `*ActionCreated` 折叠 = executor 的 action 配置全量；`MemberRewardMinted`/`ServiceRewardsDistributed`/`RecipientPaid` 折叠 = 成员实收与分发。
-9. **票据**：`GroupActionJoined`/`Withdrawn`/`Exited` + `JoinStateRegistered/Cleared` + `ProviderQuota*` 折叠 = 加入状态、金额、配额、退出轮。
+9. **票据**：`GroupActionJoined`/`Withdrawn`/`Exited` + `JoinStateRegistered/Cleared` + `ProviderQuota*` 折叠 = 加入状态、金额、配额（授权额度取 `quotaTotal`，已用额度 = 成员当前所属链群视角的投资额）、退出轮。
 10. **验证**：`OriginScoresSubmitted` + `ApplicationVoteRecorded` + `Verifier*` 折叠 = 原始分、加权分、排名、锁定、申请与质押。
 11. **兜底清理**：`JoinStateCleared(forced=true)` 只代表 ActionTarget 注册表清理；不得回调 executor，不要求 executor 事件；executor 仓位由自身退出路径处理。
 

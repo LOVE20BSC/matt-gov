@@ -50,7 +50,7 @@ Core 的预留、铸造和取消额度账本见 [Mint](../core/07-mint.md)，不
 | `NoGovVotes(address tokenAddress)` | 激励代币没有全局治理票，无法计算激活下限 |
 | `ZeroParticipationAmount()` | 加入、撤回或 Provider 撤回金额为零 |
 | `BelowMinJoinAmount(uint256 actual, uint256 minAmount)` | 首次加入量低于群最小加入量 |
-| `WithdrawAmountExceeded(uint256 amount, uint256 joined)` / `ProviderWithdrawAmountExceeded(uint256 amount, uint256 invested)` | 撤回超过自有余额 / 超过该 Provider 已投入量 |
+| `WithdrawAmountExceeded(uint256 amount, uint256 joined)` | 撤回超过自有余额 |
 | `GroupMaxJoinAmountExceeded(uint256 memberId, uint256 actual, uint256 limit)` / `ActionMaxJoinAmountExceeded(uint256 memberId, uint256 actual, uint256 limit)` | 加入后的成员总量超过群上限 / 行动上限 |
 | `GroupCapacityExceeded(uint256 groupId, uint256 actual, uint256 limit)` | 加入后的群总量超过 `maxCapacity` |
 | `GroupAccountsFull(uint256 groupId, uint256 count, uint256 maxCount)` | 首次加入时群成员数已达 `maxAccounts` |
@@ -79,6 +79,6 @@ Core 的预留、铸造和取消额度账本见 [Mint](../core/07-mint.md)，不
 | `NotQualified(address actionTokenAddress, uint256 round, uint256 memberId)` | 服务加入者既非社区激活群 owner，也没有该轮有效验证者申请 |
 | `ActionTokenParentMismatch(address actionTokenAddress, address serviceTokenAddress, address actualParentTokenAddress)` | 服务代币不是行动代币，且行动代币的实际父币不是服务代币；载荷同时给出行动代币、服务代币与实际父币 |
 
-Target Data 的项数、每项位置与编码由各 Executor 在自己的规格中固定，并在对应回调内自行校验，错误也声明在各自的 `Errors` 子接口；ActionTarget 只解析创建回调的第 `0` 项 executor。错误名自带字段，不复用「一个 `InvalidAddress` 覆盖多个字段」的写法：零地址按字段分别报 `Zero<Field>Address()`，比例按字段分别报 `Invalid<Field>(value)`，参与量按条件分别报 `ZeroParticipationAmount`/`BelowMinJoinAmount`/`WithdrawAmountExceeded`/`ProviderWithdrawAmountExceeded`；结算轮次按轴分别报 `RoundBeforeActionCreated` 与 `RoundAfterMintWindow`，阶段未开始统一报 `RoundNotStarted(requiredRound, currentRound)`。以上错误均在对应外层交易中回滚。
+Target Data 的项数、每项位置与编码由各 Executor 在自己的规格中固定，并在对应回调内自行校验，错误也声明在各自的 `Errors` 子接口；ActionTarget 只解析创建回调的第 `0` 项 executor。错误名自带字段，不复用「一个 `InvalidAddress` 覆盖多个字段」的写法：零地址按字段分别报 `Zero<Field>Address()`，比例按字段分别报 `Invalid<Field>(value)`，参与量按条件分别报 `ZeroParticipationAmount`/`BelowMinJoinAmount`/`WithdrawAmountExceeded`；结算轮次按轴分别报 `RoundBeforeActionCreated` 与 `RoundAfterMintWindow`，阶段未开始统一报 `RoundNotStarted(requiredRound, currentRound)`。以上错误均在对应外层交易中回滚。
 
 验收见 [Action 验收](08-testing.md)。

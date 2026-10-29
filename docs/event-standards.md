@@ -224,7 +224,7 @@ ERC-20 / ERC-721 标准事件保持不变，不进入本规范正文。`AddHolde
 | action.group | 根键 → actionId → round → groupId → 配置值 → 旧值 | `GroupActivated`、`GroupDeactivated`、`GroupConfigChanged` |
 | action.participation | 根键 → actionId → memberId → round → groupId → providerId → 数值/布尔 → 文本数组 | `GroupActionJoined`、`GroupActionWithdrawn`、`GroupActionExited`、`LpJoined`、`LpWithdrawn`、`LpExited`、`ServiceJoined`、`ServiceExited`、`JoinStateRegistered`、`JoinStateCleared`、`MemberRewardMinted` |
 | action.round | 根键 → actionId → round → 数值 | `ActionRewardMinted` |
-| action.quota | 根键 → actionId → groupId → providerId → memberId → 数值 | `ProviderQuotaAdded`、`ProviderQuotaRemoved`、`ProviderQuotaRefunded` |
+| action.quota | 根键 → actionId → groupId → providerId → memberId → 数值 | `ProviderQuotaAdded`、`ProviderQuotaRemoved`、`ProviderQuotaRestored` |
 | action.verification | 根键 → actionId → 主体 id（`memberId`/`groupId`/`voterId`/`verifierId`）→ round → `applicationId`/`verifierId` → 次级 id（被投的验证者 / 上一申请）→ 数值/布尔 → 文本/数组 | `OriginScoresSubmitted`、`VerifierApplicationSubmitted`、`VerifierApplicationCancelled`、`VerifierStakeDeposited`、`VerifierStakeRefunded`、`VerifierLocked`、`ApplicationVoteRecorded` |
 | action.recipients | 根键 → sourceActionId → round → groupId → 新表 → 旧表 | `RecipientTableChanged` |
 | action.service | 根键 → serviceActionId → round → 对象链（groupId 或 actionTokenAddress）→ 源链/角色 → 数值 | `RecipientPaid`、`ServiceRewardsDistributed` |
@@ -380,7 +380,7 @@ v1 基线：
 | ActionConfig | GroupAction / Service / LP 初始化 | `GroupActionCreated`、`ServiceActionCreated`、`LpActionCreated` |
 | GroupConfig | 激活、停用、配置变更 | `GroupActivated`、`GroupDeactivated`、`GroupConfigChanged` |
 | JoinState | 注册表注册/清除、加入、提取、退出 | `JoinStateRegistered`、`JoinStateCleared`、`GroupActionJoined`、`GroupActionWithdrawn`、`GroupActionExited`、`LpJoined`、`LpWithdrawn`、`LpExited`、`ServiceJoined`、`ServiceExited` |
-| ProviderQuota | 配额增加、移除、退出回填 | `ProviderQuotaAdded`、`ProviderQuotaRemoved`、`ProviderQuotaRefunded` |
+| ProviderQuota | 配额增加、移除、退出恢复 | `ProviderQuotaAdded`、`ProviderQuotaRemoved`、`ProviderQuotaRestored` |
 | Verification | 申请、取消、质押、退款、原始分、投票、锁定 | `VerifierApplicationSubmitted`、`VerifierApplicationCancelled`、`VerifierStakeDeposited`、`VerifierStakeRefunded`、`OriginScoresSubmitted`、`ApplicationVoteRecorded`、`VerifierLocked` |
 | RecipientTable | 设置收款表、分发 | `RecipientTableChanged`、`RecipientPaid` |
 | Rewards | 行动奖励、成员奖励、服务分发 | `ActionRewardMinted`、`MemberRewardMinted`、`ServiceRewardsDistributed` |

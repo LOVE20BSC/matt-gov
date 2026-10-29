@@ -10,7 +10,7 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/GroupActionJoin.sol:652"
+        "action/src/GroupActionJoin.sol:689"
       ],
       "selector": "0x2de9248d",
       "signature": "ActionMaxJoinAmountExceeded(uint256,uint256,uint256)"
@@ -25,7 +25,7 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/GroupActionExecutor.sol:742",
+        "action/src/GroupActionExecutor.sol:743",
         "action/src/GroupActionManager.sol:132",
         "action/src/GroupActionVerify.sol:167",
         "action/src/GroupServiceExecutor.sol:755",
@@ -139,7 +139,7 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/GroupActionJoin.sol:638"
+        "action/src/GroupActionJoin.sol:675"
       ],
       "selector": "0x21bb7f42",
       "signature": "BelowMinJoinAmount(uint256,uint256)"
@@ -260,7 +260,7 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/GroupActionJoin.sol:635"
+        "action/src/GroupActionJoin.sol:672"
       ],
       "selector": "0xbf0861bd",
       "signature": "GroupAccountsFull(uint256,uint256,uint256)"
@@ -290,7 +290,7 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/GroupActionJoin.sol:646"
+        "action/src/GroupActionJoin.sol:683"
       ],
       "selector": "0x5b3f94ec",
       "signature": "GroupCapacityExceeded(uint256,uint256,uint256)"
@@ -305,7 +305,7 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/GroupActionJoin.sol:629"
+        "action/src/GroupActionJoin.sol:666"
       ],
       "selector": "0xda731d54",
       "signature": "GroupMaxJoinAmountExceeded(uint256,uint256,uint256)"
@@ -320,8 +320,8 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/GroupActionJoin.sol:358",
-        "action/src/GroupActionJoin.sol:622",
+        "action/src/GroupActionJoin.sol:355",
+        "action/src/GroupActionJoin.sol:659",
         "action/src/GroupActionManager.sol:187",
         "action/src/GroupActionManager.sol:234"
       ],
@@ -340,8 +340,9 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/GroupActionJoin.sol:354",
-        "action/src/GroupActionJoin.sol:405",
+        "action/src/GroupActionJoin.sol:167",
+        "action/src/GroupActionJoin.sol:351",
+        "action/src/GroupActionJoin.sol:401",
         "action/src/GroupActionJoin.sol:68",
         "action/src/GroupActionManager.sol:40",
         "action/src/GroupServiceExecutor.sol:61"
@@ -404,7 +405,8 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/GroupActionJoin.sol:730"
+        "action/src/GroupActionJoin.sol:174",
+        "action/src/GroupActionJoin.sol:768"
       ],
       "selector": "0xca9ef3f9",
       "signature": "InsufficientProviderQuota(uint256,uint256,uint256)"
@@ -566,7 +568,7 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/GroupActionExecutor.sol:771",
+        "action/src/GroupActionExecutor.sol:772",
         "action/src/GroupServiceExecutor.sol:773",
         "action/src/GroupServiceExecutor.sol:783",
         "action/src/LpExecutor.sol:555"
@@ -767,22 +769,7 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/GroupActionJoin.sol:169"
-      ],
-      "selector": "0x1f409c81",
-      "signature": "ProviderWithdrawAmountExceeded(uint256,uint256)"
-    },
-    {
-      "declarations": 1,
-      "files": [
-        "action/src/interfaces/IGroupActionJoin.sol"
-      ],
-      "interfaces": [
-        "IGroupActionJoinErrors"
-      ],
-      "repo": "action",
-      "revert_sites": [
-        "action/src/GroupActionJoin.sol:351"
+        "action/src/GroupActionJoin.sol:348"
       ],
       "selector": "0x4a0b0bf7",
       "signature": "QuotaArrayLengthMismatch(uint256,uint256)"
@@ -797,7 +784,7 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/GroupActionJoin.sol:368"
+        "action/src/GroupActionJoin.sol:365"
       ],
       "selector": "0x3791977c",
       "signature": "QuotaMemberIsProvider(uint256)"
@@ -812,7 +799,7 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/GroupActionJoin.sol:417"
+        "action/src/GroupActionJoin.sol:471"
       ],
       "selector": "0x6ce01173",
       "signature": "QuotaNotGranted(uint256,uint256,uint256)"
@@ -872,7 +859,7 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/GroupActionExecutor.sol:753",
+        "action/src/GroupActionExecutor.sol:754",
         "action/src/GroupServiceExecutor.sol:766",
         "action/src/LpExecutor.sol:539"
       ],
@@ -889,7 +876,7 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/GroupActionExecutor.sol:749",
+        "action/src/GroupActionExecutor.sol:750",
         "action/src/GroupServiceExecutor.sol:762",
         "action/src/LpExecutor.sol:535"
       ],
@@ -906,7 +893,7 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/GroupActionExecutor.sol:745",
+        "action/src/GroupActionExecutor.sol:746",
         "action/src/GroupServiceExecutor.sol:758",
         "action/src/LpExecutor.sol:531"
       ],
@@ -927,7 +914,7 @@
         "action/src/ExecutorBase.sol:63",
         "action/src/ExecutorBase.sol:71",
         "action/src/GroupActionExecutor.sol:80",
-        "action/src/GroupActionStorage.sol:191",
+        "action/src/GroupActionStorage.sol:192",
         "action/src/GroupActionVerify.sol:540",
         "action/src/GroupServiceExecutor.sol:103",
         "action/src/GroupServiceStorage.sol:65"
@@ -1065,7 +1052,7 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/GroupActionJoin.sol:696"
+        "action/src/GroupActionJoin.sol:733"
       ],
       "selector": "0x4097cdca",
       "signature": "TooManyVerificationValues(uint256,uint256)"
@@ -1156,7 +1143,7 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/GroupActionJoin.sol:701",
+        "action/src/GroupActionJoin.sol:738",
         "action/src/GroupActionManager.sol:91"
       ],
       "selector": "0xe5b734dc",
@@ -1187,7 +1174,7 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/GroupActionJoin.sol:707"
+        "action/src/GroupActionJoin.sol:744"
       ],
       "selector": "0x762fe301",
       "signature": "VerificationValueTooLong(uint256,uint256,uint256)"
@@ -1301,7 +1288,6 @@
       "repo": "action",
       "revert_sites": [
         "action/src/GroupActionJoin.sol:124",
-        "action/src/GroupActionJoin.sol:163",
         "action/src/GroupActionJoin.sol:65",
         "action/src/LpExecutor.sol:184",
         "action/src/LpExecutor.sol:233"
@@ -1319,7 +1305,8 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/GroupActionJoin.sol:371"
+        "action/src/GroupActionJoin.sol:164",
+        "action/src/GroupActionJoin.sol:368"
       ],
       "selector": "0xb88ef067",
       "signature": "ZeroQuotaAmount(uint256)"
@@ -3131,14 +3118,14 @@
     }
   ],
   "summary": {
-    "declarations": 232,
+    "declarations": 231,
     "repos": {
-      "action": 99,
+      "action": 98,
       "core": 84,
       "group-chat": 49,
       "libs": 0
     },
-    "signatures": 192,
-    "unique_signatures": 182
+    "signatures": 191,
+    "unique_signatures": 181
   }
 }
