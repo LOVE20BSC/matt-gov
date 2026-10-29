@@ -428,7 +428,7 @@ v1 基线：
    - E3：接收方在 `onERC721Received` 中重入 `mint`，外层 `MemberMinted` 仍正确；
    - E4：`*Withdrawn`/`*Refunded` → `JoinStateCleared` → `*Exited`；部分撤回不产生 `*Exited`；真实 ActionTarget 下顺序一致。
 10. 边界成功值必须有测试（恰好等于上限时成功，上限 +1 时失败）：16 个 verification key/value、1024 字节 title/details/description、16 KiB 与 16 个 targetData 元素、10 个 recipient、256 字节 remark、96/32 字节 name/symbol。
-11. §6.11 的声明侧「一参数一行」与发射侧 kv 形式、「一 KV 一行」由各仓 `script/events/check-events.py` 扫描 `src/`、`test/`、`script/` 守护（`log_*` 豁免、零字段事件 `event E();` / `emit E()`）；键名与声明顺序为 review 核对项。
+11. §6.11 的声明侧「一参数一行」与发射侧 kv 形式、「一 KV 一行」由各仓 `script/events/check-events.py` 扫描 `src/`、`test/`、`script/` 守护（`log_*` 豁免、零字段事件 `event E();` / `emit E()`）；键名与顺序由同一脚本对照 `out/` 的 ABI 校验（同名事件按声明集合匹配，允许一个名字对应多份声明）。
 
 ---
 

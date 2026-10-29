@@ -159,6 +159,24 @@
 - **零语义变更**：仅空白改动，`bytecode_hash = "none"` + `cbor_metadata = false`，HEAD 与工作树 592 个工件（creation + runtime）逐字节一致；事件基线与 `event-families.txt` 未变。
 - **门禁**：`forge build --force --deny warnings`、`forge lint` 三仓通过；`forge test` **1102 / 1102**（473 / 461 / 168）；`check-events.py` 28 / 34 / 21 且 declaration style + emit style OK；`deploy_scripts_test.py` 37 / 48 / 13；`check_doc_payloads.py` 0；`check_error_tests.py` untested 0；`check_caller_auth.sh` 0；`check_errors.py --check` 0（本批只改 interface 与 mock，无 revert 行号位移）。
 
+## 2026-10-29 错误声明一参数一行
+
+- **规则**：`dev-standards.md` §5.1 明确「多参数声明一律每行一个参数」同样适用于 `error`（零/单参数保持单行），`error-standards.md` §十 审查清单加一条。
+- **落地**：三仓 127 处多参数声明拆行（core 38 / action 67 / group-chat 22，其中 `action/test/mocks/GroupServiceMocks.sol` 1 处），涉及 24 个文件；全部为空白改动。
+- **checker**：`check_errors.py` 新增 `error_params_one_per_line`，多参数未拆行即 violation（只扫 `src/`，mock 不在错误契约范围内，已一并改齐但不受门禁覆盖）。正反例 8 例通过；用 HEAD 回放 `ILOVE20Token.sol`（2 处）与 `IGroupActionJoin.sol`（14 处）全部被抓。
+- **零语义变更**：`bytecode_hash = "none"` + `cbor_metadata = false`，592 个工件 creation + runtime 逐字节一致；`registry/errors.{json,md}` 未变——catalog 只记 revert site 行号，接口内的声明行号不入库。
+
+## 2026-10-29 emit 键序机器化（P3-2 收尾）
+
+- **规则**：`event-standards.md` §8.11 把「键名与声明顺序」从 review 核对项升级为 checker 门禁。
+- **实现**：三仓 `check-events.py` 新增 `check_emit_keys`——`load_events` 顺带收集全量 ABI 的「事件名 → 参数名元组集合」，每个 kv emit 的键名序列必须等于其中一份声明；同名事件按集合匹配（`Transfer` 有 ERC-20/721 两份、共享事件类同 schema），未出现在任何 ABI 的事件单独报错。与 `load_events` 共用一次产物解析，无额外构建。
+- **验证**：10 例变异全部符合预期（键换序 / 未知键 / 缺键 / ABI 无此事件 → 报错；嵌套调用含逗号 / 结构体字面量 / 位置参数 / `log_*` → 放行）；覆盖率 143 处 kv emit（core 33 / action 90 / group-chat 20），0 处无 ABI 匹配。
+
+## 2026-10-29 本批门禁
+
+- `forge build --force --deny warnings`、`forge lint` 三仓通过；`forge test` **1102 / 1102**（473 / 461 / 168）。
+- `check-events.py` 28 / 34 / 21 且 declaration style + emit style + emit keys OK；`check_errors.py --check` 0；`check_doc_payloads.py` 0；`check_error_tests.py` untested 0；`check_caller_auth.sh` 0；`deploy_scripts_test.py` 37 / 48 / 13。
+
 ## 待收尾
 
 1. **提交授权**：三仓需要提交后，才能把 `action/lib/core` 指向新 core、把 `group-chat/lib/action` 指向新 action；随后重跑跨仓集成测试。用户未授权前不提交。
