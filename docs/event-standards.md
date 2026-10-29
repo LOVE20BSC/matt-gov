@@ -414,7 +414,7 @@ v1 基线：
 
 ## 8. 可执行化
 
-1. 每个事件至少一个测试断言：发射条件、发射次数、字段顺序、indexed 布局、**字段取值**。同一事件内两个同类型字段必须由**取值可区分**的夹具断言——把两个实参互换后测试仍通过，等于没有断言。协议上恒等的成对字段免于此条，但必须满足其一并在 `.scratch/events-spec/03-migration-status.md` 的「恒等对」清单登记理由（迁移冻结后该清单并入本文 §7 的对象表，随对象表一起维护）：(a) §6.4 的 `<role>Id` / `<role>` 成对槽位，且该 id 必然等于另一字段（`GroupChatActivated.ownerId` ≡ `groupId`，因为群就是群主的 MemberNFT）；(b) 1:1 记账使两个字段恒等，或同事件内两个字段的乘积恒等于第三个字段（`StakesMerged.targetGovVotes` ≡ `targetLiquidityShares × targetPromisedWaitingPhases`、`prevSourceGovVotes` ≡ `liquiditySharesMerged × prevSourcePromisedWaitingPhases`）——后者保留派生值是为了让消费方免于复算，属有意冗余。两个字段只是「本次夹具恰好同值」不构成恒等，必须改夹具让它们分开。
+1. 每个事件至少一个测试断言：发射条件、发射次数、字段顺序、indexed 布局、**字段取值**。同一事件内两个同类型字段必须由**取值可区分**的夹具断言——把两个实参互换后测试仍通过，等于没有断言。协议上恒等的成对字段免于此条，但必须满足其一并在 `.scratch/events-spec/03-migration-status.md` 的「恒等对」清单登记理由（迁移冻结后该清单并入本文 §7 的对象表，随对象表一起维护）：(a) §6.4 的 `<role>Id` / `<role>` 成对槽位，且该 id 必然等于另一字段（`GroupChatActivated.ownerId` ≡ `groupId`，因为 group-chat 域内 owner 的 actor id 恒为 `groupId`）；(b) 1:1 记账使两个字段恒等，或同事件内两个字段的乘积恒等于第三个字段（`StakesMerged.targetGovVotes` ≡ `targetLiquidityShares × targetPromisedWaitingPhases`、`prevSourceGovVotes` ≡ `liquiditySharesMerged × prevSourcePromisedWaitingPhases`）——后者保留派生值是为了让消费方免于复算，属有意冗余。两个字段只是「本次夹具恰好同值」不构成恒等，必须改夹具让它们分开。
 2. 每个仓库维护两份事件表：从 ABI 生成的「事件清单」基线 `script/events/events-baseline.txt`，以及「事件 → 族」映射 `script/events/event-families.txt`。检查器 `<repo>/script/events/check-events.py` 校验族覆盖、根键首字段与 `round` 锚点，并对比 ABI 基线；新增/修改/删除事件必须显式更新两份表。检查器内的族槽位表是 §6.1 的**逐仓切片**，只登记本仓发射的族，全量以本文为准；切片之外的部分（ABI 扫描、基线比对、槽位判定）三仓逐字节相同。各仓 `.github/workflows/ci.yml` 在 push/PR 运行该检查器。
 3. 新增或修改事件时，必须同步更新覆盖矩阵与本文的对象模型；只改代码不改模型视为规范缺陷。
 4. 事件声明与 emit 点不写注释；语义只写在本文。

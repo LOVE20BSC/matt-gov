@@ -107,7 +107,7 @@
 
 | 事件 | 成对字段 | 理由 |
 |---|---|---|
-| `GroupChatActivated` | `groupId` / `ownerId` | 群就是群主的 MemberNFT，`ownerId` 必然等于 `groupId`；保留 `ownerId` 是为满足 §6.4 的 id/address 成对，不是冗余 |
+| `GroupChatActivated` | `groupId` / `ownerId` | group-chat 域内 owner 的 actor id 恒为 `groupId`（`ownerOrDelegateIdOf(groupId, owner)` 返回 `groupId`，与群 NFT 由 EOA 还是 Manager 持有无关），故 `ownerId` 必然等于 `groupId`；保留它是为满足 §6.4 的 id/address 成对、并保持 `gc.management` 族 topic2 = actor id 的布局，不是冗余 |
 | `DelegateChanged` | `owner` / `ownerSnapshot`（`delegateId != 0`） | actor 地址槽与新快照组在非零委托时取同一个值：`owner` 是当前群主（actor），`ownerSnapshot` 写入的也是当前群主；`delegateId = 0` 时快照写零而 `owner` 非零，两者可分。结构上必须保留两个槽（actor 地址 + 新快照组），夹具无法区分只能登记 |
 | `StakesMerged` | `targetGovVotes` ≡ `targetLiquidityShares` × `targetPromisedWaitingPhases` | 同事件内两个字段的乘积；保留派生值让消费方免于复算 |
 | `StakesMerged` | `prevSourceGovVotes` ≡ `liquiditySharesMerged` × `prevSourcePromisedWaitingPhases` | 同上；`prevSource*` 是融合前源成员状态，源被清空后只能由此处取 |
