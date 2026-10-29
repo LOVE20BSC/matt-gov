@@ -151,6 +151,14 @@
 - **落地**：三仓 143 处 emit 全部改写（core 33 / action 90 / group-chat 20），并修正 4 处存量键序漂移（`StakesMerged`、`ActionRegistered`、`RecipientTableChanged`、`ServiceRewardsDistributed`）；另把 25 处「一行多字段 / 花括号同行」改为一行一字段（涉及 12 个文件，含原批次未触及的 `LOVE20Token.sol`、`Launch.sol`、`LpExecutor.sol`）。HEAD 与工作树编译产物逐字节一致（592 个工件，其中 292 个非空字节码），事件基线与 families 不变。
 - **门禁**：`forge build --force --deny warnings`、`forge lint` 三仓通过；`forge test` **1102 / 1102**（473 / 461 / 168）；`check-events.py` 28 / 34 / 21 且 emit style OK；`deploy_scripts_test.py` 37 / 48 / 13；`check_doc_payloads.py` 0；`check_error_tests.py` untested 0；`check_caller_auth.sh` 0；`check_errors.py --check` 0（registry 按本批行号重生成，diff 仅 `file:line`）。
 
+## 2026-10-29 事件声明统一一参数一行
+
+- **规则**：`event-standards.md` §6.11 由「发射写法」扩为「声明与发射写法」——声明侧与发射侧共用同一套折行规则（开括号行只放括号、每个参数独占一行、闭括号行只放闭括号与分号）；单字段事件同样拆行，零字段事件的声明与发射都只有单行形式（`event E();` / `emit E()`）。§8 检查项 11、§9 的两条写法适用范围、`dev-standards.md` §5.1 同步。
+- **落地**：4 处单行声明拆行——`action/test/mocks/GroupServiceMocks.sol` 的 `Transfer` / `TokenBurned`、`group-chat/src/interfaces/IGroupChatDelegate.sol` 的 `DelegationAcceptanceChanged`、`group-chat/src/interfaces/sources/ban/IGovVotedBanSource.sol` 的 `GovSenderBanChanged`。core 无需改动：三仓 83 处事件声明中，除上述 4 处外全部已合规（单字段事件本就无存量，故「单字段也拆行」当前无实例）。
+- **checker**：三仓 `check-events.py` 新增 `check_decl_style`，与 emit 侧共用 `bracket_entries` / `one_per_line`；`src`、`test`、`script` 全扫（`dex` 仍整体豁免）。变异矩阵 14 例（多参数同行 / 单参数同行 / 左括号带参数 / 右括号带参数 / 零字段折行 → 报错；合规多行 / 空行分隔 / 数组参数 / 注释 / 字符串 / 标识符含 `event` / 零字段单行 → 放行）全部符合预期；用 HEAD 版本回放，4 处违规全部被抓。
+- **零语义变更**：仅空白改动，`bytecode_hash = "none"` + `cbor_metadata = false`，HEAD 与工作树 592 个工件（creation + runtime）逐字节一致；事件基线与 `event-families.txt` 未变。
+- **门禁**：`forge build --force --deny warnings`、`forge lint` 三仓通过；`forge test` **1102 / 1102**（473 / 461 / 168）；`check-events.py` 28 / 34 / 21 且 declaration style + emit style OK；`deploy_scripts_test.py` 37 / 48 / 13；`check_doc_payloads.py` 0；`check_error_tests.py` untested 0；`check_caller_auth.sh` 0；`check_errors.py --check` 0（本批只改 interface 与 mock，无 revert 行号位移）。
+
 ## 待收尾
 
 1. **提交授权**：三仓需要提交后，才能把 `action/lib/core` 指向新 core、把 `group-chat/lib/action` 指向新 action；随后重跑跨仓集成测试。用户未授权前不提交。
