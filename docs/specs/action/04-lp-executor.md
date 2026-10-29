@@ -36,7 +36,7 @@ Target Data 是无键数组，按位置读取。第 `0` 项是 ActionTarget 保�
 | 同一成员同一轮重复结算 | `RewardAlreadyMinted(tokenAddress, actionId, memberId, round)` |
 | 非 ActionTarget 调用回调 | `NotActionTarget(caller)` |
 
-行动轮次的下界是该行动的创建轮（不小于 `1`），比按 Phase 推导的下界更严格：加入的下界由 ActionTarget 的 `JoinNotOpen` 承担，结算的下界由本 Executor 按创建轮校验。结算的第一段先判行动是否存在（`createdRound == 0` 回滚 `ActionNotCreated`），第二段才判轮次是否早于创建轮（`RoundBeforeActionCreated`），两段不合并。
+加入轮的下界是该行动的创建轮（不小于 `1`），比按 Phase 推导的下界更严格：加入的下界由 ActionTarget 的 `JoinNotOpen` 承担，结算的下界由本 Executor 按创建轮校验。结算的第一段先判行动是否存在（`createdRound == 0` 回滚 `ActionNotCreated`），第二段才判轮次是否早于创建轮（`RoundBeforeActionCreated`），两段不合并。
 
 ## 时间权重
 
