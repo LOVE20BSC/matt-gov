@@ -92,13 +92,11 @@
 | AdminSet | 增加/刷新/移除 | `AdminChanged` | adminId、listed、两个 owner 快照旧/新 | 合并 `SetAdminSnapshot`；转移失效由 core `Transfer` 推导 |
 | MemberSet | 成员增删 | `MemberStatusChanged` | memberId、listed | 布尔旧值可推 |
 | BanSet | 管理员封禁 | `SenderBanChanged` | targetSenderId、listed、operator | 旧值可推 |
-| BanSet | 投票 | `SenderBanVoteCast` | supportBan、settledWeight、累计 support/oppose、stateVersion | 旧方向由上一条事件推 |
-| BanSet | 投票结果封禁 | `GovSenderBanChanged` | targetSenderId、listed、stateVersion | — |
-| BanSet | 版本自增 | `StateVersionChanged` | stateVersion | 每次 +1 |
+| BanSet | 投票 | `SenderBanVoteCast` | supportBan、settledWeight、累计 support/oppose | 旧方向由上一条事件推 |
+| BanSet | 投票结果封禁 | `GovSenderBanChanged` | targetSenderId、listed | 每次已结算变更由本条或上一条投票事件携带 |
 | Delegation | 设置 delegate | `DelegateChanged` | delegateId、owner、ownerSnapshot、delegateOwnerSnapshot、prev* | 新快照组→旧快照组 |
 | Delegation | 清零 | `DelegationCleared` | delegateId、delegateOwner、prevOwnerSnapshot、prevDelegateOwnerSnapshot | 旧快照随清除事实携带 |
-| Delegation | 白名单开关 | `DelegatorWhitelistChanged` | enabled | 布尔旧值可推 |
-| Delegation | 允许的 delegator 群 | `DelegatorGroupPermissionChanged` | delegateId、groupId、allowed | 布尔旧值可推 |
+| Delegation | 接受开关 | `DelegationAcceptanceChanged` | delegateId、enabled | 布尔旧值可推；按 memberId 继承，不随 NFT 转移重置 |
 | ManagerLink | token → group | `TokenGroupActivated` | tokenAddress、groupId、operator | 链路事件 |
 | ManagerLink | token+action → group | `TokenActionGroupActivated` | tokenAddress、actionId、groupId、operator | 链路事件；3 槽给链路键 |
 | GroupName | 群名铸造 | core `MemberMinted` | memberId（= groupId）、owner、cost、name、normalizedName | group-chat 无群名事件；跨仓链路见 §0 |
@@ -110,7 +108,7 @@
 1. **群对象**：`MemberMinted(memberId = groupId)` + `TokenGroupActivated`/`TokenActionGroupActivated` + `GroupActivated` + `GroupChatActivated` + 后续 `*Changed` 事件，折叠结果必须等于三仓 view 的并集（名称/所有者、组配置、聊天配置、激活轮）。
 2. **消息**：`MessagePosted` + `SenderMentioned` 折叠 = 消息正文、引用、mentionAll、sender、round、messageId、提及集合。
 3. **管理员有效性**：`AdminChanged`（快照旧/新 + listed） + core ERC721 `Transfer`（owner 变化）折叠 = `isAdminId`。
-4. **封禁**：`SenderBanChanged`/`SenderBanVoteCast`/`GovSenderBanChanged`/`StateVersionChanged` 折叠 = 封禁集合、权重、版本。
+4. **封禁**：`SenderBanChanged`/`SenderBanVoteCast`/`GovSenderBanChanged` 折叠 = 封禁集合与权重。
 5. **质押**：`LiquidityStaked`/`BoostStaked`/`Unstaked`/`StakeWithdrawn`/`FeesSettled`/`StakesMerged` 折叠 = 成员 shares/govVotes/待解锁轮 + 全局 shares/govVotes/有效 boost/累计 burn；LP 基准按 §7 派生。
 6. **额度**：`LaunchCountAdded`/`LaunchCountMerged`/`LaunchCountConsumed` 折叠 = 成员余额 + 发行总量（含首 token 的根账本镜像）。
 7. **奖励**：`RewardPrepared`/`GovRewardMinted`/`ProposalRewardMinted`/`RewardBurned` 折叠 = 奖池、minted、burned、成员 entitlement；`_launchCredit` 按 §7 派生。
@@ -130,7 +128,6 @@
 | `GroupServiceExecutor._mintMemberReward` 的 `mintAmount` ≠ 实收 | 语义需定义 | `mintAmount` = entitlement；实收拆分在 `ServiceRewardsDistributed`（O3） |
 | `GroupChatBanList` 解禁时 operator 字段语义 | 旧 operator 状态已删，事件 actor 是执行者 | 规范明确 operator = 本次执行者 |
 | NFT 转移导致 admin 失效 | 跨合约派生 | core `Transfer` 折叠；不新增 group-chat 事件 |
-| `stateVersion` 一 tx 可自增两次 | 事件携带事实时点版本 | 规范说明 vote 事件的 version 不是 tx 末态 |
 | `originScoreDeduction=0` 满分/未提交歧义 | 存储哨兵 | 以 `OriginScoresSubmitted` 是否覆盖该成员/批次区分 |
 | LP 基准、`cacheDenominator`、`_govRatioAtMint`、pair 地址、观测历史、`_mintNonce` | 派生缓存 | 不进入事件；§01 §7 给出推导来源 |
 | 不可变部署参数（constructor/init） | 非可变状态 | 不进事件；由部署清单/脚本承担来源 |

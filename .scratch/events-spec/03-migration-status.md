@@ -85,8 +85,8 @@
 
 ## 最终核对
 
-- 事件声明：**76 / 唯一名 76**（core 23、action 32、group-chat 21），跨仓无重名；旧事件名在 `src/` 零残留。
-- 测试：core **474**、action **457**、group-chat **162**，全部 0 失败。
+- 事件声明：**76 / 唯一名 76**（core 23、action 32、group-chat 21），跨仓无重名；旧事件名在 `src/` 零残留。（2026-10-28 复核：**75 / 75**，group-chat 20）
+- 测试：core **474**、action **457**、group-chat **162**，全部 0 失败。（2026-10-28 复核：group-chat **166**）
 - 改动范围：三仓 `src/`、`test/`、`script/check-events.py`、`script/event-families.txt`、`script/events-baseline.txt`；matt-gov 规范与 `.scratch` 产物；未触碰 `lib/`、submodule、git 配置；未 commit/push。
 - 字段顺序规则：整组替换新组→旧组，逐字段 diff 旧→新；actor 的 id 在地址之前（已写入规范 §6.1/§6.4/§6.7）。
 
@@ -108,6 +108,7 @@
 | 事件 | 成对字段 | 理由 |
 |---|---|---|
 | `GroupChatActivated` | `groupId` / `ownerId` | 群就是群主的 MemberNFT，`ownerId` 必然等于 `groupId`；保留 `ownerId` 是为满足 §6.4 的 id/address 成对，不是冗余 |
+| `DelegateChanged` | `owner` / `ownerSnapshot`（`delegateId != 0`） | actor 地址槽与新快照组在非零委托时取同一个值：`owner` 是当前群主（actor），`ownerSnapshot` 写入的也是当前群主；`delegateId = 0` 时快照写零而 `owner` 非零，两者可分。结构上必须保留两个槽（actor 地址 + 新快照组），夹具无法区分只能登记 |
 | `StakesMerged` | `targetGovVotes` ≡ `targetLiquidityShares` × `targetPromisedWaitingPhases` | 同事件内两个字段的乘积；保留派生值让消费方免于复算 |
 | `StakesMerged` | `prevSourceGovVotes` ≡ `liquiditySharesMerged` × `prevSourcePromisedWaitingPhases` | 同上；`prevSource*` 是融合前源成员状态，源被清空后只能由此处取 |
 | `MessagePosted` | `hasQuote` ≡ (`quotedMessageId` != 0) | §3.6 禁哨兵：省略布尔就得把 `0` 读作「不存在」；保留派生布尔让消费方不必解读哨兵 |
@@ -133,9 +134,20 @@
 
 新增的不变量：`totalValidBoostShares(token, round) == Σ_m validBoostShares(token, round, m)`，事件里的 `totalValidBoostShares` 必须等于该查询结果。
 
+## 2026-10-28 版本与 owner/delegate 设计复核
+
+- **Version**：先删除冗余的 `StateVersionChanged`，随后**整体移除 `stateVersion` 字段、getter 与两个事件的尾部字段**。结论：版本没有链上读取方，也没有实际链下消费者（仅 2026-10-18 的缓存设想）；`IPostBanSource` 抽象不含版本，跨源缓存无法使用；每次已结算变更都完整由 `SenderBanVoteCast`/`GovSenderBanChanged` 携带，链下按事件失效即可。代码侧随之简化：`_setVoteIfChanged`/`_clearVoteIfFound` 返回 bool，`_syncBanList` 改为 void，新增 `_settleVote` 统一「发投票事件 + 同步名单」，`_ensureStateVersion` 与 `0` 哨兵删除。同票重投回 `VoteUnchanged`，不触发名单同步；该 target 上其它投票/撤票/刷新仍按实时分母重算名单，本票权重漂移只由 `refreshVoteBySenderId` 结算（T131C 覆盖「本会翻转仍 revert」）。保留规格说明：`supportWeight`/`opposeWeight`/`isBanned` 是已结算值，`totalVoteWeight` 是实时值，跨轮或 Stake 变化不会自动刷新。
+- **Delegate**：`DelegateChanged.prevDelegateId` 改取原始存储（此前取有效值），与 `prevOwnerSnapshot`/`prevDelegateOwnerSnapshot` 同组自洽；白名单撤销后再清空时，被清掉的原始 delegateId 可重建 `delegatedGroupIds` 的移除。新增 `testT144`。
+- **错误载荷**：`ScopeRejected`/`BanRejected` → `(groupId, senderId, source)`；`ScopeSourceFailed`/`BanSourceFailed`/`BanVoteWeightSourceUnavailable` 前置 `groupId`。`registry/errors.{json,md}` 重生成，group-chat 测试断言同步。
+- **委托接受开关（2026-10-29）**：删除按群白名单、`canSetDelegateTo` 与两个白名单事件；改为按 delegateId 的接受开关（默认关、只约束新指定、按 memberId 继承且不随 delegate NFT 转移重置），错误 `DelegateNotAcceptingNewDelegations(delegateId)`；`testT143C`/`testT143D` 锁定转移继承与重设顺序。
+- **鉴权**：保留各合约本地 modifier，不抽共享库——四处只共享一个谓词、没有共同入口面，规范 §5.5「十来行的判定留在原处，就近可读优先」。`GroupChat`/`GroupAdmin` 各自读 `ownerOrDelegateIdOf`（不含 admin），`GroupMember`/`GroupChatBanList` 各保留含 admin 分支的 `_isOperator` 谓词（探测防护注释随谓词保留）。
+- **§8.1 判别性**：`DelegateChanged` 的 `owner ≡ ownerSnapshot`（`delegateId != 0`）登记为恒等对；`AdminChanged` 新增 `testT129G`（群主转移后由新群主 `addAdmins`），使 `groupOwnerSnapshot` 与 `prevGroupOwnerSnapshot` 取值可区分。变异验证：把 `prevDelegateId` 改回有效值、把 `prevGroupOwnerSnapshot` 改回新值，分别被 `testT144`/`testT129G` 捕获。
+- **清理**：删除 `GroupChatDelegate` 重复的 `IMemberNFT` import。
+- **门禁**：`forge build --force --deny warnings`、`forge lint` 通过；`forge test` **168 / 168**；`check-events.py` 21 条 / 19 个唯一事件名；`check_errors.py --check` violations 0；`check_doc_payloads.py` mismatches 0；`check_error_tests.py` untested 0；`check_caller_auth.py` 0；`deploy_scripts_test.py` 13/13。
+
 ## 待收尾
 
 1. **提交授权**：三仓需要提交后，才能把 `action/lib/core` 指向新 core、把 `group-chat/lib/action` 指向新 action；随后重跑跨仓集成测试。用户未授权前不提交。
 2. 子模块同步：core → `action/lib/core` → `group-chat/lib/action`（group-chat 内嵌 core）。
-3. ABI 事件清单基线：三仓 `script/check-events.py` + `script/events-baseline.txt`（28/34/23，带参数名/anonymous）+ `script/event-families.txt`（族表）+ `.github/workflows/ci.yml` 已就绪；提交后 CI 生效。
+3. ABI 事件清单基线：三仓 `script/check-events.py` + `script/events-baseline.txt`（28/34/21，带参数名/anonymous）+ `script/event-families.txt`（族表）+ `.github/workflows/ci.yml` 已就绪；提交后 CI 生效。
 4. 更新差距表迁移状态与项目记忆。

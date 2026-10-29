@@ -111,11 +111,11 @@
 | 14 | `SetSenderIdBan` `IGroupChatBanList:11` | `SenderBanChanged` | 改名 | `listed`；旧值布尔取反可推；`operatorAddress` 统一为 `operator` | 解禁时 operator 字段仍为执行者，语义明确 |
 | 15 | `SetDelegateId` `IGroupChatDelegate:13` | `DelegateChanged` | 改名+改形 | 增 `ownerSnapshot`/`delegateOwnerSnapshot` 的旧+新值；保留 `prevDelegateId` | 覆盖两个 snapshot 静默写 |
 | 16 | `ClearDelegatedGroupId` `IGroupChatDelegate:17` | `DelegationCleared` | 改名+改形 | 增快照旧值（新值为 0） | 清零事实独立于 `DelegateChanged` |
-| 17 | `SetDelegatorWhitelistEnabled` `IGroupChatDelegate:19` | `DelegatorWhitelistChanged` | 改名 | `enabled`；旧值布尔取反可推 | — |
-| 18 | `SetAllowedDelegatorGroupId` `IGroupChatDelegate:21` | `DelegatorGroupPermissionChanged` | 改名 | `allowed`；旧值布尔取反可推 | — |
-| 19 | `SetSenderIdBanVote` `IGovVotedBanSource:17` | `SenderBanVoteCast` | 改名 | 保留累计 `supportWeight`/`opposeWeight`/`stateVersion`；旧方向由上一条事件推 | — |
+| 17 | `SetDelegatorWhitelistEnabled` `IGroupChatDelegate:19` | `DelegationAcceptanceChanged` | 改名+改义 | `enabled`；按群白名单改为按 delegateId 的接受开关，旧值布尔取反可推 | 2026-10-29 |
+| 18 | `SetAllowedDelegatorGroupId` `IGroupChatDelegate:21` | —（删除） | 删除 | 按群白名单与事件一并移除 | 2026-10-29 |
+| 19 | `SetSenderIdBanVote` `IGovVotedBanSource:17` | `SenderBanVoteCast` | 改名 | 保留累计 `supportWeight`/`opposeWeight`；旧方向由上一条事件推 | — |
 | 20 | `SetSenderIdBan` `IGovVotedBanSource:28` | `GovSenderBanChanged` | 改名 | `listed`；旧值布尔取反可推 | — |
-| 21 | `ChangeStateVersion` `IGovVotedBanSource:30` | `StateVersionChanged` | 改名 | `stateVersion`；旧值=new-1（每次+1），省略 | — |
+| 21 | `ChangeStateVersion` `IGovVotedBanSource:30` | —（删除） | 删除 | 版本字段与事件一并移除：无链上/链下消费者，变更由 `SenderBanVoteCast`/`GovSenderBanChanged` 携带 | — |
 | 22 | `Activate` `ITokenScopeManagerBase:7` | `TokenGroupActivated` | 改名 | 不变：`tokenAddress` i、`groupId` i、`operator` i | 链路事件 |
 | 23 | `Activate` `ITokenActionScopeManagerBase:11` | `TokenActionGroupActivated` | 改名 | `tokenAddress` i、`actionId` i、`groupId` i；`operator` 非 indexed | 纯链路事件的 3 个 indexed 槽给链路键；actor 入 payload |
 
@@ -156,8 +156,8 @@
 | `AdminChanged` | 两个快照 | 两个快照 | 新增旧值；`listed` 布尔取反可推 |
 | `DelegateChanged` | `prevDelegateId` + 两个快照 | 新 | 新增快照旧值 |
 | `DelegationCleared` | 两个快照 | 0 | 新增旧值 |
-| `PostingAllowedChanged` / `MemberStatusChanged` / `SenderBanChanged` / `DelegatorWhitelistChanged` / `DelegatorGroupPermissionChanged` / `GovSenderBanChanged` | 布尔取反可推 | 新 | 省略旧值（Q32a） |
-| `StateVersionChanged` | new-1 | 新 | 省略旧值 |
+| `PostingAllowedChanged` / `MemberStatusChanged` / `SenderBanChanged` / `DelegationAcceptanceChanged` / `GovSenderBanChanged` | 布尔取反可推 | 新 | 省略旧值（Q32a）；接受开关按 memberId 继承，不随 delegate NFT 转移重置 |
+| ~~`StateVersionChanged`~~ | — | — | 已删除；`stateVersion` 字段/getter 随后整体移除，变更由 `SenderBanVoteCast`/`GovSenderBanChanged` 承载 |
 | `SenderBanVoteCast` | 上一条投票事件 | 新 vote + 累计权重 | 非配置变更，不强制旧值 |
 
 ---
@@ -177,11 +177,13 @@
 | `providerIdsByMemberId` / `providerAmountByProviderId` | `GroupActionJoin.sol:719-728` | `ProviderQuotaAdded/Removed/Refunded` + `GroupActionJoined/Withdrawn` |
 | `_joinBlocks` / `_joinAmounts` | `LpExecutor.sol:195-200` | `LpJoined`/`LpWithdrawn` + 日志块高 |
 | `_mintNonce` | `ManagerBase.sol:134` | 群创建事件（core `MemberMinted` + manager 链路事件）的计数 |
-| delegate 原始索引 | `GroupChatDelegate.sol:22` | `DelegateChanged`/`DelegationCleared` |
+| delegate 原始索引与 owner 快照 | `GroupChatDelegate.sol:14-21` | `DelegateChanged`/`DelegationCleared`；**有效性**另由 core ERC721 `Transfer`（群 owner / delegate owner 变化）折叠 |
+| `_delegationAcceptanceEnabled` | `GroupChatDelegate.sol:22` | `DelegationAcceptanceChanged` 逐条覆盖；开关不参与有效性，也不随 NFT 转移重置 |
 | ban 列表 operator 状态 | `GroupChatBanList.sol:128-130` | `SenderBanChanged` 的 actor + `listed` |
-| `stateVersion` | `GovVotedBanSource.sol:324` | `StateVersionChanged` 每次 +1 |
-| admin 有效性 | `GroupAdmin.sol:129-139` | `AdminChanged` 快照 + core ERC721 `Transfer`（owner 变化） |
-| 消息/轮次索引 | `GroupChat.sol:254-258,612-622` | `MessagePosted`/`SenderMentioned` 折叠 |
+| `firstActivatedOwner`/`firstActivatedBlockNumber`/`firstActivatedTimestamp` | `GroupChat.sol:125-127` | `GroupChatActivated.owner` + 该日志的块号/时间戳 |
+| `Message.senderAddress` | `GroupChat.sol:864` | `MessagePosted.sender`（`onlySenderOwner` 保证恒等于该 `senderId` 的 owner） |
+| admin 有效性 | `GroupAdmin.sol:83-89,173-182` | `AdminChanged` 快照 + core ERC721 `Transfer`（owner 变化） |
+| 消息/轮次索引 | `GroupChat.sol:250-253,606-616` | `MessagePosted`/`SenderMentioned` 折叠 |
 
 ---
 

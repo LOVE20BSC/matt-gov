@@ -11,7 +11,7 @@
 5. 提及数不超过 `MAX_MENTIONED_SENDER_IDS`，默认 32（`TooManyMentionedSenderIds(length, maxLength)`）；每个 NFT 存在（缺失回 `ERC721NonexistentToken(mentionedSenderId)`）且不重复（`DuplicateMemberId(memberId)`）。
 6. mentionAll 为 true 时，sender 必须为群本身、有效 delegate 或有效 admin（`MentionAllUnauthorized(groupId, senderId)`）。
 7. quotedMessageId 为 0 表示无引用；非零必须指向本 Chat 已存在消息（`QuotedMessageNotFound(groupId, quotedMessageId)`）。
-8. 执行 [规则槽位](02-rules.md#顺序与例外) 的 scope、ban 和插件逻辑：scope 拒绝回 `ScopeRejected(source, groupId, senderId)`，ban 拒绝回 `BanRejected(source, groupId, senderId)`，外部源调用失败回 `ScopeSourceFailed(source)` / `BanSourceFailed(source)`。
+8. 执行 [规则槽位](02-rules.md#顺序与例外) 的 scope、ban 和插件逻辑：scope 拒绝回 `ScopeRejected(groupId, senderId, source)`，ban 拒绝回 `BanRejected(groupId, senderId, source)`，外部源调用失败回 `ScopeSourceFailed(groupId, source)` / `BanSourceFailed(groupId, source)`。
 
 鉴权先于群状态检查：非持有人只拿到鉴权错误，不能借错误差异探测群是否存在或是否激活。
 

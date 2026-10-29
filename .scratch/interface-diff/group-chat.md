@@ -130,13 +130,16 @@ group-chat 保留旧群聊全部业务行为，只作三类系统性改造：
 
 | 新 | 旧 | 状态 |
 | --- | --- | --- |
-| `GROUP_ADDRESS()`、`setDelegateId`、`clearDelegatedGroupIds`、`setDelegatorWhitelistEnabled`、`setAllowedDelegatorGroupIds`、`isDelegatorWhitelistEnabled`、`canSetDelegateTo`、`allowedDelegatorGroupIds`、`allowedDelegatorGroupIdsCount`、`delegateIdOf`、`delegateIdsOf`、`delegatedGroupIds`、`delegatedGroupIdsCount`、`ownerOrDelegateIdOf` | 同名 | 全部保留（14 项签名不变） |
+| `GROUP_ADDRESS()`、`setDelegateId`、`clearDelegatedGroupIds`、`delegateIdOf`、`delegateIdsOf`、`delegatedGroupIds`、`delegatedGroupIdsCount`、`ownerOrDelegateIdOf` | 同名 | 保留（8 项签名不变） |
+| `setDelegationAcceptanceEnabled`、`isDelegationAcceptanceEnabled` | `setDelegatorWhitelistEnabled`、`isDelegatorWhitelistEnabled` | 改名+改义（2026-10-29：按群白名单改为按 delegateId 的接受开关） |
+| 无 | `setAllowedDelegatorGroupIds`、`allowedDelegatorGroupIds`、`allowedDelegatorGroupIdsCount`、`canSetDelegateTo` | 删除（2026-10-29 随按群白名单移除） |
 | 无 | `isOwnerOrDelegate(groupId, address account)` | 删除（`ownerOrDelegateIdOf` 返回 0 即可判断） |
-| 事件 `SetDelegateId`、`ClearDelegatedGroupId`、`SetDelegatorWhitelistEnabled`、`SetAllowedDelegatorGroupId` | 同名 | 全部保留 |
-| 错误 `GroupNotExist`、`SenderNotGroupOwner`、`SenderNotDelegateOwner`、`DelegatorGroupIdNotAllowed`、`DelegateIdCannotBeGroupId` | 同名 | 保留 |
-| 无 | 错误 `InvalidAddress()` | 删除 |
+| 事件 `DelegateChanged`、`DelegationCleared`、`DelegationAcceptanceChanged` | `SetDelegateId`、`ClearDelegatedGroupId`、`SetDelegatorWhitelistEnabled`、`SetAllowedDelegatorGroupId` | 前两项改名；`SetDelegatorWhitelistEnabled` → `DelegationAcceptanceChanged`（改名+改义）；`SetAllowedDelegatorGroupId` 删除 |
+| 错误 `GroupNotExist`、`NotGroupOwner`、`NotMemberOwner`、`DelegateIsSelfGroup` | `GroupNotExist`、`SenderNotGroupOwner`、`SenderNotDelegateOwner`、`DelegateIdCannotBeGroupId` | 保留 1、改名 3 |
+| 错误 `DelegateNotAcceptingNewDelegations(uint256)` | 无 | 新增（2026-10-29） |
+| 无 | 错误 `DelegatorGroupIdNotAllowed`、`InvalidAddress()` | 删除 |
 
-本接口是全层唯一「函数签名零改动」的迁移：委托关系本来就是 NFT 到 NFT，不含地址主体。
+委托关系仍是 NFT 到 NFT，不含地址主体；2026-10-29 的接受开关只作用于「新指定」写入口，不进入授权消费者。
 
 ---
 
@@ -169,7 +172,8 @@ group-chat 保留旧群聊全部业务行为，只作三类系统性改造：
 | `voteWeightsBySenderIdsByVoter(groupId, senderIds[], uint256 voterId)` | `voteWeightsBySenderIdsByVoter(groupId, senderIds[], address voter)` | 改参 |
 | `votersBySenderId(groupId, senderId, offset, limit) returns (uint256[] voters, ...)` | 同名 `returns (address[] voters, ...)` | 改参（返回类型变） |
 | `GROUP_ADDRESS`、`PRECISION`、`MIN_SUPPORT_TO_OPPOSE_RATIO`、`BAN_THRESHOLD_RATIO` | 同名 | 保留 |
-| `voteStatusBySenderId`、`voteStatusBySenderIds`、`isSenderIdBanned`、`isSenderIdBannedBatch`、`votedSenderIdsCount`、`votedSenderIds`、`votersBySenderIdCount`、`stateVersion` | 同名 | 保留 |
+| `voteStatusBySenderId`、`voteStatusBySenderIds`、`isSenderIdBanned`、`isSenderIdBannedBatch`、`votedSenderIdsCount`、`votedSenderIds`、`votersBySenderIdCount` | 同名 | 保留 |
+| `stateVersion` | 同名 | 删除（迁移时保留；2026-10-28 因无消费者整体移除） |
 | 继承 `IPostBanSource.isBanned(groupId, senderId)` | 继承 `IPostBanSource.isBanned(groupId, senderId, senderAddress)` | 改参 |
 | 无 | `voteBySenderAddress`、`clearVoteBySenderAddress`、`refreshVoteBySenderAddress`、`voteWeightsBySenderAddressesByVoter`、`voteStatusBySenderAddress`、`voteStatusBySenderAddresses`、`isAddressBanned`、`isAddressBannedBatch`、`votedSenderAddressesCount`、`votedSenderAddresses`、`votersBySenderAddressCount`、`votersBySenderAddress` | 删除 12 项（地址路径） |
 | 无 | `voteBySender`、`clearVoteBySender`、`refreshVoteBySender` | 删除 3 项（双参路径） |
@@ -178,8 +182,9 @@ group-chat 保留旧群聊全部业务行为，只作三类系统性改造：
 
 | 新 | 旧 | 状态 |
 | --- | --- | --- |
-| `SetSenderIdBanVote(groupId, targetSenderId, uint256 voterId, supportBan, settledWeight, supportWeight, opposeWeight, stateVersion)` | 同名（`address voter`） | 改参 |
-| `SetSenderIdBan`、`ChangeStateVersion` | 同名 | 保留 |
+| `SetSenderIdBanVote(groupId, targetSenderId, uint256 voterId, supportBan, settledWeight, supportWeight, opposeWeight)` | 同名（`address voter`） | 改参（2026-10-28 删除尾部 `stateVersion`） |
+| `SetSenderIdBan` | 同名 | 保留 |
+| `ChangeStateVersion` | 同名 | 删除（2026-10-28 与 `stateVersion` 一并移除） |
 | 无 | 事件 `SetAddressBanVote`、`SetAddressBan` | 删除 |
 | 错误 `SenderNotMemberOwner(uint256 senderId)` | 无 | 新增 |
 | 错误 `GovVotedBanSourceAddressHasNoCode`、`BanVoteWeightSourceUnavailable`、`TargetSenderIdZero`、`VoteWeightZero`、`VoteUnchanged`、`VoteNotFound`、`BanThresholdTooHigh`、`MinSupportToOpposeRatioZero` | 同名 | 保留 8 项 |

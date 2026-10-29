@@ -30,8 +30,8 @@
 | `Not<Role>Owner/Operator` | `NotMemberOwner(memberId)`、`NotGroupOperator(groupId, operatorId)` | 角色鉴权 |
 | `Already<State>` | `AlreadyJoined(tokenAddress, actionId, memberId)`、`ChatAlreadyActivated(groupId)` | 重复状态/操作 |
 | `*NotContract` | `SourceNotContract(address)`、`PluginNotContract(address)`、`DependencyNotContract(address)` | 依赖无代码（合约内字段级或模块级） |
-| `*Unavailable` / `*Failed` | `BanVoteWeightSourceUnavailable(source)` | 外部依赖失败 |
-| `*Rejected` | `ScopeRejected(source, groupId, senderId)` | 策略拒绝 |
+| `*Unavailable` / `*Failed` | `BanVoteWeightSourceUnavailable(groupId, source)` | 外部依赖失败 |
+| `*Rejected` | `ScopeRejected(groupId, senderId, source)` | 策略拒绝 |
 
 约束：
 

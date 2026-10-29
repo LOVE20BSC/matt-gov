@@ -2,11 +2,23 @@
 
 用户确认：群聊几乎原样迁移，功能、流程、查询和失败行为保持；业务身份统一为 MemberNFT，删除地址主体平行路径，NFT 代理仅作用于群聊。
 
+## 委托接受开关（2026-10-29）
+
+用户确认：删除按群白名单，改为按目标 memberId 的**委托接受开关**。本节是相对“原样迁移”的明确差异，现行行为以 [01-lifecycle.md](group-chat/01-lifecycle.md) 为准：
+
+- 删除 `setAllowedDelegatorGroupIds` / `allowedDelegatorGroupIds` / `allowedDelegatorGroupIdsCount`、事件 `DelegatorGroupPermissionChanged`、错误 `DelegatorGroupIdNotAllowed`，以及查询 `canSetDelegateTo`。
+- `setDelegatorWhitelistEnabled` / `isDelegatorWhitelistEnabled` / `DelegatorWhitelistChanged` 改为 `setDelegationAcceptanceEnabled` / `isDelegationAcceptanceEnabled` / `DelegationAcceptanceChanged`；新增错误 `DelegateNotAcceptingNewDelegations(uint256 delegateId)`。
+- 开关按 delegateId 保存，默认关闭；关闭时禁止一切非零 `setDelegateId`（含同 id 重设、群或 delegate NFT 转移后的重新设回），`setDelegateId(groupId, 0)` 永远允许。
+- 开关是 delegateId 的属性，不随 delegate NFT 转移变化：新持有人继承当前值并可自行开关，旧持有人不再能开关；委托失效只由 owner 快照失配决定。
+- 开关只约束新指定，不参与有效性判断：关闭后既有委托继续生效（`delegateIdOf`、`ownerOrDelegateIdOf`、`delegatedGroupIds.isEffective` 均不变），撤销或 owner 快照失配才失效。
+- 校验顺序：自指 → delegate NFT 存在性 → 接受开关 → 幂等；无效请求不被幂等静默吞掉。
+- 事件族 `gc.delegation` 只保留 `DelegationAcceptanceChanged`；`event-standards.md`、[07-events-errors.md](group-chat/07-events-errors.md)、[08-testing.md](group-chat/08-testing.md) 已同步。Group Chat 门禁：**168 tests 全绿**，事件基线与错误注册表已重生成。
+
 ## 事件与基类改名（2026-10-27）
 
 事件规范 v1.1 与基类后缀规则（`dev-standards.md` §5.2）重命名了本文其他小节记录的迁移时点名称；正文保留当时名称，现行名称以 [规格](README.md) 与 `group-chat/src/interfaces/` 为准：
 
-- 事件：`Activate` → `GroupChatActivated`；`SetPostingAllowed` / `SetScopeSource` / `SetBanSource` / `SetBeforePostPlugin` / `SetAfterPostPlugin` → `*Changed`；`PostMessage` → `MessagePosted`；`MentionSenderId` → `SenderMentioned`；`MentionAll` 并入 `MessagePosted.mentionAll`；`FailAfterPostPlugin` → `AfterPostPluginFailed`；`SetAdmin` / `SetAdminSnapshot` → `AdminChanged`；`SetMemberId` → `MemberStatusChanged`；`SetSenderIdBan` → `SenderBanChanged`；`SetSenderIdBanVote` → `SenderBanVoteCast`；`SetDelegateId` → `DelegateChanged`；`ClearDelegatedGroupId` → `DelegationCleared`；`SetDelegatorWhitelistEnabled` → `DelegatorWhitelistChanged`；`SetAllowedDelegatorGroupId` → `DelegatorGroupPermissionChanged`；`ChangeStateVersion` → `StateVersionChanged`；`forceExit` → `forceClearJoinState`。
+- 事件：`Activate` → `GroupChatActivated`；`SetPostingAllowed` / `SetScopeSource` / `SetBanSource` / `SetBeforePostPlugin` / `SetAfterPostPlugin` → `*Changed`；`PostMessage` → `MessagePosted`；`MentionSenderId` → `SenderMentioned`；`MentionAll` 并入 `MessagePosted.mentionAll`；`FailAfterPostPlugin` → `AfterPostPluginFailed`；`SetAdmin` / `SetAdminSnapshot` → `AdminChanged`；`SetMemberId` → `MemberStatusChanged`；`SetSenderIdBan` → `SenderBanChanged`；`SetSenderIdBanVote` → `SenderBanVoteCast`；`SetDelegateId` → `DelegateChanged`；`ClearDelegatedGroupId` → `DelegationCleared`；`SetDelegatorWhitelistEnabled` → `DelegatorWhitelistChanged`；`SetAllowedDelegatorGroupId` → `DelegatorGroupPermissionChanged`；`ChangeStateVersion` 与 `stateVersion` 字段/getter 一并删除（变更由 `SenderBanVoteCast`/`GovSenderBanChanged` 携带）；`forceExit` → `forceClearJoinState`。
 - 基类：`BaseManager` → `ManagerBase`、`BaseTokenManager` → `TokenManagerBase`、`BaseTokenScopeManager` → `TokenScopeManagerBase`、`BaseTokenActionScopeManager` → `TokenActionScopeManagerBase`，接口同理（`IBaseManager` → `IManagerBase` 等）。
 
 ## 托管群命名 v2 与校验分层（2026-10-25）
@@ -25,11 +37,11 @@ Group Chat 已全部改为 **local-first** 错误模型：每个合约/模块拥
 - 地址/依赖：`InvalidAddress` 拆为具体依赖错误；必填合约依赖以“有代码”为条件，零地址与非零 EOA 统一回 `*NotContract(address)`（零地址为 `*NotContract(0)`），payload 带失败地址。
 - 状态：`ChatAlreadyActivated(groupId)`、`ChatNotActivated(groupId)`、`PostingNotAllowed(groupId)`；`RoundNotStarted(requiredRound,currentRound)` 与 Core/Action 同签名。
 - 消息/提及/引用：`Name` 类错误按字段拆分；`MessageNotFound(groupId,messageId)`、`QuotedMessageNotFound(groupId,messageId)`、`MentionAllUnauthorized(groupId,senderId)`。
-- 规则源：`ScopeRejected(source,groupId,senderId)`、`BanRejected(source,groupId,senderId)`、`ScopeSourceFailed(source)`、`BanSourceFailed(source)`。
-- Delegate：`DelegatorGroupIdNotAllowed(groupId,delegateId)`；`setDelegateId` 先校验再幂等返回，不再吞掉非法请求。
+- 规则源：`ScopeRejected(groupId,senderId,source)`、`BanRejected(groupId,senderId,source)`、`ScopeSourceFailed(groupId,source)`、`BanSourceFailed(groupId,source)`（主体键在前，条件值 `source` 在后）。
+- Delegate：`DelegateNotAcceptingNewDelegations(delegateId)`；`setDelegateId` 先校验再幂等返回，不再吞掉非法请求。
 - 批量与构造：GroupMember / GroupChatBanList 的数组内重复 ID 回 `DuplicateMemberId(memberId)`，与 GroupAdmin、提及、接收人一致；构造依赖零值与非零 EOA 统一回 `*NotContract(address)`，不再保留零值专项错误。
 - `canPost`：返回封闭 `PostRejectionReason` 枚举，不再把错误 selector 当业务数据；缺失 sender 返回 `SenderNotExist`。
-- Manager/GovVoted：Manager 必填依赖无代码（含零地址）统一回 `ManagerDependencyNotContract(dependency)`；`AlreadyManaged(groupId)`、`VoteUnchanged/VoteNotFound`、`BanVoteWeightSourceUnavailable(source)` 等带主体；GovVoted 写路径对缺失群回 `GroupNotExist(groupId)`、群存在但权重源无代码回 `BanVoteWeightSourceUnavailable(source)`；Manager 付款/授权走 OZ `SafeERC20FailedOperation(token)`；`FailAfterPostPlugin` 改为 `errorHash + errorLength + errorSelector`，不再写无界 `bytes`。
+- Manager/GovVoted：Manager 必填依赖无代码（含零地址）统一回 `ManagerDependencyNotContract(dependency)`；`AlreadyManaged(groupId)`、`VoteUnchanged/VoteNotFound`、`BanVoteWeightSourceUnavailable(groupId,source)` 等带主体；GovVoted 写路径对缺失群回 `GroupNotExist(groupId)`、群存在但权重源无代码回 `BanVoteWeightSourceUnavailable(groupId,source)`；Manager 付款/授权走 OZ `SafeERC20FailedOperation(token)`；`FailAfterPostPlugin` 改为 `errorHash + errorLength + errorSelector`，不再写无界 `bytes`。
 - `MemberOwner.ofOrZero`：只把 `ERC721NonexistentToken` 转成 0，其余 revert 原样冒泡。
 - ABI：各接口默认不继承标准错误；`ownerOf` 的 `ERC721NonexistentToken` 按失败契约登记，来源 ABI 为 MemberNFT；`SafeERC20FailedOperation` 通过库进入 Manager ABI，token 的 ERC20 标准错误由 token ABI 拥有。
 - Manager 构造：必填依赖无代码（含零地址）统一回 `ManagerDependencyNotContract(dependency)`。
@@ -49,10 +61,10 @@ Group Chat 门禁：**148 tests 全绿**；`build --deny warnings`、`lint`、`c
 | GroupChat | 一 NFT 一 Chat、激活、四槽位、消息、提及、引用、索引、分页、插件失败处理 | 依赖改 MemberNFT；删除 postAsDefaultSender 和 GroupDefaults；预检查不再接收业务地址；mentionAll 与 scope/ban 直通改按 `senderId` 判定（旧按调用者地址） |
 | GroupAdmin | NFT 管理员、双 owner 快照、数量限制、转移失效/转回恢复 | 删除默认身份查找，操作显式给 adminId |
 | GroupMember / GroupBanList | ID 集合、批量增删、枚举、权限和事件行为 | 删除地址黑名单及地址/ID 双轨路径 |
-| GovVotedBanSource | 双阈值、settledWeight、改票/撤票/刷新、stateVersion、已结算名单 | voter 和 target 均用 memberId，删除地址目标及对应索引/事件 |
+| GovVotedBanSource | 双阈值、settledWeight、改票/撤票/刷新、已结算名单 | voter 和 target 均用 memberId，删除地址目标、stateVersion 及对应索引/事件 |
 | typed Manager | 激活者付款、Manager 持有 NFT、单实例管理多个 Chat、不重配、不转出、命名和查询 | 新 Core 接口；资格由 memberId 查询，不重新设计付款或恢复机制 |
 | GroupMemberScope / GroupJoinScopeSource | 名单或当前链群归属 | 将 GroupJoin 地址查询替换为链群 Executor 的 memberId 查询 |
-| Group Chat Delegate | NFT 委托、白名单、反向枚举、双 owner 快照 | 实现归 group-chat，只供群聊管理；Core/Action/Launch 不使用 |
+| Group Chat Delegate | NFT 委托、接受开关、反向枚举、双 owner 快照 | 实现归 group-chat，只供群聊管理；删除按群白名单，改为默认关闭的接受开关；Core/Action/Launch 不使用 |
 | 时间适配 | 消息 Round 永久稳定、按 Round 查询 | 已确认使用共享 Phase；历史消息不可用新的 phaseBlocks 重算 |
 
 不得误删付款钱包、合约地址、owner 快照、调用地址审计或标准 ERC721 回调字段；它们不是业务身份。
@@ -98,7 +110,8 @@ Group Chat 门禁：**148 tests 全绿**；`build --deny warnings`、`lint`、`c
 
 ### GroupChatDelegate（原 `IGroupDelegate`）
 
-- **改名**：合约与接口 `GroupDelegate` → `GroupChatDelegate`；`InvalidAddress()` 等错误与四个事件保留
+- **改名**：合约与接口 `GroupDelegate` → `GroupChatDelegate`；`InvalidAddress()` 等错误保留
+- **2026-10-29 起**：删除按群白名单与 `canSetDelegateTo`；白名单读写/枚举、`DelegatorGroupPermissionChanged`、`DelegatorGroupIdNotAllowed` 不再存在；`setDelegatorWhitelistEnabled` / `isDelegatorWhitelistEnabled` / `DelegatorWhitelistChanged` 改为 `setDelegationAcceptanceEnabled` / `isDelegationAcceptanceEnabled` / `DelegationAcceptanceChanged`，新增 `DelegateNotAcceptingNewDelegations(uint256)`；开关默认关闭，只约束新指定
 - **删除**：`isOwnerOrDelegate(uint256,address)`；等价判断由 `ownerOrDelegateIdOf(...) != 0` 表达，`delegateIdOf` / `delegateIdsOf` 已覆盖「有效 delegate 查询」
 - **错误**：写入口缺失 delegateId 回 `ERC721NonexistentToken`；非 owner 回 `NotMemberOwner(delegateId)`；查询缺失 delegate 返回 false/0/空，不回滚；群 owner 非 owner 回 `NotGroupOwner(groupId)`；`delegateId == groupId` 回 `DelegateIsSelfGroup(groupId)`；`GroupNotExist(groupId)` 只用于群角色。旧 `SenderNotGroupOwner` / `DelegateIdCannotBeGroupId` / `SenderNotDelegateOwner` 已删除
 

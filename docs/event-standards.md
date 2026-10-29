@@ -205,7 +205,7 @@ ERC-20 / ERC-721 标准事件保持不变，不进入本规范正文。`AddHolde
 
 强制要求：
 
-- 根键（该事件所属域的顶层标识）必须是第一个字段。根键由发射者自身代表时可以省略：`LOVE20Token` 的 `TokenMinted` / `TokenBurned`、`MemberNFT` 的 `MemberMinted`、`Phase` 的 `PhaseSynchronized` / `PhaseAdjusted` 都不带根键字段。delegation 域（跨群白名单）的根键是 `delegateId`。
+- 根键（该事件所属域的顶层标识）必须是第一个字段。根键由发射者自身代表时可以省略：`LOVE20Token` 的 `TokenMinted` / `TokenBurned`、`MemberNFT` 的 `MemberMinted`、`Phase` 的 `PhaseSynchronized` / `PhaseAdjusted` 都不带根键字段。delegation 域（接受开关）的根键是 `delegateId`。
 - 同一事件族内槽位固定，不得族内漂移；各族由 `script/events/check-events.py` 按 `script/events/event-families.txt` 校验（族覆盖、根键首字段、`round` 锚点），ABI 顺序由 `script/events/events-baseline.txt` 锁定。
 - actor 的 id 必须在其地址之前（`operatorId` → `operator`）；actor 地址与对象地址不共槽位。
 - 配置/状态事件默认先携带新值、后携带旧值（`prev*` / `old*`）；整组替换按新组→旧组；旧值组内部沿用新值组的槽位顺序（`DelegateChanged` 的 `prevDelegateId` 与两个 `prev*` 快照同组）；以迁移量本身为事实的 diff 事件（如 `PhaseAdjusted`）按旧→新。
@@ -229,13 +229,13 @@ ERC-20 / ERC-721 标准事件保持不变，不进入本规范正文。`AddHolde
 | action.recipients | 根键 → sourceActionId → round → groupId → 新表 → 旧表 | `RecipientTableChanged` |
 | action.service | 根键 → serviceActionId → round → 对象链（groupId 或 actionTokenAddress）→ 源链/角色 → 数值 | `RecipientPaid`、`ServiceRewardsDistributed` |
 | gc.management | 根键 → 对象标识（id 或对象地址）→ actor id → actor 地址 → 新值组 → 旧值组 | `AdminChanged`、`MemberStatusChanged`、`SenderBanChanged`、`GroupChatActivated`、`PostingAllowedChanged`、`ScopeSourceChanged`、`BanSourceChanged`、`BeforePostPluginChanged`、`AfterPostPluginChanged`、`DelegateChanged`、`DelegationCleared` |
-| gc.delegation | delegateId → groupId（若有）→ delegateOwner → 值 | `DelegatorWhitelistChanged`、`DelegatorGroupPermissionChanged` |
-| gc.ban-vote | 根键 → targetSenderId → voterId → 布尔 → 数值 → stateVersion | `SenderBanVoteCast`、`GovSenderBanChanged`、`StateVersionChanged` |
+| gc.delegation | delegateId → delegateOwner → 值 | `DelegationAcceptanceChanged` |
+| gc.ban-vote | 根键 → targetSenderId → voterId → 布尔 → 数值 | `SenderBanVoteCast`、`GovSenderBanChanged` |
 | gc.message | 根键 → messageId → senderId → sender → round → 引用 messageId → 数值/布尔 → content | `MessagePosted`、`SenderMentioned` |
 | gc.plugin | 根键 → messageId → round → pluginAddress → 错误指纹 | `AfterPostPluginFailed` |
 | gc.link | 根键 → 对象 id → actor | `TokenGroupActivated`、`TokenActionGroupActivated` |
 
-槽位序列是「允许的顺序」，事件可以省略某槽（例如 `GroupActionExited` 无金额、`StateVersionChanged` 无 targetSenderId），但不得插入表外槽位或调整相对顺序。新增事件必须先归入某一族并在此表登记，否则 `check-events.py` 报错。
+槽位序列是「允许的顺序」，事件可以省略某槽（例如 `GroupActionExited` 无金额、`GovSenderBanChanged` 无 voterId），但不得插入表外槽位或调整相对顺序。新增事件必须先归入某一族并在此表登记，否则 `check-events.py` 报错。
 
 配置地址型事件把**新地址**放在「对象标识（对象地址）」槽，actor 排在其后（`ScopeSourceChanged` / `BanSourceChanged` 的 `sourceAddress`、`BeforePostPluginChanged` / `AfterPostPluginChanged` 的 `pluginAddress`）；布尔型配置事件仍是 actor 地址 → 新值（`PostingAllowedChanged`）。两种形状都在族表允许的槽内，不是族内漂移。
 
@@ -257,6 +257,7 @@ ERC-20 / ERC-721 标准事件保持不变，不进入本规范正文。`AddHolde
 - 纯链路事件（`TokenActionGroupActivated`）的 3 个槽给链路键；actor 入 payload。
 - `string` / `bytes` / 动态数组绝不 indexed；禁止 anonymous event。
 - actor 与主对象 id 应当 indexed；同组事件必须在迁移中对齐（`VerifierLocked`、`StakesMerged`）。
+- `gc.management` / `gc.delegation` 族的 actor 在只剩一个槽时按「对象标识形态」择一：对象标识是 **id** 时第三个槽给 actor **地址**（`AdminChanged`、`MemberStatusChanged`、`SenderBanChanged`、`DelegateChanged`、`DelegationCleared`、`DelegationAcceptanceChanged`）；对象标识是**地址**时第三个槽给 actor **id**（`ScopeSourceChanged`、`BanSourceChanged`、`BeforePostPluginChanged`、`AfterPostPluginChanged`）；对象只有根键时 id 与地址都 indexed（`PostingAllowedChanged`、`GroupChatActivated`；后者的 `ownerId` 是 actor id 且恒等于 `groupId`）。这样每个事件至少提供一个对象键和一个 actor 的可过滤形式——钱包按地址订阅、协议按 id 对账各取所需。
 
 ### 6.4 角色词表
 
@@ -284,13 +285,12 @@ ERC-20 / ERC-721 标准事件保持不变，不进入本规范正文。`AddHolde
 
 - 不写 `block.timestamp` / `block.number`；日志本身已带这些元数据。
 - 只写业务时间（deadline、period、eta 等）。`round` 是业务键，不属于时间元数据。
-- `stateVersion` 等版本字段是事实时点的值，不是交易末态；同一交易内可逐次自增并逐条记录。
 - 机器可读的值不得用 `string`；`string` 只用于事实本身就是文本的场景（名称、描述、正文）。
 
 ### 6.7 旧值与新值
 
 - 配置变更必须携带旧值+新值。
-- 旧值由新值恒等可推时可以省略（例如布尔取反、每次 +1 的版本号）。
+- 旧值由新值恒等可推时可以省略（例如布尔取反）。
 - 可选引用的显式布尔与被修饰的 id 恒等可推（`hasQuote ≡ quotedMessageId != 0`），**不得**因此省略：省略后 `0` 就变成表达「不存在」的哨兵，违反 §3.6。此类派生布尔属有意冗余，须在 §8.1 恒等对清单登记。
 - 表状/结构配置一律旧+新；批量配置的低频事件可以因此变大。
 - 初始化事件无旧值；生命周期事件不重复旧状态。
@@ -331,7 +331,7 @@ v1 基线：
 2. 标准事件（ERC-20 / ERC-721 / UniswapV2 `Sync` 等）；
 3. 不可变部署参数。
 
-当前派生缓存清单与推导来源见 `.scratch/events-spec/01-gap-table.md` §7，包括 Launch credit、Stake LP 基准、pair 地址、Phase 观测、holder 集合、分红除数、`govRatioAtMint`、验证排名、provider 索引、join block/amount、mint nonce、delegate 索引、ban operator 状态、stateVersion、admin 有效性与消息索引。
+当前派生缓存清单与推导来源见 `.scratch/events-spec/01-gap-table.md` §7，包括 Launch credit、Stake LP 基准、pair 地址、Phase 观测、holder 集合、分红除数、`govRatioAtMint`、验证排名、provider 索引、join block/amount、mint nonce、delegate 索引、ban operator 状态、admin 有效性与消息索引。
 
 ### 6.10 注释
 
@@ -388,8 +388,8 @@ v1 基线：
 | Message | 发布、提及、afterPost 失败 | `MessagePosted`、`SenderMentioned`、`AfterPostPluginFailed` |
 | AdminSet | 管理员增删、快照刷新 | `AdminChanged` |
 | MemberSet | 成员状态 | `MemberStatusChanged` |
-| BanSet | 管理员封禁、投票、结果封禁、版本自增 | `SenderBanChanged`、`SenderBanVoteCast`、`GovSenderBanChanged`、`StateVersionChanged` |
-| Delegation | 设置、清零、白名单、群权限 | `DelegateChanged`、`DelegationCleared`、`DelegatorWhitelistChanged`、`DelegatorGroupPermissionChanged` |
+| BanSet | 管理员封禁、投票、结果封禁 | `SenderBanChanged`、`SenderBanVoteCast`、`GovSenderBanChanged` |
+| Delegation | 设置、清零、接受开关 | `DelegateChanged`、`DelegationCleared`、`DelegationAcceptanceChanged` |
 | ManagerLink | token → group、token+action → group | `TokenGroupActivated`、`TokenActionGroupActivated` |
 | GroupName | 群名铸造 | core `MemberMinted`（跨仓链路） |
 
