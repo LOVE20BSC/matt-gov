@@ -22,3 +22,5 @@ sender 为群本身（`senderId == groupId`）、有效 delegate 或有效 admin
 ## 标准接口
 
 规则槽位接口见 [`IPostScopeSource.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/sources/IPostScopeSource.sol)、[`IPostBanSource.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/sources/IPostBanSource.sol)、[`IBeforePostPlugin.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/plugins/IBeforePostPlugin.sol) 与 [`IAfterPostPlugin.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/plugins/IAfterPostPlugin.sol)。
+
+Scope source 的谓词是 `isSenderAllowed(groupId, senderId) returns (bool)`，不是 `canPost`——后者只属于 [`IGroupChat`](03-posting.md#预检查) 的高层预检查，返回 `(bool allowed, PostRejectionReason reason)`。两族不同名，避免同 selector 的两种返回形态被按错 ABI 静态调用。

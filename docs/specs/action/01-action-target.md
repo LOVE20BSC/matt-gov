@@ -41,13 +41,13 @@ targetData[0] = abi.encode(executorAddress)
 
 同一分层适用于激励，但两条事件的**名字与参数都不同**，因为层级与主体不同：行动级的整笔铸造由 ActionTarget 的 `ActionRewardMinted(tokenAddress, actionId, round, amount)` 记录，成员级的 `MemberRewardMinted(tokenAddress, actionId, memberId, round, mintAmount, burnAmount)` 由各 Executor 记录（见 [铸造链路](07-minting.md#铸造链路)）。`ActionRewardMinted` 的四个字段全部取自 `mintActionReward` 这一笔调用本身，不需要额外状态。
 
-**集合读取**：成员的行动列表是无界集合（由成员加入次数决定），采用标准分页签名 `actionIdsByMemberId(tokenAddress, memberId, offset, limit, reverse) returns (actionIds[], total)`。行动的成员列表同样是无界集合，但只保留一条完整读取路径——按轮读取 `memberIdsByActionId(tokenAddress, actionId, round, offset, limit, reverse) returns (memberIds[], total)`（指定 `round` 时的成员列表）；不带 `round` 的当前态列表不单设，当前态用 `isJoined` 点查或传当前轮读取。参数语义：越界返回空数组与真实总数、不回滚；`limit` 超剩余按剩余返回；`limit = 0` 只返回总数；`reverse` 为 true 时逆序遍历当前存储顺序。符合[集合读取设计原则](../../dev-standards.md#43-集合读取函数)。
+**集合读取**：成员的行动列表是无界集合（由成员加入次数决定），采用标准分页签名 `actionIdsByMemberId(tokenAddress, memberId, offset, limit, reverse) returns (actionIds[], totalCount)`。行动的成员列表同样是无界集合，但只保留一条完整读取路径——按轮读取 `memberIdsByActionId(tokenAddress, actionId, round, offset, limit, reverse) returns (memberIds[], totalCount)`（指定 `round` 时的成员列表）；不带 `round` 的当前态列表不单设，当前态用 `isJoined` 点查或传当前轮读取。参数语义：越界返回空数组与真实总数、不回滚；`limit` 超剩余按剩余返回；`limit = 0` 只返回总数；`reverse` 为 true 时逆序遍历当前存储顺序。符合[集合读取设计原则](../../dev-standards.md#43-集合读取函数)。
 
-**历史查询**：提供按 round 的历史快照查询，`isJoinedByRound(tokenAddress, actionId, memberId, round)` 检查指定 round 时的加入状态，`memberIdsByActionId(tokenAddress, actionId, round, offset, limit, reverse)` 返回指定 round 时的成员列表（分页）。round 的口径是**加入轮**（= 当前投票轮 - 1，加入在投票后一个阶段开放，见 [阶段模型](02-phase-model.md)），与三个 Executor 的加入 Round 同轴；加入态事件与按轮快照同源，`JoinStateRegistered.round` 也是加入轮（`JoinStateCleared.round` 例外，它是清理时的当前加入轮，见上）。快照不会落在创建轮之前——该不变式由 `registerJoinState` 的 `JoinNotOpen` 入口校验保证（见写操作权限）；`ActionRegistered` 的 round 即创建投票轮，也是该行动的首个加入轮，因此以它查询成员列表可得首个加入窗口的成员。round 大于当前加入轮时按未开始处理：`isJoinedByRound` 返回 false，列表返回空数组与 `total = 0`。按轮快照的读法随共享原语：查询的 `round` 上没有写入时，返回该轮之前最近一次记录的状态（空缺轮继承先前状态）；早于首次写入返回未加入 / 空列表。同一加入轮内的多次写入（加入、退出、再加入）在该轮只保留最后一次写入的值——事件仍按发生顺序逐条记录；两者并用时，以事件顺序还原过程，以快照读取该轮结束状态。
+**历史查询**：提供按 round 的历史快照查询，`isJoinedByRound(tokenAddress, actionId, round, memberId)` 检查指定 round 时的加入状态，`memberIdsByActionId(tokenAddress, actionId, round, offset, limit, reverse)` 返回指定 round 时的成员列表（分页）。round 的口径是**加入轮**（= 当前投票轮 - 1，加入在投票后一个阶段开放，见 [阶段模型](02-phase-model.md)），与三个 Executor 的加入 Round 同轴；加入态事件与按轮快照同源，`JoinStateRegistered.round` 也是加入轮（`JoinStateCleared.round` 例外，它是清理时的当前加入轮，见上）。快照不会落在创建轮之前——该不变式由 `registerJoinState` 的 `JoinNotOpen` 入口校验保证（见写操作权限）；`ActionRegistered` 的 round 即创建投票轮，也是该行动的首个加入轮，因此以它查询成员列表可得首个加入窗口的成员。round 大于当前加入轮时按未开始处理：`isJoinedByRound` 返回 false，列表返回空数组与 `totalCount = 0`。按轮快照的读法随共享原语：查询的 `round` 上没有写入时，返回该轮之前最近一次记录的状态（空缺轮继承先前状态）；早于首次写入返回未加入 / 空列表。同一加入轮内的多次写入（加入、退出、再加入）在该轮只保留最后一次写入的值——事件仍按发生顺序逐条记录；两者并用时，以事件顺序还原过程，以快照读取该轮结束状态。
 
 **加入轮查询**：`joinedRounds(tokenAddress, actionId, memberIds[]) returns (uint256[] rounds)` 批量返回每个成员的加入轮（数组与入参等长、按下标配对）。round 口径与 `JoinStateRegistered` 一致，为登记时的加入轮；未加入（从未加入、已退出或已 `forceClearJoinState`）与未关联的行动/代币返回 0。该查询反映当前状态；历史过程以事件顺序还原，历史快照以按轮查询读取。
 
-**顺序契约（不保证跨调用稳定）**：`actionIdsByMemberId`、`memberIdsByActionId` 由共享集合原语支撑——追加写入，删除用 swap-and-pop（把末位元素搬到被删元素的位置）。因此**同一集合、同一 `offset` 的返回内容不保证在两次调用之间稳定**，`reverse` 只表示「逆序遍历当前存储顺序」，仅在集合自建立以来没有发生过删除时才等于「加入逆序」。调用方（前端、索引）必须每次以 `total` 为准重新拉取，不得跨调用缓存 `offset`，也不得按「先拉首页、再按旧 `total` 增量补后续页」的方式拼接。
+**顺序契约（不保证跨调用稳定）**：`actionIdsByMemberId`、`memberIdsByActionId` 由共享集合原语支撑——追加写入，删除用 swap-and-pop（把末位元素搬到被删元素的位置）。因此**同一集合、同一 `offset` 的返回内容不保证在两次调用之间稳定**，`reverse` 只表示「逆序遍历当前存储顺序」，仅在集合自建立以来没有发生过删除时才等于「加入逆序」。调用方（前端、索引）必须每次以 `totalCount` 为准重新拉取，不得跨调用缓存 `offset`，也不得按「先拉首页、再按旧 `totalCount` 增量补后续页」的方式拼接。
 
 `actions`、`actionIdsByExecutor` 由创建回调维护的**追加写入、从不删除**的索引派生，`reverse` 即创建逆序；`votedActions` 由 Vote 的本轮只追加列表派生，顺序随 Vote。三者的 `offset` 语义同样按上面执行。
 
@@ -79,9 +79,9 @@ Executor 失效时的兜底清理：成员 NFT 当前持有人可清除加入态
 
 行动阶段 Round 查询见 [阶段模型](02-phase-model.md) 及各 Executor 接口。
 
-**行动登记索引**：`actions(tokenAddress, offset, limit, reverse) returns (actionIds[], executors[], total)` 与 `actionIdsByExecutor(tokenAddress, executor, offset, limit, reverse) returns (actionIds[], total)` 由 `onProposalCreated` 维护的追加写入索引派生（绑定建立后永不删除，故 `reverse` 即创建逆序），前者为本代币全部已关联行动，后者为某 Executor 名下的行动。两者均为无界集合（由行动创建数决定），采用标准分页签名。
+**行动登记索引**：`actions(tokenAddress, offset, limit, reverse) returns (actionIds[], executors[], totalCount)` 与 `actionIdsByExecutor(tokenAddress, executor, offset, limit, reverse) returns (actionIds[], totalCount)` 由 `onProposalCreated` 维护的追加写入索引派生（绑定建立后永不删除，故 `reverse` 即创建逆序），前者为本代币全部已关联行动，后者为某 Executor 名下的行动。两者均为无界集合（由行动创建数决定），采用标准分页签名。
 
-**本轮有投票的行动**：`votedActions(tokenAddress, round, offset, limit, reverse) returns (actionIds[], executors[], total)` 一次读取 Vote 的 `votedProposalIds(tokenAddress, round, 0, type(uint256).max, false)` 取得本轮有票 Proposal 全列表（Pagination 对超限 `limit` 返回剩余；列表规模上界由 Submit 的每轮提案数上界保证），再按 `executor` 映射筛选，不在这里计算激励门槛；不能读成历史累计。其 `total` 由「读完本轮列表 → 按映射筛选 → 切片」得出，单次调用在同一交易内完成，ActionTarget 不另设人工 Proposal 数量上限。
+**本轮有投票的行动**：`votedActions(tokenAddress, round, offset, limit, reverse) returns (actionIds[], executors[], totalCount)` 一次读取 Vote 的 `votedProposalIds(tokenAddress, round, 0, type(uint256).max, false)` 取得本轮有票 Proposal 全列表（Pagination 对超限 `limit` 返回剩余；列表规模上界由 Submit 的每轮提案数上界保证），再按 `executor` 映射筛选，不在这里计算激励门槛；不能读成历史累计。其 `totalCount` 由「读完本轮列表 → 按映射筛选 → 切片」得出，单次调用在同一交易内完成，ActionTarget 不另设人工 Proposal 数量上限。
 
 ## 实现约束
 

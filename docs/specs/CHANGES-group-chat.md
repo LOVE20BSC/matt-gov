@@ -2,6 +2,33 @@
 
 用户确认：群聊几乎原样迁移，功能、流程、查询和失败行为保持；业务身份统一为 MemberNFT，删除地址主体平行路径，NFT 代理仅作用于群聊。
 
+## 命名标准落地（2026-10-30）
+
+[`naming-standards.md`](../naming-standards.md) 的机器规则在本仓清零（基线 0 条，172 个用例全绿）。本节是相对此前各小节记录的现行名称差异：
+
+- 谓词：`postingAllowed(groupId)` → `isPostingAllowed(groupId)`；`ChatInfo.postingAllowed`、`ChatConfig.postingAllowed`、`GroupChatActivated.postingAllowed`、`PostingAllowedChanged.postingAllowed` 是字段不是函数，保持原名。
+- 批量读：`chatInfos` → `chatInfosByGroupIds(uint256[] requestedGroupIds)`；`roundInfos` 的载荷是轮次而非 id，改 `roundInfosByRounds(uint256 groupId, uint256[] requestedRounds)`，不套 `Ids`。
+- 委托读：`delegateIdOf` → `effectiveDelegateId`、`delegateIdsOf` → `effectiveDelegateIdsByGroupIds`（名字写明只返回快照仍有效的委托；批量读按 naming-standards §六 带 `By<Key>Ids`）、`ownerOrDelegateIdOf(groupId, account)` → `ownerOrDelegateId(groupId, operatorAddress)`。
+- 权重读：`voteWeightOf` → `voteWeight`（`IBanVoteWeightSource` 与四类 Manager 同步）。
+- 冻结值：`GroupChatBanList._groupAddress` / `_groupDelegateAddress`、`GroupMember._groupDelegateAddress` 改全大写 immutable `GROUP_ADDRESS` / `GROUP_DELEGATE_ADDRESS`；`ManagedAction.token` → `tokenAddress`。
+- 状态：四处 `_states` 改 `_adminState` / `_chatState` / `_memberState` / `_chatState`；`GroupChat` 重入锁 `_entered` → `_reentrancyStatus`、局部 `message_` → `storedMessage`。
+- 入参：接口入参不再用 `_` 后缀。与同名 getter 撞的批量入参改写为 `adminIdList` / `memberIdList`（写方向；方向已由 `add*` / `remove*` 给出，且与内部双向辅助 `_setMemberIds(…, memberIdList, listed)` 同名）、`checkedMemberIds`（`isMemberIdBatch`）、`requestedGroupIds`（`chatInfosByGroupIds`）、`requestedRounds`（`roundInfosByRounds`）；`adminIds(groupId)` 的返回名 `ids` → `adminIdList`（`ids` 是裸复数泛名，ABI JSON 里读不出是哪类 id，按 §十一「返回值不用裸 `ids`/`list`/`items`」改；`List` 后缀在这里取「数组」义，与 §7.5 分页禁 `List` 不冲突）。`activateChat` 的四个槽位入参改 `scopeSourceAddress` / `banSourceAddress` / `beforePostPluginAddress` / `afterPostPluginAddress`（§十一 四处同源在此处让位于同名声明禁入，见 naming-standards §3 硬约束 4 的读取 getter 例外）。下文 §Manager 三接口的「入参名」条记录的是本次被取代的旧做法。
+- 实体地址后缀（naming-standards §十）：构造函数入参与对应 getter 对齐为 `groupAdminAddress` / `groupDelegateAddress` / `groupChatAddress` / `banSourceAddress` / `beforePostPluginAddress` / `afterPostPluginAddress` / `actionTargetAddress` / `groupBanListAddress` / `groupMemberAddress` / `groupActionExecutorAddress`；Manager 的 `address token` 入参与局部变量改 `tokenAddress`，`actionByGroupId` 的返回名同步。四个配置槽位在 `activateChat` 与单槽 setter（`setScopeSource` / `setBanSource` / `setBeforePostPlugin` / `setAfterPostPlugin`）里统一为 `scopeSourceAddress` / `banSourceAddress` / `beforePostPluginAddress` / `afterPostPluginAddress`，字段与事件保留角色名（§3 硬约束 4 例外二、§十一 登记例外）。部署参数文件的键名（`*_ADDRESS`）不受影响。
+- 黑名单写票：`voteBySenderId` / `clearVoteBySenderId` / `refreshVoteBySenderId` → `voteByTargetSenderId` / `clearVoteByTargetSenderId` / `refreshVoteByTargetSenderId`，**入参保持 `targetSenderId`**——它与事件字段 `SenderBanVoteCast.targetSenderId`（由 event-standards §6.1 的 `gc.ban-vote` 槽位冻结）及内部 `TargetState` 键同名，按 naming-standards §3 硬约束 4 的例外让函数名让位，保住 §十一 的四处同源。
+- mention 查询族（§7.3 收紧 `By<Key>` 后）：`messagesByMention` / `messageIdsByMention` → `messagesByMentionedSenderId` / `messageIdsByMentionedSenderId`（Key 取入参 `mentionedSenderId` 的词干）；`messagesByMentionAll` / `messageIdsByMentionAll` → `mentionAllMessages` / `mentionAllMessageIds`（mention-all 是固定条件、没有对应入参，按 §7.3 不用 `By`）。`messagesBySenderId*` / `voteWeightsBySenderIdsByVoterId` 不动：`Sender` / `Voter` 分别是 `senderId` / `voterId` 去 `Id` 后的词干。这两族的 Count 入口已删除，总数由分页返回。
+- 集合查询：18 个分页入口统一为 `(offset, limit, reverse) → (列表, totalCount)`，返回值全部具名。删除全部 15 个 `*Count`（`messagesCount`、`messagesByRoundCount`、`messagesBySenderCount`、`messagesByMentionCount`、`messagesByMentionAllCount`、`senderIdsCount`、`groupIdsCount`、`roundsCount`、`memberIdsCount`、`delegatedGroupIdsCount`、`senderIdBanListCount`、`votedSenderIdsCount`、`votersBySenderIdCount`、`tokensCount`、`actionsByTokenCount`）：旧 ABI 的「分页 + 独立计数」是同一集合两条读取路径，`delegatedGroupIds` 更是在已返回 `totalCount` 之后又留了一个 Count。`limit = 0` 是取总数的唯一入口。`memberIds` / `senderIdBanList` / `delegatedGroupIds` / `votedSenderIds` / `votersBySenderId` 补 `reverse`；它们基于 swap-and-pop 的 `Uint256Set`，`reverse` 只承诺逆序遍历当前存储顺序，`offset` 不跨调用稳定。五个 `reverse` 都有反向分页用例（`senderIdBanList` / `votedSenderIds` / `votersBySenderId` 见 `testT123B` / `testT135B` / `testT135C`，`memberIds` / `delegatedGroupIds` 见 `testT133B_adminCanAddAndRemoveMemberIds` / `testT153_delegationPaginationBoundaries`），夹具先删首个元素让尾元素填位，使「当前存储顺序」与「插入序」可判别。
+- 存储态与映射（naming-standards §8.3 / §8.6）：`StoredMessage` → `MessageRecord`（写入后不改写，`State` 会被读成可变状态，按 §8.6 新增的 `Record` 判据改名）；`_chatConfigs` / `_messagesByChat` / `_senderMessageIndexes` / `_mentionMessageIndexes` / `_mentionAllMessageIndexes` / `_senderIdsByChat` / `_roundStates` / `_roundListByChat` → `_chatConfig` / `_messagesByGroupId` / `_messageIndexesByGroupIdBySenderId` / `_messageIndexesByGroupIdByMentionedSenderId` / `_mentionAllMessageIndexesByGroupId` / `_senderIdsByGroupId` / `_roundStateByGroupIdByRound` / `_roundsByGroupId`；`GroupChatDelegate` 的 `_delegateStates` / `_delegationAcceptanceEnabled` → `_delegateState` / `_delegationAcceptanceEnabledByDelegateId`。
+- 冻结值可见性：`GroupChatBanList.GROUP_ADDRESS` / `GROUP_DELEGATE_ADDRESS`、`GroupMember.GROUP_DELEGATE_ADDRESS` 由 `internal` 改 `public` 并进接口，`21_check.sh` 补三条绑定校验——与 GroupChat / GroupAdmin / GroupMember 既有 getter 对齐，部署后可直接核对这些合约指向的 MemberNFT 与 delegate。
+- Manager 查询去中缀 `Of`（§7.7，N20 只匹配结尾 `Of`，这批靠人工）：`tokenOfGroup` / `groupIdOfToken` / `actionOfGroup` / `groupIdOfAction` / `groupIdsOfActions` / `actionsOfGroups` → `tokenAddressByGroupId` / `groupIdByTokenAddress` / `actionByGroupId` / `groupIdByActionId` / `groupIdsByActionIds` / `actionsByGroupIds`；`actionsByToken` 的 `Token` 在入参改 `tokenAddress` 后不再同名，按 §7.3 的作用域键规则改为 `actions`，其 Count 入口删除、总数由分页返回；成对映射同步按 §8.3 改 `_tokenAddressByGroupId` / `_groupIdByTokenAddress` / `_managedActionByGroupId` / `_groupIdByActionId`；`_actionIdsByToken` → `_actionIdsByTokenAddress`（同批其余键都补了 `Address`，只剩它用裸 `Token`）。
+
+## Scope 谓词改名（2026-10-31）
+
+`IPostScopeSource.canPost(uint256,uint256)` → `isSenderAllowed(uint256,uint256)`，两个内置 scope source 与四个 Manager 同步。`IGroupChat.canPost(uint256,uint256)` 保留 `(bool allowed, PostRejectionReason reason)`。
+
+- **原因**：两族原本同 selector、不同返回形态。`GroupChat` 通过 `IPostScopeSource` 定向调用只读首字，按布尔 ABI 调用 `IGroupChat` 则会把 `PostRejectionReason` 丢掉；反向按二元组 ABI 调用 scope source 会因返回数据不足回滚。改名后 `canPost` 只剩高层预检查一种形态。
+- **语义**：scope source 只回答“该 sender 是否允许发言”，不返回拒绝原因；拒绝原因仍由 `GroupChat` 汇总为 `PostRejectionReason`。
+- 规格见 [规则槽位](group-chat/02-rules.md#标准接口) 与 [发言](group-chat/03-posting.md#预检查)。
+
 ## 委托接受开关（2026-10-29）
 
 用户确认：删除按群白名单，改为按目标 memberId 的**委托接受开关**。本节是相对“原样迁移”的明确差异，现行行为以 [01-lifecycle.md](group-chat/01-lifecycle.md) 为准：
@@ -10,7 +37,7 @@
 - `setDelegatorWhitelistEnabled` / `isDelegatorWhitelistEnabled` / `DelegatorWhitelistChanged` 改为 `setDelegationAcceptanceEnabled` / `isDelegationAcceptanceEnabled` / `DelegationAcceptanceChanged`；新增错误 `DelegateNotAcceptingNewDelegations(uint256 delegateId)`。
 - 开关按 delegateId 保存，默认关闭；关闭时禁止一切非零 `setDelegateId`（含同 id 重设、群或 delegate NFT 转移后的重新设回），`setDelegateId(groupId, 0)` 永远允许。
 - 开关是 delegateId 的属性，不随 delegate NFT 转移变化：新持有人继承当前值并可自行开关，旧持有人不再能开关；委托失效只由 owner 快照失配决定。
-- 开关只约束新指定，不参与有效性判断：关闭后既有委托继续生效（`delegateIdOf`、`ownerOrDelegateIdOf`、`delegatedGroupIds.isEffective` 均不变），撤销或 owner 快照失配才失效。
+- 开关只约束新指定，不参与有效性判断：关闭后既有委托继续生效（`effectiveDelegateId`、`ownerOrDelegateId`、`delegatedGroupIds.isEffective` 均不变），撤销或 owner 快照失配才失效。
 - 校验顺序：自指 → delegate NFT 存在性 → 接受开关 → 幂等；无效请求不被幂等静默吞掉。
 - 事件族 `gc.delegation` 只保留 `DelegationAcceptanceChanged`；`event-standards.md`、[07-events-errors.md](group-chat/07-events-errors.md)、[08-testing.md](group-chat/08-testing.md) 已同步。Group Chat 门禁：**168 tests 全绿**，事件基线与错误注册表已重生成。
 
@@ -86,7 +113,7 @@ Group Chat 门禁：**148 tests 全绿**；`build --deny warnings`、`lint`、`c
 
 | 层 | 保留 | 改参 | 新增 | 删除 |
 | --- | --- | --- | --- | --- |
-| 函数 | `currentRound()`、三个地址 getter、两个上限 getter、`activateChat`、`post`、`chatInfo(s)`、五个槽位 getter、`messages*` / `message` / `messagesBy*` / `messageIds*` / `senderIds` / `groupIds` / `rounds` / `roundInfo(s)` | `canPost(uint256,uint256,address)` → `canPost(uint256,uint256)`；五个配置 setter 各增 `uint256 operatorId` | `PHASE_ADDRESS()` | `originBlocks()` / `phaseBlocks()`、`postAsDefaultSender(...)`、`GROUP_DEFAULTS_ADDRESS()` |
+| 函数 | `currentRound()`、三个地址 getter、两个上限 getter、`activateChat`、`post`、`chatInfo` / `chatInfosByGroupIds`、五个槽位 getter、`messages*` / `message` / `messagesBy*` / `messageIds*` / `senderIds` / `groupIds` / `rounds` / `roundInfo` / `roundInfosByRounds` | `canPost(uint256,uint256,address)` → `canPost(uint256,uint256)`；五个配置 setter 各增 `uint256 operatorId` | `PHASE_ADDRESS()` | `originBlocks()` / `phaseBlocks()`、`postAsDefaultSender(...)`、`GROUP_DEFAULTS_ADDRESS()` |
 | 事件 | `PostMessage` / `MentionSenderId` / `MentionAll` / `FailAfterPostPlugin` | 五个配置事件各增 `uint256 indexed operatorId`；`Activate(uint256,address)` → `Activate(uint256,uint256,address)` | — | — |
 | 错误 | `GroupNotExist` / `ChatAlreadyActivated` / `ChatNotActivated` / `PostingNotAllowed` / `RoundNotStarted` / `Reentrant` / `ZeroPhaseBlocks` / `ZeroMaxContentLength` / `SourceNotContract` / `PluginNotContract` / `ContentEmpty` / `ContentTooLong` / `TooManyMentionedSenderIds` / `QuotedMessageNotFound` / `MessageNotFound` / `GroupAdminNotContract` / `GroupDelegateNotContract` / `MentionAllUnauthorized` / `ScopeRejected` / `BanRejected` / `ScopeSourceFailed` / `BanSourceFailed` | `SenderAddressNotSenderIdOwner()` → `NotMemberOwner(uint256 memberId)`；`GroupNotExist()` → `GroupNotExist(uint256 groupId)`；`GroupDelegateGroupMismatch()` → `GroupAddressMismatch(address expected, address actual)` | `PhaseNotContract(address dependency)`、`ZeroMaxMentionedSenderIds()`、`NotGroupOwner(uint256 groupId)`、`NotGroupOperator(uint256 groupId, uint256 operatorId)`、`DuplicateMemberId(uint256 memberId)` | `DefaultGroupIdNotSet()` / `GroupDefaultsHasNoCode()` / `GroupDefaultsGroupMismatch()` |
 
@@ -112,7 +139,7 @@ Group Chat 门禁：**148 tests 全绿**；`build --deny warnings`、`lint`、`c
 
 - **改名**：合约与接口 `GroupDelegate` → `GroupChatDelegate`；`InvalidAddress()` 等错误保留
 - **2026-10-29 起**：删除按群白名单与 `canSetDelegateTo`；白名单读写/枚举、`DelegatorGroupPermissionChanged`、`DelegatorGroupIdNotAllowed` 不再存在；`setDelegatorWhitelistEnabled` / `isDelegatorWhitelistEnabled` / `DelegatorWhitelistChanged` 改为 `setDelegationAcceptanceEnabled` / `isDelegationAcceptanceEnabled` / `DelegationAcceptanceChanged`，新增 `DelegateNotAcceptingNewDelegations(uint256)`；开关默认关闭，只约束新指定
-- **删除**：`isOwnerOrDelegate(uint256,address)`；等价判断由 `ownerOrDelegateIdOf(...) != 0` 表达，`delegateIdOf` / `delegateIdsOf` 已覆盖「有效 delegate 查询」
+- **删除**：`isOwnerOrDelegate(uint256,address)`；等价判断由 `ownerOrDelegateId(...) != 0` 表达，`effectiveDelegateId` / `effectiveDelegateIdsByGroupIds` 已覆盖「有效 delegate 查询」
 - **错误**：写入口缺失 delegateId 回 `ERC721NonexistentToken`；非 owner 回 `NotMemberOwner(delegateId)`；查询缺失 delegate 返回 false/0/空，不回滚；群 owner 非 owner 回 `NotGroupOwner(groupId)`；`delegateId == groupId` 回 `DelegateIsSelfGroup(groupId)`；`GroupNotExist(groupId)` 只用于群角色。旧 `SenderNotGroupOwner` / `DelegateIdCannotBeGroupId` / `SenderNotDelegateOwner` 已删除
 
 ### Manager 三接口
@@ -121,7 +148,7 @@ Group Chat 门禁：**148 tests 全绿**；`build --deny warnings`、`lint`、`c
 - **删除**：`IBaseManager.EXTENSION_CENTER_ADDRESS()`
 - **移动**：`ActionIdNotExist()` 由 `IBaseManager` 移至 `IBaseTokenActionScopeManager`（selector 不变）
 - **可见性**：`tokenOfGroup` / `groupIdOfToken` / `actionOfGroup` / `groupIdOfAction` 由 `public` 存储改为 `internal` + 显式 getter（selector 不变）
-- **入参名**：批量入参在接口与实现统一为 `_` 后缀，与 `postingAllowed_` 同例，规避与同名 getter 的声明遮蔽（solc 8760）：`addAdmins` / `removeAdmins` 的 `adminIds_`、`addMemberIds` / `removeMemberIds` / `isMemberIdBatch` 的 `memberIds_`、`chatInfos` 的 `groupIds_`、`roundInfos` 的 `rounds_`
+- **入参名**（**2026-10-30 起被命名标准取代**）：当时批量入参在接口与实现统一为 `_` 后缀以规避同名 getter 的声明遮蔽（solc 8760）；现行做法见本页 §命名标准落地
 - **新增**：错误 `ManagerGroupNameSpaceTooSmall()`；MemberNFT `MAX_NAME_LENGTH < 17`（1 字节分隔符 + 12 位十六进制后缀 + 4 字节 Test 前缀）时 Manager 构造回滚（已被 2026-10-25 命名 v2 取代，见上）
 
 ### 资格与黑名单源
@@ -130,7 +157,7 @@ Group Chat 门禁：**148 tests 全绿**；`build --deny warnings`、`lint`、`c
 | --- | --- |
 | `IPostScopeSource` | `canPost(uint256,uint256,address)` → `canPost(uint256,uint256)` |
 | `IPostBanSource` | `isBanned(uint256,uint256,address)` → `isBanned(uint256,uint256)` |
-| `IBanVoteWeightSource` | `voteWeightOf(uint256,address)` → `voteWeightOf(uint256,uint256)` |
+| `IBanVoteWeightSource` | `voteWeightOf(uint256,address)` → `voteWeight(uint256,uint256)`（2026-10-30 去 `Of` 后缀） |
 | `IGroupJoinScopeSource` | `GROUP_JOIN_ADDRESS()` → `GROUP_ACTION_EXECUTOR_ADDRESS()`；成员判定改 `IGroupActionIndexes.isGroupMember(groupId, senderId)` |
 | `IAdminBanSource` / `IGroupMemberScope` | 不变 |
 | `IGovVotedBanSource` | `voteBySenderId(uint256,uint256,bool)` → `(uint256,uint256,uint256,bool)`（显式 `voterId`），`clear` / `refresh` 同理；新增错误 `NotMemberOwner(uint256)`（写入/撤票校验 voter 当前持有人），旧 `SenderNotMemberOwner(uint256)` 已删除；删除地址投票一整套（`voteBySenderAddress` / `voteBySender` 及其 clear/refresh、`voteWeightsBySenderAddressesByVoter` / `voteStatusBySenderAddress(es)` / `isAddressBanned(es)` / `votedSenderAddresses*` / `votersBySenderAddress*`、事件 `SetAddressBanVote` / `SetAddressBan`、错误 `TargetAddressZero`）与单条 `isSenderIdBanned` |

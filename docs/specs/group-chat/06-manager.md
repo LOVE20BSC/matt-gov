@@ -4,7 +4,7 @@
 
 保留 TokenMainManager、TokenGovManager、TokenActionMainManager、TokenActionGovManager；每个 Manager 可以管理多个 Chat，不为每个 Chat 部署新 Manager。四个 Manager 同时实现 `IBanVoteWeightSource`，为托管群提供封禁权重；`GovVotedBanSource` 从群 NFT 的持有者解析权重源，因此托管是治理加权封禁成立的前提（见 [类型与资格](05-chat-types.md)）。
 
-同一个 token（token Manager）或 token + actionId（action Manager）只能在同一 Manager 中激活一次，重复激活回 `AlreadyManaged(groupId)`（`groupId` 为已存在的托管群）。保留 tokenOfGroup/groupIdOfToken、actionOfGroup/groupIdOfAction 及批量、分页查询；行动定位使用已有 `actionOfGroup(groupId)` 返回 token 和 actionId，不另加重复的 getActionId。行动不存在或 actionId 为 0 回 `ActionNotExist(tokenAddress, actionId)`；`RECENT_ROUNDS` 必须 >0，由部署脚本在广播前校验，合约为 0 时该 Manager 的治理资格恒为 false。
+同一个 token（token Manager）或 token + actionId（action Manager）只能在同一 Manager 中激活一次，重复激活回 `AlreadyManaged(groupId)`（`groupId` 为已存在的托管群）。保留 tokenAddressByGroupId/groupIdByTokenAddress、actionByGroupId/groupIdByActionId 及批量、分页查询；托管代币枚举 `tokens` 与行动枚举 `actions` 都按 `(offset, limit, reverse) → (列表, totalCount)` 分页并回真实总数，不另设计数入口；行动定位使用已有 `actionByGroupId(groupId)` 返回 tokenAddress 和 actionId，不另加重复的 getActionId。行动不存在或 actionId 为 0 回 `ActionNotExist(tokenAddress, actionId)`；`RECENT_ROUNDS` 必须 >0，由部署脚本在广播前校验，合约为 0 时该 Manager 的治理资格恒为 false。
 
 Token Manager 与 Action Manager 的接口分别见 [`ITokenScopeManagerBase.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/managers/ITokenScopeManagerBase.sol) 和 [`ITokenActionScopeManagerBase.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/managers/ITokenActionScopeManagerBase.sol)，两者共享的槽位 getter、`TYPE_CODE()` 与错误在 [`IManagerBase.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/managers/IManagerBase.sol)。两类接口不合并，避免单个 Manager 实现另一类 Manager 的无关方法。
 
@@ -19,7 +19,7 @@ Token Manager 与 Action Manager 的接口分别见 [`ITokenScopeManagerBase.sol
 
 ## 托管群名称
 
-名称只是展示标签，不是身份来源；token/actionId 从 `TokenGroupActivated` / `TokenActionGroupActivated` 事件与 `tokenOfGroup` / `actionOfGroup` 读取。
+名称只是展示标签，不是身份来源；token/actionId 从 `TokenGroupActivated` / `TokenActionGroupActivated` 事件与 `tokenAddressByGroupId` / `actionByGroupId` 读取。
 
 `ManagerBase` 只提供通用命名机制，不维护类型清单，也不决定 payload 内容；类型码与 payload 由各 Manager 自己定义，不设集中清单。`ManagerBase` 不接收 type code 构造参数，具体 Manager 实现 `_typeCode()`，并由 `IManagerBase.TYPE_CODE()` 暴露。四类 Manager 的 `_typeCode()` 必须非空且互异（源码/测试不变量，`testT180` 锁定）。当前四类为 `tm`（TokenMainManager）、`tg`（TokenGovManager）、`am`（TokenActionMainManager）、`ag`（TokenActionGovManager），各 2 字节。沿用同一命名格式时，新增托管类型只需新 Manager 实现自己的 `_typeCode()` 与 payload，不改 `ManagerBase`，也不需要在脚本里维护 Manager 清单；只有类型码比当前最长（2 字节）更长时，才需抬高部署脚本的预检常量，并把新 Manager 加入 `testT181` 的类型码核对——漏改时预检偏低，由 `21_check.sh` 部署后拦下。若需要不同的命名格式，仍需单独扩展命名机制。
 

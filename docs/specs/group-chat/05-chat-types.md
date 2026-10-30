@@ -21,9 +21,9 @@
 
 `targetSenderId` 只要求非零，不要求 MemberNFT 存在（允许预黑名单）；`0` 回 `ZeroTargetSenderId()`。
 
-`voteWeightOf(groupId, voterId)` 使用上表权重；两类 token Manager 和两类 action Manager 的 `totalVoteWeight(groupId)` 都取所属社区的当前总有效治理票，不取行动总票数或创建 Round。
+`voteWeight(groupId, voterId)` 使用上表权重；两类 token Manager 和两类 action Manager 的 `totalVoteWeight(groupId)` 都取所属社区的当前总有效治理票，不取行动总票数或创建 Round。
 
-权重源不是独立配置项，而是群 NFT 的当前持有者：`GovVotedBanSource` 以 `MemberNFT.ownerOf(groupId)` 解析权重合约，再调用其 `voteWeightOf` / `totalVoteWeight`。四类 Manager 在托管群 NFT 的同时实现 `IBanVoteWeightSource`，因此只有 Manager 托管的 Chat 具备治理加权封禁。群不存在回 `GroupNotExist(groupId)`；群存在但持有者是 EOA，或未实现该接口的合约钱包时，写票回 `BanVoteWeightSourceUnavailable(groupId, source)`（`source` 为解析出的失败权重源地址），只能用人工黑名单；`setBanSource` 只校验地址有代码，误配不会在配置期报错。
+权重源不是独立配置项，而是群 NFT 的当前持有者：`GovVotedBanSource` 以 `MemberNFT.ownerOf(groupId)` 解析权重合约，再调用其 `voteWeight` / `totalVoteWeight`。四类 Manager 在托管群 NFT 的同时实现 `IBanVoteWeightSource`，因此只有 Manager 托管的 Chat 具备治理加权封禁。群不存在回 `GroupNotExist(groupId)`；群存在但持有者是 EOA，或未实现该接口的合约钱包时，写票回 `BanVoteWeightSourceUnavailable(groupId, source)`（`source` 为解析出的失败权重源地址），只能用人工黑名单；`setBanSource` 只校验地址有代码，误配不会在配置期报错。
 
 GovVotedBanSource 的接口见 [`IGovVotedBanSource.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/sources/ban/IGovVotedBanSource.sol)，其 voter 和 target 均使用 `memberId`。
 
@@ -35,11 +35,11 @@ supportWeight > opposeWeight * 10
 supportWeight * 1e18 >= totalVoteWeight * 3e15
 ```
 
-同时满足才进入黑名单，保留严格比较、0.3% 门槛及无变化/无投票记录的处理：重复投票（方向与权重都未变）回 `VoteUnchanged(groupId, targetSenderId, voterId)`，不做名单同步（source 不可用时先回 `BanVoteWeightSourceUnavailable`）。同票重投不结算权重漂移；该 target 上任何投票/撤票/刷新都会按实时分母重算名单，本票权重的唯一改口入口是 `refreshVoteBySenderId`。撤票或刷新找不到记录回 `VoteNotFound(groupId, targetSenderId, voterId)`，投票权重为 0 回 `ZeroVoteWeight(groupId, voterId)`。`minSupportToOpposeMultiplier > 0` 与 `banThresholdRatio <= 1e18`（0 合法）是部署期静态不变量，由部署脚本在广播前校验（dev-standards §5.7）。投票/撤票/刷新后同步目标名单；`isBanned` 读取已结算名单，不全量扫描重算。
+同时满足才进入黑名单，保留严格比较、0.3% 门槛及无变化/无投票记录的处理：重复投票（方向与权重都未变）回 `VoteUnchanged(groupId, targetSenderId, voterId)`，不做名单同步（source 不可用时先回 `BanVoteWeightSourceUnavailable`）。同票重投不结算权重漂移；该 target 上任何投票/撤票/刷新都会按实时分母重算名单，本票权重的唯一改口入口是 `refreshVoteByTargetSenderId`。撤票或刷新找不到记录回 `VoteNotFound(groupId, targetSenderId, voterId)`，投票权重为 0 回 `ZeroVoteWeight(groupId, voterId)`。`minSupportToOpposeMultiplier > 0` 与 `banThresholdRatio <= 1e18`（0 合法）是部署期静态不变量，由部署脚本在广播前校验（dev-standards §5.7）。投票/撤票/刷新后同步目标名单；`isBanned` 读取已结算名单，不全量扫描重算。
 
 不设版本字段：每次已结算变更都由 `SenderBanVoteCast` / `GovSenderBanChanged` 携带完整事实，链下缓存按事件失效即可。
 
-`supportWeight` / `opposeWeight` / `isBanned` 都是**已结算**值，分母 `totalVoteWeight` 是**实时**值；跨轮或 Stake 变化不会自动刷新其他人的票，名单因此可能双向过期（该进未进、该出未出）。`refreshVoteBySenderId` 无鉴权、幂等、结果与调用者无关，任何地址都可提前结算。
+`supportWeight` / `opposeWeight` / `isBanned` 都是**已结算**值，分母 `totalVoteWeight` 是**实时**值；跨轮或 Stake 变化不会自动刷新其他人的票，名单因此可能双向过期（该进未进、该出未出）。`refreshVoteByTargetSenderId` 无鉴权、幂等、结果与调用者无关，任何地址都可提前结算。
 
 投票身份按 voterId 该 MemberNFT 的**当前**持有人校验，不保存 owner 快照，与 admin/delegate 的双快照模型不同：NFT 转移后旧票仍按原 `settledWeight` 计数，新持有人可改票、撤票或刷新，旧持有人不再能操作该票。
 

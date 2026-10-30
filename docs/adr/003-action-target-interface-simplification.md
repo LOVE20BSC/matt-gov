@@ -54,7 +54,7 @@ function actionIdsByMemberId(
     uint256 offset, 
     uint256 limit, 
     bool reverse
-) external view returns (uint256[] memory actionIds, uint256 total);
+) external view returns (uint256[] memory actionIds, uint256 totalCount);
 
 function actionIdsByExecutor(
     address tokenAddress,
@@ -63,7 +63,7 @@ function actionIdsByExecutor(
     uint256 offset,
     uint256 limit,
     bool reverse
-) external view returns (uint256[] memory actionIds, uint256 total);
+) external view returns (uint256[] memory actionIds, uint256 totalCount);
 
 function actions(
     address tokenAddress,
@@ -71,7 +71,7 @@ function actions(
     uint256 offset,
     uint256 limit,
     bool reverse
-) external view returns (uint256[] memory actionIds, address[] memory executors, uint256 total);
+) external view returns (uint256[] memory actionIds, address[] memory executors, uint256 totalCount);
 ```
 
 **理由**：

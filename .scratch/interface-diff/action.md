@@ -27,17 +27,17 @@ interface IActionExecutor is IProposalTarget, IActionExecutorEvents, IActionExec
     function actionTarget() external view returns (address);
     function initialized() external view returns (bool);
     function exit(address tokenAddress, uint256 actionId, uint256 memberId) external;
-    function mintMemberReward(address tokenAddress, uint256 actionId, uint256 memberId, uint256 round)
+    function mintMemberReward(address tokenAddress, uint256 actionId, uint256 round, uint256 memberId)
         external returns (uint256 mintAmount, uint256 burnAmount);
-    function mintMemberRewards(address tokenAddress, uint256[] calldata actionIds, uint256 memberId,
-        uint256[] calldata rounds)
+    function mintMemberRewards(address tokenAddress, uint256[] calldata actionIds, uint256[] calldata rounds,
+        uint256 memberId)
         external returns (uint256[] memory mintAmounts, uint256[] memory burnAmounts);
     function needBurnReward(address tokenAddress, uint256 actionId, uint256 round)
         external view returns (bool needed);
     function currentVoteRound() external view returns (uint256);
     function currentJoinRound() external view returns (uint256);
     function currentMintRound() external view returns (uint256);
-    function memberReward(address tokenAddress, uint256 actionId, uint256 memberId, uint256 round)
+    function memberReward(address tokenAddress, uint256 actionId, uint256 round, uint256 memberId)
         external view returns (uint256 mintAmount, uint256 burnAmount, bool minted);
     function joinedAmount(address tokenAddress, uint256 actionId, uint256 round) external view returns (uint256 amount);
     function joinedAmountByMemberId(address tokenAddress, uint256 actionId, uint256 round, uint256 memberId)
@@ -133,7 +133,7 @@ interface IActionExecutor is IProposalTarget, IActionExecutorEvents, IActionExec
 | `initialized()` | `IExtension.initialized`（`ExtensionBase.sol:27` 自动 getter） | 保留（与 core 六个接口同形；中转期间曾缺失，本轮补回） |
 | `init(mintAddress)` | 无（旧为构造函数注入） | 新增（只收 Mint；`voteAddress`、`submitAddress`、`memberNFTAddress`、`phaseAddress` 全部从 Mint 派生，派生值零校验后缓存） |
 | `isJoined(tokenAddress, actionId, uint256 memberId)` | `IExtensionCenter.isAccountJoined(tokenAddress, actionId, address account)` | 改名+改参（去 Account 前缀） |
-| `isJoinedByRound(tokenAddress, actionId, memberId, round)` | `IExtensionCenter.isAccountJoinedByRound(...)` | 改名+改参（**保留**；旧 `validRound` 回滚 `RoundExceedsJoinRound` 改为按未开始返回 false） |
+| `isJoinedByRound(tokenAddress, actionId, round, memberId)` | `IExtensionCenter.isAccountJoinedByRound(...)` | 改名+改参（**保留**；旧 `validRound` 回滚 `RoundExceedsJoinRound` 改为按未开始返回 false） |
 | `registerJoinState(tokenAddress, actionId, uint256 memberId)` | `IExtensionCenter.addAccount(tokenAddress, actionId, address account, verificationInfos[])` | 改名+改参（`verificationInfos` 移入各 Executor 的 `join`；幂等，不再回滚 `AccountAlreadyJoined`） |
 | `clearJoinState(tokenAddress, actionId, uint256 memberId)` | `IExtensionCenter.removeAccount(tokenAddress, actionId, address account) returns (bool)` | 改名+改参（去返回值；未加入时返回无操作，不再返回 false） |
 | `actionIdsByMemberId(tokenAddress, memberId, offset, limit, reverse) returns (actionIds[], total)` | `IExtensionCenter.actionIdsByAccount(tokenAddress, address account, address[] factories)` 部分对应 | 改名+改参（标准分页 `(offset, limit, reverse) → (列表, 总数)`；删除 factories 参数与 extensions/factories 返回数组） |

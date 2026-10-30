@@ -305,8 +305,8 @@ OZ 5 的标准回滚由固定依赖提供：`IERC721Errors`、`ERC721OutOfBounds
 | 新 | 旧 | 状态 |
 | --- | --- | --- |
 | `prepareRewardIfNeeded(tokenAddress, uint256 round)` | `prepareRewardIfNeeded(tokenAddress)` | 改参（新增 round） |
-| `mintGovReward(tokenAddress, memberId, round) returns (voteReward, boostReward, burnReward)` | `mintGovReward(tokenAddress, round) returns (verifyReward, boostReward, burnReward)` | 改参（新增 memberId，首返回改名） |
-| `mintGovRewards(tokenAddress, memberId, rounds[]) returns (voteRewards[], boostRewards[], burnRewards[])` | 无 | 新增（批量原子铸造） |
+| `mintGovReward(tokenAddress, round, memberId) returns (voteReward, boostReward, burnReward)` | `mintGovReward(tokenAddress, round) returns (verifyReward, boostReward, burnReward)` | 改参（新增 memberId，首返回改名） |
+| `mintGovRewards(tokenAddress, rounds[], memberId, recipient) returns (voteRewards[], boostRewards[], burnRewards[])` | 无 | 新增（批量原子铸造） |
 | `mintProposalReward(tokenAddress, round, proposalId) returns (uint256 amount)` | `mintActionReward(tokenAddress, round, actionId) returns (uint256)` | 改名 |
 | `burnUnmintedProposalReward(tokenAddress, round, proposalId) returns (uint256 amount)` | 无 | 新增（销毁未铸造的行动激励：仅 Target 可调，标记已结算并累计 `rewardBurned`；供 ActionTarget 行动级销毁链路调用） |
 | `isProposalIdWithReward(tokenAddress, round, proposalId)` | `isActionIdWithReward(tokenAddress, round, actionId)` | 改名 |

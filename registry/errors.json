@@ -10,7 +10,7 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/GroupActionJoin.sol:689"
+        "action/src/GroupActionJoin.sol:678"
       ],
       "selector": "0x2de9248d",
       "signature": "ActionMaxJoinAmountExceeded(uint256,uint256,uint256)"
@@ -25,10 +25,10 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/GroupActionExecutor.sol:742",
+        "action/src/GroupActionExecutor.sol:733",
         "action/src/GroupActionManager.sol:132",
         "action/src/GroupActionVerify.sol:167",
-        "action/src/GroupServiceExecutor.sol:755",
+        "action/src/GroupServiceExecutor.sol:746",
         "action/src/LpExecutor.sol:531"
       ],
       "selector": "0x36c193ae",
@@ -44,7 +44,7 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/GroupServiceExecutor.sol:451"
+        "action/src/GroupServiceExecutor.sol:442"
       ],
       "selector": "0x4757480b",
       "signature": "ActionTokenParentMismatch(address,address,address)"
@@ -92,7 +92,7 @@
       "repo": "action",
       "revert_sites": [
         "action/src/ActionTarget.sol:53",
-        "action/src/GroupActionExecutor.sol:63",
+        "action/src/GroupActionExecutor.sol:64",
         "action/src/GroupServiceExecutor.sol:75",
         "action/src/LpExecutor.sol:99"
       ],
@@ -124,7 +124,7 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/ExecutorBase.sol:42"
+        "action/src/ExecutorBase.sol:41"
       ],
       "selector": "0x81b5b207",
       "signature": "BatchLengthMismatch(uint256,uint256)"
@@ -139,7 +139,7 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/GroupActionJoin.sol:675"
+        "action/src/GroupActionJoin.sol:664"
       ],
       "selector": "0x21bb7f42",
       "signature": "BelowMinJoinAmount(uint256,uint256)"
@@ -260,7 +260,7 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/GroupActionJoin.sol:672"
+        "action/src/GroupActionJoin.sol:661"
       ],
       "selector": "0xbf0861bd",
       "signature": "GroupAccountsFull(uint256,uint256,uint256)"
@@ -290,7 +290,7 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/GroupActionJoin.sol:683"
+        "action/src/GroupActionJoin.sol:672"
       ],
       "selector": "0x5b3f94ec",
       "signature": "GroupCapacityExceeded(uint256,uint256,uint256)"
@@ -305,7 +305,7 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/GroupActionJoin.sol:666"
+        "action/src/GroupActionJoin.sol:655"
       ],
       "selector": "0xda731d54",
       "signature": "GroupMaxJoinAmountExceeded(uint256,uint256,uint256)"
@@ -320,8 +320,8 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/GroupActionJoin.sol:355",
-        "action/src/GroupActionJoin.sol:659",
+        "action/src/GroupActionJoin.sol:344",
+        "action/src/GroupActionJoin.sol:648",
         "action/src/GroupActionManager.sol:187",
         "action/src/GroupActionManager.sol:234"
       ],
@@ -341,8 +341,8 @@
       "repo": "action",
       "revert_sites": [
         "action/src/GroupActionJoin.sol:167",
-        "action/src/GroupActionJoin.sol:351",
-        "action/src/GroupActionJoin.sol:401",
+        "action/src/GroupActionJoin.sol:340",
+        "action/src/GroupActionJoin.sol:390",
         "action/src/GroupActionJoin.sol:68",
         "action/src/GroupActionManager.sol:40",
         "action/src/GroupServiceExecutor.sol:61"
@@ -406,7 +406,7 @@
       "repo": "action",
       "revert_sites": [
         "action/src/GroupActionJoin.sol:174",
-        "action/src/GroupActionJoin.sol:768"
+        "action/src/GroupActionJoin.sol:757"
       ],
       "selector": "0xca9ef3f9",
       "signature": "InsufficientProviderQuota(uint256,uint256,uint256)"
@@ -511,7 +511,7 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/GroupServiceExecutor.sol:446"
+        "action/src/GroupServiceExecutor.sol:437"
       ],
       "selector": "0x790182dd",
       "signature": "InvalidRatioForPublicVerifier(uint256)"
@@ -537,7 +537,7 @@
         "action/src/ActionTarget.sol:514",
         "action/src/GroupActionManager.sol:61",
         "action/src/GroupActionVerify.sol:404",
-        "action/src/GroupServiceExecutor.sol:434",
+        "action/src/GroupServiceExecutor.sol:425",
         "action/src/LpExecutor.sol:126"
       ],
       "selector": "0x9c2b3988",
@@ -568,9 +568,9 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/GroupActionExecutor.sol:771",
-        "action/src/GroupServiceExecutor.sol:773",
-        "action/src/GroupServiceExecutor.sol:783",
+        "action/src/GroupActionExecutor.sol:762",
+        "action/src/GroupServiceExecutor.sol:764",
+        "action/src/GroupServiceExecutor.sol:774",
         "action/src/LpExecutor.sol:558"
       ],
       "selector": "0x4cd933ce",
@@ -618,7 +618,7 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/GroupActionExecutor.sol:29",
+        "action/src/GroupActionExecutor.sol:30",
         "action/src/GroupServiceExecutor.sol:53",
         "action/src/LpExecutor.sol:77"
       ],
@@ -658,7 +658,7 @@
       "repo": "action",
       "revert_sites": [
         "action/src/GroupActionJoin.sol:206",
-        "action/src/GroupServiceExecutor.sol:408",
+        "action/src/GroupServiceExecutor.sol:399",
         "action/src/LpExecutor.sol:279"
       ],
       "selector": "0x847d1a6f",
@@ -769,7 +769,7 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/GroupActionJoin.sol:348"
+        "action/src/GroupActionJoin.sol:337"
       ],
       "selector": "0x4a0b0bf7",
       "signature": "QuotaArrayLengthMismatch(uint256,uint256)"
@@ -784,7 +784,7 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/GroupActionJoin.sol:365"
+        "action/src/GroupActionJoin.sol:354"
       ],
       "selector": "0x3791977c",
       "signature": "QuotaMemberIsProvider(uint256)"
@@ -799,7 +799,7 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/GroupActionJoin.sol:471"
+        "action/src/GroupActionJoin.sol:460"
       ],
       "selector": "0x6ce01173",
       "signature": "QuotaNotGranted(uint256,uint256,uint256)"
@@ -859,8 +859,8 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/GroupActionExecutor.sol:753",
-        "action/src/GroupServiceExecutor.sol:766",
+        "action/src/GroupActionExecutor.sol:744",
+        "action/src/GroupServiceExecutor.sol:757",
         "action/src/LpExecutor.sol:542"
       ],
       "selector": "0xf41a3e9f",
@@ -876,8 +876,8 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/GroupActionExecutor.sol:749",
-        "action/src/GroupServiceExecutor.sol:762",
+        "action/src/GroupActionExecutor.sol:740",
+        "action/src/GroupServiceExecutor.sol:753",
         "action/src/LpExecutor.sol:538"
       ],
       "selector": "0x45297019",
@@ -893,8 +893,8 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/GroupActionExecutor.sol:745",
-        "action/src/GroupServiceExecutor.sol:758",
+        "action/src/GroupActionExecutor.sol:736",
+        "action/src/GroupServiceExecutor.sol:749",
         "action/src/LpExecutor.sol:534"
       ],
       "selector": "0x1edd1ded",
@@ -910,10 +910,10 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/ExecutorBase.sol:55",
-        "action/src/ExecutorBase.sol:63",
-        "action/src/ExecutorBase.sol:71",
-        "action/src/GroupActionExecutor.sol:83",
+        "action/src/ExecutorBase.sol:54",
+        "action/src/ExecutorBase.sol:62",
+        "action/src/ExecutorBase.sol:70",
+        "action/src/GroupActionExecutor.sol:84",
         "action/src/GroupActionStorage.sol:192",
         "action/src/GroupActionVerify.sol:540",
         "action/src/GroupServiceExecutor.sol:103",
@@ -1004,8 +1004,8 @@
         "action/src/GroupActionManager.sol:53",
         "action/src/GroupActionManager.sol:56",
         "action/src/GroupActionVerify.sol:401",
-        "action/src/GroupServiceExecutor.sol:429",
-        "action/src/GroupServiceExecutor.sol:489",
+        "action/src/GroupServiceExecutor.sol:420",
+        "action/src/GroupServiceExecutor.sol:480",
         "action/src/LpExecutor.sol:121",
         "action/src/LpExecutor.sol:172"
       ],
@@ -1052,7 +1052,7 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/GroupActionJoin.sol:733"
+        "action/src/GroupActionJoin.sol:722"
       ],
       "selector": "0x4097cdca",
       "signature": "TooManyVerificationValues(uint256,uint256)"
@@ -1143,7 +1143,7 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/GroupActionJoin.sol:738",
+        "action/src/GroupActionJoin.sol:727",
         "action/src/GroupActionManager.sol:91"
       ],
       "selector": "0xe5b734dc",
@@ -1174,7 +1174,7 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/GroupActionJoin.sol:744"
+        "action/src/GroupActionJoin.sol:733"
       ],
       "selector": "0x762fe301",
       "signature": "VerificationValueTooLong(uint256,uint256,uint256)"
@@ -1252,7 +1252,7 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/GroupServiceExecutor.sol:443"
+        "action/src/GroupServiceExecutor.sol:434"
       ],
       "selector": "0x95bf90a9",
       "signature": "ZeroActionTokenAddress()"
@@ -1306,7 +1306,7 @@
       "repo": "action",
       "revert_sites": [
         "action/src/GroupActionJoin.sol:164",
-        "action/src/GroupActionJoin.sol:368"
+        "action/src/GroupActionJoin.sol:357"
       ],
       "selector": "0xb88ef067",
       "signature": "ZeroQuotaAmount(uint256)"
@@ -2480,7 +2480,7 @@
       ],
       "repo": "group-chat",
       "revert_sites": [
-        "group-chat/src/managers/TokenActionScopeManagerBase.sol:139"
+        "group-chat/src/managers/TokenActionScopeManagerBase.sol:145"
       ],
       "selector": "0x9c0f73f0",
       "signature": "ActionNotExist(address,uint256)"
@@ -2495,7 +2495,7 @@
       ],
       "repo": "group-chat",
       "revert_sites": [
-        "group-chat/src/GroupAdmin.sol:169"
+        "group-chat/src/GroupAdmin.sol:172"
       ],
       "selector": "0x2ffd6226",
       "signature": "AdminIdsLimitExceeded(uint256,uint256,uint256)"
@@ -2525,7 +2525,7 @@
       ],
       "repo": "group-chat",
       "revert_sites": [
-        "group-chat/src/GroupChat.sol:794"
+        "group-chat/src/GroupChat.sol:788"
       ],
       "selector": "0x8b4c2330",
       "signature": "BanRejected(uint256,uint256,address)"
@@ -2540,7 +2540,7 @@
       ],
       "repo": "group-chat",
       "revert_sites": [
-        "group-chat/src/GroupChat.sol:800"
+        "group-chat/src/GroupChat.sol:794"
       ],
       "selector": "0x0200c8c5",
       "signature": "BanSourceFailed(uint256,address)"
@@ -2555,9 +2555,9 @@
       ],
       "repo": "group-chat",
       "revert_sites": [
-        "group-chat/src/sources/ban/GovVotedBanSource.sol:337",
-        "group-chat/src/sources/ban/GovVotedBanSource.sol:353",
-        "group-chat/src/sources/ban/GovVotedBanSource.sol:361"
+        "group-chat/src/sources/ban/GovVotedBanSource.sol:332",
+        "group-chat/src/sources/ban/GovVotedBanSource.sol:348",
+        "group-chat/src/sources/ban/GovVotedBanSource.sol:356"
       ],
       "selector": "0x76befc7f",
       "signature": "BanVoteWeightSourceUnavailable(uint256,address)"
@@ -2572,7 +2572,7 @@
       ],
       "repo": "group-chat",
       "revert_sites": [
-        "group-chat/src/GroupChat.sol:117"
+        "group-chat/src/GroupChat.sol:126"
       ],
       "selector": "0x7dd7c968",
       "signature": "ChatAlreadyActivated(uint256)"
@@ -2587,8 +2587,8 @@
       ],
       "repo": "group-chat",
       "revert_sites": [
-        "group-chat/src/GroupChat.sol:225",
-        "group-chat/src/GroupChat.sol:731"
+        "group-chat/src/GroupChat.sol:234",
+        "group-chat/src/GroupChat.sol:725"
       ],
       "selector": "0xba67ced4",
       "signature": "ChatNotActivated(uint256)"
@@ -2603,7 +2603,7 @@
       ],
       "repo": "group-chat",
       "revert_sites": [
-        "group-chat/src/GroupChat.sol:232"
+        "group-chat/src/GroupChat.sol:241"
       ],
       "selector": "0x85a5c617",
       "signature": "ContentEmpty()"
@@ -2618,7 +2618,7 @@
       ],
       "repo": "group-chat",
       "revert_sites": [
-        "group-chat/src/GroupChat.sol:235"
+        "group-chat/src/GroupChat.sol:244"
       ],
       "selector": "0x9f588bb4",
       "signature": "ContentTooLong(uint256,uint256)"
@@ -2633,7 +2633,7 @@
       ],
       "repo": "group-chat",
       "revert_sites": [
-        "group-chat/src/GroupChatDelegate.sol:47"
+        "group-chat/src/GroupChatDelegate.sol:50"
       ],
       "selector": "0x419b0664",
       "signature": "DelegateIsSelfGroup(uint256)"
@@ -2648,7 +2648,7 @@
       ],
       "repo": "group-chat",
       "revert_sites": [
-        "group-chat/src/GroupChatDelegate.sol:56"
+        "group-chat/src/GroupChatDelegate.sol:59"
       ],
       "selector": "0x5873854b",
       "signature": "DelegateNotAcceptingNewDelegations(uint256)"
@@ -2669,9 +2669,9 @@
       ],
       "repo": "group-chat",
       "revert_sites": [
-        "group-chat/src/GroupAdmin.sol:145",
-        "group-chat/src/GroupChat.sol:877",
-        "group-chat/src/GroupChatBanList.sol:113",
+        "group-chat/src/GroupAdmin.sol:148",
+        "group-chat/src/GroupChat.sol:871",
+        "group-chat/src/GroupChatBanList.sol:117",
         "group-chat/src/GroupMember.sol:80"
       ],
       "selector": "0x1a494813",
@@ -2693,11 +2693,11 @@
       ],
       "repo": "group-chat",
       "revert_sites": [
-        "group-chat/src/GroupAdmin.sol:200",
-        "group-chat/src/GroupChat.sol:849",
-        "group-chat/src/GroupChatDelegate.sol:233",
-        "group-chat/src/GroupChatDelegate.sol:244",
-        "group-chat/src/sources/ban/GovVotedBanSource.sol:334"
+        "group-chat/src/GroupAdmin.sol:203",
+        "group-chat/src/GroupChat.sol:843",
+        "group-chat/src/GroupChatDelegate.sol:232",
+        "group-chat/src/GroupChatDelegate.sol:243",
+        "group-chat/src/sources/ban/GovVotedBanSource.sol:329"
       ],
       "selector": "0xfeddf96a",
       "signature": "GroupNotExist(uint256)"
@@ -2742,7 +2742,7 @@
       ],
       "repo": "group-chat",
       "revert_sites": [
-        "group-chat/src/GroupChat.sol:742"
+        "group-chat/src/GroupChat.sol:736"
       ],
       "selector": "0x340c79cd",
       "signature": "MentionAllUnauthorized(uint256,uint256)"
@@ -2757,7 +2757,7 @@
       ],
       "repo": "group-chat",
       "revert_sites": [
-        "group-chat/src/GroupChat.sol:384"
+        "group-chat/src/GroupChat.sol:388"
       ],
       "selector": "0xf90c4bc6",
       "signature": "MessageNotFound(uint256,uint256)"
@@ -2778,9 +2778,9 @@
       ],
       "repo": "group-chat",
       "revert_sites": [
-        "group-chat/src/GroupAdmin.sol:192",
-        "group-chat/src/GroupChat.sol:723",
-        "group-chat/src/GroupChatBanList.sol:151",
+        "group-chat/src/GroupAdmin.sol:195",
+        "group-chat/src/GroupChat.sol:717",
+        "group-chat/src/GroupChatBanList.sol:155",
         "group-chat/src/GroupMember.sol:101"
       ],
       "selector": "0x20e5d297",
@@ -2798,8 +2798,8 @@
       ],
       "repo": "group-chat",
       "revert_sites": [
-        "group-chat/src/GroupChat.sol:101",
-        "group-chat/src/GroupChatDelegate.sol:31"
+        "group-chat/src/GroupChat.sol:110",
+        "group-chat/src/GroupChatDelegate.sol:34"
       ],
       "selector": "0x54a55079",
       "signature": "NotGroupOwner(uint256)"
@@ -2818,9 +2818,9 @@
       ],
       "repo": "group-chat",
       "revert_sites": [
-        "group-chat/src/GroupChat.sol:94",
-        "group-chat/src/GroupChatDelegate.sol:38",
-        "group-chat/src/sources/ban/GovVotedBanSource.sol:185"
+        "group-chat/src/GroupChat.sol:103",
+        "group-chat/src/GroupChatDelegate.sol:41",
+        "group-chat/src/sources/ban/GovVotedBanSource.sol:180"
       ],
       "selector": "0x33393244",
       "signature": "NotMemberOwner(uint256)"
@@ -2835,7 +2835,7 @@
       ],
       "repo": "group-chat",
       "revert_sites": [
-        "group-chat/src/GroupChat.sol:861"
+        "group-chat/src/GroupChat.sol:855"
       ],
       "selector": "0x54752274",
       "signature": "PluginNotContract(address)"
@@ -2850,7 +2850,7 @@
       ],
       "repo": "group-chat",
       "revert_sites": [
-        "group-chat/src/GroupChat.sol:228"
+        "group-chat/src/GroupChat.sol:237"
       ],
       "selector": "0x27dcd12b",
       "signature": "PostingNotAllowed(uint256)"
@@ -2865,7 +2865,7 @@
       ],
       "repo": "group-chat",
       "revert_sites": [
-        "group-chat/src/GroupChat.sol:961"
+        "group-chat/src/GroupChat.sol:955"
       ],
       "selector": "0xaeb2440f",
       "signature": "QuotedMessageNotFound(uint256,uint256)"
@@ -2880,7 +2880,7 @@
       ],
       "repo": "group-chat",
       "revert_sites": [
-        "group-chat/src/GroupChat.sol:85"
+        "group-chat/src/GroupChat.sol:94"
       ],
       "selector": "0xed3ba6a6",
       "signature": "Reentrant()"
@@ -2895,7 +2895,7 @@
       ],
       "repo": "group-chat",
       "revert_sites": [
-        "group-chat/src/GroupChat.sol:371"
+        "group-chat/src/GroupChat.sol:380"
       ],
       "selector": "0xea74f32b",
       "signature": "RoundNotStarted(uint256,uint256)"
@@ -2910,7 +2910,7 @@
       ],
       "repo": "group-chat",
       "revert_sites": [
-        "group-chat/src/GroupChat.sol:791"
+        "group-chat/src/GroupChat.sol:785"
       ],
       "selector": "0x425c5f1a",
       "signature": "ScopeRejected(uint256,uint256,address)"
@@ -2925,7 +2925,7 @@
       ],
       "repo": "group-chat",
       "revert_sites": [
-        "group-chat/src/GroupChat.sol:797"
+        "group-chat/src/GroupChat.sol:791"
       ],
       "selector": "0x3b5866a6",
       "signature": "ScopeSourceFailed(uint256,address)"
@@ -2940,7 +2940,7 @@
       ],
       "repo": "group-chat",
       "revert_sites": [
-        "group-chat/src/GroupChat.sol:855"
+        "group-chat/src/GroupChat.sol:849"
       ],
       "selector": "0x05dbf84e",
       "signature": "SourceNotContract(address)"
@@ -2955,7 +2955,7 @@
       ],
       "repo": "group-chat",
       "revert_sites": [
-        "group-chat/src/managers/TokenManagerBase.sol:30"
+        "group-chat/src/managers/TokenManagerBase.sol:36"
       ],
       "selector": "0x518fd31e",
       "signature": "TokenNotLOVE20(address)"
@@ -2970,7 +2970,7 @@
       ],
       "repo": "group-chat",
       "revert_sites": [
-        "group-chat/src/GroupChat.sol:870"
+        "group-chat/src/GroupChat.sol:864"
       ],
       "selector": "0x3f1035e9",
       "signature": "TooManyMentionedSenderIds(uint256,uint256)"
@@ -3000,8 +3000,8 @@
       ],
       "repo": "group-chat",
       "revert_sites": [
-        "group-chat/src/sources/ban/GovVotedBanSource.sol:232",
-        "group-chat/src/sources/ban/GovVotedBanSource.sol:255"
+        "group-chat/src/sources/ban/GovVotedBanSource.sol:227",
+        "group-chat/src/sources/ban/GovVotedBanSource.sol:250"
       ],
       "selector": "0x4f90f748",
       "signature": "VoteNotFound(uint256,uint256,uint256)"
@@ -3016,7 +3016,7 @@
       ],
       "repo": "group-chat",
       "revert_sites": [
-        "group-chat/src/sources/ban/GovVotedBanSource.sol:192"
+        "group-chat/src/sources/ban/GovVotedBanSource.sol:187"
       ],
       "selector": "0x96c2cbe9",
       "signature": "VoteUnchanged(uint256,uint256,uint256)"
@@ -3033,8 +3033,8 @@
       ],
       "repo": "group-chat",
       "revert_sites": [
-        "group-chat/src/GroupChatBanList.sol:142",
-        "group-chat/src/sources/ban/GovVotedBanSource.sol:388"
+        "group-chat/src/GroupChatBanList.sol:146",
+        "group-chat/src/sources/ban/GovVotedBanSource.sol:383"
       ],
       "selector": "0x16f52684",
       "signature": "ZeroTargetSenderId()"
@@ -3049,7 +3049,7 @@
       ],
       "repo": "group-chat",
       "revert_sites": [
-        "group-chat/src/sources/ban/GovVotedBanSource.sol:204"
+        "group-chat/src/sources/ban/GovVotedBanSource.sol:199"
       ],
       "selector": "0xbeffc593",
       "signature": "ZeroVoteWeight(uint256,uint256)"

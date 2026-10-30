@@ -93,11 +93,11 @@ EIP-170 限制部署字节码 ≤ 24,576 字节。超过时：
 | 页内成员                             | 分页返回                                                    |
 | -------------------------------- | ------------------------------------------------------- |
 | 全部定长（`uint256`/`address`/`bool`） | 直接回记录本体（`submitInfos`）                                  |
-| 含变长成员（`string`、`bytes`、动态数组）     | 只回 id，本体另设按 id 批量（`proposalIds` + `proposalInfosByIds`） |
+| 含变长成员（`string`、`bytes`、动态数组）     | 只回 id，本体另设按 id 批量（`proposalIds` + `proposalInfosByProposalIds`） |
 
 分页若回含 `string`/`bytes` 的结构体，一条大记录就能把整页顶过调用方 gas 上限，且跳不过去——只能反复调小 `limit` 试探。
 
-**3. 分页签名固定。** `(uint256 offset, uint256 limit, bool reverse)` → `(列表, 真实总数)`；参数顺序「作用域键 → offset → limit → reverse」。语义同 `IPhase.observations`：
+**3. 分页签名固定。** `(uint256 offset, uint256 limit, bool reverse)` → `(列表, 真实总数)`；参数顺序「作用域键（含 `round`）→ offset → limit → reverse」。语义同 `IPhase.observations`：
 
 - 越界返回空数组与真实总数、不回滚；
 - `limit` 超剩余按剩余返回；
@@ -129,11 +129,11 @@ EIP-170 限制部署字节码 ≤ 24,576 字节。超过时：
 
 读一条传单元素数组，不另设单条入口——否则是集合的第二条路径，还会造出只差一个字母、返回值却是两种东西的近名对（旧 `proposal()` 与 `proposals()`）。第 6 条「先量后加」是例外：它不为同一集合开第二条读取路径，只是把高频调用方只需的字段单独取值。
 
-**7. 按显式 ID 数组的批量入口（`ByIds`）三条要求：**
+**7. 按显式 ID 数组的批量入口（`By<Key>Ids`）三条要求：**
 
 - **下标对齐**：返回数组长度等于入参长度，第 `i` 项对应第 `i` 个 id；不做「只回存在的那几条」，否则调用方无从得知缺哪个。
-- **无效即整笔回滚、不补空**：任何 id 不可用就回滚（`proposalInfosByIds` 给 `ProposalNotFound`）。这条只管数组——标量没有位置语义，`proposalIdBySubmitter` 与 `submitterIdByProposalId` 回 `0` 表示「本轮未推举」是合法的。
-- **只读且不写状态的不设长度上限**：上限是为防「调用方传大数组、让合约替它在本笔里干活」的 gas 转嫁；只读没有这条路径，超限只是调用方自己 out-of-gas，上限由区块 gas 自然给出。决定成本的是单条体量而非条数——`proposalInfosByIds` 回含可能较大的 `title`/`details`/`targetData`（各有上限）的记录，所以能按 id 批量读、却不能进分页。写状态或成本会落在第三方的批量不适用本豁免，必须有明确上限并写明来源。
+- **无效即整笔回滚、不补空**：任何 id 不可用就回滚（`proposalInfosByProposalIds` 给 `ProposalNotFound`）。这条只管数组——标量没有位置语义，`proposalIdBySubmitterId` 与 `submitterIdByProposalId` 回 `0` 表示「本轮未推举」是合法的。
+- **只读且不写状态的不设长度上限**：上限是为防「调用方传大数组、让合约替它在本笔里干活」的 gas 转嫁；只读没有这条路径，超限只是调用方自己 out-of-gas，上限由区块 gas 自然给出。决定成本的是单条体量而非条数——`proposalInfosByProposalIds` 回含可能较大的 `title`/`details`/`targetData`（各有上限）的记录，所以能按 id 批量读、却不能进分页。写状态或成本会落在第三方的批量不适用本豁免，必须有明确上限并写明来源。
 
 审查时按本节核对，并在报告里写明该集合的**有界性判据**与**页内成员是否定长**。
 
@@ -173,7 +173,7 @@ EIP-170 限制部署字节码 ≤ 24,576 字节。超过时：
 - **分层**：身份不存在、未激活、资格不满足是三种不同失败，不得互相替代；不要求身份存在的入口必须在模块规格说明其未知 ID 行为。
 - **一名一义**：一种条件只保留一个名字。跨仓允许角色别名，但必须全仓统一登记，不能一个仓一个名字。错误名描述失败的客观状态，不用 `Only*` 表达访问规则，不用 `Invalid*` 笼统代替零值或不存在。
 - **载荷**：要求身份存在的入口，错误带主体 ID；批量错误带失败元素 ID。零值按不存在处理，不新增按模块的零值身份错误；模块规格明确把 `0` 作为撤销/未设置哨兵的入口除外。
-- **读一致**：谓词查询（`is*`、`can*`、`joinInfo`）缺失成员或 delegate 返回 false/0/空；记录/枚举查询的缺失行为按模块规格统一，同一查询族不得一半回滚一半返回空。同一条件不得因读/写入口不同而回不同错误。
+- **读一致**：谓词查询（`is*`、`can*`、`has*`）与成员记录读（`joinInfo`）对缺失成员或 delegate 返回 false/0/空；记录/枚举查询的缺失行为按模块规格统一，同一查询族不得一半回滚一半返回空。同一条件不得因读/写入口不同而回不同错误。
 
 具体签名、载荷模板与命名清单见 [`error-standards.md`](error-standards.md)，不在本规范展开。
 
@@ -216,7 +216,7 @@ EIP-170 限制部署字节码 ≤ 24,576 字节。超过时：
 - 顺序：鉴权 → 参数 → 存在性 → 业务 → 账本。非授权方只拿到鉴权错误，不能借错误差异探测内部状态。
 - modifier 定义在合约自身，或它继承的**唯一**抽象基类里：同一鉴权面被多个合约共用时只在基类写一次，不在各派生合约留副本（Solidity 不能跨文件引用 modifier）。**仅为消除 modifier 副本不新建基类** —— 基类必须同时承载该鉴权面的其余成员（入口函数、轮次 getter 等）；十来行的判定留在原处，就近可读优先。无论写在哪，都必须自己判调用者（`msg.sender` 或 `_is*` 谓词）、有 revert、以 `_;` 收尾，由 `script/check_caller_auth.sh` 校验；错误名按各合约自己的 `I<Name>Errors` 取，允许不同。
 - 一个 modifier 只判一件事；revert 用 `I<Name>Errors` 已声明的自定义错误。
-- 只做判定：不写状态、不发起改变状态的外部调用；鉴权所需的只读查询（`ownerOf`、`ownerOrDelegateIdOf`、`isAdminId`、`proposalTarget` 等）允许，且只能用于判定。接收方回调（`onERC721Received`）不属于调用者鉴权，脚本按名称豁免。
+- 只做判定：不写状态、不发起改变状态的外部调用；鉴权所需的只读查询（`ownerOf`、`ownerOrDelegateId`、`isAdminId`、`proposalTarget` 等）允许，且只能用于判定。接收方回调（`onERC721Received`）不属于调用者鉴权，脚本按名称豁免。
 - modifier 形参占栈：参数多的函数若因此 stack too deep，把函数体拆进私有 `_<name>(...)`，外部函数只留 modifier + 转调（`GroupActionJoin`、`GroupRecipients` 已如此处理），不得改用 `via_ir` 或退回函数体内联判定。
 - 多个 modifier 时 `nonReentrant` 必须最左（`non-reentrant-not-first` 强制），鉴权紧随其后。
 - 判定值函数体还要用（owner 快照、事件）时仍写 modifier，函数体再读一次；多分支判定可委托给 `_is<X>()` 布尔谓词（`_isOperator`、`_isBoundExecutor`），错误仍在 modifier 里抛。业务状态校验（如 `activated`）不进鉴权判定，作为函数体首条紧跟其后。

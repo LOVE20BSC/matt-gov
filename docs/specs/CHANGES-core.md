@@ -1,8 +1,12 @@
 # Core 迁移变更清单
 
-> 本文记录迁移当时的新旧对照。2026-10-30 命名标准落地后，「新」列的标识符与 selector 已变化，当前 ABI 以各仓 `src/interfaces/` 为准。同批事件字段：`RewardPrepared.eligibleProposalVotes` → `eligibleProposalVoteAmount`、`VoteCast.votes` → `voteAmount`；`Vote.votedProposalIdsByMemberId` 保留原名并返回 `(proposalIds, voteAmounts, total)`（selector 不变，返回项由 2 变 3）。
+> 本文记录迁移当时的新旧对照。2026-10-30 命名标准落地后，「新」列的标识符与 selector 已变化，当前 ABI 以各仓 `src/interfaces/` 为准。同批事件字段：`RewardPrepared.eligibleProposalVotes` → `eligibleProposalVoteAmount`、`VoteCast.votes` → `voteAmount`；`Vote.votedProposalIdsByMemberId` 保留原名并返回 `(proposalIds, voteAmounts, totalCount)`（selector 不变，返回项由 2 变 3）。
 
 本文档列出 BSC Core 相对于 LOVE20TKM 旧协议的所有变更。保留项直接引用旧代码位置，避免重复描述。
+
+## 治理激励参数顺序（2026-10-31）
+
+`mintGovReward` 改为 `(tokenAddress, round, memberId, recipient)`、`mintGovRewards` 改为 `(tokenAddress, rounds[], memberId, recipient)`，与 `govRewardByMemberId` 等读取入口同序。`mintGovReward` 的 selector 不变（两个 `uint256` 同型，旧 ABI 会静默把 `memberId` 当 `round`，调用方必须重新生成 ABI）；`mintGovRewards` 由 `0x4a624a59` 变为 `0xc4a5477d`。
 
 ## 事件与接口改名（2026-10-27）
 
@@ -162,7 +166,7 @@ Core 门禁：**446 tests 全绿**；`build --deny warnings`、`lint`、`check_c
 - **删除无用常量**：移除 `MAX_VERIFICATION_KEY_LENGTH()`（无消费者）
 - **补全 getter**：新增 `initialized()`, `phaseAddress()`, `memberNFTAddress()`
 - **两条方向单键查询**（旧 `submitInfo` / `submitInfoBySubmitter` 各改名，返回值都由 `ActionSubmitInfo` 收为单个标量，`0` 表示本轮未推举）：
-  - `proposalIdBySubmitter()` - 由成员在某轮推举的提案反查（旧 `submitInfoBySubmitter`）
+  - `proposalIdBySubmitterId()` - 由成员在某轮推举的提案反查（旧 `submitInfoBySubmitter`）
   - `submitterIdByProposalId()` - 由提案反查其推举者（旧 `submitInfo`），与上一条互为逆
   - **原因**：`(tokenAddress, round)` 下的推举记录是 `(proposalId, submitterId)` 对，且「每人每轮一个」「每提案每轮一次」使两种键都是唯一键；两条单键是两个方向的定点通道，`submitInfos()` 的分页是集合的完整读取路径，三者读同一份记录。旧接口的两个方向本就互为镜像，按同样方式改名
 - **单键存在性判定保留**：`isSubmitted()` 是旧接口同名同参的保留成员，回 `bool`；它与 `submitterIdByProposalId()` 同键但给出的是两个不同的值（存在性 vs 取值），不构成重复，如同 `IMemberNFT.isNameUsed` 与 `idOf`
@@ -175,7 +179,7 @@ Core 门禁：**446 tests 全绿**；`build --deny warnings`、`lint`、`check_c
   - 新增 `ProposalInfo { ProposalHead head, ProposalBody body }`，对应旧 `ActionInfo { ActionHead head, ActionBody body }`
   - `ProposalBody` 改为「创建者提供的全部字段」：`title`、`details`、`target`、`targetMode`、`targetData`，`submitNewProposal` 的入参与 `ProposalInfo` 的组成共用这一个结构
   - `ActionSubmitInfo` 改名 `SubmitInfo`，字段 `submitter` 由地址改为 `submitterId`
-  - **原因**：旧 `ActionBody` 就是创建者提供的全部字段，保留两套同字段的名字只会让 `submitNewProposal` 的入参与 `proposalInfosByIds()` 的返回看起来属于不同结构
+  - **原因**：旧 `ActionBody` 就是创建者提供的全部字段，保留两套同字段的名字只会让 `submitNewProposal` 的入参与 `proposalInfosByProposalIds()` 的返回看起来属于不同结构
 - **新增 `proposalTarget`**：`proposalTarget(address tokenAddress, uint256 proposalId)` 回 `(address target, TargetMode targetMode)`，未分配过的 ID 回滚 `ProposalNotFound(proposalId)`。供 Vote 每笔判断回调目标——整条 `ProposalInfo` 含无上限的 `title`/`details`/`targetData`，读取成本随正文大小线性增长（最小 mock 实测每笔 3 万～9 万 gas），而调用方只需要这两个字段。按 `migration-standards.md`「按键取单值」新增的第四种情况（先量后加）加入
 - **枚举改用分页**：
   - 删除 6 个函数：`proposalsCount()`、`proposalsAtIndex()`、`proposalsByAuthorCount()`、`proposalsByAuthorAtIndex()`、`submissionsCount()`、`submissionAtIndex()`
@@ -184,12 +188,12 @@ Core 门禁：**446 tests 全绿**；`build --deny warnings`、`lint`、`check_c
     - `proposalIdsByAuthor(address tokenAddress, uint256 author, uint256 offset, uint256 limit, bool reverse)` 返回 `(uint256[] proposalIdList, uint256 totalCount)`
     - `submitInfos(address tokenAddress, uint256 round, uint256 offset, uint256 limit, bool reverse)` 返回 `(SubmitInfo[] submitInfoList, uint256 totalCount)`
   - **原因**：与 Phase 的 `syncObservations` 分页模式保持一致，单次调用获取数据 + 总数，Gas 效率更高
-- **读取面三类**：分页 = `proposalIds`/`proposalIdsByAuthor`/`submitInfos`；按 id 批量取详情 = `proposalInfosByIds(proposalIds[])`；单键 = `isSubmitted`、`proposalIdBySubmitter`、`submitterIdByProposalId`
+- **读取面三类**：分页 = `proposalIds`/`proposalIdsByAuthor`/`submitInfos`；按 id 批量取详情 = `proposalInfosByProposalIds(requestedProposalIds)`；单键 = `isSubmitted`、`proposalIdBySubmitterId`、`submitterIdByProposalId`
   - **分页返回值随成员是否定长**：`proposalIds`/`proposalIdsByAuthor` 只回 `proposalId`，因为 `ProposalBody` 的 `title`/`details`/`targetData` 都不设长度上限，分页回本体时某条大 `targetData` 就能把整页顶到调用方 gas 上限之上且跳不过去；`submitInfos` 回完整记录，因为 `SubmitInfo` 全为 `uint256`，任意一页的体量都与 `limit` 成正比
   - **不设单条详情入口**：读一条传单元素数组，避免出现只差一个字母、返回值却是两种东西的近名对
-  - **命名记号**：数组返回值在名字里体现载荷——`Ids` 只回轻量标识、`Infos` 回记录本体，裸集合名不用于返回数组的函数；筛选条件进名字（默认全量不标记、`By<key>` 按键、`ByIds` 显式 ID 数组）；是否分页不进名字，由入参 `(offset, limit, reverse)` 决定，不为同一集合另设无窗口的全量重载
+  - **命名记号**：数组返回值在名字里体现载荷——`Ids` 只回轻量标识、`Infos` 回记录本体，裸集合名不用于返回数组的函数；筛选条件进名字（默认全量不标记、`By<Key>` 按键、`By<Key>Ids` 显式 ID 数组）；是否分页不进名字，由入参 `(offset, limit, reverse)` 决定，不为同一集合另设无窗口的全量重载
   - 旧 `actionsAtIndex`/`actionSubmitsAtIndex` 直接在枚举里回结构体，改为「分页回标识 + 按 id 批量取详情」
-  - **命名依据**：分页记号沿用 core 已实现集合读取的复数集合名（`syncObservations`、`holders`、`tokens`、`childTokens`）与 group-chat 里轻量标识带 `Ids` 的先例（`votedSenderIds`、`memberIds`）；「按显式 ID 数组取记录」沿用 group-chat 的 `chatInfos`/`roundInfos`（复数 + `Infos`）。仓库现有 28 个分页函数全部以参数 `(offset, limit, reverse)` 表意，名字里不带任何分页记号，本接口沿用同一口径
+  - **命名依据**：分页记号沿用 core 已实现集合读取的复数集合名（`syncObservations`、`holders`、`tokens`、`childTokens`）与 group-chat 里轻量标识带 `Ids` 的先例（`votedSenderIds`、`memberIds`）；「按显式 ID 数组取记录」沿用 group-chat 的 `chatInfos`/`roundInfos`（复数 + `Infos`，2026-10-30 命名批次后为 `chatInfosByGroupIds`/`roundInfosByRounds`）。仓库现有 28 个分页函数全部以参数 `(offset, limit, reverse)` 表意，名字里不带任何分页记号，本接口沿用同一口径
 
 #### 新增与改名错误（相对旧代码，用于精准 revert）
 | 错误名 | 触发条件 | Selector |
@@ -207,9 +211,9 @@ Core 门禁：**446 tests 全绿**；`build --deny warnings`、`lint`、`check_c
 旧代码：LOVE20TKM/core/src/LOVE20Submit.sol
 保留：推举门槛、去重逻辑、核心 selector
 修改：所有 address 参数改为 uint256 memberId
-新增：精准错误、缺失 getter、ISubmitErrors 子接口、ProposalInfo 包装与按 id 批量取详情 proposalInfosByIds(proposalIds[])
+新增：精准错误、缺失 getter、ISubmitErrors 子接口、ProposalInfo 包装与按 id 批量取详情 proposalInfosByProposalIds(requestedProposalIds)
 删除：MAX_VERIFICATION_KEY_LENGTH()、minStake 字段及其校验、6 个枚举函数
-改名：actionInfo → proposalInfosByIds（去掉单条入口，改为按 id 批量）、submitInfoBySubmitter → proposalIdBySubmitter、submitInfo → submitterIdByProposalId（两个方向各改名，返回值都收为单个标量）
+改名：actionInfo → proposalInfosByProposalIds（去掉单条入口，改为按 id 批量）、submitInfoBySubmitter → proposalIdBySubmitterId、submitInfo → submitterIdByProposalId（两个方向各改名，返回值都收为单个标量）
 合并：actionsCount/AtIndex → proposalIds、authorActionIdsCount/AtIndex → proposalIdsByAuthor、actionSubmitsCount/AtIndex → submitInfos（分页回记录）
 ```
 
@@ -316,7 +320,7 @@ Core 门禁：**446 tests 全绿**；`build --deny warnings`、`lint`、`check_c
 
 
 #### 批量铸造
-- **新增**：`mintGovRewards(tokenAddress, memberId, rounds[])`
+- **新增**：`mintGovRewards(tokenAddress, rounds[], memberId, recipient)`
 - **原子性**：批量多轮铸造，任一 Round 失败则整笔回滚
 - **长度**：由调用者决定，不设数量上限；超出交易承载能力的失败和 gas 成本由调用者承担，空数组无副作用。
 
@@ -373,12 +377,12 @@ Core 门禁：**446 tests 全绿**；`build --deny warnings`、`lint`、`check_c
 ### 🔄 关键变化
 
 #### 按 memberId 记录
-- **旧**：`launchCount[tokenAddress][address]`
-- **新**：`launchCount[tokenAddress][memberId]`
+- **旧**：`remainingLaunchCount[tokenAddress][address]`
+- **新**：`remainingLaunchCount[tokenAddress][memberId]`
 
 #### 发射资格
 - **旧**：`remainingLaunchCount` 叠加 `Submit.canSubmit` 与 Mint 的铸造计数整除，发射需要推举资格
-- **新**：只看 `launchCount` 账本与 NFT 当前所有权；`submitAddress` 依赖与 `canSubmit` 门槛删除
+- **新**：只看 `remainingLaunchCount` 账本与 NFT 当前所有权；`submitAddress` 依赖与 `canSubmit` 门槛删除
 
 #### 次数融合
 - **新增**：`mergeLaunchCount(tokenAddress, sourceMemberId, targetMemberId, count)`

@@ -63,7 +63,8 @@
 
 **测试方式**：
 - 单元测试：边界值参数化测试
-- Fuzzing：`test_ZeroBoundaries(uint256 effectiveAmount, uint256 totalVotes, uint256 multiplier)`
+- Fuzzing：`action/test/LpExecutorFuzz.t.sol::test_ZeroBoundaries(uint256 effectiveAmount, uint256 totalVotes, uint256 multiplier)`（零 `totalEffectiveAmount`、零 `totalValidGovVotes`、零 `govRatioMultiplier`）；LP 时间扣减封顶由同文件 `testFuzzJoinDeductionCapsAtAmount` 覆盖
+- Fuzzing：`action/test/GroupActionExecutor.t.sol::testZeroTotalScoreBlocksSettle`、`action/test/GroupActionFuzz.t.sol::testFuzzSettleSplitsMatchFinalScore`（链群零 `totalFinalScore` 不除零且行动层激励为零）
 - 验收证据：Fuzzing 运行报告显示无 panic
 
 **判定标准**：
@@ -157,7 +158,7 @@
 - 自转账不破坏持有人统计
 
 ### GroupAction 参与索引与 Group Chat 主体
-**覆盖要求**：覆盖 `isGroupMember` 的归属计数与五条 `joined*` 索引（`joinedGroupIds`、`joinedGroupIdsByMemberId`、`joinedTokenAddressesByGroupIdByMemberId`、`joinedMemberIds`、`joinedMemberIdsByGroupId`）的标准分页语义（`offset` 越界返回空数组与真实总数、`limit` 超剩余按剩余返回、`reverse` 逆序、`limit = 0` 只取总数）与 `total` 一致性，以及 `isGroupMember` 与 `joinedTokenAddressesByGroupIdByMemberId` 的同源一致性；覆盖按轮历史两读（`groupIdsByRound`、`memberIdsByGroupId`）返回目标轮快照且加入阶段结束后稳定；覆盖同一成员跨社区、跨行动参与，退出一个行动但仍有其他关系时归属不变，最后一个关系退出后 `isGroupMember` 才返回假，以及 `forceClearJoinState` 不修改这些业务索引。覆盖四类 typed Manager、普通 owner 管理型 Chat、规则槽位、插件、消息与分页行为；覆盖成员、管理员、委托、发言、提及、黑名单目标和黑名单投票者均按 `memberId` 运行，并确认不存在默认 MemberNFT 映射、默认身份发言入口、地址黑名单/投票/查询或其他地址主体接口。治理黑名单覆盖代币治理票与行动 Proposal 投票两类票权、全社区治理票分母、支持票严格超过反对票 `10` 倍且达到 `0.3%` 的双阈值、撤票和任何人刷新。Group Chat 的群组资格以成员名单或 `isGroupMember` 为任一满足；最后一个 GroupAction 归属正常退出后，才失去归属分支；ActionTarget 的 `forceClearJoinState` 不单独改变资格。owner 快照及消息/事件调用地址只用于 NFT 转移有效性和审计，不得成为业务主体。
+**覆盖要求**：覆盖 `isGroupMember` 的归属计数与五条 `joined*` 索引（`joinedGroupIds`、`joinedGroupIdsByMemberId`、`joinedTokenAddressesByGroupIdByMemberId`、`joinedMemberIds`、`joinedMemberIdsByGroupId`）的标准分页语义（`offset` 越界返回空数组与真实总数、`limit` 超剩余按剩余返回、`reverse` 逆序、`limit = 0` 只取总数）与 `totalCount` 一致性，以及 `isGroupMember` 与 `joinedTokenAddressesByGroupIdByMemberId` 的同源一致性；覆盖按轮历史两读（`groupIdsByRound`、`memberIdsByGroupId`）返回目标轮快照且加入阶段结束后稳定；覆盖同一成员跨社区、跨行动参与，退出一个行动但仍有其他关系时归属不变，最后一个关系退出后 `isGroupMember` 才返回假，以及 `forceClearJoinState` 不修改这些业务索引。覆盖四类 typed Manager、普通 owner 管理型 Chat、规则槽位、插件、消息与分页行为；覆盖成员、管理员、委托、发言、提及、黑名单目标和黑名单投票者均按 `memberId` 运行，并确认不存在默认 MemberNFT 映射、默认身份发言入口、地址黑名单/投票/查询或其他地址主体接口。治理黑名单覆盖代币治理票与行动 Proposal 投票两类票权、全社区治理票分母、支持票严格超过反对票 `10` 倍且达到 `0.3%` 的双阈值、撤票和任何人刷新。Group Chat 的群组资格以成员名单或 `isGroupMember` 为任一满足；最后一个 GroupAction 归属正常退出后，才失去归属分支；ActionTarget 的 `forceClearJoinState` 不单独改变资格。owner 快照及消息/事件调用地址只用于 NFT 转移有效性和审计，不得成为业务主体。
 
 **测试方式**：
 - 单元测试：`action/test/GroupActionExecutor.t.sol` 的参与索引分页与归属计数场景
@@ -166,7 +167,7 @@
 - 验收证据：索引查询日志、Group Chat 资格判断日志
 
 **判定标准**：
-- 三条分页查询的 `offset` / `limit` / `reverse` / `total` 语义符合标准分页契约
+- 三条分页查询的 `offset` / `limit` / `reverse` / `totalCount` 语义符合标准分页契约
 - 归属计数在最后一个关系退出后才归零
 - forceClearJoinState 不修改 Executor 业务索引
 - Group Chat 无地址主体接口

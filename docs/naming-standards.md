@@ -38,7 +38,7 @@
 1. `_` 只出现在 internal/private 函数与**可变**的非 public 状态变量上。常量、冻结值、public 状态、参数、返回值、结构体字段一律不带 `_`。库（`library`）的内部函数不加 `_`：调用点 `Uint256Set.add(set, x)` 已经表明来源。
 2. 除上述两处，标识符里不出现下划线。接口参数不带 `_`（见 §十一）。
 3. 只有两种大小写参与语义判断：`lowerCamelCase` 与 `UPPER_SNAKE`。
-4. **同一合约内，函数名、参数名、状态变量名不得重名**。Solidity 对参数遮蔽函数名报 8760，`deny = "warnings"` 下直接编译失败。冲突时改**参数**而不是函数名：函数名是 ABI，参数名只是源码与 ABI JSON 里的字段。例：`memberName(uint256 tokenId)` 给 `memberId(string name)` 让位——`MemberNFT` 是 ERC-721，`ownerOf`/`tokenURI` 的参数本来就叫 `tokenId`。
+4. **同一合约内，函数名、参数名、状态变量名不得重名**。Solidity 对参数遮蔽函数名报 8760，`deny = "warnings"` 下直接编译失败。冲突时改**参数**而不是函数名：函数名是 ABI，参数名只是源码与 ABI JSON 里的字段。例：`memberName(uint256 tokenId)` 给 `memberId(string name)` 让位——`MemberNFT` 是 ERC-721，`ownerOf`/`tokenURI` 的参数本来就叫 `tokenId`。**例外一**：若该参数名同时是结构体字段或事件字段（§十一 四处同源），改**函数名**而不是参数名——此时参数名也是 ABI，改它会让入参/结构体/事件三处一起失配，代价更大。例：`delegateId(groupId)` 让位给 `setDelegateId` 的入参 `delegateId`（该名字同时是 `DelegateState.delegateId`、`DelegateChanged.delegateId`、`DelegationCleared.delegateId` 与 `DelegateNotAcceptingNewDelegations` 的载荷），读入口改 `effectiveDelegateId`。**例外二（读取 getter）**：冲突方是同合约的**读取 getter**、而该参数名同时被 §十一 绑定时，例外一与「getter 是既有 ABI」互相抵触，按「谁进 selector」裁决——函数名进 selector，参数名只进 ABI JSON 字段，所以**改参数名**（加 §十 的实体后缀），getter 不动。例：`scopeSource` 同时是 `ChatConfig.scopeSource`、`ChatInfo.scopeSource`、`GroupChatActivated.scopeSource` 与 getter `scopeSource(uint256)` 的名字，`activateChat` 与 `setScopeSource` 的入参统一改 `scopeSourceAddress`，`banSource` / `beforePostPlugin` / `afterPostPlugin` 同理；§十一 的四处同源在这一层让步（入参带 `Address`、字段与事件保留角色名），见 §十一 的登记例外。
 5. **不用单字母或缩写式语义前缀**。`gGroupIds` 的 `g`（global）没有信息量，改写成名词 `joinedGroupIds`；布局结构体 `s` 改 `_layout`（§8.5）。
 
 ### 3.1 冻结值为什么全大写
@@ -121,7 +121,7 @@
 | 位置 | 形式 | 例 |
 | --- | --- | --- |
 | 写 | 宾语复数 | `addAdmins`、`mintGovRewards`、`setRecipients` |
-| 读（按 id 数组） | `ByIds` 或 `By<Key>Ids` | `proposalInfosByIds`、`votesByVerifierIds` |
+| 读（按 id 数组） | `By<Key>Ids` | `proposalInfosByProposalIds`、`votesByVerifierIds` |
 | 判断 | `Batch` 后缀 | `isMemberIdBatch`、`isSenderIdBannedBatch` |
 
 - 写函数不用 `Batch` 后缀（`mintGovRewardBatch` ✗）。批量已经是常态，`Batch` 只用来消解谓词的歧义：`isMemberIds` 会被读成"这些是不是成员 id"。
@@ -145,18 +145,25 @@
 ### 7.3 `By<Key>`
 
 - Key 必须与某个入参同名（首字母大写）。`voteBySenderId(groupId, targetSenderId, …)` 不合格：键是 `SenderId`，入参是 `targetSenderId`。
+- **Key 必须与某个入参同名**：`messagesBySenderId(groupId, senderId, …)`、`proposalIdBySubmitterId(…, submitterId)`、`voteWeightsBySenderIdsByVoterId(…, voterId)`、`votesByMemberIdByProposalId(…, memberId, proposalId)`。`Id`/`Ids` 是类型标记，不是可省后缀——写成 `BySender` 只省四个字符，却让读者无法判断 Key 是 id 还是 address（旧仓的 address 主体路径恰叫 `sender`）。匹配是单向的：`BySenderId` 配入参 `targetSenderId` 不合格（`SenderId` 不是 `targetSenderId`），反过来 `ByTargetSenderId` 合格。
+- **筛选条件没有入参时不能用 `By`**：`messagesByMentionAll(groupId, …)` 的 mention-all 是固定条件、不对应任何入参，改形容词前缀 `mentionAllMessages` / `mentionAllMessageIds`。
 - 多键按入参顺序书写：`votesByMemberIdByProposalId(tokenAddress, round, memberId, proposalId)`。
-- `By<Key>Ids` 表示该键是 id 数组；`ByIds` 表示"按调用方给的 id 数组批量取"（`proposalInfosByIds`、`voteAmountsByMemberIdByIds`）。
-- 作用域键（`tokenAddress`、`groupId`、`chatId`）是定位不是筛选，不进名字。
+- `By<Key>Ids` 表示该键是 id 数组：`proposalInfosByProposalIds`、`voteAmountsByMemberIdByProposalIds`、`chatInfosByGroupIds`。**不设无键的 `ByIds`**——它不指名 Key，违反 P2。试探两端都不成立：若主键真的不言自明，那连 `Ids` 都不必写；可函数名又必须区分「按 id 批量」与「分页」两种读法，不写就看不出入参是数组。
+- 作用域键（`tokenAddress`、`groupId`、`chatId`）是定位不是筛选，不进名字（`messages(groupId, offset, limit, reverse)`、`actions(tokenAddress, offset, limit, reverse)`）。
+- **双向索引成对出现时，两侧都是键，都要写进名字**：`tokenAddressByGroupId` / `groupIdByTokenAddress`、`actionByGroupId` / `groupIdByActionId`。它们不是「始终存在的上下文」——每一侧都是唯一能定位结果的那把键，省略任一侧都会让读者无法预测反向查询叫什么。
+- **入参与同名读取函数冲突时**（`adminIds()`、`memberIds()`、`groupIds()`、`rounds()` 这类集合 getter 占用了最自然的名字），按 §3 硬约束 4 改参数而不是函数名；改写形态是**封闭集合**：写方向用 `<noun>List`、判断用 `checked`、读入参用 `requested`。例：`addAdmins(…, adminIdList)`、`removeMemberIds(…, memberIdList)`、`isMemberIdBatch(…, checkedMemberIds)`、`chatInfosByGroupIds(requestedGroupIds)`。
+  - 写方向不用 `added` / `removed`：方向已由函数名给出，`addAdmins(addedAdminIds)` 读作「把已加的管理员 id 加进去」，既重复又没说明是数组。`List` 只声明「这是数组」，且与内部双向辅助同名（`_setMemberIds(…, memberIdList, listed)`），内外一套词。`adminIdList` / `memberIdList` 与集合 getter（`adminIds` / `memberIds`）不同名，不触发同名声明。
+- Key 取入参名去掉用途前缀后的词干：`roundInfosByRounds(…, requestedRounds)`、`chatInfosByGroupIds(…, requestedGroupIds)`、`proposalInfosByProposalIds(…, requestedProposalIds)`。`Ids` 只在载荷确实是 id 数组时使用：轮次是纪元键不是 id，`roundInfosByRoundIds` 不合格。
+- 同一内部辅助函数同时服务增删两个方向时（`_validateAdminIds`、`_setMemberIds`），入参用 `<noun>List`（`adminIdList`、`memberIdList`），与 §十一 返回值同名冲突时的逃生口一致。
 
 ### 7.4 聚合
 
-- 基数用 `Count`，且必须在末尾：`messagesByMentionCount`、`memberIdsCount`。
+- 基数用 `Count`，且必须在末尾：`RoundSpan.messageCount`、`MessagePosted.mentionedSenderCount`。**函数级不设独立计数入口**：集合总数由分页返回的 `totalCount` 承担（§7.5），`limit = 0` 即取基数；同一集合的「分页 + Count」是两条读取路径。
 - 可加量总和用 `total` 前缀，且只用于**社区级**：`totalStaked`、`totalValidGovVotes`。成员级聚合用 `ByMemberId`：`stakedByMemberId`，不得写 `totalStakedByMemberId`。
 
 ### 7.5 分页
 
-分页不进名字：不加 `Paginated`/`Paged`/`Page`/`List`。`(offset, limit, reverse)` 是唯一标记。
+分页不进名字：不加 `Paginated`/`Paged`/`Page`/`List`。`(offset, limit, reverse)` 是唯一标记。分页同时返回集合真实总数并具名（`dev-standards §4.3(3)`）：同一集合不再另设 `*Count` 入口，`limit = 0` 即取基数。`totalCount` 只约束**对外 ABI 面**（`external`/`public`）：库与内部辅助返回 `(列表, total)` 即可（`Pagination.paginate*`、`Uint256Set.values`、`GroupActionVerify._applicationVoters`），调用方按位置解构，名字不进 ABI JSON；对外入口包装这些辅助时，返回名一律写 `totalCount`。
 
 ### 7.6 单条与集合
 
@@ -165,10 +172,12 @@
 
 ### 7.7 不用 Of
 
-自有读取函数不用 `Of` 后缀。两种合格写法：
+自有读取函数不用 `Of` 后缀（含中缀：`tokenOfGroup`、`groupIdOfAction` 一律不合格；`N20` 匹配「`Of` 后接大写字母或字符串结尾」，中缀由检查器覆盖）。两种合格写法：
 
 - **单实体属性读**：`<属性名>(<key>)`，键由入参名给出——`memberName(tokenId)`、`delegateId(groupId)`、`voteWeight(groupId, voterId)`。
-- **集合筛选**：`<noun>By<Key>`——`proposalIdsByAuthor`、`messagesBySender`。
+- **集合筛选**：`<noun>By<Key>`——`proposalIdsByAuthor`、`messagesBySenderId`。
+
+单实体属性读与同合约的入参同名时（`groupId(tokenAddress)` 会撞 `voteWeight(uint256 groupId, …)` 的入参），退回 `<noun>By<Key>`（`groupIdByTokenAddress(tokenAddress)`）——键仍由入参名给出，理由同 §3 硬约束 4 的例外。
 
 `Of` 不指名键；`Of` 与 `By` 并存时（core 旧名 `stakedAmountOfVotersByMemberId`，已改为 `voterBoost`）连作者都要读实现才能确认键是哪一个。ERC 标准覆写（`ownerOf`）保留。
 
@@ -214,10 +223,16 @@ Layout 中**部署后冻结的字段**按 §3.1 用 `UPPER_SNAKE`（`ACTION_TARG
 
 | 用途 | 形式 | 例 |
 | --- | --- | --- |
-| 存储态 | `<X>State` | `AdminState`、`RoundState` |
+| 存储态（可变） | `<X>State` | `AdminState`、`RoundState` |
+| 存储态（写入后不变） | `<X>Record` | `MessageRecord`、`VoteRecord` |
 | ABI 只读记录 | `<X>Info` | `ChatInfo`、`ProposalInfo` |
 | 入参包 | `<X>Params` | `LaunchInitParams` |
+| 配置记录 | `<X>Config` | `ChatConfig`、`GroupConfig` |
 | 计算中间体 | 名词 | `Distribution`、`Settlement` |
+
+`State` 与 `Record` 的分界是**写入后会不会变**：`RoundState` 的游标随每条消息推进，`AdminState` 的集合随增删变化，都叫 `State`；`MessageRecord` 的 content / round / blockNumber / timestamp 是发言时的快照，之后永不改写，叫 `Record`。把不可变记录叫 `State` 会让读者以为存在状态迁移。
+
+**规格冻结名优先**：被 `docs/specs/` 或 `dev-standards.md` 明文冻结的类型名不按本表改名——`ChatInfo` / `Message` / `RoundSpan`（`specs/group-chat/00-overview.md` 逐字段保留）、`MemberStake` / `TotalStake`（`dev-standards.md` §5.2 成对登记）。本表约束的是**新增**类型，以及未被冻结的存量。`group-chat` 已清完（`ChatConfig` 按本表登记为配置记录、`StoredMessage` → `MessageRecord`）。`core` / `action` 的 `ManagedAction`、`ProposalHead` / `ProposalBody`、`VerifierApplication`、`RecipientTable`、`VoteRecord`、`OriginSubmission`、`RoundActions` 判为可接受：它们是存储态但与该合约的 ABI 记录不同名、不存在歧义，加 `State` 只是噪音，属独立批次。
 
 禁止 `Data`/`Args` 后缀：`stakeData` → `memberStake`，`totalStakeData` → `totalStake`，`RecipientPaidArgs` → `RecipientPaidParams`。
 
@@ -263,7 +278,10 @@ Layout 中**部署后冻结的字段**按 §3.1 用 `UPPER_SNAKE`（`ACTION_TARG
 
 - 参数名 = 结构体字段名 = 事件字段名 = getter 参数名，四处同源。改名必须四处同改（[`event-standards.md`](event-standards.md) §6.1 已强制键名）。
 - 接口与实现参数都不带 `_`。实现侧若与状态变量同名，改参数名；冻结值按 §八 大写、可变状态在 `_` 命名空间，正常不会冲突。
-- 返回值应具名：ABI JSON 里未命名的返回值只能按下标取，SDK 无法生成字段名。数组用复数；与函数同名时用 `<noun>List`。
+- **对外签名：`round`/`rounds` 在 `memberId`/`verifierId` 之前**：`(tokenAddress, actionId, round, memberId)`、`(tokenAddress, round, memberId)`；批量把与 `actionIds` 配对的 `rounds` 紧接其后、`memberId` 收尾（`(tokenAddress, actionIds, rounds, memberId)`），`recipient` 保持在最后。`groupId` 是作用域键，保持在其前（`recipients(..., groupId, round)`、`messagesByRound(groupId, round)`）；荷载在 `round` 之后（`distribution(..., round, groupReward)`）。分页在 `round` 之后接 `(offset, limit, reverse)`。`isJoinedByRound`、`memberReward`、`mintMemberReward`、`verificationInfosByRound`、`mintGovReward` 与 `joinInfo`、`joinedAmountByMemberId`、`verifierApplication` 同序；同签名的实现与库转发必须一致。库与内部辅助同样遵循：`round` 在 `memberId`/`verifierId` 之前，`self`/作用域键在最前，荷载（金额、验证值数组）与标志（`present`、`latest`、`isFirstJoin`）在主体之后。重排时逐个核对签名——`bool` 返回不会报错，只会静默取错成员。
+- 返回值应具名：ABI JSON 里未命名的返回值只能按下标取，SDK 无法生成字段名。数组用复数；与函数同名时用 `<noun>List`。单结构体返回同样具名（`returns (JoinInfo memory info)`、`returns (ChatInfo memory info)`），不因「只有一个返回值」省略。
+- **返回值不用裸泛名**：`ids`、`list`、`items` 读不出是哪类东西，按 §7.2 的载荷记号取名（`adminIdList`、`voteAmounts`）。`List` 在这里取「数组」义，与 §7.5 分页禁 `List` 不冲突。
+- **登记例外：四个配置槽位的入参带 `Address`、字段与事件保留角色名**（§3 硬约束 4 例外二）：入参写作 `scopeSourceAddress` / `banSourceAddress` / `beforePostPluginAddress` / `afterPostPluginAddress`（`activateChat` 与四个单槽 setter 一致），而 `ChatConfig.scopeSource`、`ChatInfo.scopeSource`、`GroupChatActivated.scopeSource` 等字段与事件字段保持角色名。同槽位的内部辅助（`_setSource` 的 `sourceAddress`、`_setPostPlugin` 的 `pluginAddress`）服务增删两个方向，保留通用名，同 §7.3 的 `<noun>List` 逃生口。
 
 ## 十二、类型、接口、枚举、modifier
 
@@ -276,7 +294,7 @@ Layout 中**部署后冻结的字段**按 §3.1 用 `UPPER_SNAKE`（`ACTION_TARG
 | # | 既有条款 | 变更 | 理由 |
 | --- | --- | --- | --- |
 | 1 | §5.2「init 固定的配置常量用大写」 | 扩展为「部署后冻结的值一律大写」，新增「带参数不得大写」 | §3.1 |
-| 2 | §4.3 命名表 | 由 §七 取代：`Count` 末尾、`By<Key>` 同名、`ByIds`、数值数组 `Amounts`、裸集合名限定 | 键与名必须能机械对账 |
+| 2 | §4.3 命名表 | 由 §七 取代：`Count` 末尾、`By<Key>` 同名、`By<Key>Ids`、数值数组 `Amounts`、裸集合名限定 | 键与名必须能机械对账 |
 | 3 | `Of` 后缀 | 禁止（ERC 覆写除外） | 不指名键，多键歧义 |
 | 4 | `get*` 前缀 | 禁止 | 读函数的名词本身就是载荷 |
 | 5 | 接口参数 `_` 后缀 | 禁止 | ABI 参数名是集成方 API |
@@ -289,15 +307,29 @@ Layout 中**部署后冻结的字段**按 §3.1 用 `UPPER_SNAKE`（`ACTION_TARG
 ## 十四、门禁与迁移
 
 - 检查器：`python3 matt-gov/script/check_naming.py` 输出违规；`--check` 对比基线，只拦新增；`--update-baseline` 仅在批量改名落地后重写。
-- 基线：`matt-gov/registry/naming-baseline.txt`，当前 35 条（按文件×符号记录，接口与实现各记一条；`core`、`action` 已清零，剩余 `group-chat`）。2026-10-30 由符号粒度改为文件×符号并一次性重写；此后**只减不增**。
+- 基线：`matt-gov/registry/naming-baseline.txt`，当前 **0 条**（按文件×符号记录，接口与实现各记一条；`core`、`action`、`group-chat` 均已清零）。2026-10-30 由符号粒度改为文件×符号并一次性重写；此后**只减不增**。
 - 迁移按依赖顺序 `libs → core → action → group-chat`，每仓一次提交，`forge test` 全绿。改名落地时同批更新 `CONTEXT.md`（§GroupAction 参与归属）、`docs/specs/` 中引用旧名的条目与 `CHANGES-*.md` 对账表。
-- 进度：`core` 的 23 条机器规则已清零（2026-10-30，473 个用例全绿）；本批同时修正了构造函数参数、局部变量与本次改名涉及的映射名。`action` 已于 2026-10-30 清零（467 个用例全绿），同批人工核对落实：`s` 根布局改 `_layout`（库参数 `self`）、`init` 冻结依赖改 `ACTION_TARGET_ADDRESS`/`GROUP_ACTION_EXECUTOR_ADDRESS` 等全大写 getter、`providerQuota*` 等写入口改动词首位、`_` 后缀参数与局部变量去掉后缀、`RecipientPaidArgs` 改 `RecipientPaidParams`、`MemberOwner.ofOrZero` 改 `ownerOrZero`、LpExecutor 的 `_deduction`/`_joinBlocks`/`_joinAmounts`/`_createdRound` 等映射名按 §8.3 补齐键；`votes` 返回数组与按申请账本按 §9 改为 `voteAmount(s)`；Layout 的冻结字段改全大写（N17 增加 Layout 冻结字段例外）、`groupIds`/`actionIds` 函数改 `groupIdsByRound`/`actionIdsWithActiveGroups`、`totalJoinedAmount*` 改 `joinedAmountByActionId`/`joinedAmountByGroupId`、事件票数字段改 `voteAmountAdded`/`voteAmountTotal`、`applicationIdCounter` 改 `applicationIdCount`；基座计价代币 getter 统一为 `joinTokenAddress`（GroupService 的 `actionTokenAddress` 为单点例外）、`joinInfo` 返回 `joinedAmount`、基座 action 级累计量改 `joinedAmountByActionId`。`group-chat` 已 bump 到 action `9e7b4b2`（2026-10-30），自身命名批次待做。
-- 剩余分批（`group-chat`；条数按基线条目计（文件×符号），括号内为唯一符号数）：
-  - **P0 语义错误**（ABI 会误导集成方）：`N04`/`N05`，8 条（4 个符号）。
-  - **P1 一致性**：`N10`/`N14`/`N20`，14 条（8 个符号）。
-  - **P2 卫生**：`N11`/`N12`，13 条（10 个符号）。
+- 进度：`core` 的 23 条机器规则已清零（2026-10-30，473 个用例全绿）；本批同时修正了构造函数参数、局部变量与本次改名涉及的映射名。`action` 已于 2026-10-30 清零（当前 468 个用例全绿，2026-10-31 新增 `test_ZeroBoundaries`），同批人工核对落实：`s` 根布局改 `_layout`（库参数 `self`）、`init` 冻结依赖改 `ACTION_TARGET_ADDRESS`/`GROUP_ACTION_EXECUTOR_ADDRESS` 等全大写 getter、`providerQuota*` 等写入口改动词首位、`_` 后缀参数与局部变量去掉后缀、`RecipientPaidArgs` 改 `RecipientPaidParams`、`MemberOwner.ofOrZero` 改 `ownerOrZero`、LpExecutor 的 `_deduction`/`_joinBlocks`/`_joinAmounts`/`_createdRound` 等映射名按 §8.3 补齐键；`votes` 返回数组与按申请账本按 §9 改为 `voteAmount(s)`；Layout 的冻结字段改全大写（N17 增加 Layout 冻结字段例外）、`groupIds`/`actionIds` 函数改 `groupIdsByRound`/`actionIdsWithActiveGroups`、`totalJoinedAmount*` 改 `joinedAmountByActionId`/`joinedAmountByGroupId`、事件票数字段改 `voteAmountAdded`/`voteAmountTotal`、`applicationIdCounter` 改 `applicationIdCount`；基座计价代币 getter 统一为 `joinTokenAddress`（GroupService 的 `actionTokenAddress` 为单点例外）、`joinInfo` 返回 `joinedAmount`（2026-10-31 改为 `JoinInfo` 记录并删去该派生总量，见 `CHANGES-action.md`）、基座 action 级累计量改 `joinedAmountByActionId`。
+- `group-chat` 已于 2026-10-30 清零（172 个用例全绿），同批落实：
+  - **P0 语义错误**：`postingAllowed(groupId)` → `isPostingAllowed(groupId)`（N04）；`voteBySenderId` / `clearVoteBySenderId` / `refreshVoteBySenderId` 改 `voteByTargetSenderId` / `clearVoteByTargetSenderId` / `refreshVoteByTargetSenderId`（N05）。**入参保持 `targetSenderId`**：它同时是 `SenderBanVoteCast.targetSenderId`（由 event-standards §6.1 的 `gc.ban-vote` 槽位冻结）与 `TargetState` 的内部键，按 §3 硬约束 4 的例外让**函数名**让位，而不是改入参——否则 §十一 的四处同源会断。
+  - **P1 一致性**：`GroupChatBanList` 的 `_groupAddress` / `_groupDelegateAddress` 与 `GroupMember` 的 `_groupDelegateAddress` 改全大写 immutable `GROUP_ADDRESS` / `GROUP_DELEGATE_ADDRESS`（N10）；`ManagedAction.token` → `tokenAddress`（N14）；`delegateIdOf` / `delegateIdsOf` → `effectiveDelegateId` / `effectiveDelegateIdsByGroupIds`（`delegateId(groupId)` 会与 `setDelegateId` 的入参 `delegateId` 撞 solc 8760，按 §3 硬约束 4 的例外让函数名让位）、`ownerOrDelegateIdOf` → `ownerOrDelegateId`、`voteWeightOf` → `voteWeight`（N20）。
+  - **P2 卫生**：四处 `_states` 按 §8.3 改 `_adminState` / `_chatState` / `_memberState` / `_chatState`（N11）；接口入参去 `_` 后缀（N12）。
+  - **去后缀的连带改名**：入参去 `_` 后与同名 getter 撞，批量入参按 §7.3 改写为 `adminIdList` / `memberIdList`（写方向，与内部双向辅助同名）、`checkedMemberIds`（判断）、`requestedGroupIds` / `requestedRounds` / `requestedProposalIds`（读入参）；`roundInfos` 的载荷是轮次而非 id，按 §7.3 改 `roundInfosByRounds`，不套 `Ids`；`activateChat` 的四个槽位入参改 `scopeSourceAddress` / `banSourceAddress` / `beforePostPluginAddress` / `afterPostPluginAddress`（避开 `scopeSource()` 等 getter，同时满足 §十 的实体地址后缀）。
+  - **同批人工核对**：全部构造函数入参去 `_` 后缀；`GroupChat` 局部 `message_` 改 `storedMessage`、重入锁 `_entered` 改 `_reentrancyStatus`（§8.4）；`ownerOrDelegateId` 的入参 `account` 改 `operatorAddress`。
+  - **地址后缀**（§十，core / action 早已按此扫过）：构造函数入参与对应 getter 对齐为 `groupAdminAddress` / `groupDelegateAddress` / `groupChatAddress` / `banSourceAddress` / `beforePostPluginAddress` / `afterPostPluginAddress` / `actionTargetAddress` / `groupBanListAddress` / `groupMemberAddress` / `groupActionExecutorAddress`；Manager 的 `address token` 入参与局部变量改 `tokenAddress`，`actionByGroupId` 的返回名同步。
+  - **中缀 `Of` 收口**（§7.7；当时 N20 只匹配结尾 `Of`，这批靠人工，第三轮已收紧检查器）：`tokenOfGroup` / `groupIdOfToken` / `actionOfGroup` / `groupIdOfAction` / `groupIdsOfActions` / `actionsOfGroups` → `tokenAddressByGroupId` / `groupIdByTokenAddress` / `actionByGroupId` / `groupIdByActionId` / `groupIdsByActionIds` / `actionsByGroupIds`；`actionsByToken` / `actionsByTokenCount` 的 `Token` 在 `token`→`tokenAddress` 后不再与入参同名，按 §7.3 的作用域键规则改为 `actions`（`tokenAddress` 是定位不是筛选），其 Count 入口在同批分页收口中删除。成对映射同步按 §8.3 补齐键：`_tokenOfGroup` / `_groupIdOfToken` / `_actionOfGroup` / `_groupIdOfAction` → `_tokenAddressByGroupId` / `_groupIdByTokenAddress` / `_managedActionByGroupId` / `_groupIdByActionId`。
+  - **第三轮（review 后的收口）**：`N20` 由「结尾 `Of`」收紧为「含中缀 `Of`」，内部辅助同步改名（`_ownerOfOrRevertGroupNotExist` → `_ownerOrRevertGroupNotExist`、`_groupOwnerOfOrRevert` → `_groupOwnerOrRevert`、`_memberOwnerOfOrZero` → `_memberOwnerOrZero`）；`N05` 由「只查 `Id|Ids|Address|Addresses` 结尾的 Key」收紧为「全部 Key」，并补用途前缀词干规则（写方向 `<noun>List`、`checked`、`requested`），全仓 0 违规——这轮抓出并修掉 `messagesByMention*` / `messagesByMentionAll*` 六个函数：前三个改 `messagesByMentionedSenderId` / `messageIdsByMentionedSenderId`（Key 取 `mentionedSenderId`），后三个因条件没有入参改形容词前缀 `mentionAllMessages` / `mentionAllMessageIds`。
+  - **冻结值补 public**：`GroupChatBanList.GROUP_ADDRESS` / `GROUP_DELEGATE_ADDRESS`、`GroupMember.GROUP_DELEGATE_ADDRESS` 由 `internal` 改 `public` 并进接口——与同仓其余四个合约一致，`21_check.sh` 补三条绑定校验。
+  - **集合查询统一分页签名**：18 个分页入口全部改为 `(offset, limit, reverse) → (列表, totalCount)` 且返回值具名，删除 15 个 `*Count`——包括旧 ABI 保留的 11 个。判据是「同一集合只留一条完整读取路径」：`delegatedGroupIds` 已经返回 `totalCount`，旁边却仍留 `delegatedGroupIdsCount`，同一集合两条计数路径；其余 12 个分页不带 `totalCount`，调用方只能先 count 再翻页，两次调用之间状态可变。`limit = 0` 是唯一计数入口。`memberIds` / `senderIdBanList` / `delegatedGroupIds` / `votedSenderIds` / `votersBySenderId` 补 `reverse`：`Uint256Set` 删除是 swap-and-pop，`reverse` 只承诺逆序遍历当前存储顺序，规格写明 offset 不跨调用稳定。
+  - **`MessageState` → `MessageRecord`**：消息的 content / round / blockNumber / timestamp 是发言时快照，写入后永不改写；`State` 会被读成「存在状态迁移」，与 `RoundState`（游标推进）、`AdminState`（集合增删）混为一谈。`Record` 与 `action` 的 `VoteRecord` 同义，按 §8.6 新增的判据改名。
+  - **取消无键 `ByIds`**：`proposalInfosByIds` → `proposalInfosByProposalIds`（入参同批从裸 `ids` 改 `requestedProposalIds`，`proposalIds()` 分页 getter 占用了最自然的名字）、`voteAmountsByMemberIdByIds` → `voteAmountsByMemberIdByProposalIds`、`chatInfosByIds` → `chatInfosByGroupIds`。`ByIds` 不指名 Key，违反 P2：若主键不言自明则 `Ids` 也可省，若不言自明则 `Ids` 不够；而函数名又必须区分「按 id 批量」与「分页」，所以只能写明 Key。检查器 N05 同批删掉 `ByIds` 特例分支，规则收成一条：每个 `By<Key>` 的 Key 必须等于入参名或入参名去掉用途前缀。
+  - **`By<Key>` 收口为全等匹配**：`messagesBySender` / `messageIdsBySender` / `messagesByMentionedSender` / `messageIdsByMentionedSender` / `voteWeightsBySenderIdsByVoter` → `messagesBySenderId` / `messageIdsBySenderId` / `messagesByMentionedSenderId` / `messageIdsByMentionedSenderId` / `voteWeightsBySenderIdsByVoterId`；`core` 的 `proposalIdBySubmitter` → `proposalIdBySubmitterId`，`action` 的 `rewardByRecipient` / `serviceRewardByMember` → `rewardByRecipientId` / `serviceRewardByMemberId`。`N05` 同批去掉 `Id`/`Ids` 类型后缀豁免，只保留用途前缀——`Id` 是类型标记，`BySender` 省四个字符却让读者分不清 Key 是 id 还是 address（旧仓 address 主体路径恰叫 `sender`）。全仓 0 违规。
+  - **检查器口径修正**：`ENTITY_NAMES` 去掉 `owner` / `recipient`——§十 明确这两个是角色地址、保留角色名，`ChatInfo.owner` 因此不再算 N14 违规（与事件族 `gc.management` 的 `owner` 槽位一致）。该修正对 `core` / `action` / `libs` 同样生效，当前三仓无符号依赖被去掉的两项。
 - 检查器只看声明形态，不能判断"是否有第二个写入口"。构造函数或 `init` 写入的 public 状态需人工判定是否冻结；判定为冻结即按 §3.1 改全大写。N17 的 Layout 例外同样只看 struct 名（`Layout`/`*Layout`），不判断字段是否冻结；Layout 内新增字段需人工核对，只有部署后冻结的字段才能用 UPPER_SNAKE。
-- 构造参数、局部变量、事件字段与 §8.3 的存量映射名不在检查器范围内，按 §十五 清单人工核对。
+- 构造参数、局部变量、事件字段与 §8.3 的存量映射名不在检查器范围内，按 §十五 清单人工核对。**P2 现在有机械校验**：N05 覆盖全部 Key，只允许用途前缀（写方向 `<noun>List` / `checked` / `requested`）取词干，其余 `By<Key>` 一律要求与入参同名，全仓 0 违规。
+- **§8.3 存量映射名**：`group-chat` 已按 §8.3 清完（`_chatConfig`、`_messagesByGroupId`、`_messageIndexesByGroupIdBySenderId`、`_messageIndexesByGroupIdByMentionedSenderId`、`_mentionAllMessageIndexesByGroupId`、`_senderIdsByGroupId`、`_roundStateByGroupIdByRound`、`_roundsByGroupId`、`_delegateState`、`_delegationAcceptanceEnabledByDelegateId`）。`core` / `action` 不清：这两仓的映射绝大多数是「按 `tokenAddress` 取标量」的单键表，而 `tokenAddress` 按 §7.3 是**作用域键、不进名字**，再加 `ByTokenAddress` 是噪音；`_validGovVotesByMember` / `_lastSettlePhase` 两处同样按词干规则与作用域键规则判为可接受。判据本身无法机械化（"读者能否从名字说出键"），故不入检查器。
+- **test/ 的 `_` 后缀**：§一 明确 test/ 不受门禁。本批清掉了所有非冲突项（`originBlocks_`、`phaseBlocks_`、`groupAddress_`、`chat_`、`groupDelegate_`、`reenterGroupId_`、`reenterSenderId_`、`maxGroupNameLength_`、`nameUsed_`、`actualCost_`、`mockVoteWeight_`、`postAllowed_` 等，含 `test/utils/TestBase` 新增的 27 个读取辅助）；剩下的 43 处是**参数与 mock/夹具自身状态变量同名**（`groupId` / `senderId` / `adminId` / `allowed` / `banned` / `postingAllowed` / `mintCost` / `symbol` / `memberNFTAddress` / `phaseAddress` / `voteWeight`），按 §3 硬约束 4 只能让参数让位，去掉 `_` 会撞 8760。另有 8 处 `tm_` / `am_` 是**群名类型码字符串**（`type[_payload]_random` 的格式字符），不是标识符，不改。
+- **`N04` 收紧到具名返回（2026-10-31）**：检查器原先只匹配未命名的 `returns (bool)`，`returns (bool joined)` 从规则下漏过。现按「单个 `bool` + 可选返回名」判定，与 §十五 的「单 bool 返回是谓词；tuple 内的 bool 不受限」对齐。同批删除 `GroupServiceExecutor.joinInfo`——服务侧唯一一处具名单 bool 带参返回（一行转发 `ActionTarget.isJoinedByRound`，服务没有独立加入状态），且与 `GroupActionExecutor.joinInfo` 同 selector、不同返回形态。删除后四仓 0 违规，基线仍 0 条。
 
 ## 十五、审查清单
 
@@ -312,15 +344,15 @@ Layout 中**部署后冻结的字段**按 §3.1 用 `UPPER_SNAKE`（`ACTION_TARG
 - [ ] 没有 `get`/`num`/`amt`/`addr`/`Data`/`Of` 等禁用词。
 - [ ] `check_naming.py --check` 无新增。
 
-## 附录 A：剩余 P0 改名表
+## 附录 A：P0 改名表（已全部落地）
 
-`core` / `action` 已完成，下表只列 `group-chat` 的 P0 项。
+`core` / `action` / `group-chat` 三仓均已落地（2026-10-30），下表留作迁移记录。
 
-| 现名 | 新名 | 规则 |
+| 旧名 | 新名 | 规则 |
 | --- | --- | --- |
-| `postingAllowed(chatId)` | `isPostingAllowed(chatId)` | N04 |
-| `voteBySenderId(groupId, targetSenderId, …)` | `voteBySenderId(groupId, senderId, …)` | N05 |
-| `clearVoteBySenderId` / `refreshVoteBySenderId` | 同上，入参改 `senderId` | N05 |
+| `postingAllowed(groupId)` | `isPostingAllowed(groupId)` | N04 |
+| `voteBySenderId(groupId, targetSenderId, …)` | `voteByTargetSenderId(groupId, targetSenderId, …)` | N05 |
+| `clearVoteBySenderId` / `refreshVoteBySenderId` | `clearVoteByTargetSenderId` / `refreshVoteByTargetSenderId`，入参不变 | N05 |
 
 ## 附录 B：检查器规则编号
 
@@ -329,8 +361,8 @@ Layout 中**部署后冻结的字段**按 §3.1 用 `UPPER_SNAKE`（`ACTION_TARG
 | `N01` | 函数名 lowerCamelCase（冻结值 getter 除外） | 全部函数 |
 | `N02` | 禁用动词前缀 | 全部函数 |
 | `N03` | 带参数的函数不得全大写 | external/public |
-| `N04` | 带参数的 bool 返回必须是谓词 | external/public |
-| `N05` | `By<Key>` 的 Key 必须有同名入参 | external/public |
+| `N04` | 带参数的单个 bool 返回必须是谓词（具名与否同判） | external/public |
+| `N05` | `By<Key>` 的 Key 必须与某个入参同名（允许去掉 `added`/`removed`/`checked`/`requested` 用途前缀） | external/public |
 | `N06` | `Count` 必须在末尾 | external/public |
 | `N07` | 禁用词（`num`/`amt`/`addr`/`tmp` 等） | 全部标识符 |
 | `N08` | 状态变量 `_` 前缀与可见性匹配 | 状态变量 |
@@ -339,13 +371,13 @@ Layout 中**部署后冻结的字段**按 §3.1 用 `UPPER_SNAKE`（`ACTION_TARG
 | `N11` | 名字不得过短或为裸 `state`/`data`/`info` | 函数、状态变量 |
 | `N12` | 接口参数不带 `_` 后缀 | 接口 |
 | `N13` | 禁 `Data` 后缀 | 函数、状态变量 |
-| `N14` | `address` 实体字段必须带 `Address` 后缀（参数按 §十 人工核对） | 结构体字段 |
+| `N14` | `address` 实体字段必须带 `Address` 后缀；角色地址（`owner`/`recipient`/`distributor`/`operator`）与流向地址（`from`/`to`）按 §十 保留角色名（参数同规则，人工核对） | 结构体字段 |
 | `N15` | 接口名 `I` + PascalCase | 接口 |
 | `N16` | 枚举成员 PascalCase | 枚举 |
 | `N17` | 结构体字段 lowerCamelCase（Layout 的冻结字段可 UPPER_SNAKE，冻结判定人工） | 结构体 |
 | `N18` | modifier `only<Role>` / `non<State>` | modifier |
 | `N19` | internal/private 函数带 `_`，public/external 不带 | 函数 |
-| `N20` | 禁 `Of` 后缀（ERC 覆写除外） | external/public |
+| `N20` | 禁 `Of`（含中缀，ERC 覆写除外） | external/public |
 | `N21` | `total*` 只用于社区级聚合 | external/public |
 | `N22` | 禁单字母语义前缀 `g` | 全部函数 |
 | `N23` | 禁止外部函数重载 | external/public |

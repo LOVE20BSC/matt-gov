@@ -35,7 +35,8 @@ BANNED_TOKENS = {
     "arr", "str", "mgr", "cfg", "args", "param",
 }
 BARE_NAMES = {"state", "states", "data", "info", "tmp", "temp", "foo", "bar", "baz"}
-ENTITY_NAMES = {"token", "group", "member", "sender", "owner", "voter", "provider", "recipient"}
+# Entity addresses take the Address suffix; role and flow addresses keep the role name (§10).
+ENTITY_NAMES = {"token", "group", "member", "sender", "voter", "provider"}
 PREDICATE = re.compile(r"^(is|has|can|should)[A-Z]")
 UPPER = re.compile(r"^[A-Z][A-Z0-9_]*$")
 CAMEL = re.compile(r"^[a-z][A-Za-z0-9]*$")
@@ -301,21 +302,22 @@ def check(files):
                 if UPPER.match(name) and fn["params"]:
                     add("N03", name, f, line, "冻结值命名不得带参数（返回值随入参变化）")
                 if fn["vis"] in ("external", "public"):
-                    single_bool = fn["returns"].strip() == "bool"
+                    # A single bool return is a predicate whether or not the return value is named.
+                    single_bool = re.fullmatch(r"bool(?:\s+\w+)?", fn["returns"].strip()) is not None
                     if single_bool and fn["params"] and not PREDICATE.match(name) and name not in STD_EXEMPT:
                         add("N04", name, f, line, "带参数的单个 bool 返回必须是 is/has/can/should 谓词")
                     for key in by_keys(name):
-                        if not re.search(r"(Id|Ids|Address|Addresses)$", key):
-                            continue
                         keys = {p[1][:1].upper() + p[1][1:] for p in fn["params"]}
-                        if key == "Ids" and any(p[1].endswith("Ids") for p in fn["params"]):
+                        stripped = {
+                            re.sub(r"^(Added|Removed|Checked|Requested)", "", k) for k in keys
+                        }
+                        if key in keys or key in stripped:
                             continue
-                        if key not in keys:
-                            add("N05", name, f, line, f"By{key} 没有同名入参")
+                        add("N05", name, f, line, f"By{key} 没有同名入参（去掉 Added/Removed/Checked/Requested 前缀后也不匹配）")
                     if "Count" in name and not name.endswith("Count"):
                         add("N06", name, f, line, "Count 必须是最后一个词")
-                    if name.endswith("Of") and name not in STD_EXEMPT:
-                        add("N20", name, f, line, "自有读取函数用 By<Key>，不用 Of 后缀")
+                    if re.search(r"Of(?=[A-Z]|$)", name) and name not in STD_EXEMPT:
+                        add("N20", name, f, line, "自有读取函数用 By<Key>，不用 Of（中缀也算）")
                     if name.startswith("total") and any(p[1] in MEMBER_KEYS for p in fn["params"]):
                         add("N21", name, f, line, "total* 只用于社区级聚合，成员级聚合用 By<MemberId>")
                     if name.startswith("g") and name[1:2].isupper():
@@ -403,7 +405,7 @@ def main():
 
     if args.update_baseline:
         BASELINE.parent.mkdir(parents=True, exist_ok=True)
-        BASELINE.write_text("\n".join(keys) + "\n", encoding="utf-8")
+        BASELINE.write_text("\n".join(keys) + "\n" if keys else "", encoding="utf-8")
         print(f"baseline written: {len(keys)} entries")
         return 0
 

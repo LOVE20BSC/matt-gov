@@ -109,7 +109,7 @@ rg -n 'core\.md|action\.md|group-chat\.md|launchFirstToken|initializeGenesis|TOD
 - [ ] 规格与标准里带类型和参数名的错误引用与 `src` 声明逐字段一致（改名要同一次落两侧：`inputs[].name` 也是 ABI 的一部分）；`python3 matt-gov/script/check_doc_payloads.py` 输出 `mismatches: 0`
 - [ ] 每个声明的错误至少被一处测试引用（selector 或载荷断言）；`python3 matt-gov/script/check_error_tests.py` 输出 `untested errors: 0`
 - [ ] 只读查询说明空值、越界、未开始和不存在对象的行为
-- [ ] 集合读取符合[集合读取函数的设计原则](dev-standards.md#43-集合读取函数)：集合有界才提供全量读取，分页只回定长数据，函数名体现载荷（`Ids`/`Infos`）与筛选条件（`By<key>`/`ByIds`）
+- [ ] 集合读取符合[集合读取函数的设计原则](dev-standards.md#43-集合读取函数)：集合有界才提供全量读取，分页只回定长数据，函数名体现载荷（`Ids`/`Infos`）与筛选条件（`By<Key>`/`By<Key>Ids`）
 - [ ] 函数名、参数名与状态变量名符合[命名标准](naming-standards.md)：`By<Key>` 与入参同名、单 bool 返回是谓词、冻结值全大写且零参、`get*`/`Of`/`Data`/`Num` 无新增；`python3 matt-gov/script/check_naming.py --check` 无新增
 - [ ] 按键取单值的新增函数能说出保留理由（新键 / 该键上无其他入口 / 旧接口保留成员），不是已有入口的投影；按显式 ID 数组批量读的函数写明下标对齐、无效即回滚不补空
 - [ ] 数组、批量参数和分页参数有最大边界；只读、无状态写、按显式 ID 取详情的批量查询可以不设上限，但规格必须写明理由

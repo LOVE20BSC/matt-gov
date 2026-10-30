@@ -15,7 +15,7 @@
 - 委托接受开关按目标 memberId 保存，默认关闭，只有 delegate NFT 当前持有人可开关。开关随 memberId 而非持有人：delegate NFT 转移后设置不变，新持有人继承当前值并可自行开关。开关只约束新指定，不改变已有委托的有效性：关闭后既有委托继续生效，直到被撤销或因 owner 快照失配而失效；撤销（`delegateId = 0`）永远允许。群或 delegate NFT 转移后委托失效，重新设回属于新指定，需要开关为开。
 - 每群至多一个 delegateId。保存群与 delegate NFT 的 owner 快照；任一 owner 变化则无效。转回快照 owner 时恢复，不删除历史记录。有效性变化本身不产生协议事件：群 owner 或 delegate NFT 转移由 core ERC721 `Transfer` 折叠。
 - `DelegateChanged` 的旧值组（`prevDelegateId`、`prevOwnerSnapshot`、`prevDelegateOwnerSnapshot`）一律取**原始存储**，不取「当前有效值」：委托因 owner 转移失效后再清空时，`prevDelegateId` 仍是被清掉的原始 delegateId，与同组两个非零快照自洽，消费方可据此重建 `delegatedGroupIds` 的移除。新值组在 `delegateId = 0` 时两个快照都写零。
-- delegate NFT 当前持有人可批量清除自己收到的委托、开关委托接受；缺失 delegateId 的写入口回 `ERC721NonexistentToken(delegateId)`，非 owner 回 `NotMemberOwner(delegateId)`。delegate NFT 缺失时，查询与有效性判断按无有效 delegate 处理，不回滚：`isDelegationAcceptanceEnabled` 返回 false，`delegatedGroupIds` 返回空且 total=0、计数返回 0。
+- delegate NFT 当前持有人可批量清除自己收到的委托、开关委托接受；缺失 delegateId 的写入口回 `ERC721NonexistentToken(delegateId)`，非 owner 回 `NotMemberOwner(delegateId)`。delegate NFT 缺失时，查询与有效性判断按无有效 delegate 处理，不回滚：`isDelegationAcceptanceEnabled` 返回 false，`delegatedGroupIds` 返回空且 totalCount=0。
 - 保留有效 delegate 查询、批量查询与被委托群枚举分页；事件按本规范命名：`DelegateChanged`、`DelegationCleared`、`DelegationAcceptanceChanged`。`DelegateChanged` 是群主对 `delegateId` 的赋值变更（`0` 表示撤销），`DelegationCleared` 是 delegate 持有人批量清除自己收到的群链接：前者以群为主体，后者以 delegate 为主体。
 
 委托接口见 [`IGroupChatDelegate.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/IGroupChatDelegate.sol)，包括有效 delegate 查询和分页枚举。

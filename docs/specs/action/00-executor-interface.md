@@ -11,7 +11,7 @@
 - `exit(tokenAddress, actionId, memberId)` — 完全退出的签名是通用的
 - `mintMemberReward(...)` / `memberReward(...)` 与事件 `MemberRewardMinted` — 成员级奖励的铸造与查询，签名三家一致（成员级奖励裁决）
 - `mintMemberRewards(...)` — 批量成员结算（平行数组按下标配对，任一元素失败整笔回滚）
-- `joinedAmountByActionId(...)` / `joinedAmountByMemberId(...)` / `joinTokenAddress(...)` — 截止加入轮 `round` 结束的累计参与量、按成员累计量与参与计价代币（`round` 大于当前加入轮时按未开始返回 0；计价代币与轮次无关，不带 `round`；口径由各 Executor 规格固定）。计价代币是 `joinedAmountByActionId` 的计价单位：LP 为 LP 对币、GroupAction 为 join token、GroupService 为行动代币（按激活质押代理计量）。前端展示行动列表与派生指标时只需读基座三者，无需按 Executor 分支。与 GroupAction 的 `joinInfo` 快照（另含 `joinedRound`、`joinedAmount`、`groupId` 与 `ownAmount`/`providerAmount`）同键同值为**有意并存**：基座是跨 Executor 的统一口径，`joinInfo` 是成员记录快照入口
+- `joinedAmountByActionId(...)` / `joinedAmountByMemberId(...)` / `joinTokenAddress(...)` — 截止加入轮 `round` 结束的累计参与量、按成员累计量与参与计价代币（`round` 大于当前加入轮时按未开始返回 0；计价代币与轮次无关，不带 `round`；口径由各 Executor 规格固定）。计价代币是 `joinedAmountByActionId` 的计价单位：LP 为 LP 对币、GroupAction 为 join token、GroupService 为行动代币（按激活质押代理计量）。前端展示行动列表与派生指标时只需读基座三者，无需按 Executor 分支。GroupAction 另有成员记录快照 `joinInfo(tokenAddress, actionId, round, memberId) returns (JoinInfo)`（`joinedRound` / `groupId` / `ownAmount` / `providerAmount`）：它**不重复给出聚合总量**，总量只有基座 `joinedAmountByMemberId` 一个来源
 - 基座 `joinTokenAddress` 是唯一的通用计价代币 getter；LP 与 GroupAction 直接使用该名（不再重复声明）。GroupService 的计价代币语义是行动代币，保留 `actionTokenAddress` 作为领域别名，与基座 `joinTokenAddress` 同键同值——这是登记在案的单点例外，改其一必须同批改另一个
 - `currentVoteRound()` / `currentJoinRound()` / `currentMintRound()` — 从 `Phase.currentPhase()` 推导的三阶段 Round；未开始回滚 `RoundNotStarted(1, 0)`（`requiredRound` 为 1，`currentRound` 为推导出的 0；0 是派生轮未开始的哨兵，需要当前 phase 时读 `Phase.currentPhase()`）
 
@@ -62,16 +62,16 @@ interface IActionExecutor is IProposalTarget, IActionExecutorEvents, IActionExec
     function initialized() external view returns (bool);
 
     function exit(address tokenAddress, uint256 actionId, uint256 memberId) external;
-    function mintMemberReward(address tokenAddress, uint256 actionId, uint256 memberId, uint256 round)
+    function mintMemberReward(address tokenAddress, uint256 actionId, uint256 round, uint256 memberId)
         external returns (uint256 mintAmount, uint256 burnAmount);
-    function mintMemberRewards(address tokenAddress, uint256[] calldata actionIds, uint256 memberId,
-        uint256[] calldata rounds)
+    function mintMemberRewards(address tokenAddress, uint256[] calldata actionIds, uint256[] calldata rounds,
+        uint256 memberId)
         external returns (uint256[] memory mintAmounts, uint256[] memory burnAmounts);
 
     function currentVoteRound() external view returns (uint256);
     function currentJoinRound() external view returns (uint256);
     function currentMintRound() external view returns (uint256);
-    function memberReward(address tokenAddress, uint256 actionId, uint256 memberId, uint256 round)
+    function memberReward(address tokenAddress, uint256 actionId, uint256 round, uint256 memberId)
         external view returns (uint256 mintAmount, uint256 burnAmount, bool minted);
     function joinedAmountByActionId(address tokenAddress, uint256 actionId, uint256 round) external view returns (uint256 amount);
     function joinedAmountByMemberId(address tokenAddress, uint256 actionId, uint256 round, uint256 memberId)

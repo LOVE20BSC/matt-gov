@@ -2,7 +2,38 @@
 
 本文档列出 BSC Action 相对于 LOVE20TKM 旧协议的所有变更。保留项直接引用旧代码位置，避免重复描述。
 
-> 本文记录迁移当时的新旧对照。2026-10-30 命名标准落地后，历史段落中的标识符未逐一回写（按「迁移历史不改写」保留）；当前 ABI 与命名以 `action/src/interfaces/`、[`docs/specs/action/`](action/) 与 [`naming-standards.md`](../naming-standards.md)（§14 进度与附录 A）为准。
+> 本文记录迁移当时的新旧对照。2026-10-30 命名标准落地后，历史段落中的标识符未逐一回写（按「迁移历史不改写」保留）；当前 ABI 与命名以 `action/src/interfaces/`、[`docs/specs/action/`](action/) 与 [`naming-standards.md`](../naming-standards.md)（§14 进度）为准。
+
+## 参数顺序统一（2026-10-31）
+
+对外签名统一为 `round`/`rounds` 在 `memberId` 之前：`isJoinedByRound`、`memberReward`、`mintMemberReward`、`verificationInfosByRound` 改为 `(tokenAddress, actionId, round, memberId)`；`mintMemberRewards` 改为 `(tokenAddress, actionIds[], rounds[], memberId)`。单轮入口的 selector 不变（三个 `uint256` 同型，仅解码顺序变化），因此旧 ABI 编码不会报错、只会把 `memberId` 当 `round`——前端、索引器与本地脚本必须按新 ABI 重新生成；`mintMemberRewards` 的 selector 由 `0xca7a9a12` 变为 `0xb43cd2aa`，旧 ABI 不可复用。内部辅助同步重排：`_registerMembership`、`_applyVerificationInfos`、`_emitLpWithdrawn`、`_verificationValues`、`_replaceApplication`、`_emitVerifierApplicationSubmitted` 均为 `round` 在 `memberId`/`verifierId` 之前，荷载与标志留在其后；`distribution` 的 `round` 移到 `groupReward` 之前（`groupId` 仍为作用域键）。
+
+## 服务执行器删除 `joinInfo`（2026-10-31）
+
+删除 `IGroupServiceExecutor.joinInfo(address,uint256,uint256,uint256) returns (bool)` 与其实现。它是 `ActionTarget.isJoinedByRound` 的一行转发，服务侧没有独立的加入状态；基座 `IActionExecutor` 已暴露 `ACTION_TARGET_ADDRESS()`，从同一 ABI 即可直达，删除不损失可达性（执行器内部判定也一直直接读 ActionTarget）。
+
+- **同时消除 selector 冲突**：该签名与 `GroupActionExecutor.joinInfo(address,uint256,uint256,uint256)` 完全相同，返回形态却是 `bool` 与 5 元组两种，按错 ABI 静态调用会解出错误数据。删除后该 selector 在 `action` 内只剩一种返回。
+- **`GroupActionExecutor.joinInfo` 保留**：它是成员在某一轮的参与记录快照，其中 `ownAmount`、按轮的 `groupId` 与 `joinedRound` 在全仓没有第二个出口，删除即为功能丢失。返回形态同批改为具名记录（见下一节）。
+- **查询口径**：`isJoinedByRound(tokenAddress, actionId, round, memberId)`——与 `joinedAmountByMemberId` 的 `(round, memberId)` 同序。
+- **门禁**：`N04` 同批收紧为具名单 bool（`returns (bool x)` 也算谓词约束）；删除后四仓 0 违规，`naming-baseline.txt` 仍 0 条。
+
+## `joinInfo` 返回具名记录（2026-10-31）
+
+`GroupActionExecutor.joinInfo` 的返回从 5 个匿名标量改为一个具名结构体：
+
+```solidity
+struct JoinInfo {
+    uint256 joinedRound;
+    uint256 groupId;
+    uint256 ownAmount;
+    uint256 providerAmount;
+}
+```
+
+- **删 `joinedAmount`**：它是 `ownAmount + providerAmount` 的派生和，基座 `joinedAmountByMemberId`（GroupAction 的实现是 `memberAmountAt`，同一式子）已是唯一来源；同一和保留两处，语义漂移时无法判断以谁为准。
+- **保留 `providerAmount`**：它是独立存储的按轮历史（`providerAmountHistoryByMemberId`），不是对 `providerAmountsByMemberId` 那 N 行的临时求和。
+- **selector 不变**（返回值不参与 selector），ABI JSON 由 5 个具名标量变为单个 tuple，SDK 改为按字段名解码。
+- `00-executor-interface.md` 中「与基座同键同值为有意并存」的豁免随 `joinedAmount` 一并删除。
 
 ## 事件与接口改名（2026-10-27）
 
@@ -105,7 +136,7 @@ Action 门禁：**406 tests 全绿**；`build --deny warnings`、`lint`、`check
 
 #### 分页顺序契约
 - **声明**：加入态集合（`actionIdsByMemberId` / `memberIdsByActionId`）的 `offset` **不保证跨调用稳定**——旧 `RoundHistoryAddressSet.remove` 已用 swap-and-pop（`LOVE20TKM/extension/src/lib/RoundHistoryAddressSet.sol:34-59`），新实现沿用该原语，删除时末位元素被搬到被删位置
-- **调用方影响**：`reverse` 不等于「加入逆序」；前端与索引每次以 `total` 为准重新拉取，不跨调用缓存 `offset`、不增量补页
+- **调用方影响**：`reverse` 不等于「加入逆序」；前端与索引每次以 `totalCount` 为准重新拉取，不跨调用缓存 `offset`、不增量补页
 - `actions` / `actionIdsByExecutor` 由创建回调维护的追加写入索引派生（绑定建立后永不删除，`reverse` 即创建逆序）；`votedActions` 由 Vote 的本轮只追加列表派生，均不受 swap-and-pop 约束
 
 #### 激励领取粒度（成员级 → 行动级）

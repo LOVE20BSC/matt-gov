@@ -57,18 +57,18 @@ Launch 只保存“成员可用整数次数”和“社区累计已产生次数�
 
 | 账本 | 所属与作用域 |
 | --- | --- |
-| `launchCount[tokenAddress][memberId]` | Launch 保存成员可用整数次数 |
+| `remainingLaunchCount[tokenAddress][memberId]` | Launch 保存成员可用整数次数 |
 | `issuedLaunchCount[tokenAddress]` | Launch 保存社区累计已产生次数；消耗与融合都不减少 |
 | `MAX_LAUNCH_COUNT` | 每社区累计次数上限；根级累计由伴生不变式约束在同一上限内 |
 
-- `launchCount` 与 `issuedLaunchCount` 对任意 `tokenAddress`、`memberId` 可查询；未登记的 token 返回 `0`，不校验也不回滚（根父币未登记但承载根级次数，返回真实账本值）。
+- `remainingLaunchCount` 与 `issuedLaunchCount` 对任意 `tokenAddress`、`memberId` 可查询；未登记的 token 返回 `0`，不校验也不回滚（根父币未登记但承载根级次数，返回真实账本值）。
 - `addLaunchCount` 只允许 Mint 调用，其他调用者回滚 `NotMintContract(msg.sender)`。校验顺序固定为鉴权 → 参数 → 存在性 → 账本：`count` 必须大于 `0`，否则回滚 `ZeroCount()`；`tokenAddress` 必须是已登记 LOVE20 代币，否则回滚 `TokenNotRegistered(tokenAddress)`——根父币不经过本入口，其次数只由首币伴生在同一调用内追加；必须满足 `issuedLaunchCount + count <= MAX_LAUNCH_COUNT`，否则回滚 `LaunchCountLimitExceeded(tokenAddress, count, MAX_LAUNCH_COUNT - issuedLaunchCount)`（载荷为请求量与剩余额度；Mint 已按剩余额度截断，此处是兜底）。上限判断不得依赖加法结果：任何使累计次数超过上限的 `count`（含极端大值）都必须回滚 `LaunchCountLimitExceeded(...)`，不能以算术溢出回滚收场，错误载荷也不得计算 `issuedLaunchCount + count`。
-- 只增加 `launchCount` 与 `issuedLaunchCount`，与治理激励铸造整体回滚；次数被消耗或融合都不释放累计上限。
+- 只增加 `remainingLaunchCount` 与 `issuedLaunchCount`，与治理激励铸造整体回滚；次数被消耗或融合都不释放累计上限。
 - 只有 `init` 校验初始化状态：`addLaunchCount`、`mergeLaunchCount` 和 `launchToken` 不重复校验 `initialized`（未成功初始化的版本不会发布，见 [通用规则](01-common-rules.md#初始化与安全)），它们的失败由各自的权限、参数与存在性校验决定。
 
 ## 根级次数与伴生规则
 
-根父币（Router.WETH() 读取）维度的次数称为根级次数：它用于发射与首币平级、父币同为根父币的同级代币。根级次数只作用于首币：首币每次通过 `addLaunchCount` 产生整数次数时，Launch 在同一调用内把同一 `count` 1:1 记入 `launchCount[ROOT_PARENT_TOKEN_ADDRESS][memberId]` 与 `issuedLaunchCount[ROOT_PARENT_TOKEN_ADDRESS]`，并追加一条 `LaunchCountAdded`（`tokenAddress` 为根父币）；其他代币产生次数时不伴生，其他代币也不能产生根级次数。
+根父币（Router.WETH() 读取）维度的次数称为根级次数：它用于发射与首币平级、父币同为根父币的同级代币。根级次数只作用于首币：首币每次通过 `addLaunchCount` 产生整数次数时，Launch 在同一调用内把同一 `count` 1:1 记入 `remainingLaunchCount[ROOT_PARENT_TOKEN_ADDRESS][memberId]` 与 `issuedLaunchCount[ROOT_PARENT_TOKEN_ADDRESS]`，并追加一条 `LaunchCountAdded`（`tokenAddress` 为根父币）；其他代币产生次数时不伴生，其他代币也不能产生根级次数。
 
 - 伴生与首币次数增加发生在同一笔交易：`addLaunchCount` 由 Mint 调用并与治理激励铸造整体回滚，根级伴生同样整体回滚。
 - 根父币维度不由 `addLaunchCount` 的外部入口写入：Mint 直接以根父币为 `tokenAddress` 调用会按存在性校验回滚 `TokenNotRegistered(tokenAddress)`。
@@ -94,7 +94,7 @@ Launch 只保存“成员可用整数次数”和“社区累计已产生次数�
 
 ## 普通发射
 
-当前成员 NFT 持有人可发射社区子币，消耗其一次 `launchCount`。发射流程按「检查 → 更新 → 交互」执行：先按鉴权 → 参数 → 存在性 → 账本的顺序完成检查，扣减一次次数，再创建子币、登记、分发首批供应并调用 distributor；以“先更新账本、再外部调用”满足防重入，不引入额外重入锁。外部调用失败时子币创建、登记和次数消耗全部回滚。
+当前成员 NFT 持有人可发射社区子币，消耗其一次 `remainingLaunchCount`。发射流程按「检查 → 更新 → 交互」执行：先按鉴权 → 参数 → 存在性 → 账本的顺序完成检查，扣减一次次数，再创建子币、登记、分发首批供应并调用 distributor；以“先更新账本、再外部调用”满足防重入，不引入额外重入锁。外部调用失败时子币创建、登记和次数消耗全部回滚。
 
 发射、次数和代币查询接口均见 [`ILaunch.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/ILaunch.sol)。
 
@@ -129,7 +129,7 @@ distributor 自行实现领取与查询逻辑，`claim(tokenAddress)` 只是建�
 | `parentTokenAddress` 不是已登记 LOVE20 代币且不是根父币（含零地址） | `ParentTokenNotRegistered(parentTokenAddress)` |
 | `memberId` 不存在（含 `0`） | MemberNFT 的标准错误（`ownerOf` 回滚） |
 | 调用者不持有 `memberId` | `NotMemberOwner(memberId)` |
-| `launchCount[parentTokenAddress][memberId] == 0` | `InsufficientLaunchCount(memberId, 0, 1)` |
+| `remainingLaunchCount[parentTokenAddress][memberId] == 0` | `InsufficientLaunchCount(memberId, 0, 1)` |
 | 施加 `Test` 前缀后的最终符号已登记 | `TokenSymbolAlreadyExists(keccak256(bytes(finalSymbol)))` |
 | 建池时工厂返回零地址 | `PairCreationFailed(parentTokenAddress)`；正常 UniswapV2 工厂返回 pair 或回滚 |
 
@@ -147,7 +147,7 @@ distributor 自行实现领取与查询逻辑，`claim(tokenAddress)` 只是建�
 | `LaunchCountMerged(tokenAddress, sourceMemberId, targetMemberId, count, sourceRemaining, targetRemaining)` | `mergeLaunchCount` | `count` 为本次融合转移的次数；`sourceRemaining` / `targetRemaining` 为融合后源、目标成员的可用余额 |
 | `LaunchCountConsumed(tokenAddress, memberId, remaining)` | `launchToken` 扣减次数后 | `remaining` 为扣减后该成员在该账本维度的可用余额；一次发射固定消耗一次，消耗量由事件名承载，不再单列恒为 `1` 的 `count`。发出时机早于 `TokenLaunched` 与 distributor 回调 |
 
-次数消耗独立成事件：`LaunchCountConsumed` 记录 `launchToken` 的扣减事实（含后置余量），`TokenLaunched` 只记录发射结果；索引器按 `LaunchCountConsumed` 折叠余量，无需回查 `launchCount`。
+次数消耗独立成事件：`LaunchCountConsumed` 记录 `launchToken` 的扣减事实（含后置余量），`TokenLaunched` 只记录发射结果；索引器按 `LaunchCountConsumed` 折叠余量，无需回查 `remainingLaunchCount`。
 
 - 首币由 `init` 发出 `GenesisTokenCreated`（无 launcher 字段）；普通发射由 `launchToken` 发出 `TokenLaunched`；`init`、`launchToken`、`addLaunchCount`、`mergeLaunchCount` 之外的入口不产生上述事件。
 - `GenesisTokenCreated` 与 `TokenLaunched` 同时记录创建所需的代币元数据；不再另发旧 `ILOVE20TokenFactory` 的 `TokenCreate`。
