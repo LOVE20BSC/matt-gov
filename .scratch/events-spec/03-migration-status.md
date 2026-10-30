@@ -196,6 +196,12 @@
 - **内部名**：`_voterBoost` → `_voterBoostByMemberId`、`_pairAddress` → `_pairAddressByTokenAddress`、`_totalVoteAmountByRound` / `_totalVoterBoostByRound` / `_eligibleProposalVoteAmountByRound`、`_parentTokenByTokenAddress`、`_memberNameByTokenId` / `_tokenIdByNormalizedName`；`Phase` 构造参数与局部变量、`MemberNFT` 局部变量去掉 `_` 后缀；Mint 的 `memberBoost` / `totalBoost` 局部量改为 `voterBoost` / `totalVoterBoost`，Vote 的 `currentBoost` / `actualBoost` 改为 `currentVoterBoost` / `actualVoterBoost`。
 - **门禁**：build `--deny warnings`、lint、`forge test` **473 / 473**；events 28、deploy 37、errors 0、doc-payload 0、error-tests 0、caller-auth 0、naming 80 条基线（文件×符号）0 新增。
 
+## 2026-10-30 跨仓跟随 core 命名
+
+- **core** `a0737dd` → **action** `9e7b4b2`：action 只跟随 core 改名（getter/部署检查/测试 mock/foundry.lock），自身尚未执行的命名批次保持原状；`forge test` 467/467、deploy 48、events 34。
+- **action** `9e7b4b2` → **group-chat** `c5afe27`：同样只跟随 core getter，`forge test` 168/168、deploy 13、events 21。
+- 两仓的行号/事件/错误基线未变化；剩余 `action` / `group-chat` 的 80 条命名基线按各自批次继续。
+
 ## 待收尾
 
 1. **提交授权**：三仓需要提交后，才能把 `action/lib/core` 指向新 core、把 `group-chat/lib/action` 指向新 action；随后重跑跨仓集成测试。用户未授权前不提交。

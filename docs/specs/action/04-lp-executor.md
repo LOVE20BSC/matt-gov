@@ -4,7 +4,7 @@
 
 ## 配置与接口
 
-部署依赖通过一次性 `init` 绑定：ActionTarget 与 Stake；MemberNFT、Phase 与 Pair Factory 从 Stake 派生（`memberNFTAddress()`、`phaseAddress()`、`pairFactoryAddress()`），不重复作为入参。每个行动的配置由创建回调解析，不能放进共享合约的全局 init。
+部署依赖通过一次性 `init` 绑定：ActionTarget 与 Stake；MemberNFT、Phase 与 Pair Factory 从 Stake 派生（`MEMBER_NFT_ADDRESS()`、`PHASE_ADDRESS()`、`PAIR_FACTORY_ADDRESS()`），不重复作为入参。每个行动的配置由创建回调解析，不能放进共享合约的全局 init。
 
 完整 ABI 见 [`ILpExecutor.sol`](https://github.com/LOVE20BSC/action/blob/main/src/interfaces/ILpExecutor.sol)。
 
