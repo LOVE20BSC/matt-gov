@@ -4,7 +4,7 @@
 
 ## 配置与接口
 
-部署依赖通过一次性 `init` 绑定：ActionTarget 与 Stake；MemberNFT、Phase 与 Pair Factory 从 Stake 派生（`MEMBER_NFT_ADDRESS()`、`PHASE_ADDRESS()`、`PAIR_FACTORY_ADDRESS()`），不重复作为入参。每个行动的配置由创建回调解析，不能放进共享合约的全局 init。
+部署依赖通过一次性 `init` 绑定：ActionTarget 与 Stake（`ACTION_TARGET_ADDRESS()`、`STAKE_ADDRESS()`）；MemberNFT、Phase 与 Pair Factory 从 Stake 派生（`MEMBER_NFT_ADDRESS()`、`PHASE_ADDRESS()`、`PAIR_FACTORY_ADDRESS()`），不重复作为入参。每个行动的配置由创建回调解析，不能放进共享合约的全局 init。
 
 完整 ABI 见 [`ILpExecutor.sol`](https://github.com/LOVE20BSC/action/blob/main/src/interfaces/ILpExecutor.sol)。
 
@@ -45,7 +45,7 @@ Target Data 是无键数组，按位置读取。第 `0` 项是 ActionTarget 保�
 ```text
 deductionAdded = min(amount, floor(amount * elapsedJoinBlocks / joinPhaseBlocks))
 effectiveAmount = joinedAmount - deduction
-totalEffectiveAmount = totalJoinedAmount - totalDeduction
+totalEffectiveAmount = joinedAmountByActionId - deductionByRound
 effectiveLpRatio = floor(effectiveAmount * 1e18 / totalEffectiveAmount)
 ```
 
@@ -58,9 +58,9 @@ effectiveLpRatio = floor(effectiveAmount * 1e18 / totalEffectiveAmount)
 ```text
 deductionReduction = floor(deduction * amount / joinedAmount)
 joinedAmount -= amount
-totalJoinedAmount -= amount
+joinedAmountByActionId -= amount
 deduction -= deductionReduction
-totalDeduction -= deductionReduction
+deductionByRound -= deductionReduction
 ```
 
 所有右侧均使用撤回前值。减少成员扣减和总扣减的数量必须相同；全额撤回时公式自然取尽剩余扣减，不留余数。部分撤回保留原加入区块/金额数组作为记录，不逐笔缩放；数组之和不再代表当前余额。
@@ -71,7 +71,7 @@ totalDeduction -= deductionReduction
 
 ## 治理上限与分配
 
-成员与社区治理票都在**铸造时按当前 Round** 读取：`Stake.validGovVotes(tokenAddress, currentPhase, memberId)` 与 `Stake.totalValidGovVotes(tokenAddress, currentPhase)`，其中 `currentPhase = IPhase.currentPhase()`。被结算的 `round`（`mintRound = currentPhase - 2`）不参与这张票权——旧版读的 `validGovVotes(tokenAddress, memberId)` / `globalGovVotes(tokenAddress)` 同样是当前值，口径不变。结果按被结算轮冻结在 `_govRatioAtMint[tokenAddress][actionId][round][memberId]`：已铸造轮次的 `govRatio` 查询返回该记录，不再随质押变化；未铸造轮次（含尚未结算的过去轮）按当前 Round 现算，因此查询值与将来铸造时的取值同源。
+成员与社区治理票都在**铸造时按当前 Round** 读取：`Stake.validGovVotes(tokenAddress, currentPhase, memberId)` 与 `Stake.totalValidGovVotes(tokenAddress, currentPhase)`，其中 `currentPhase = IPhase.currentPhase()`。被结算的 `round`（`mintRound = currentPhase - 2`）不参与这张票权——旧版读的 `validGovVotes(tokenAddress, memberId)` / `globalGovVotes(tokenAddress)` 同样是当前值，口径不变。结果按被结算轮冻结在 `_mintedGovRatioByMemberId[tokenAddress][actionId][round][memberId]`：已铸造轮次的 `govRatio` 查询返回该记录，不再随质押变化；未铸造轮次（含尚未结算的过去轮）按当前 Round 现算，因此查询值与将来铸造时的取值同源。
 
 ```text
 theoreticalReward = floor(proposalReward * effectiveAmount / totalEffectiveAmount)
@@ -87,6 +87,6 @@ burnReward = theoreticalReward - mintReward
 
 乘数为 0 时关闭上限并返回理论激励；上限启用且总治理票为 0 时该成员理论激励全部销毁。未参与的轮次查询返回零。结算量为零（`mintAmount` 与 `burnAmount` 均为 0，含无有效参与量、行动激励为零）时回滚 `MemberActionRewardUnavailable(tokenAddress, actionId, memberId, round)`，不置位已结算、不发事件，不拉取整笔激励，可待行动激励就绪后重试；有销毁量即允许结算。销毁调用 Token.burn，不修改 Core 的取消预留账本。销毁量带成员归属，因此并入该成员 `MemberRewardMinted.burnAmount`，不单独立事件；纯销毁情形下 `mintAmount = 0` 而 `burnAmount > 0`，`minted` 仍为 true。
 
-成员结算按 [统一铸造链路](07-minting.md#铸造链路) 进行：整笔预期数量读 `ActionTarget.actionReward`（未铸造时返回理论可铸造数量），大于零且未铸造时经 `ActionTarget.mintActionReward` 取得该整笔激励再内部分配；该轮有效参与总量（`totalJoinedAmount - totalDeduction`）为零或预期数量为零时，成员结算无产出，回滚 `MemberActionRewardUnavailable(tokenAddress, actionId, memberId, round)`（不拉取整笔激励、不记已结算）。轮次已到铸币轮而有效参与总量仍为零时，该轮没有任何有效分配路径：结算一律回滚 `MemberActionRewardUnavailable(tokenAddress, actionId, memberId, round)`，整笔激励停留在未结算状态，预留不释放（没有销毁入口）。未到铸币轮的轮次结算回滚（见上表），查询返回零值。
+成员结算按 [统一铸造链路](07-minting.md#铸造链路) 进行：整笔预期数量读 `ActionTarget.actionReward`（未铸造时返回理论可铸造数量），大于零且未铸造时经 `ActionTarget.mintActionReward` 取得该整笔激励再内部分配；该轮有效参与总量（`joinedAmountByActionId - deductionByRound`）为零或预期数量为零时，成员结算无产出，回滚 `MemberActionRewardUnavailable(tokenAddress, actionId, memberId, round)`（不拉取整笔激励、不记已结算）。轮次已到铸币轮而有效参与总量仍为零时，该轮没有任何有效分配路径：结算一律回滚 `MemberActionRewardUnavailable(tokenAddress, actionId, memberId, round)`，整笔激励停留在未结算状态，预留不释放（没有销毁入口）。未到铸币轮的轮次结算回滚（见上表），查询返回零值。
 
 来源：旧 `LOVE20TKM/extension-lp/src/ExtensionLp.sol`、`LOVE20TKM/extension-lp/src/ExtensionLpFactoryV2.sol` 和 `LOVE20TKM/extension/src/ExtensionBaseRewardTokenJoin.sol`。部分撤回、全额撤回自动退出与取消退出等待是 BSC 新增/变更，不声称旧 V2 已具备。验收见 [Action 验收](08-testing.md)。

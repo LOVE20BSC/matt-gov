@@ -2,6 +2,8 @@
 
 本文档列出 BSC Action 相对于 LOVE20TKM 旧协议的所有变更。保留项直接引用旧代码位置，避免重复描述。
 
+> 本文记录迁移当时的新旧对照。2026-10-30 命名标准落地后，历史段落中的标识符未逐一回写（按「迁移历史不改写」保留）；当前 ABI 与命名以 `action/src/interfaces/`、[`docs/specs/action/`](action/) 与 [`naming-standards.md`](../naming-standards.md)（§14 进度与附录 A）为准。
+
 ## 事件与接口改名（2026-10-27）
 
 事件规范 v1.1 重命名了本文其他小节记录的迁移时点名称；正文保留当时名称，现行名称以 [规格](README.md) 与各仓 `src/interfaces/` 为准：
@@ -32,7 +34,7 @@ Action 已全部改为 **local-first** 错误模型：每个合约/模块拥有�
 - 结算：`MemberRewardUnavailable` 改名为 `MemberActionRewardUnavailable(token,action,member,round)`，与 Core Mint 的同名条件区分。
 - 群管理/验证/接收人/额度：均改为带主体键与边界值的具体错误；非法服务代币父关系回 `ActionTokenParentMismatch(actionTokenAddress, serviceTokenAddress, actualParentTokenAddress)`；删除未使用声明。
 - 命名统一：数值/额度/数量上限一律 `<Subject>Exceeded`（`ActionMaxJoinAmountExceeded`、`GroupMaxJoinAmountExceeded`、`ScoreLimitExceeded`、`ScoreCountExceeded`、`WithdrawAmountExceeded`、`ProviderWithdrawAmountExceeded`），不再使用 `Exceeds*` 或 `LimitReached`。
-- 链群 owner 解析统一走 `MemberOwner.ofOrZero`：只把 `ERC721NonexistentToken` 映射为 `GroupNotExist(groupId)`，其他 `MemberNFT` 失败原样冒泡，不再用宽泛 `catch` 伪造不存在。
+- 链群 owner 解析统一走 `MemberOwner.ownerOrZero`：只把 `ERC721NonexistentToken` 映射为 `GroupNotExist(groupId)`，其他 `MemberNFT` 失败原样冒泡，不再用宽泛 `catch` 伪造不存在。
 - 标准错误由来源 ABI 拥有；`SafeERC20FailedOperation` 通过库使用进入 ABI；调用方接口不重复继承透传错误，失败契约登记来源 selector。
 
 Action 门禁：**406 tests 全绿**；`build --deny warnings`、`lint`、`check_caller_auth.sh` 通过；`GroupActionExecutor` runtime 21,600 B（余量 2,976 B）。本文档历史小节里的旧错误名均已被 v3 名称取代。
@@ -263,16 +265,16 @@ effectiveRatio = min(effectiveLpRatio, govRatioCap)
 ### ✅ 保留逻辑
 
 #### 参与索引
-**重构**：旧 `LOVE20TKM/extension-group/src/GroupJoin.sol` 的 17 组「全量数组 + `Count` + `AtIndex`」全局索引不迁移。该组接口为无界集合提供全量读取，违反 [集合读取函数的设计原则](../dev-standards.md#43-集合读取函数)，且其中 16 组没有具名调用方。改为 `isGroupMember` 加五条按真实问题组织的索引（`g*` 记号即指这一族：只有真的有人参与过才会入榜）：
+**重构**：旧 `LOVE20TKM/extension-group/src/GroupJoin.sol` 的 17 组「全量数组 + `Count` + `AtIndex`」全局索引不迁移。该组接口为无界集合提供全量读取，违反 [集合读取函数的设计原则](../dev-standards.md#43-集合读取函数)，且其中 16 组没有具名调用方。改为 `isGroupMember` 加五条按真实问题组织的索引（`joined*` 记号即指这一族：只有真的有人参与过才会入榜）：
 
 - `isGroupMember(groupId, memberId)`：Group Chat 的链上归属判据，跨全部社区和行动聚合
-- `gGroupIds`：当前有归属成员的链群
-- `gGroupIdsByMemberId`：某成员当前归属的链群
-- `gTokenAddressesByGroupIdByMemberId`：某成员在某链群下的归属涉及哪些社区
-- `gMemberIds`：当前有归属的成员
-- `gMemberIdsByGroupId`：某链群当前的成员
+- `joinedGroupIds`：当前有归属成员的链群
+- `joinedGroupIdsByMemberId`：某成员当前归属的链群
+- `joinedTokenAddressesByGroupIdByMemberId`：某成员在某链群下的归属涉及哪些社区
+- `joinedMemberIds`：当前有归属的成员
+- `joinedMemberIdsByGroupId`：某链群当前的成员
 
-五条索引使用与 core 同一套标准签名 `(offset, limit, reverse) → (列表, 真实总数)`。加入阶段写入的按轮历史另提供两条读（`groupIds`、`memberIdsByGroupId`），见下节。
+五条索引使用与 core 同一套标准签名 `(offset, limit, reverse) → (列表, 真实总数)`。加入阶段写入的按轮历史另提供两条读（`groupIdsByRound`、`memberIdsByGroupId`），见下节。
 
 #### 按 Round 参与历史
 **保留逻辑**：参考 `LOVE20TKM/extension-group/src/GroupJoin.sol` 的历史快照机制
@@ -283,7 +285,7 @@ GroupAction Executor 通过加入阶段内逐笔发生的加入、追加、部�
 **BSC 新增**：旧 `LOVE20TKM/extension-group/src/GroupVerify.sol` 只作为连续批次和原始分校验的参考；候选申请、排名和分割线开放不沿用旧机制。
 
 - 候选申请是**常设登记**：行动创建轮及之后的任意轮次都能提交，一份申请自提交轮起对之后每一轮生效，不必逐轮重新申请；修改申请等价于撤销后重新申请（新 ID 从零计票），当前轮排名里的旧项被移除
-- **票数与排名按轮隔离**：`votesByApplicationId` 以 `round` 为键，只存该轮票数，排名与查询都读它；不存在跨轮累计值，同一候选上一轮的票不会抬高它这一轮的排名
+- **票数与排名按轮隔离**：`voteAmountByApplicationId` 以 `round` 为键，只存该轮票数，排名与查询都读它；不存在跨轮累计值，同一候选上一轮的票不会抬高它这一轮的排名
 - **按轮查询**：`applicationIdHistory[token][actionId][memberId]` 用 `RoundHistoryUint256` 记录「哪一轮以哪份申请站台」——申请时写入新 `applicationId`，撤销时写入零值，读取按懒继承取不晚于该轮的最近记录。因此第 3 轮申请、第 5 轮修改后，查第 4 轮仍返回第 3 轮那份申请；票数仍按该轮实际获得读取
 - **押金一份**：同一成员在同一行动只质押一次，修改申请既不退还也不再划转，只有撤销才全额退还；`verifierStake` 与「持有当前申请」等价
 - **行动未创建的错误**：`createdRound == 0` 时回滚 `ActionNotCreated(tokenAddress, actionId)`，`activateGroup`、`submitVerifierApplication` 与三个 Executor 的成员结算同口径，声明在基座 `IActionExecutorErrors`；不再用 `InvalidRound(0)` 哨兵，也不再把该情形混进 `RoundNotStarted()`（后者只表示 `round` 早于创建轮）
@@ -396,12 +398,12 @@ theoreticalOwnerReward(m) = serviceReward × ownerWeightNumerator(m) / (totalGro
 
 #### 体验资产只是额度
 - **旧**：待体验名单在名单操作时锁定额度，成员以名单内固定额度整笔加入；`trialExit` 把全部退出金额直接转回 Provider 当前持有人
-- **新**：Provider 授予、追加或收回额度（`providerQuotaAdd`/`providerQuotaRemove`），成员在额度内自行决定使用多少并可在后续轮次追加未使用部分；额度授予即把代币存入合约，`join` 只扣减额度、不再转移代币，`providerWithdraw` 把已投入部分退回 Provider 当前持有人；成员 `exit` 时 Provider 来源**不转出合约**，已投入按资金归属恢复为该 Provider 对该成员的可用额度，只有 `providerQuotaRemove` 把可用额度退回 Provider 当前持有人。`providerAmountsByMemberId` 按成员分页枚举全部来源及金额
+- **新**：Provider 授予、追加或收回额度（`addProviderQuota`/`removeProviderQuota`），成员在额度内自行决定使用多少并可在后续轮次追加未使用部分；额度授予即把代币存入合约，`join` 只扣减额度、不再转移代币，`providerWithdraw` 把已投入部分退回 Provider 当前持有人；成员 `exit` 时 Provider 来源**不转出合约**，已投入按资金归属恢复为该 Provider 对该成员的可用额度，只有 `removeProviderQuota` 把可用额度退回 Provider 当前持有人。`providerAmountsByMemberId` 按成员分页枚举全部来源及金额
 
 #### 错误落点收敛
 - **旧**：重复加入、重复加入体验、重复登记名单成员都是错误
 - **新**：重复加入与重复授予在统一模型下是追加，`AlreadyJoined`、`TrialAlreadyJoined`、`TrialAccountAlreadyAdded`、`TrialProviderMismatch` 不再迁移；额度类校验统一改名到 `Quota*` 词汇，额度不足由 `InsufficientProviderQuota` 表达
-- **零群 ID**：`providerQuotaAdd` / `providerQuotaRemove` 的 `groupId == 0` 或群身份不存在回 `GroupNotExist(groupId)`；`providerQuotaRemove` 空名单在群存在时是空操作
+- **零群 ID**：`addProviderQuota` / `removeProviderQuota` 的 `groupId == 0` 或群身份不存在回 `GroupNotExist(groupId)`；`removeProviderQuota` 空名单在群存在时是空操作
 
 #### 部分撤回边界
 - **旧**：只支持全部退出
@@ -448,7 +450,7 @@ theoreticalOwnerReward(m) = serviceReward × ownerWeightNumerator(m) / (totalGro
 - [ ] 创建 Target Data 的第 `0` 项固定为 `executor`，其余项由各 Executor 自定并自行校验
 - [ ] LP 行动使用 3 阶段映射
 - [ ] GroupAction 和 GroupService 使用 4 阶段映射
-- [ ] 参与索引按标准分页收敛为 `isGroupMember` 加五条 `g*`，按轮历史两读归入 Round 历史
+- [ ] 参与索引按标准分页收敛为 `isGroupMember` 加五条 `joined*`，按轮历史两读归入 Round 历史
 - [ ] 按 Round 参与历史自然形成，不重复创建版本
 - [ ] forceExit 只清除加入状态，不调用 Executor
 - [ ] GroupService 仅 owner 激励受治理上限和二次分配

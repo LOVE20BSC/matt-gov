@@ -15,7 +15,7 @@ targetData[0] = abi.encode(executorAddress)
 ```text
 1. targetData.length >= 1
 2. 第 0 项恰为 32 字节（abi.encode(address) 的形态），abi.decode 后非零且有代码
-3. IActionExecutor(executor).actionTarget() == address(this)
+3. IActionExecutor(executor).ACTION_TARGET_ADDRESS() == address(this)
 4. 该 (tokenAddress, proposalId) 尚未记录 executor
 ```
 

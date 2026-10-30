@@ -59,7 +59,7 @@
 - 激励结算精度无损失
 
 ### 行动公式零值边界
-**覆盖要求**：覆盖 LP 时间扣减封顶、`totalEffectiveAmount` 为零，以及治理上限启用时 `totalValidGovVotes` 为零；覆盖链群 `totalVotes`/`totalFinalScore` 为零时不除零且行动层激励为零，并验证底层 Proposal 激励仍可独立处理。`govRatioMultiplier == 0` 时不得因治理票为零错误地清零 LP 或服务激励。
+**覆盖要求**：覆盖 LP 时间扣减封顶、`totalEffectiveAmount` 为零，以及治理上限启用时 `totalValidGovVotes` 为零；覆盖链群 `voteAmountTotal`/`totalFinalScore` 为零时不除零且行动层激励为零，并验证底层 Proposal 激励仍可独立处理。`govRatioMultiplier == 0` 时不得因治理票为零错误地清零 LP 或服务激励。
 
 **测试方式**：
 - 单元测试：边界值参数化测试
@@ -157,7 +157,7 @@
 - 自转账不破坏持有人统计
 
 ### GroupAction 参与索引与 Group Chat 主体
-**覆盖要求**：覆盖 `isGroupMember` 的归属计数与五条 `g*` 索引（`gGroupIds`、`gGroupIdsByMemberId`、`gTokenAddressesByGroupIdByMemberId`、`gMemberIds`、`gMemberIdsByGroupId`）的标准分页语义（`offset` 越界返回空数组与真实总数、`limit` 超剩余按剩余返回、`reverse` 逆序、`limit = 0` 只取总数）与 `total` 一致性，以及 `isGroupMember` 与 `gTokenAddressesByGroupIdByMemberId` 的同源一致性；覆盖按轮历史两读（`groupIds`、`memberIdsByGroupId`）返回目标轮快照且加入阶段结束后稳定；覆盖同一成员跨社区、跨行动参与，退出一个行动但仍有其他关系时归属不变，最后一个关系退出后 `isGroupMember` 才返回假，以及 `forceClearJoinState` 不修改这些业务索引。覆盖四类 typed Manager、普通 owner 管理型 Chat、规则槽位、插件、消息与分页行为；覆盖成员、管理员、委托、发言、提及、黑名单目标和黑名单投票者均按 `memberId` 运行，并确认不存在默认 MemberNFT 映射、默认身份发言入口、地址黑名单/投票/查询或其他地址主体接口。治理黑名单覆盖代币治理票与行动 Proposal 投票两类票权、全社区治理票分母、支持票严格超过反对票 `10` 倍且达到 `0.3%` 的双阈值、撤票和任何人刷新。Group Chat 的群组资格以成员名单或 `isGroupMember` 为任一满足；最后一个 GroupAction 归属正常退出后，才失去归属分支；ActionTarget 的 `forceClearJoinState` 不单独改变资格。owner 快照及消息/事件调用地址只用于 NFT 转移有效性和审计，不得成为业务主体。
+**覆盖要求**：覆盖 `isGroupMember` 的归属计数与五条 `joined*` 索引（`joinedGroupIds`、`joinedGroupIdsByMemberId`、`joinedTokenAddressesByGroupIdByMemberId`、`joinedMemberIds`、`joinedMemberIdsByGroupId`）的标准分页语义（`offset` 越界返回空数组与真实总数、`limit` 超剩余按剩余返回、`reverse` 逆序、`limit = 0` 只取总数）与 `total` 一致性，以及 `isGroupMember` 与 `joinedTokenAddressesByGroupIdByMemberId` 的同源一致性；覆盖按轮历史两读（`groupIdsByRound`、`memberIdsByGroupId`）返回目标轮快照且加入阶段结束后稳定；覆盖同一成员跨社区、跨行动参与，退出一个行动但仍有其他关系时归属不变，最后一个关系退出后 `isGroupMember` 才返回假，以及 `forceClearJoinState` 不修改这些业务索引。覆盖四类 typed Manager、普通 owner 管理型 Chat、规则槽位、插件、消息与分页行为；覆盖成员、管理员、委托、发言、提及、黑名单目标和黑名单投票者均按 `memberId` 运行，并确认不存在默认 MemberNFT 映射、默认身份发言入口、地址黑名单/投票/查询或其他地址主体接口。治理黑名单覆盖代币治理票与行动 Proposal 投票两类票权、全社区治理票分母、支持票严格超过反对票 `10` 倍且达到 `0.3%` 的双阈值、撤票和任何人刷新。Group Chat 的群组资格以成员名单或 `isGroupMember` 为任一满足；最后一个 GroupAction 归属正常退出后，才失去归属分支；ActionTarget 的 `forceClearJoinState` 不单独改变资格。owner 快照及消息/事件调用地址只用于 NFT 转移有效性和审计，不得成为业务主体。
 
 **测试方式**：
 - 单元测试：`action/test/GroupActionExecutor.t.sol` 的参与索引分页与归属计数场景
@@ -213,7 +213,7 @@
 - 参数透传无丢失
 
 ### 公共验证者与 Round 历史
-**覆盖要求**：覆盖自有来源与 Provider 额度来源的加入、追加、部分撤回和全部退出逐笔更新当前 Round；成员可在同一行动混合多个来源，未使用的 Provider 额度留存合约内可退还；Provider 额度授予即存入合约，成员 `join` 只消耗可用额度。Provider 只能撤回自己提供的那部分：`providerQuotaWithdraw` 按链群撤回未使用额度（可部分撤回，不改成员参与量），`providerQuotaRemove` 收回整笔授权（含已投入部分，总参与量归零时自动退出），且只有该 Provider 当前持有人可调用。**成员退出按资金归属处理：自有资产返还成员，Provider 来源恢复为该 Provider 对该成员的可用额度、不转出合约**，成员可再次用同一额度加入。覆盖同轮多次变更、显式零值退出、最后成员退出移除 Group、无交互 Round 继承最近历史，以及加入阶段结束后不能回写。单个撤回操作：自有 `withdraw` 发 `GroupActionWithdrawn`，`providerQuotaWithdraw` 只发 `ProviderQuotaRemoved`（不改参与量），`providerQuotaRemove` 对已投入部分发 `GroupActionWithdrawn`、对整笔授权发 `ProviderQuotaRemoved`；成员退出时对自有金额发 `GroupActionWithdrawn`、对每个有余额的 Provider 发 `ProviderQuotaRestored`，再发 `GroupActionExited`；代币量只由 `GroupActionJoined`/`GroupActionWithdrawn` 承载，`GroupActionExited` 不带金额。验证阶段无需前置状态准备交易即可读取目标 Round 历史，验证集合只由目标 Round 历史决定，加入轮结束后停用、恢复或新增链群都不改变该轮验证集合；验证提交按成员历史顺序使用连续游标，每个成员每轮只产生一次新的冷写入。零票申请不进入排名，替换或撤销申请时旧申请从排名移除且不从榜外补位；验证者得票名册按 `(round, applicationId)` 记录，同一投票人只占一行、金额累加，按申请 id 与按验证者 id 两个入口读到同一份集合，名册金额之和等于该申请在该轮的票数与排名票数。验证者押金按行动配置在首次申请时划转、替换申请不重复划转，撤销申请时同步全额退还给该 verifierId 的当前持有人；创建轮结束后无法撤销、押金留在合约，且押金不进链群激活质押账本。每个成员的 `finalScore = participationAmount × originScore`，再用全行动总 `finalScore` 分配激励，不因所属 Group 不同而改变相同参与量/得分的权重；目标轮未完成验证时行动层分配查询返回 `0`。首个验证批次永久锁定后验证者停止提交时，本轮行动层激励保持为 `0`，底层 Proposal 激励仍可按规则铸造或销毁，且不允许未经授权的其他验证者接管。
+**覆盖要求**：覆盖自有来源与 Provider 额度来源的加入、追加、部分撤回和全部退出逐笔更新当前 Round；成员可在同一行动混合多个来源，未使用的 Provider 额度留存合约内可退还；Provider 额度授予即存入合约，成员 `join` 只消耗可用额度。Provider 只能撤回自己提供的那部分：`withdrawProviderQuota` 按链群撤回未使用额度（可部分撤回，不改成员参与量），`removeProviderQuota` 收回整笔授权（含已投入部分，总参与量归零时自动退出），且只有该 Provider 当前持有人可调用。**成员退出按资金归属处理：自有资产返还成员，Provider 来源恢复为该 Provider 对该成员的可用额度、不转出合约**，成员可再次用同一额度加入。覆盖同轮多次变更、显式零值退出、最后成员退出移除 Group、无交互 Round 继承最近历史，以及加入阶段结束后不能回写。单个撤回操作：自有 `withdraw` 发 `GroupActionWithdrawn`，`withdrawProviderQuota` 只发 `ProviderQuotaRemoved`（不改参与量），`removeProviderQuota` 对已投入部分发 `GroupActionWithdrawn`、对整笔授权发 `ProviderQuotaRemoved`；成员退出时对自有金额发 `GroupActionWithdrawn`、对每个有余额的 Provider 发 `ProviderQuotaRestored`，再发 `GroupActionExited`；代币量只由 `GroupActionJoined`/`GroupActionWithdrawn` 承载，`GroupActionExited` 不带金额。验证阶段无需前置状态准备交易即可读取目标 Round 历史，验证集合只由目标 Round 历史决定，加入轮结束后停用、恢复或新增链群都不改变该轮验证集合；验证提交按成员历史顺序使用连续游标，每个成员每轮只产生一次新的冷写入。零票申请不进入排名，替换或撤销申请时旧申请从排名移除且不从榜外补位；验证者得票名册按 `(round, applicationId)` 记录，同一投票人只占一行、金额累加，按申请 id 与按验证者 id 两个入口读到同一份集合，名册金额之和等于该申请在该轮的票数与排名票数。验证者押金按行动配置在首次申请时划转、替换申请不重复划转，撤销申请时同步全额退还给该 verifierId 的当前持有人；创建轮结束后无法撤销、押金留在合约，且押金不进链群激活质押账本。每个成员的 `finalScore = participationAmount × originScore`，再用全行动总 `finalScore` 分配激励，不因所属 Group 不同而改变相同参与量/得分的权重；目标轮未完成验证时行动层分配查询返回 `0`。首个验证批次永久锁定后验证者停止提交时，本轮行动层激励保持为 `0`，底层 Proposal 激励仍可按规则铸造或销毁，且不允许未经授权的其他验证者接管。
 
 **测试方式**：
 - 单元测试：`action/test/GroupActionExecutor.t.sol` 的 Round 历史、验证场景

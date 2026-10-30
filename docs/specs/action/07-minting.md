@@ -33,8 +33,8 @@ Core 的预留、铸造和取消额度账本见 [Mint](../core/07-mint.md)，不
 | `ProposalNotVoted(tokenAddress, proposalId)` | Proposal 无票或未达门槛 |
 | `TargetDataLengthMismatch(uint256 expected, uint256 actual)` / `InvalidTargetDataShape(uint256 index, uint256 length)` | 创建/推举/投票转发的第 `0` 项缺失或不是 32 字节 |
 | `ExecutorNotContract(address executor)` | 第 `0` 项解码为零地址或 EOA |
-| `ExecutorTargetMismatch(address expected, address actual)` | 创建握手：`executor.actionTarget()` 不是本 ActionTarget |
-| `ExecutorHandshakeFailed(address executor)` | 创建握手的 `actionTarget()` 调用回滚 |
+| `ExecutorTargetMismatch(address expected, address actual)` | 创建握手：`executor.ACTION_TARGET_ADDRESS()` 不是本 ActionTarget |
+| `ExecutorHandshakeFailed(address executor)` | 创建握手的 `ACTION_TARGET_ADDRESS()` 调用回滚 |
 | `TargetDataExecutorMismatch(address expected, address actual)` | 推举/投票转发的第 `0` 项不是已绑定 Executor |
 | `AlreadyCreated(tokenAddress, actionId)` | 同一 `(tokenAddress, actionId)` 的重复创建回调 |
 | `TargetDataLengthMismatch(uint256 expected, uint256 actual)` | Target Data 项数与约定不符（GroupAction 少于 6 报 `expected = 6`，多于 7 报 `expected = 7`；LP/GroupService 固定 4；投票回调最多 1/2） |

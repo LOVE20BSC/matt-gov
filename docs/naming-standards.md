@@ -206,7 +206,9 @@
 
 ### 8.5 布局
 
-24KB 拆分用的根布局 struct 统一 `_layout`，禁止单字母 `s`。
+24KB 拆分用的根布局 struct 统一 `_layout`，禁止单字母 `s`；库函数的 storage 参数用 `self`（参数不带 `_`，`layout` 会触发 6335 未来关键字警告）。
+
+Layout 中**部署后冻结的字段**按 §3.1 用 `UPPER_SNAKE`（`ACTION_TARGET_ADDRESS`、`STAKE_ADDRESS`、`SPLITS`），其余可变字段用 `lowerCamelCase`；`initialized` 是初始化完成标志（§4.4 的零参 bool getter），保持 `lowerCamelCase`。
 
 ### 8.6 结构体类型
 
@@ -287,14 +289,14 @@
 ## 十四、门禁与迁移
 
 - 检查器：`python3 matt-gov/script/check_naming.py` 输出违规；`--check` 对比基线，只拦新增；`--update-baseline` 仅在批量改名落地后重写。
-- 基线：`matt-gov/registry/naming-baseline.txt`，当前 80 条（按文件×符号记录，接口与实现各记一条；`core` 已清零，剩余 `action` / `group-chat`）。2026-10-30 由符号粒度改为文件×符号并一次性重写；此后**只减不增**。
+- 基线：`matt-gov/registry/naming-baseline.txt`，当前 35 条（按文件×符号记录，接口与实现各记一条；`core`、`action` 已清零，剩余 `group-chat`）。2026-10-30 由符号粒度改为文件×符号并一次性重写；此后**只减不增**。
 - 迁移按依赖顺序 `libs → core → action → group-chat`，每仓一次提交，`forge test` 全绿。改名落地时同批更新 `CONTEXT.md`（§GroupAction 参与归属）、`docs/specs/` 中引用旧名的条目与 `CHANGES-*.md` 对账表。
-- 进度：`core` 的 23 条机器规则已清零（2026-10-30，473 个用例全绿）；本批同时修正了构造函数参数、局部变量与本次改名涉及的映射名。`action` / `group-chat` 已分别 bump 到 core `a0737dd` / action `9e7b4b2`（2026-10-30），两仓自身的命名批次仍按剩余基线条目推进。
-- 剩余分批（条数按符号计；基线按文件×符号，故实际条目约为两倍）：
-  - **P0 语义错误**（ABI 会误导集成方）：`N02`/`N03`/`N04`/`N05`/`N21`/`N22`，20 条。
-  - **P1 一致性**：`N08`/`N10`/`N14`/`N20`，9 条。
-  - **P2 卫生**：`N11`/`N12`，11 条。
-- 检查器只看声明形态，不能判断"是否有第二个写入口"。构造函数或 `init` 写入的 public 状态需人工判定是否冻结；判定为冻结即按 §3.1 改全大写。
+- 进度：`core` 的 23 条机器规则已清零（2026-10-30，473 个用例全绿）；本批同时修正了构造函数参数、局部变量与本次改名涉及的映射名。`action` 已于 2026-10-30 清零（467 个用例全绿），同批人工核对落实：`s` 根布局改 `_layout`（库参数 `self`）、`init` 冻结依赖改 `ACTION_TARGET_ADDRESS`/`GROUP_ACTION_EXECUTOR_ADDRESS` 等全大写 getter、`providerQuota*` 等写入口改动词首位、`_` 后缀参数与局部变量去掉后缀、`RecipientPaidArgs` 改 `RecipientPaidParams`、`MemberOwner.ofOrZero` 改 `ownerOrZero`、LpExecutor 的 `_deduction`/`_joinBlocks`/`_joinAmounts`/`_createdRound` 等映射名按 §8.3 补齐键；`votes` 返回数组与按申请账本按 §9 改为 `voteAmount(s)`；Layout 的冻结字段改全大写（N17 增加 Layout 冻结字段例外）、`groupIds`/`actionIds` 函数改 `groupIdsByRound`/`actionIdsWithActiveGroups`、`totalJoinedAmount*` 改 `joinedAmountByActionId`/`joinedAmountByGroupId`、事件票数字段改 `voteAmountAdded`/`voteAmountTotal`、`applicationIdCounter` 改 `applicationIdCount`；基座计价代币 getter 统一为 `joinTokenAddress`（GroupService 的 `actionTokenAddress` 为单点例外）、`joinInfo` 返回 `joinedAmount`、基座 action 级累计量改 `joinedAmountByActionId`。`group-chat` 已 bump 到 action `9e7b4b2`（2026-10-30），自身命名批次待做。
+- 剩余分批（`group-chat`；条数按基线条目计（文件×符号），括号内为唯一符号数）：
+  - **P0 语义错误**（ABI 会误导集成方）：`N04`/`N05`，8 条（4 个符号）。
+  - **P1 一致性**：`N10`/`N14`/`N20`，14 条（8 个符号）。
+  - **P2 卫生**：`N11`/`N12`，13 条（10 个符号）。
+- 检查器只看声明形态，不能判断"是否有第二个写入口"。构造函数或 `init` 写入的 public 状态需人工判定是否冻结；判定为冻结即按 §3.1 改全大写。N17 的 Layout 例外同样只看 struct 名（`Layout`/`*Layout`），不判断字段是否冻结；Layout 内新增字段需人工核对，只有部署后冻结的字段才能用 UPPER_SNAKE。
 - 构造参数、局部变量、事件字段与 §8.3 的存量映射名不在检查器范围内，按 §十五 清单人工核对。
 
 ## 十五、审查清单
@@ -312,29 +314,13 @@
 
 ## 附录 A：剩余 P0 改名表
 
-`core` 已于 2026-10-30 完成，下表只列 `action` / `group-chat` 的 P0 项。
+`core` / `action` 已完成，下表只列 `group-chat` 的 P0 项。
 
 | 现名 | 新名 | 规则 |
 | --- | --- | --- |
-| `GOV_RATIO_MULTIPLIER(tokenAddress, groupId)` | `govRatioMultiplier` | N03 |
-| `JOIN_TOKEN_ADDRESS` | `joinTokenAddress` | N03 |
-| `ACTION_TOKEN_ADDRESS` | `actionTokenAddress` | N03 |
-| `ACTIVATION_STAKE_AMOUNT` | `activationStakeAmount` | N03 |
-| `ACTIVATION_MIN_GOV_RATIO` | `activationMinGovRatio` | N03 |
-| `MAX_JOIN_AMOUNT_RATIO` | `maxJoinAmountRatio` | N03 |
-| `VERIFIER_STAKE_AMOUNT` | `verifierStakeAmount` | N03 |
-| `MIN_GOV_RATIO` | `minGovRatio` | N03 |
-| `RATIO_FOR_PUBLIC_VERIFIER` | `publicVerifierRatio` | N03 |
 | `postingAllowed(chatId)` | `isPostingAllowed(chatId)` | N04 |
-| `getDistribution(...)` | `distribution(...)` | N02 |
 | `voteBySenderId(groupId, targetSenderId, …)` | `voteBySenderId(groupId, senderId, …)` | N05 |
 | `clearVoteBySenderId` / `refreshVoteBySenderId` | 同上，入参改 `senderId` | N05 |
-| `totalStakedByMemberId` | `stakedByMemberId` | N21 |
-| `gGroupIds` | `joinedGroupIds` | N22 |
-| `gGroupIdsByMemberId` | `joinedGroupIdsByMemberId` | N22 |
-| `gMemberIds` | `joinedMemberIds` | N22 |
-| `gMemberIdsByGroupId` | `joinedMemberIdsByGroupId` | N22 |
-| `gTokenAddressesByGroupIdByMemberId` | `joinedTokenAddressesByGroupIdByMemberId` | N22 |
 
 ## 附录 B：检查器规则编号
 
@@ -356,7 +342,7 @@
 | `N14` | `address` 实体字段必须带 `Address` 后缀（参数按 §十 人工核对） | 结构体字段 |
 | `N15` | 接口名 `I` + PascalCase | 接口 |
 | `N16` | 枚举成员 PascalCase | 枚举 |
-| `N17` | 结构体字段 lowerCamelCase | 结构体 |
+| `N17` | 结构体字段 lowerCamelCase（Layout 的冻结字段可 UPPER_SNAKE，冻结判定人工） | 结构体 |
 | `N18` | modifier `only<Role>` / `non<State>` | modifier |
 | `N19` | internal/private 函数带 `_`，public/external 不带 | 函数 |
 | `N20` | 禁 `Of` 后缀（ERC 覆写除外） | external/public |

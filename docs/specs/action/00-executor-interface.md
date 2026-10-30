@@ -6,20 +6,21 @@
 
 **通用部分**（在 `IActionExecutor` 中定义）：
 - 继承 `IProposalTarget`，实现 Core 层的三类回调；回调仅接受 ActionTarget 调用
-- `actionTarget()` — 自证绑定：ActionTarget 在 `onProposalCreated` 用它与 `address(this)` 握手，防止 executor 误配
+- `ACTION_TARGET_ADDRESS()` — 自证绑定：ActionTarget 在 `onProposalCreated` 用它与 `address(this)` 握手，防止 executor 误配
 - `initialized()` — 与 core 六个接口同形
 - `exit(tokenAddress, actionId, memberId)` — 完全退出的签名是通用的
 - `mintMemberReward(...)` / `memberReward(...)` 与事件 `MemberRewardMinted` — 成员级奖励的铸造与查询，签名三家一致（成员级奖励裁决）
 - `mintMemberRewards(...)` — 批量成员结算（平行数组按下标配对，任一元素失败整笔回滚）
-- `joinedAmount(...)` / `joinedAmountByMemberId(...)` / `joinedAmountTokenAddress(...)` — 截止加入轮 `round` 结束的累计参与量、按成员累计量与参与计价代币（`round` 大于当前加入轮时按未开始返回 0；计价代币与轮次无关，故 `joinedAmountTokenAddress` 不带 `round`；口径由各 Executor 规格固定）。与 GroupAction 的 `joinInfo` 快照（另含 `joinedRound`、`groupId` 与 `ownAmount`/`providerAmount`）同键同值为**有意并存**：基座是跨 Executor 的统一聚合口径，`joinInfo` 是成员记录快照入口
+- `joinedAmountByActionId(...)` / `joinedAmountByMemberId(...)` / `joinTokenAddress(...)` — 截止加入轮 `round` 结束的累计参与量、按成员累计量与参与计价代币（`round` 大于当前加入轮时按未开始返回 0；计价代币与轮次无关，不带 `round`；口径由各 Executor 规格固定）。计价代币是 `joinedAmountByActionId` 的计价单位：LP 为 LP 对币、GroupAction 为 join token、GroupService 为行动代币（按激活质押代理计量）。前端展示行动列表与派生指标时只需读基座三者，无需按 Executor 分支。与 GroupAction 的 `joinInfo` 快照（另含 `joinedRound`、`joinedAmount`、`groupId` 与 `ownAmount`/`providerAmount`）同键同值为**有意并存**：基座是跨 Executor 的统一口径，`joinInfo` 是成员记录快照入口
+- 基座 `joinTokenAddress` 是唯一的通用计价代币 getter；LP 与 GroupAction 直接使用该名（不再重复声明）。GroupService 的计价代币语义是行动代币，保留 `actionTokenAddress` 作为领域别名，与基座 `joinTokenAddress` 同键同值——这是登记在案的单点例外，改其一必须同批改另一个
 - `currentVoteRound()` / `currentJoinRound()` / `currentMintRound()` — 从 `Phase.currentPhase()` 推导的三阶段 Round；未开始回滚 `RoundNotStarted(1, 0)`（`requiredRound` 为 1，`currentRound` 为推导出的 0；0 是派生轮未开始的哨兵，需要当前 phase 时读 `Phase.currentPhase()`）
 
 **非通用部分**（各 Executor 自行定义）：
 - `init` 与配置项 — 各 Executor 依赖不同，配置来自行动创建时的 Target Data
 - `join` — 参数因行动类型而异：
   - `ILpExecutor`: `join(tokenAddress, actionId, memberId, amount)`
-  - `IGroupActionExecutor`: `join(tokenAddress, actionId, groupId, memberId, amount, providerId, verificationInfos)` — 多了 `groupId` 与 `providerId`
-  - `IGroupServiceExecutor`: `join(serviceTokenAddress, serviceActionId, memberId)` — 无 `amount` 与 `verificationInfos`
+  - `IGroupActionExecutor`: `join(tokenAddress, actionId, groupId, memberId, amount, providerId, verificationValues)` — 多了 `groupId` 与 `providerId`
+  - `IGroupServiceExecutor`: `join(serviceTokenAddress, serviceActionId, memberId)` — 无 `amount` 与 `verificationValues`
 - `withdraw` — 部分撤回接口，LP 和 GroupAction 需要，GroupService 不需要
 - 事件 — 各 Executor 的业务字段不同，按域前缀各自声明 `GroupActionJoined`/`GroupActionWithdrawn`/`GroupActionExited`、`LpJoined`/`LpWithdrawn`/`LpExited`、`ServiceJoined`/`ServiceExited`
 - `currentVerifyRound()` — 仅 GroupAction / GroupService 的四阶段流水线提供；LP 不声明
@@ -57,7 +58,7 @@ event GroupActionJoined(address indexed tokenAddress, uint256 indexed actionId,
 
 ```solidity
 interface IActionExecutor is IProposalTarget, IActionExecutorEvents, IActionExecutorErrors {
-    function actionTarget() external view returns (address);
+    function ACTION_TARGET_ADDRESS() external view returns (address);
     function initialized() external view returns (bool);
 
     function exit(address tokenAddress, uint256 actionId, uint256 memberId) external;
@@ -72,10 +73,10 @@ interface IActionExecutor is IProposalTarget, IActionExecutorEvents, IActionExec
     function currentMintRound() external view returns (uint256);
     function memberReward(address tokenAddress, uint256 actionId, uint256 memberId, uint256 round)
         external view returns (uint256 mintAmount, uint256 burnAmount, bool minted);
-    function joinedAmount(address tokenAddress, uint256 actionId, uint256 round) external view returns (uint256 amount);
+    function joinedAmountByActionId(address tokenAddress, uint256 actionId, uint256 round) external view returns (uint256 amount);
     function joinedAmountByMemberId(address tokenAddress, uint256 actionId, uint256 round, uint256 memberId)
         external view returns (uint256 amount);
-    function joinedAmountTokenAddress(address tokenAddress, uint256 actionId)
+    function joinTokenAddress(address tokenAddress, uint256 actionId)
         external view returns (address joinedTokenAddress);
 }
 ```

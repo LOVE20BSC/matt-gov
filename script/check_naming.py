@@ -363,9 +363,10 @@ def check(files):
                 if not re.match(r"^(only|non)[A-Z]\w*$", md["name"]):
                     add("N18", md["name"], f, md["line"], "modifier 用 only<Role> / non<State> 形式")
         for st in f.structs:
+            is_layout = st["name"] == "Layout" or st["name"].endswith("Layout")
             for ty, fname in st["fields"]:
-                if not CAMEL.match(fname):
-                    add("N17", f"{st['name']}.{fname}", f, st["line"], "结构体字段必须 lowerCamelCase")
+                if not CAMEL.match(fname) and not (is_layout and UPPER.match(fname)):
+                    add("N17", f"{st['name']}.{fname}", f, st["line"], "结构体字段必须 lowerCamelCase（Layout 的冻结字段可 UPPER_SNAKE，冻结判定人工）")
                 if ty == "address" and fname in ENTITY_NAMES:
                     add("N14", f"{st['name']}.{fname}", f, st["line"], "address 字段名必须带 Address 后缀")
                 for tok in tokens_of(fname):
