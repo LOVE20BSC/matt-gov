@@ -2,7 +2,7 @@
 
 ## 协议模型
 
-每个 LOVE20 代币有一个 `parentTokenAddress`。首个代币的父币为 WETH，WETH 是协议树外根父币（由 Router.WETH() 读取）；普通发射的父币必须是已登记的 LOVE20 代币。首币产生整数发射次数时，同数量 1:1 伴生以根父币为父币的根级次数；根级次数只能发射与首币平级的同级代币，其他代币不产生根级次数（见 [Launch 的根级次数与伴生规则](08-launch.md#根级次数与伴生规则)）。供应受 `maxSupply` 限制，代币和治理状态在链上维护。
+每个 LOVE20 代币有一个 `parentTokenAddress`。首个代币的父币为 WETH，WETH 是协议树外根父币（由 Router.WETH() 读取）；普通发射的父币必须是已登记的 LOVE20 代币。首币产生整数发射次数时，同数量 1:1 伴生以根父币为父币的根级次数；根级次数只能发射与首币平级的同级代币，其他代币不产生根级次数（见 [Launch 的根级次数与伴生规则](08-launch.md#根级次数与伴生规则)）。供应受 `MAX_SUPPLY` 限制，代币和治理状态在链上维护。
 
 | 组件 | 职责 |
 | --- | --- |
@@ -29,18 +29,18 @@ Core 不解释具体 Proposal 的业务字段，扩展通过 Target 接入。
 | MemberNFT 构造参数 | `multiplier` | 每缩短一字节的费用倍数；状态变量和公开 getter 为 `MULTIPLIER`，如 `10` |
 | MemberNFT 构造参数 | `maxNameLength` | 最大字节数；状态变量和公开 getter 为 `MAX_NAME_LENGTH`，如 `32` |
 | Phase 构造参数 | `ORIGIN_BLOCKS`、`ORIGIN_PHASE_BLOCKS`、`TARGET_SECONDS`、`ADJUST_THRESHOLD`、`SYNC_OBSERVATION_LIMIT` | 启动区块、初始区块数、每个 Phase 的目标自然时长（秒，7 天为 `604800`）、偏差阈值、单次同步回溯上限；五项均须大于零，偏差阈值使用 `1e18` 精度且不超过 `1e18` |
-| Stake | `phaseAddress`、`memberNFTAddress`、`voteAddress`、`launchAddress`、`routerAddress`、`pairFactoryAddress` | 时间、身份、当前轮投票/推举检查、Launch 代币登记、路由和 Pair Factory 依赖；Stake 通过 Vote 已绑定的 Submit 读取推举记录；在 Stake 侧 Pair Factory 只用于读取 Launch 已创建或复用的 Pair |
+| Stake | `PHASE_ADDRESS`、`MEMBER_NFT_ADDRESS`、`VOTE_ADDRESS`、`LAUNCH_ADDRESS`、`ROUTER_ADDRESS`、`PAIR_FACTORY_ADDRESS` | 时间、身份、当前轮投票/推举检查、Launch 代币登记、路由和 Pair Factory 依赖；Stake 通过 Vote 已绑定的 Submit 读取推举记录；在 Stake 侧 Pair Factory 只用于读取 Launch 已创建或复用的 Pair |
 | Stake | `promisedWaitingPhasesMin`、`promisedWaitingPhasesMax` | 承诺解锁期的最小、最大 Phase 数 |
 | Stake | `feeSettlementRatio` | 单笔手续费结算占可提取 LP 的比例，`1e18` 表示 100%（如 `3e15` 为 0.3%）；同时是结算阈值与单笔处理量；须不大于池费率，见 [Stake](04-stake.md#手续费结算与销毁) |
-| Submit | `phaseAddress`、`stakeAddress`、`memberNFTAddress` | 时间、质押和身份依赖 |
+| Submit | `PHASE_ADDRESS`、`STAKE_ADDRESS`、`MEMBER_NFT_ADDRESS` | 时间、质押和身份依赖 |
 | Submit | `submitMinRatio` | 推举门槛，`1e18` 表示 100%，如 `1e16 = 1%` |
-| Vote | `phaseAddress`、`stakeAddress`、`submitAddress`、`memberNFTAddress` | 时间、票权、提案和身份依赖 |
-| Mint | `voteAddress`、`submitAddress`、`launchAddress`、`memberNFTAddress` | 投票、提案、发射和身份依赖；BSC 版本已移除原 `stakeAddress`（加速数据源改为 Vote 快照）；`phaseAddress` 由 `init` 从 `voteAddress` 派生缓存，不重复作为入参 |
+| Vote | `PHASE_ADDRESS`、`STAKE_ADDRESS`、`SUBMIT_ADDRESS`、`MEMBER_NFT_ADDRESS` | 时间、票权、提案和身份依赖 |
+| Mint | `VOTE_ADDRESS`、`SUBMIT_ADDRESS`、`LAUNCH_ADDRESS`、`MEMBER_NFT_ADDRESS` | 投票、提案、发射和身份依赖；BSC 版本已移除原 `STAKE_ADDRESS`（加速数据源改为 Vote 快照）；`PHASE_ADDRESS` 由 `init` 从 `VOTE_ADDRESS` 派生缓存，不重复作为入参 |
 | Mint | `proposalRewardMinVoteRatio` | 提案激励门槛；状态变量和公开 getter 为 `PROPOSAL_REWARD_MIN_VOTE_RATIO`，`1e18` 表示 100%，如 `5e16 = 5%` |
 | Mint | `roundRewardGovRatio`、`roundRewardProposalRatio` | 治理池、提案池占可用供应的比例；状态变量和公开 getter 为 `ROUND_REWARD_GOV_RATIO`、`ROUND_REWARD_PROPOSAL_RATIO`，`1e18` 表示 100%，如 `1e17 = 10%` |
 | Mint | `maxGovBoostRewardMultiplier` | 加速激励相对投票激励的倍数上限；状态变量和公开 getter 为 `MAX_GOV_BOOST_REWARD_MULTIPLIER`，如 `2` |
-| Launch | `mintAddress`、`memberNFTAddress`、`pairFactoryAddress` | 铸造、身份与建池依赖；每个代币在创建时即创建或复用 Pair |
-| Launch | `rootParentTokenAddress` | 根父币（Router.WETH() 读取）；首币与根级同级币的父币，也是根级次数的账本维度 |
+| Launch | `MINT_ADDRESS`、`MEMBER_NFT_ADDRESS`、`PAIR_FACTORY_ADDRESS` | 铸造、身份与建池依赖；每个代币在创建时即创建或复用 Pair |
+| Launch | `ROOT_PARENT_TOKEN_ADDRESS` | 根父币（Router.WETH() 读取）；首币与根级同级币的父币，也是根级次数的账本维度 |
 | Launch | `distributor`、`name`、`symbol` | 首币分发目标、名称和符号；首币固定使用 `NoCallback`，`distributor` 非零 |
 | Launch | `launchRatio` | 发射阈值比例；状态变量和公开 getter 为 `LAUNCH_RATIO`，`1e18` 精度，如 `1e16 = 1%` |
 | Launch | `maxLaunchCount` | 每社区累计次数上限；状态变量和公开 getter 为 `MAX_LAUNCH_COUNT`，如 `100` |
@@ -49,11 +49,11 @@ Core 不解释具体 Proposal 的业务字段，扩展通过 Target 接入。
 
 上表的 Launch 行按含义分组，不表示传参顺序；`Launch.init` 只接受一个 `LaunchInitParams`，实参顺序即结构体字段顺序（依赖地址 → 分发目标 → 经济与符号参数 → 供应量 → 首币元数据），参数表中的名字与字段名一致。结构体定义见 [`ILaunch.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/ILaunch.sol)。
 
-MemberNFT 的首币地址由 `Launch.init` 在创建首币时同步调用 `MemberNFT.init(tokenAddress)` 绑定，不在部署时传入；公开 getter 保持旧名 `LOVE20_TOKEN_ADDRESS()`。MemberNFT 不保存 Launch 地址。Launch 在 `init` 内创建首币并把地址记录为 `firstTokenAddress`（派生状态、非入参，经同名 getter 公开）；首币身份不能由「父币为根父币」推断，因为根级发射的同级币与首币父币相同。Launch 的首币分发地址、名称、符号和供应量配置统一见 [Launch](08-launch.md)。Pair Factory 由 Launch 与 Stake 共用：Launch 在创建代币时创建或复用 Pair，Stake 只在首次质押时读取该 Pair；Router 只属 Stake，用于父币手续费换币。
+MemberNFT 的首币地址由 `Launch.init` 在创建首币时同步调用 `MemberNFT.init(tokenAddress)` 绑定，不在部署时传入；公开 getter 保持旧名 `LOVE20_TOKEN_ADDRESS()`。MemberNFT 不保存 Launch 地址。Launch 在 `init` 内创建首币并把地址记录为 `FIRST_TOKEN_ADDRESS`（派生状态、非入参，经同名 getter 公开）；首币身份不能由「父币为根父币」推断，因为根级发射的同级币与首币父币相同。Launch 的首币分发地址、名称、符号和供应量配置统一见 [Launch](08-launch.md)。Pair Factory 由 Launch 与 Stake 共用：Launch 在创建代币时创建或复用 Pair，Stake 只在首次质押时读取该 Pair；Router 只属 Stake，用于父币手续费换币。
 
 ## 实现约束
 
-- Phase 使用构造参数创建；Core 其他合约先部署，再按依赖顺序调用一次 `init`，依赖后部署的地址通过后续 `init` 绑定。能由入参地址 getter 派生的依赖不重复入参，在 `init` 内读取一次并缓存；派生值非零由 `DeployCore`/`21_check.sh` 校验，被派生依赖须先完成 init（如 Mint 从 Vote 派生 `phaseAddress`，Action 层从 Mint 派生各依赖）。
+- Phase 使用构造参数创建；Core 其他合约先部署，再按依赖顺序调用一次 `init`，依赖后部署的地址通过后续 `init` 绑定。能由入参地址 getter 派生的依赖不重复入参，在 `init` 内读取一次并缓存；派生值非零由 `DeployCore`/`21_check.sh` 校验，被派生依赖须先完成 init（如 Mint 从 Vote 派生 `PHASE_ADDRESS`，Action 层从 Mint 派生各依赖）。
 - 各合约的 `init` 不设调用者限制、不保存部署者地址；只有 `init` 校验初始化状态，其他写入口不重复校验；部署成功与否由发布前检查脚本核对实际绑定结果判定，见 [通用规则](01-common-rules.md#初始化与安全)。
 - Mint 在准备时读取 Vote 的冻结结果，按 `proposalRewardMinVoteRatio` 一次性计算并缓存本轮达标 Proposal 总票数；后续 Proposal 激励结算只读取该缓存。
 - 参数有效范围和组合限制以各模块规格为准；表中示例值不是默认部署配置。

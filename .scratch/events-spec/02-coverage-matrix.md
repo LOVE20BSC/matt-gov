@@ -41,8 +41,8 @@
 | Proposal | 创建 | `ProposalCreated` | proposalId、authorId、target、targetMode、targetData、title、details | 已带 `targetData`；title/details 1024B、targetData 16 KiB/16 项 |
 | Proposal | 提交 | `ProposalSubmitted` | round、submitter、proposalId | — |
 | Proposal | 执行 | 无独立状态/事件 | — | 执行经 target 回调；不在本矩阵承诺 |
-| Vote | 投票 | `VoteCast` | voter、proposal、votes、boost 快照、全局 boost | 增 `voterBoost`/`totalVoterBoost` |
-| RewardRound | 准备奖池 | `RewardPrepared` | gov/proposal 奖池、eligibleVotes、累计 reserved/burned | 零票分支同 schema |
+| Vote | 投票 | `VoteCast` | voter、proposal、voteAmount、boost 快照、全局 boost | 增 `voterBoost`/`totalVoterBoost` |
+| RewardRound | 准备奖池 | `RewardPrepared` | gov/proposal 奖池、eligibleProposalVoteAmount、累计 reserved/burned | 零票分支同 schema |
 | RewardRound | 治理奖励 | `GovRewardMinted` + `RewardBurned` | vote/boost/burn、累计 burned | 增 `burnReward`（与 `RewardBurned(BoostOverflow)` 同值，有意冗余，见 07-mint §事件） |
 | RewardRound | 提案奖励 | `ProposalRewardMinted` | recipient、amount | — |
 | RewardRound | 取消池燃烧 | `RewardBurned` | amount、reason | — |

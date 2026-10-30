@@ -97,7 +97,7 @@ EIP-170 限制部署字节码 ≤ 24,576 字节。超过时：
 
 分页若回含 `string`/`bytes` 的结构体，一条大记录就能把整页顶过调用方 gas 上限，且跳不过去——只能反复调小 `limit` 试探。
 
-**3. 分页签名固定。** `(uint256 offset, uint256 limit, bool reverse)` → `(列表, 真实总数)`；参数顺序「作用域键 → offset → limit → reverse」。语义同 `IPhase.syncObservations`：
+**3. 分页签名固定。** `(uint256 offset, uint256 limit, bool reverse)` → `(列表, 真实总数)`；参数顺序「作用域键 → offset → limit → reverse」。语义同 `IPhase.observations`：
 
 - 越界返回空数组与真实总数、不回滚；
 - `limit` 超剩余按剩余返回；
@@ -109,14 +109,7 @@ EIP-170 限制部署字节码 ≤ 24,576 字节。超过时：
 
 **5. 命名 = 载荷 + 条件。**
 
-| 返回值 / 条件 | 记号          | 例                                        |
-| -------- | ----------- | ---------------------------------------- |
-| 轻量标识数组   | `<复数>Ids`   | `proposalIds`、`votedSenderIds`           |
-| 记录数组     | `<复数>Infos` | `submitInfos`、`chatInfos`                |
-| 实体地址数组   | 裸集合名        | `tokens`、`childTokens`、`holders`         |
-| 标量       | 不加后缀        | `isSubmitted`、`proposalIdBySubmitter`    |
-| 按键筛选     | `By<key>`   | `proposalIdsByAuthor`、`messagesBySender` |
-| 显式 ID 数组 | `ByIds`     | `proposalInfosByIds`                     |
+命名语法、后缀与示例见 [`naming-standards.md`](naming-standards.md) §七：`By<key>` 的 key 必须与入参同名，`Count` 必须在末尾，`Of` 后缀不再使用。
 
 - 裸集合名只用于元素本身是实体地址的数组（地址即标识，名称/符号由该地址自己的合约提供；`Ids`/`Infos` 在此不承担区分作用，加了反而混淆）。元素是整数标识或记录时必须带后缀。
 - **是否分页不进名字**——由入参 `(offset, limit, reverse)` 决定，不加 `Paginated`/`Paged`/`Page`/`List`，也不为同一集合另设无窗口重载。
@@ -159,13 +152,15 @@ EIP-170 限制部署字节码 ≤ 24,576 字节。超过时：
 
 ### 5.2 命名与状态
 
-- 由构造函数或 `init` 固定的配置常量：状态变量本身用大写 `public` 命名、直接提供同名自动 getter；不得用小写状态变量再额外包装大写 getter。
+函数、参数、返回值、状态变量、结构体与枚举的命名细则见 [`naming-standards.md`](naming-standards.md)；本节只保留状态可见性与精度刻度两类约束。
+
+- 由构造函数或 `init` 固定、且只有一个写入口的配置：状态变量本身用大写 `public` 命名、直接提供同名自动 getter；不得用小写状态变量再额外包装大写 getter。带参数的查询不是冻结值，用 camelCase（见 naming-standards §3.1）。
 - 账本与映射状态不写成 `public`：自动 getter 的 JSON ABI 入参没有字段名，与冻结接口声明的 `tokenAddress`/`memberId`/`symbol` 不一致。改用 `internal` 状态 + 显式 getter 函数，函数名、参数名与返回形态与冻结接口逐字段对齐，selector 不变。
-- `init` 的参数名与对应 getter、参数表一致；实现侧同名会与状态变量相互遮蔽（solc 2519 警告在"警告即失败"门禁下不可忽略），允许参数名后加 `_`（同一函数内保持一致）。冻结接口、参数表与差异文档始终写无后缀名；该差异只影响实现产物 JSON 的参数名，不影响 selector、ABI 成员与文档口径。
+- `init` 与构造函数的参数名与对应 getter、参数表一致；状态变量按 naming-standards §八 大写或在 `_` 命名空间，参数不带 `_` 后缀。
 - 错误名、参数与 selector 不轻改；只有无法表达语义、产生歧义或造成安全问题时才修改。
 - Core 统一使用 `Proposal`；Action 层对已绑定 Executor 的 Proposal ID 统一以 Action ID 称呼——通用别名 `actionId`，带业务前缀时用 `<业务名>ActionId`（如服务提案的 `serviceActionId`）；未绑定场景（如 `UnboundProposal`）保留 `proposalId`。
 - 按成员身份筛选的接口统一用 `ByMemberId`，不再用 `ByAccount`。
-- **社区级聚合一律用 `total*`，不用 `global*`**。成对命名：`stakeData` / `totalStakeData`、`validGovVotes` / `totalValidGovVotes`、`validBoostShares` / `totalValidBoostShares`；结构体 `MemberStake` / `TotalStake`。事件与结构体里的聚合字段同样是 `total*`（`totalLiquidityShares`、`totalVotes`、`totalVoterBoost`），因此 getter 与它喂给的事件字段同名，折叠对账时可直接按名字配对（`totalValidGovVotes()` ≡ `LiquidityStaked.totalValidGovVotes`）。只在社区级存在的累计计数器同样是 `total*`（`totalBurnedToken`、`totalParentTokenBurned`、`MemberNFT.totalBurnedForMint`）。`total*` 是**时点存量**；需要按轮给出社区流量时，拆成 `total*Added` / `total*Removed` 两条**累计**账本，`total*` 恒等于二者之差——不单独维护，也不引入第三种口径。两条账本只在社区净额变化时写：成员之间的搬运净额为零，各记一笔会把差值抬成两倍。
+- **社区级聚合一律用 `total*`，不用 `global*`**。成对命名：`memberStake` / `totalStake`、`validGovVotes` / `totalValidGovVotes`、`validBoostShares` / `totalValidBoostShares`；结构体 `MemberStake` / `TotalStake`。事件与结构体里的聚合字段同样是 `total*`（`totalLiquidityShares`、`totalVotes`、`totalVoterBoost`），因此 getter 与它喂给的事件字段同名，折叠对账时可直接按名字配对（`totalValidGovVotes()` ≡ `LiquidityStaked.totalValidGovVotes`）。只在社区级存在的累计计数器同样是 `total*`（`totalBurnedToken`、`totalParentTokenBurned`、`MemberNFT.totalBurnedForMint`）。`total*` 是**时点存量**；需要按轮给出社区流量时，拆成 `total*Added` / `total*Removed` 两条**累计**账本，`total*` 恒等于二者之差——不单独维护，也不引入第三种口径。两条账本只在社区净额变化时写：成员之间的搬运净额为零，各记一笔会把差值抬成两倍。
 - **比例参数统一 `1e18` 精度**：以 `1e18` 表示 100%；纯比值（如 `withdrawable : fee`）以 `1e18` 表示 1:1。命名用 `*_RATIO` / `*_THRESHOLD`；不得再用千分比、百分比、万分比等刻度。阈值比较一律交叉相乘（如 `a * 1e18 >= b * threshold`），避免先除后比引入截断；当交叉相乘可能溢出时，改用 `Math.mulDiv` 计算 `ceil` 门槛后再比较（数学等价）。历史 `*_PER_THOUSAND` 属旧命名，随该模块下一次接口变更改为 `*_RATIO` 并重定标，不为改名单开提交；新接口不得沿用。
 - **除数不是比例**：手续费结算分母、身份费用除数等「分母」参数按语义命名，保持整数分母，不折算成 `1e18`。判断标准是语义（是否为比值或占比），不是它在公式里是否位于分母位置。
 - **基类用 `<X>Base` 后缀**：`ExecutorBase`、`CompatBase`、`ActionTargetTestBase`、`ManagerBase`／`TokenManagerBase`／`TokenScopeManagerBase`／`TokenActionScopeManagerBase`（接口随之 `I<X>Base`，错误子面 `I<X>BaseErrors`）。读作「X 的基类」；`Base<X>` 会读成「基础的 X」，不采用。迁移模块同样按此改名：规格的「核对来源」继续写旧仓路径（前缀「旧」），不改写成旧仓里的新名。

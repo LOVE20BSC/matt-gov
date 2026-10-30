@@ -29,7 +29,7 @@
 - 准备只写轮次级总状态，缓存达标 Proposal 总票数且不逐个预写 Proposal
 - 重复准备不改写
 - 准备完成后 Proposal 激励结算不再扫描 Vote 列表
-- 约 300 个 Proposal 的准备交易可完成，且准备后的 `eligibleProposalVotes` 只读不改
+- 约 300 个 Proposal 的准备交易可完成，且准备后的 `eligibleProposalVoteAmount` 只读不改
 - 非 Target 铸造拒绝
 - 各 Proposal Target 按冻结状态单独计算并铸造且单 Proposal 只能成功一次
 - 行动类 `executor -> ActionTarget -> Mint -> executor`：Mint 按 Target 指定的 `recipient` 直铸给 Executor，路径上无中间转账
@@ -112,13 +112,13 @@
 - NoCallback 不回调，Callback 成功调用且失败回滚
 - 首币发 `GenesisTokenCreated`（无 launcher）；成员发射发 `TokenLaunched`，并在扣减后发 `LaunchCountConsumed`
 - 只有 `init` 校验初始化状态，`launchToken`、`mergeLaunchCount`、`addLaunchCount` 不重复校验
-- `tokens`/`childTokens` 按创建顺序分页返回且包含首币，`childTokens(rootParentTokenAddress)` 返回首币与根级同级币，`offset` 越界返回空数组与真实总数
+- `tokens`/`childTokens` 按创建顺序分页返回且包含首币，`childTokens(ROOT_PARENT_TOKEN_ADDRESS)` 返回首币与根级同级币，`offset` 越界返回空数组与真实总数
 - 施加 `Test` 前缀后的最终符号重复时回滚 `TokenSymbolAlreadyExists(keccak256(bytes(finalSymbol)))`，`tokenAddressBySymbol` 命中已登记符号
 - 子币符号按 UTF-8 字节长度（等于 `TOKEN_SYMBOL_LENGTH`）与字符集校验：首字符为 ASCII `A-Z` 或 CJK 基本区汉字（`U+4E00`–`U+9FFF`），其余为 ASCII `A-Z`、`0-9` 或汉字；长度不符回滚 `InvalidTokenSymbolLength(length, TOKEN_SYMBOL_LENGTH)`，字符集不符回滚 `InvalidTokenSymbolCharacters()`
-- `parentTokenOf` 对首币返回 `rootParentTokenAddress`、对子币（含根级同级币）返回其父币、对未登记地址返回零地址；`isLOVE20Token` 与它一致
+- `parentToken` 对首币返回 `ROOT_PARENT_TOKEN_ADDRESS`、对子币（含根级同级币）返回其父币、对未登记地址返回零地址；`isLOVE20Token` 与它一致
 
 ### 根级次数与同级币发射
-**覆盖要求**：覆盖首币产生整数次数时 1:1 伴生根级次数（同一笔交易、同 `count`、追加一条 `LaunchCountAdded`、不变式 `issuedLaunchCount(rootParentTokenAddress) == issuedLaunchCount(firstTokenAddress)`）、其他代币不伴生、根级发射创建与首币平级且父币为根父币的同级币（消耗根级次数、登记与 `childTokens` 正确、建池、命名取根父币实际符号）、根级次数不足回滚、根级次数融合、`Test` 前缀按首币符号判定，以及 `firstTokenAddress` getter。
+**覆盖要求**：覆盖首币产生整数次数时 1:1 伴生根级次数（同一笔交易、同 `count`、追加一条 `LaunchCountAdded`、不变式 `issuedLaunchCount(ROOT_PARENT_TOKEN_ADDRESS) == issuedLaunchCount(FIRST_TOKEN_ADDRESS)`）、其他代币不伴生、根级发射创建与首币平级且父币为根父币的同级币（消耗根级次数、登记与 `childTokens` 正确、建池、命名取根父币实际符号）、根级次数不足回滚、根级次数融合、`Test` 前缀按首币符号判定，以及 `FIRST_TOKEN_ADDRESS` getter。
 
 **测试方式**：
 - 单元测试：`core/test/Launch.t.sol` 的伴生、根级发射、融合与前缀场景

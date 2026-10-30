@@ -59,11 +59,11 @@ Proposal 由合约分配的头部与创建者提供的主体组成，对外以 `
 
 分页函数的返回值形态随集合成员而定：`proposalIds`/`proposalIdsByAuthor` 只回 `proposalId`，`submitInfos` 回完整记录。判据是**页内每一项是否定长**——只有定长才能保证任意一页的体量与 `limit` 成正比（见 [分页查询](#分页查询)）。
 
-上表三条单键查询：`isSubmitted(tokenAddress, round, proposalId)` 判某提案本轮是否已被推举；`proposalIdBySubmitter(tokenAddress, round, submitterId)` 与 `submitterIdByProposalId(tokenAddress, round, proposalId)` 是同一份推举记录的两个方向。每个成员每轮最多推举一个提案、每个提案每轮最多被推举一次，两种键在 `(tokenAddress, round)` 下**都是唯一键**，故两条都回标量，`0` 表示「本轮未推举」（`0` 既不是合法 `memberId` 也不是合法 `proposalId`，无需回滚）。三条并存不构成重复：**存在性判定与取值是两个不同的值**，`isSubmitted` 的 `bool` 不覆盖另外两条的返回，正如 `IMemberNFT.isNameUsed` 与 `idOf` 同键并存。
+上表三条单键查询：`isSubmitted(tokenAddress, round, proposalId)` 判某提案本轮是否已被推举；`proposalIdBySubmitter(tokenAddress, round, submitterId)` 与 `submitterIdByProposalId(tokenAddress, round, proposalId)` 是同一份推举记录的两个方向。每个成员每轮最多推举一个提案、每个提案每轮最多被推举一次，两种键在 `(tokenAddress, round)` 下**都是唯一键**，故两条都回标量，`0` 表示「本轮未推举」（`0` 既不是合法 `memberId` 也不是合法 `proposalId`，无需回滚）。三条并存不构成重复：**存在性判定与取值是两个不同的值**，`isSubmitted` 的 `bool` 不覆盖另外两条的返回，正如 `IMemberNFT.isNameUsed` 与 `memberId(name)` 同键并存。
 
 ## 分页查询
 
-三个分页查询都按 `(offset, limit, reverse)` 分页，并同时返回集合的真实总数；语义与 `Phase.syncObservations` 一致：`offset` 大于或等于总数时返回空数组与真实 `totalCount`，不校验也不回滚；`limit` 大于剩余条数时按剩余条数返回；`reverse` 为 `true` 时按从新到旧返回。不提供全量遍历，也不提供单独的计数入口——只取总数时传 `limit = 0`。
+三个分页查询都按 `(offset, limit, reverse)` 分页，并同时返回集合的真实总数；语义与 `Phase.observations` 一致：`offset` 大于或等于总数时返回空数组与真实 `totalCount`，不校验也不回滚；`limit` 大于剩余条数时按剩余条数返回；`reverse` 为 `true` 时按从新到旧返回。不提供全量遍历，也不提供单独的计数入口——只取总数时传 `limit = 0`。
 
 | 查询 | 作用域 | 返回 |
 | --- | --- | --- |
@@ -130,7 +130,7 @@ Proposal 由合约分配的头部与创建者提供的主体组成，对外以 `
 7. 本社区本轮首笔推举时调用 `Phase.sync()`
 8. `Callback` 时回调 `IProposalTarget.onProposalSubmitted`
 
-初始化校验：`0 < submitMinRatio <= 1e18` 由 DeployCore 广播前校验，`phaseAddress`、`stakeAddress`、`memberNFTAddress` 有代码由 DeployCore 部署后校验；两者均由 21_check 独立复核；`init` 只防重复初始化并保存入参。
+初始化校验：`0 < submitMinRatio <= 1e18` 由 DeployCore 广播前校验，`PHASE_ADDRESS`、`STAKE_ADDRESS`、`MEMBER_NFT_ADDRESS` 有代码由 DeployCore 部署后校验；两者均由 21_check 独立复核；`init` 只防重复初始化并保存入参。
 
 ## 事件与错误
 

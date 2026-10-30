@@ -1366,7 +1366,7 @@
         "core/src/Mint.sol:89",
         "core/src/Stake.sol:91",
         "core/src/Submit.sol:56",
-        "core/src/Vote.sol:77"
+        "core/src/Vote.sol:57"
       ],
       "selector": "0x0dc149f0",
       "signature": "AlreadyInitialized()"
@@ -1713,7 +1713,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Vote.sol:101"
+        "core/src/Vote.sol:81"
       ],
       "selector": "0x8102b749",
       "signature": "NoVotingPower(address,uint256)"
@@ -1755,7 +1755,7 @@
         "core/src/Mint.sol:259",
         "core/src/Stake.sol:110",
         "core/src/Submit.sol:100",
-        "core/src/Vote.sol:88"
+        "core/src/Vote.sol:68"
       ],
       "selector": "0x33393244",
       "signature": "NotMemberOwner(uint256)"
@@ -1830,7 +1830,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Stake.sol:541"
+        "core/src/Stake.sol:543"
       ],
       "selector": "0xeabd8816",
       "signature": "PairMissing(address)"
@@ -1860,9 +1860,9 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Phase.sol:44",
-        "core/src/Phase.sol:51",
-        "core/src/Phase.sol:82"
+        "core/src/Phase.sol:50",
+        "core/src/Phase.sol:57",
+        "core/src/Phase.sol:88"
       ],
       "selector": "0xf2469089",
       "signature": "PhaseNotStarted()"
@@ -1908,7 +1908,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Vote.sol:104"
+        "core/src/Vote.sol:84"
       ],
       "selector": "0x46b9908e",
       "signature": "ProposalIdsEmpty()"
@@ -1940,7 +1940,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Vote.sol:259"
+        "core/src/Vote.sol:232"
       ],
       "selector": "0x354f9b03",
       "signature": "ProposalNotSubmitted(address,uint256,uint256)"
@@ -1985,10 +1985,10 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Vote.sol:107"
+        "core/src/Vote.sol:87"
       ],
-      "selector": "0xb397cf8c",
-      "signature": "ProposalVotesLengthMismatch(uint256,uint256)"
+      "selector": "0xc1eadb2b",
+      "signature": "ProposalVoteAmountsLengthMismatch(uint256,uint256)"
     },
     {
       "declarations": 1,
@@ -2032,7 +2032,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Stake.sol:754"
+        "core/src/Stake.sol:756"
       ],
       "selector": "0x71c4efed",
       "signature": "SlippageExceeded(uint256,uint256)"
@@ -2096,7 +2096,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Vote.sol:110"
+        "core/src/Vote.sol:90"
       ],
       "selector": "0x232f36be",
       "signature": "TargetDataLengthMismatch(uint256,uint256)"
@@ -2141,7 +2141,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Stake.sol:560"
+        "core/src/Stake.sol:562"
       ],
       "selector": "0xe393d50b",
       "signature": "TargetPromisedWaitingPhasesTooShort(uint256,uint256)"
@@ -2310,7 +2310,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Vote.sol:303"
+        "core/src/Vote.sol:276"
       ],
       "selector": "0xb60c38d3",
       "signature": "VoteLimitExceeded(address,uint256,uint256,uint256,uint256)"
@@ -2389,7 +2389,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Stake.sol:681"
+        "core/src/Stake.sol:683"
       ],
       "selector": "0xf4791324",
       "signature": "ZeroLiquidityMinted()"
@@ -2465,10 +2465,10 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Vote.sol:264"
+        "core/src/Vote.sol:237"
       ],
-      "selector": "0xf9067921",
-      "signature": "ZeroVotes(uint256)"
+      "selector": "0x1ccf718a",
+      "signature": "ZeroVoteAmount(uint256)"
     },
     {
       "declarations": 1,

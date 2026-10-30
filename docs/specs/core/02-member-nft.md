@@ -44,7 +44,7 @@ UTF-8 有效性：拒绝无效起始字节 `0x80-0xC1` 与 `0xF5-0xFF`、过长�
 费用使用首个 LOVE20 代币，计算如下。参数含义见 [初始化参数](00-protocol-model.md#初始化参数)，四个参数均必须大于零，由 DeployCore 在广播前校验；构造器只保存参数，不做静态校验。最大名称长度通过构造参数固定，BSC 部署配置使用 `32`。`init` 只防重复初始化；首币地址与费用参数由 21_check 核对，不匹配则重新部署。
 
 ```text
-unmintedSupply = maxSupply - totalSupply
+unmintedSupply = MAX_SUPPLY - totalSupply
 baseCost = floor(unmintedSupply / baseDivisor)
 mintCost = byteLength >= bytesThreshold
     ? baseCost
@@ -55,7 +55,7 @@ mintCost = byteLength >= bytesThreshold
 
 首币符号前 4 个字节为 `Test` 时，若名称长度不足 4 字节或前 4 个字节不是 `Test`，铸造前自动加 `Test` 前缀；前缀计入 `byteLength`、参与名称校验与费用计算，并作为存储名称。
 
-沿用旧查询行为：`calculateMintCost` 只按传入名称的字节数计费，不补 `Test` 前缀，也不校验名称合法性或唯一性。测试币场景中，调用方应先按上述规则补前缀再询价；例如铸造 `abc` 的对应报价应查询 `Testabc`。`idOf`、`isNameUsed` 仅做 ASCII 小写规范化，也需传入最终存储名称。
+沿用旧查询行为：`calculateMintCost` 只按传入名称的字节数计费，不补 `Test` 前缀，也不校验名称合法性或唯一性。测试币场景中，调用方应先按上述规则补前缀再询价；例如铸造 `abc` 的对应报价应查询 `Testabc`。`memberId(name)`、`isNameUsed` 仅做 ASCII 小写规范化，也需传入最终存储名称。
 
 例：`baseCost = 100`、`bytesThreshold = 7`、`multiplier = 10`；6 字节名花费 `1000`，7 字节及以上花费 `100`。金额均以代币最小单位计。
 
@@ -71,7 +71,7 @@ mintCost = byteLength >= bytesThreshold
 
 `holders(offset, limit, reverse)` 按页返回唯一持有人地址，并同时返回集合总数 `totalCount`。它与 `ERC721Enumerable` 枚举的对象不同：后者按代币枚举（`totalSupply`、`tokenByIndex`、`tokenOfOwnerByIndex`），持有人集合按地址去重，同一地址持有多枚也只出现一次。
 
-分页语义与 `Phase.syncObservations` 一致：`offset` 大于或等于总数时返回空数组与真实 `totalCount`，不校验也不回滚；`limit` 大于剩余条数时按剩余条数返回；`reverse` 为 `true` 时按从新到旧返回。链上不提供全量遍历，只按页读取。
+分页语义与 `Phase.observations` 一致：`offset` 大于或等于总数时返回空数组与真实 `totalCount`，不校验也不回滚；`limit` 大于剩余条数时按剩余条数返回；`reverse` 为 `true` 时按从新到旧返回。链上不提供全量遍历，只按页读取。
 
 集合在每次余额变动时精确维护，不需要用事件重建：
 

@@ -1,5 +1,7 @@
 # Core 迁移变更清单
 
+> 本文记录迁移当时的新旧对照。2026-10-30 命名标准落地后，「新」列的标识符与 selector 已变化，当前 ABI 以各仓 `src/interfaces/` 为准。同批事件字段：`RewardPrepared.eligibleProposalVotes` → `eligibleProposalVoteAmount`、`VoteCast.votes` → `voteAmount`；`Vote.votedProposalIdsByMemberId` 保留原名并返回 `(proposalIds, voteAmounts, total)`（selector 不变，返回项由 2 变 3）。
+
 本文档列出 BSC Core 相对于 LOVE20TKM 旧协议的所有变更。保留项直接引用旧代码位置，避免重复描述。
 
 ## 事件与接口改名（2026-10-27）

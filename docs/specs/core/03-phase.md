@@ -13,9 +13,9 @@ Phase 维护连续的无语义时间片、同步观测和动态校准，不内�
 | `currentPhase()` | 当前区块的 Phase |
 | `phaseInfo(phaseNumber)` | 阶段起始区块和区块数 |
 | `phaseAtBlock(blockNumber)` | 指定区块的 Phase |
-| `syncObservations(offset, limit, reverse)` | 分页读取同步观测：返回区块号数组、时间戳数组和观测总数 |
+| `observations(offset, limit, reverse)` | 分页读取同步观测：返回区块号数组、时间戳数组和观测总数 |
 
-`syncObservations` 的 `offset` 大于或等于观测总数时返回空数组与真实总数，不校验也不回滚；`limit` 大于剩余条数时按剩余条数返回；`reverse` 为 `true` 时按从新到旧返回。
+`observations` 的 `offset` 大于或等于观测总数时返回空数组与真实总数，不校验也不回滚；`limit` 大于剩余条数时按剩余条数返回；`reverse` 为 `true` 时按从新到旧返回。
 
 ## 接口、事件与错误
 
