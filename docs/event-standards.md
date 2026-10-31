@@ -226,7 +226,7 @@ ERC-20 / ERC-721 标准事件保持不变，不进入本规范正文。`AddHolde
 | action.round | 根键 → actionId → round → 数值 | `ActionRewardMinted` |
 | action.quota | 根键 → actionId → groupId → providerId → memberId → 数值 | `ProviderQuotaAdded`、`ProviderQuotaRemoved`、`ProviderQuotaRestored` |
 | action.verification | 根键 → actionId → 主体 id（`memberId`/`groupId`/`voterId`/`verifierId`）→ round → `applicationId`/`verifierId` → 次级 id（被投的验证者 / 上一申请）→ 数值/布尔 → 文本/数组 | `OriginScoresSubmitted`、`VerifierApplicationSubmitted`、`VerifierApplicationCancelled`、`VerifierStakeDeposited`、`VerifierStakeRefunded`、`VerifierLocked`、`ApplicationVoteRecorded` |
-| action.recipients | 根键 → sourceActionId → round → groupId → 新表 → 旧表 | `RecipientTableChanged` |
+| action.recipients | 根键 → sourceActionId → round → groupId → 新表 → 旧表 | `RecipientsChanged` |
 | action.service | 根键 → serviceActionId → round → 对象链（groupId 或 actionTokenAddress）→ 源链/角色 → 数值 | `RecipientPaid`、`ServiceRewardsDistributed` |
 | gc.management | 根键 → 对象标识（id 或对象地址）→ actor id → actor 地址 → 新值组 → 旧值组 | `AdminChanged`、`MemberStatusChanged`、`SenderBanChanged`、`GroupChatActivated`、`PostingAllowedChanged`、`ScopeSourceChanged`、`BanSourceChanged`、`BeforePostPluginChanged`、`AfterPostPluginChanged` |
 | gc.ban-vote | 根键 → targetSenderId → voterId → 布尔 → 数值 | `SenderBanVoteCast`、`GovSenderBanChanged` |
@@ -311,8 +311,8 @@ v1 基线：
 | `ProposalCreated.targetData` | ≤16 KiB、≤16 个元素 |
 | `GroupConfigChanged.description` | 现有 1024 字节 |
 | `GroupActivated.description` | 现有 1024 字节 |
-| `RecipientTableChanged.remarks` | 每条 ≤256 字节，条数 ≤`DEFAULT_MAX_RECIPIENTS` |
-| `RecipientTableChanged.recipientIds` / `ratios` | ≤`DEFAULT_MAX_RECIPIENTS`（10 项） |
+| `RecipientsChanged.remarks` | 每条 ≤256 字节，条数 ≤`DEFAULT_MAX_RECIPIENTS` |
+| `RecipientsChanged.recipientIds` / `ratios` | ≤`DEFAULT_MAX_RECIPIENTS`（10 项） |
 | `GroupActionCreated.verificationKeys` / `verificationDescriptions` | ≤16 项，每项 ≤1024 字节 |
 | `GroupActionJoined.verificationValues` | ≤16 项，每项 ≤1024 字节 |
 | `OriginScoresSubmitted.scores` | ≤`MAX_VERIFICATION_BATCH`（100） |
@@ -381,7 +381,7 @@ v1 基线：
 | JoinState | 注册表注册/清除、加入、提取、退出 | `JoinStateRegistered`、`JoinStateCleared`、`GroupActionJoined`、`GroupActionWithdrawn`、`GroupActionExited`、`LpJoined`、`LpWithdrawn`、`LpExited`、`ServiceJoined`、`ServiceExited` |
 | ProviderQuota | 配额增加、移除、退出恢复 | `ProviderQuotaAdded`、`ProviderQuotaRemoved`、`ProviderQuotaRestored` |
 | Verification | 申请、取消、质押、退款、原始分、投票、锁定 | `VerifierApplicationSubmitted`、`VerifierApplicationCancelled`、`VerifierStakeDeposited`、`VerifierStakeRefunded`、`OriginScoresSubmitted`、`ApplicationVoteRecorded`、`VerifierLocked` |
-| RecipientTable | 设置收款表、分发 | `RecipientTableChanged`、`RecipientPaid` |
+| Recipients | 设置收款表、分发 | `RecipientsChanged`、`RecipientPaid` |
 | Rewards | 行动奖励、成员奖励、服务分发 | `ActionRewardMinted`、`MemberRewardMinted`、`ServiceRewardsDistributed` |
 | JoinStateFallback | owner 兜底清理注册表（不回调 executor、不结算资金） | `JoinStateCleared(forced=true)` |
 

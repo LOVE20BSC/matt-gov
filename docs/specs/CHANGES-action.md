@@ -4,6 +4,24 @@
 
 > 本文记录迁移当时的新旧对照。2026-10-30 命名标准落地后，历史段落中的标识符未逐一回写（按「迁移历史不改写」保留）；当前 ABI 与命名以 `action/src/interfaces/`、[`docs/specs/action/`](action/) 与 [`naming-standards.md`](../naming-standards.md)（§14 进度）为准。
 
+## 群配置与收款表改名（2026-10-31）
+
+两处命名收口，均为破坏性 ABI 变更：
+
+- `updateGroupConfig` → `setGroupConfig`：`IGroupActionManager` 声明、`GroupActionManager` 库、`GroupActionExecutor` 转发、两个测试文件、`specs/action/05`、`08` 与本文。同类「配置写入」只有一个 `setRecipients`，它已是 `set<配置对象>` 且与 getter `recipients()` 同词干；生命周期（`activateGroup` / `deactivateGroup`）与额度（`addProviderQuota` / `removeProviderQuota` / `withdrawProviderQuota`）按动词表各自成类，不参与本条。事件 `GroupConfigChanged` 不变。
+- `RecipientTableChanged` → `RecipientsChanged`：`IGroupRecipients` 声明、`GroupRecipients` 发射、`GroupServiceRecipients.t.sol` 两处、事件基线与族映射、`event-standards` §6.1/§6.8/§7.2、`specs/action/06`。函数与 getter 都是 `setRecipients`/`recipients`，只有事件用了库内部结构体名 `RecipientTable`，事件宾语与函数不一致；payload、indexed 布局与 `action.recipients` 族槽位不变。
+- 不变：`setRecipients` 函数名、`RecipientTable` 结构体类型名（库内部类型，不进 ABI）。
+
+## 批量查票改名（2026-10-31）
+
+`IGroupActionVerify` / `IGroupActionExecutor` 的批量查票入口改名，**selector 变化，旧 ABI 不可复用**：
+
+- 旧：`votesByVerifierIds(address tokenAddress, uint256 actionId, uint256 round, uint256[] verifierIds) returns (uint256[] voteAmounts)`
+- 新：`voteAmountsByVerifierIds(address tokenAddress, uint256 actionId, uint256 round, uint256[] verifierIds) returns (uint256[] voteAmounts)`
+- 理由：§9 规定投出的票数写 `VoteAmount` / `VoteAmounts`，禁止裸 `votes`（分不清标量与数组）。原名的返回值本来就叫 `voteAmounts`，状态变量也叫 `voteAmountByApplicationId`，只有函数名还在用 `votes`；§6 / §7.3 曾把它当作 `By<Key>Ids` 的正例，属规范内部冲突，按 §9 收口。
+- 同步：`GroupActionVerify` 库函数、`GroupActionExecutor` 转发、`IGroupActionVerify` 声明、`GroupActionVerifyFlow.t.sol` 两处调用、`specs/action/05`、`specs/action/08` 与 `naming-standards.md` §6 的例子。
+- 不变：入参 `verifierIds`、返回名 `voteAmounts`、按轮解析申请的语义；`By<Key>Ids` 的 Key 仍与入参同名。
+
 ## 构造函数收敛与 immutable（2026-10-31）
 
 三个 Executor 从「无参部署 + `init`」改为构造函数绑定，并删除 `initialized()`：
@@ -17,7 +35,7 @@
 
 ## 轮次轴分层（2026-10-31）
 
-`GroupActionRoundAxis` / `LpRoundAxis` 回归纯换算：只保留 `joinRound` / `verifyRound` / `mintRound` 与 `joinRound` / `mintRound`，不 import 错误接口、不 `revert`。未开始守卫按属主归位：`GroupActionManager.currentJoinRound` 覆盖 `GroupActionJoin` 与 `activateGroup` / `deactivateGroup` / `updateGroupConfig`；`GroupActionVerify.currentVerifyRound` 覆盖 GAE / GSE 的 public getter 与验证提交路径。`ExecutorBase` 的 `currentVoteRound` / `currentJoinRound` / `currentMintRound` 仍是 ABI 守卫层，按周期调用 `_joinRound` / `_mintRound`。
+`GroupActionRoundAxis` / `LpRoundAxis` 回归纯换算：只保留 `joinRound` / `verifyRound` / `mintRound` 与 `joinRound` / `mintRound`，不 import 错误接口、不 `revert`。未开始守卫按属主归位：`GroupActionManager.currentJoinRound` 覆盖 `GroupActionJoin` 与 `activateGroup` / `deactivateGroup` / `setGroupConfig`；`GroupActionVerify.currentVerifyRound` 覆盖 GAE / GSE 的 public getter 与验证提交路径。`ExecutorBase` 的 `currentVoteRound` / `currentJoinRound` / `currentMintRound` 仍是 ABI 守卫层，按周期调用 `_joinRound` / `_mintRound`。
 
 - ABI 不变：`RoundNotStarted(uint256,uint256)` selector `0xea74f32b`、载荷 `(1, 0)`；错误声明仍只有 `IActionExecutorErrors` 一处，不新增 declarations。
 - 行为不变：两个 helper 都是 `internal`，编译期内联，不产生库间 DELEGATECALL；因内联，GAE / GSE 的 runtime 各增加 53 字节，三个 Executor 仍远低于 24,576。

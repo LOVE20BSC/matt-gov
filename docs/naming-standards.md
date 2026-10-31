@@ -83,11 +83,17 @@
 - 禁止 `get`/`fetch`/`query`/`read`/`load`/`do`/`handle`/`process`/`manage` 开头。`getDistribution` → `distribution`。
 - 一个函数只做一个动作，禁止 `And` 连接（`stakeAndVote`）。
 - 名字里不出现 `Try`/`Maybe`/`IfNeeded` 表达控制流；控制流写在实现里（`_prepareRewardIfNeeded` 是私有函数，可以保留，但公开 ABI 不得出现）。
+- **守卫用 `_check<宾语>`，取值型读辅助用 `_xxxOrRevert`**：两个族，判据是「调用的目的是什么」。
+  - **守卫（`_check<宾语>`）**：三条同时成立——①`view`/`pure`，成功路径没有写入；②不满足就 revert；③**存在意义是拦截**，调用方关心的是「过了没有」，不是「拿到了什么」。宾语是被校验的对象（`_checkToken`、`_checkSlippage`、`_checkExistingProposal`、`_checkAdminIdList`），与 OZ 的 `_checkOwner` / `_checkRole` 同一惯例。校验通过后返回**判定过程中已经算出的值**可以接受：`_checkActiveRound` 返回判定所依据的当前轮、`_checkApplicationWindow` 返回申请生效轮、`_checkName` 返回入参的规范化结果——判据是「把这个返回值去掉，调用方是否要重算同一件事」：要重算就是合理副产物，不要重算就该删掉返回值。
+  - **取值型（`_xxxOrRevert`）**：存在意义是**取一个值**，revert 只是「取不到」的分支（`_groupOwnerOrRevert`、`_sourceOrRevert`、`_voteWeightOrRevert`、`_totalVoteWeightOrRevert`）。名字的主语是返回值，不改 `_check*`：`_checkSource` 读不出「调用方要拿 source」。
+  - 两族的边界就是①③：`_join`/`_post`/`_setRecipients` 这类业务函数也会 revert，但不是守卫（成功路径有写入）；`_ownerOrRevert` 这类取值辅助不是守卫（成功路径的产物是值）。
+- 宾语用词：存在性统一 `_checkExisting<名词>`（`_checkExistingProposal`、`_checkExistingGroup`、`_checkExistingAction`）；集合入参沿用 `<名词>IdList`（`_checkAdminIdList`；同文件的 `_checkAdminIdsLimit` 按集合 getter `adminIds()` 取词干，两者分工不同）；**同一判据只用一个宾语**——取错误载荷里的词（`ZeroTargetSenderId` → `_checkTargetSenderId`），不按各调用点的入参名分叉。函数名不嵌错误名——`_ownerOrRevertGroupNotExist` 已改 `_groupOwnerOrRevert`（宾语是业务对象 `group`，不是错误名）。
+- 不用 `_require*`——`require` 的宾语应是「必须成立的条件」，接名词会被读成「需要该对象」（`_requireSlippage` 读作"需要滑点"）。也不用 `_validate*`：它与 `_check*` 是同一形态的两族前缀，任何判据都划不开，2026-11-01 已全部并入 `_check*`。`check*` 的禁用只针对**返回 bool 的公开判断**（§4.2），不针对这类守卫。
 
 ### 4.2 读函数
 
 - 名词开头，不加 `get`。
-- 判断用谓词（§五），不用 `check*`；`verify*` 保留给"执行验证"这个动作，不用来判断。
+- 判断用谓词（§五），不用 `check*`——本条只约束返回 bool 的判断；`internal`/`private` 的守卫用 `_check*`、取值型用 `_xxxOrRevert`（§4.1）。`verify*` 保留给"执行验证"这个动作，不用来判断。
 - 同一集合的全量与分页不另起名，由入参决定（§7.5）。
 
 ### 4.3 回调
@@ -121,7 +127,7 @@
 | 位置 | 形式 | 例 |
 | --- | --- | --- |
 | 写 | 宾语复数 | `addAdmins`、`mintGovRewards`、`setRecipients` |
-| 读（按 id 数组） | `By<Key>Ids` | `proposalInfosByProposalIds`、`votesByVerifierIds` |
+| 读（按 id 数组） | `By<Key>Ids` | `proposalInfosByProposalIds`、`voteAmountsByVerifierIds` |
 | 判断 | `Batch` 后缀 | `isMemberIdBatch`、`isSenderIdBannedBatch` |
 
 - 写函数不用 `Batch` 后缀（`mintGovRewardBatch` ✗）。批量已经是常态，`Batch` 只用来消解谓词的歧义：`isMemberIds` 会被读成"这些是不是成员 id"。
@@ -154,7 +160,7 @@
 - **入参与同名读取函数冲突时**（`adminIds()`、`memberIds()`、`groupIds()`、`rounds()` 这类集合 getter 占用了最自然的名字），按 §3 硬约束 4 改参数而不是函数名；改写形态是**封闭集合**：写方向用 `<noun>List`、判断用 `checked`、读入参用 `requested`。例：`addAdmins(…, adminIdList)`、`removeMemberIds(…, memberIdList)`、`isMemberIdBatch(…, checkedMemberIds)`、`chatInfosByGroupIds(requestedGroupIds)`。
   - 写方向不用 `added` / `removed`：方向已由函数名给出，`addAdmins(addedAdminIds)` 读作「把已加的管理员 id 加进去」，既重复又没说明是数组。`List` 只声明「这是数组」，且与内部双向辅助同名（`_setMemberIds(…, memberIdList, listed)`），内外一套词。`adminIdList` / `memberIdList` 与集合 getter（`adminIds` / `memberIds`）不同名，不触发同名声明。
 - Key 取入参名去掉用途前缀后的词干：`roundInfosByRounds(…, requestedRounds)`、`chatInfosByGroupIds(…, requestedGroupIds)`、`proposalInfosByProposalIds(…, requestedProposalIds)`。`Ids` 只在载荷确实是 id 数组时使用：轮次是纪元键不是 id，`roundInfosByRoundIds` 不合格。
-- 同一内部辅助函数同时服务增删两个方向时（`_validateAdminIds`、`_setMemberIds`），入参用 `<noun>List`（`adminIdList`、`memberIdList`），与 §十一 返回值同名冲突时的逃生口一致。
+- 同一内部辅助函数同时服务增删两个方向时（`_checkAdminIdList`、`_setMemberIds`），入参用 `<noun>List`（`adminIdList`、`memberIdList`），与 §十一 返回值同名冲突时的逃生口一致。
 
 ### 7.4 聚合
 
@@ -312,7 +318,7 @@ Layout 中**部署后冻结的字段**按 §3.1 用 `UPPER_SNAKE`（`ACTION_TARG
 - 基线：`matt-gov/registry/naming-baseline.txt`，当前 **0 条**（按文件×符号记录，接口与实现各记一条；`core`、`action`、`group-chat` 均已清零）。2026-10-30 由符号粒度改为文件×符号并一次性重写；此后**只减不增**。
 - 迁移按依赖顺序 `libs → core → action → group-chat`，每仓一次提交，`forge test` 全绿。改名落地时同批更新 `CONTEXT.md`（§GroupAction 参与归属）、`docs/specs/` 中引用旧名的条目与 `CHANGES-*.md` 对账表。
 - 进度：`core` 的 23 条机器规则已清零（2026-10-30，473 个用例全绿）；本批同时修正了构造函数参数、局部变量与本次改名涉及的映射名。`action` 已于 2026-10-30 清零（当前 469 个用例全绿，2026-10-31 新增 `test_ZeroBoundaries` 与两条轮次守卫用例），同批人工核对落实：`s` 根布局改 `_layout`（库参数 `self`）、`init` 冻结依赖改 `ACTION_TARGET_ADDRESS`/`GROUP_ACTION_EXECUTOR_ADDRESS` 等全大写 getter、`providerQuota*` 等写入口改动词首位、`_` 后缀参数与局部变量去掉后缀、`RecipientPaidArgs` 改 `RecipientPaidParams`、`MemberOwner.ofOrZero` 改 `ownerOrZero`、LpExecutor 的 `_deduction`/`_joinBlocks`/`_joinAmounts`/`_createdRound` 等映射名按 §8.3 补齐键；`votes` 返回数组与按申请账本按 §9 改为 `voteAmount(s)`；Layout 的冻结字段改全大写（N17 增加 Layout 冻结字段例外）、`groupIds`/`actionIds` 函数改 `groupIdsByRound`/`actionIdsWithActiveGroups`、`totalJoinedAmount*` 改 `joinedAmountByActionId`/`joinedAmountByGroupId`、事件票数字段改 `voteAmountAdded`/`voteAmountTotal`、`applicationIdCounter` 改 `applicationIdCount`；基座计价代币 getter 统一为 `joinTokenAddress`（GroupService 的 `actionTokenAddress` 为单点例外）、`joinInfo` 返回 `joinedAmount`（2026-10-31 改为 `JoinInfo` 记录并删去该派生总量，见 `CHANGES-action.md`）、基座 action 级累计量改 `joinedAmountByActionId`。
-- `group-chat` 已于 2026-10-30 清零（172 个用例全绿），同批落实：
+- `group-chat` 已于 2026-10-30 清零（当时 172 个用例全绿；`faa89cf` 删除群内委托套件后为 152），同批落实：
   - **P0 语义错误**：`postingAllowed(groupId)` → `isPostingAllowed(groupId)`（N04）；`voteBySenderId` / `clearVoteBySenderId` / `refreshVoteBySenderId` 改 `voteByTargetSenderId` / `clearVoteByTargetSenderId` / `refreshVoteByTargetSenderId`（N05）。**入参保持 `targetSenderId`**：它同时是 `SenderBanVoteCast.targetSenderId`（由 event-standards §6.1 的 `gc.ban-vote` 槽位冻结）与 `TargetState` 的内部键，按 §3 硬约束 4 的例外让**函数名**让位，而不是改入参——否则 §十一 的四处同源会断。
   - **P1 一致性**：`GroupChatBanList` 的 `_groupAddress` / `_groupDelegateAddress` 与 `GroupMember` 的 `_groupDelegateAddress` 改全大写 immutable `GROUP_ADDRESS` / `GROUP_DELEGATE_ADDRESS`（N10）；`ManagedAction.token` → `tokenAddress`（N14）；`delegateIdOf` / `delegateIdsOf` → `effectiveDelegateId` / `effectiveDelegateIdsByGroupIds`（`delegateId(groupId)` 会与 `setDelegateId` 的入参 `delegateId` 撞 solc 8760，按 §3 硬约束 4 的例外让函数名让位）、`ownerOrDelegateIdOf` → `ownerOrDelegateId`、`voteWeightOf` → `voteWeight`（N20）。
   - **P2 卫生**：四处 `_states` 按 §8.3 改 `_adminState` / `_chatState` / `_memberState` / `_chatState`（N11）；接口入参去 `_` 后缀（N12）。
@@ -332,6 +338,17 @@ Layout 中**部署后冻结的字段**按 §3.1 用 `UPPER_SNAKE`（`ACTION_TARG
 - **§8.3 存量映射名**：`group-chat` 已按 §8.3 清完（`_chatConfig`、`_messagesByGroupId`、`_messageIndexesByGroupIdBySenderId`、`_messageIndexesByGroupIdByMentionedSenderId`、`_mentionAllMessageIndexesByGroupId`、`_senderIdsByGroupId`、`_roundStateByGroupIdByRound`、`_roundsByGroupId`、`_delegateState`、`_delegationAcceptanceEnabledByDelegateId`）。`core` / `action` 不清：这两仓的映射绝大多数是「按 `tokenAddress` 取标量」的单键表，而 `tokenAddress` 按 §7.3 是**作用域键、不进名字**，再加 `ByTokenAddress` 是噪音；`_validGovVotesByMember` / `_lastSettlePhase` 两处同样按词干规则与作用域键规则判为可接受。判据本身无法机械化（"读者能否从名字说出键"），故不入检查器。
 - **test/ 的 `_` 后缀**：§一 明确 test/ 不受门禁。本批清掉了所有非冲突项（`originBlocks_`、`phaseBlocks_`、`groupAddress_`、`chat_`、`groupDelegate_`、`reenterGroupId_`、`reenterSenderId_`、`maxGroupNameLength_`、`nameUsed_`、`actualCost_`、`mockVoteWeight_`、`postAllowed_` 等，含 `test/utils/TestBase` 新增的 27 个读取辅助）；剩下的 43 处是**参数与 mock/夹具自身状态变量同名**（`groupId` / `senderId` / `adminId` / `allowed` / `banned` / `postingAllowed` / `mintCost` / `symbol` / `memberNFTAddress` / `phaseAddress` / `voteWeight`），按 §3 硬约束 4 只能让参数让位，去掉 `_` 会撞 8760。另有 8 处 `tm_` / `am_` 是**群名类型码字符串**（`type[_payload]_random` 的格式字符），不是标识符，不改。
 - **`N04` 收紧到具名返回（2026-10-31）**：检查器原先只匹配未命名的 `returns (bool)`，`returns (bool joined)` 从规则下漏过。现按「单个 `bool` + 可选返回名」判定，与 §十五 的「单 bool 返回是谓词；tuple 内的 bool 不受限」对齐。同批删除 `GroupServiceExecutor.joinInfo`——服务侧唯一一处具名单 bool 带参返回（一行转发 `ActionTarget.isJoinedByRound`，服务没有独立加入状态），且与 `GroupActionExecutor.joinInfo` 同 selector、不同返回形态。删除后四仓 0 违规，基线仍 0 条。
+- **状态变量 ↔ getter 对账（2026-10-31）**：四仓 `src/` 共 216 个状态变量（core 120 / action 38 / group-chat 58；`libs` 无），逐个与直接返回它的 `view`/`pure` 函数配对：38 个有同名 getter，71 个走派生读，107 个只被写路径使用。派生读中 69 处合法（§7.7 单实体属性读、§7.3 作用域键省略、§7.2 Kind、聚合读、子集读、§十 分层、谓词），修掉两处状态变量名与 getter 对不上的存量：
+  - `MemberNFT._allHolders` → `_holders`：getter 是 `holders()`，§8.4 早已点名「`_allHolders` 的 `all` 是噪音」，属唯一残留。`internal`，ABI 不变。
+  - `Submit._authorProposalIds` → `_proposalIdsByAuthor`：getter 是 `proposalIdsByAuthor()`，§8.3 的合格形态是 `<value>By<Key>`，原名把键放在了值前面。`internal`，ABI 不变。
+- **`votesByVerifierIds` → `voteAmountsByVerifierIds`（2026-10-31）**：§6 与 §7.3 曾把它当作 `By<Key>Ids` 的正例，但 §9 禁止裸 `votes` 表示投出的票数（分不清标量与数组），而该函数的返回值本来就叫 `voteAmounts`、状态变量也叫 `voteAmountByApplicationId`——规范内部冲突，按 §9 收口。`GroupActionVerify` 库函数、`GroupActionExecutor` 转发、接口、测试、`specs/action/05`、`specs/action/08` 与 §6 的例子同批改写。**破坏性 ABI 变更**，旧 selector 不可复用；入参 `verifierIds` 不变，`By<Key>Ids` 的 Key 仍与入参同名。
+- **事件名 ↔ 函数名同词干收口（2026-10-31）**：逐个核对 81 个 `emit` 点，修掉两处配置写入口与事件名不一致的存量：
+  - `updateGroupConfig` → `setGroupConfig`：同类「配置写入」只有一个 `setRecipients`，它已是 `set<配置对象>` 且与 getter `recipients()` 同词干；生命周期（`activateGroup` / `deactivateGroup`）与额度（`addProviderQuota` / `removeProviderQuota` / `withdrawProviderQuota`）按 §4.1 动词表各自成类，不参与本条。事件 `GroupConfigChanged` 不变。`IGroupActionManager`、`GroupActionManager`、`GroupActionExecutor` 转发与两个测试同批改写，**破坏性 ABI 变更**。
+  - `RecipientTableChanged` → `RecipientsChanged`：函数与 getter 都是 `setRecipients`/`recipients`，只有事件用了库内部结构体名 `RecipientTable`，事件宾语与函数不一致；payload 与 `action.recipients` 族槽位不变，**topic0 变化**。`setRecipients` 函数名保留。
+  - 未改但已登记：`withdrawProviderQuota` 与 `removeProviderQuota` 共用 `ProviderQuotaRemoved`（事件建模「授权额度减少」维度，见 `REVIEW_UNCOMMITTED_2026-10-30.md`）；`mintMemberReward` 另发 `ServiceRewardsDistributed`（一个入口两个事实）。两者不满足「事件名 = 函数词干」，属有意例外。
+  - 检查器缺口：`check_naming.py` 不扫事件，`check-events.py` 只查族/槽位/写法/ABI 基线；「事件名 ↔ 发射函数名」仍靠人工核对。
+- **守卫统一 `_check*`（2026-11-01）**：三仓 `src/` 的 35 个 `internal`/`private` 守卫统一为 `_check<宾语>`（core 13 / action 7 / group-chat 15），92 个调用点（127 次出现含 35 处定义）。归因：20 个由 `_require*` 改名（core 7 / action 3 / group-chat 10）、11 个由 `_validate*` 并入（core `_checkName` / `_checkProposalBody`；action `_checkGroupConfig` / `_checkActivationMinGovRatio` / `_checkGroupConstraints` / `_checkRecipients`；group-chat `_checkAdminIdList` / `_checkMentionedSenderIds` / `_checkPluginAddress` / `_checkQuotedMessageId` / `_checkSourceAddress`）、4 个自始即 `_check*` 未动（`_checkValidTokenSymbol`、`_checkDistributorMode`、`_checkPromisedWaitingPhases`、`_checkSlippage`）；`src/` 已无 `_validate*`——部署脚本（`script/deploy/` 的 `_validateConfig` / `_validateDeployment` 等）不在本条款范围内，`dev-standards` §6 另有规定。同批的宾语收口：`_checkProposalExists` → `_checkExistingProposal`（存在性统一 `Existing`）、`_checkSenderIdTarget` 与 `_checkTarget` → `_checkTargetSenderId`（同一零值校验只留一个名字，宾语取错误载荷的 `targetSenderId`，不按各自入参分叉）、`_ownerOrRevertGroupNotExist` → `_groupOwnerOrRevert`（与 `GroupAdmin` 同名同义，函数名不再嵌错误名）。判据是逐字读：`require + 名词` 读作「需要该对象」（`_requireSlippage` = 需要滑点），与「校验该对象合法」错位；`check + 宾语` 才是及物的「检查」。§4.1 把新增的守卫条款改写为**两族**——守卫 `_check<宾语>`（`view`/`pure`、不满足即 revert、存在意义是拦截）与取值型 `_xxxOrRevert`（存在意义是取值，revert 只是取不到的分支，`group-chat` 4 个函数名 / 5 处定义（`_groupOwnerOrRevert` 在 `GroupAdmin` 与 `GroupChat` 各一份）/ 16 个调用点保留后缀），并写明「守卫通过后返回判定过程中已经算出的值」与宾语用词；§4.2 澄清 `check*` 的禁用只针对返回 bool 的公开判断；§十五 补一条取值型不入 `_check*`。另两处仅 ABI 元数据（selector 不变）：`ISubmit.submitNewProposal` 入参 `body` → `proposalBody`、`ExecutorBase.onProposalSubmitted` 按 `IProposalTarget` 补四个参数名。全部改动都是 `internal`/`private`，ABI 面不变。同批给 `check_naming.py` 补 **N24**（`_(require|validate)[A-Z]` 即报），把这条从人工核对改为门禁——检查器只收各仓 `src/`，`script/deploy/` 的 `_validateConfig` / `_validateDeployment` 与 `test/` 的 `_requireInitRevert` 等辅助天然在外，无需白名单。
+- **私有分页辅助去 `Page`（2026-11-01）**：按 §7.5「分页不进名字」收口五处——`GroupActionJoin._pageProviderIds` → `_providerIds`、`GroupActionVerify._pageMembers` → `_memberIds`、`GovVotedBanSource._votersPage` → `_voters`、`GroupChat._uint256Page` → `_uint256Values`、`GroupChat._messagesPage` → `_messages`；全部 `internal`/`private`，ABI 不变。
 
 ## 十五、审查清单
 
@@ -344,6 +361,8 @@ Layout 中**部署后冻结的字段**按 §3.1 用 `UPPER_SNAKE`（`ACTION_TARG
 - [ ] 构造参数与局部变量为 lowerCamelCase，且不带 `_`。
 - [ ] `address` 实体参数/字段带 `Address` 后缀；角色地址用角色名。
 - [ ] 没有 `get`/`num`/`amt`/`addr`/`Data`/`Of` 等禁用词。
+- [ ] 守卫是 `_check<宾语>`（`view`/`pure`、不满足即 revert、存在意义是拦截），不是 `_require<名词>`，也不是 `_validate<名词>`（`test/`、`script/deploy/` 除外，见 §一 与 `dev-standards` §6）。
+- [ ] 取值型读辅助是 `_xxxOrRevert`，没有改成 `_check*`；函数名里不嵌错误名。
 - [ ] `check_naming.py --check` 无新增。
 
 ## 附录 A：P0 改名表（已全部落地）

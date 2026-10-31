@@ -72,7 +72,7 @@ Core 门禁：**446 tests 全绿**；`build --deny warnings`、`lint`、`check_c
 - **名称长度上限**：`64 bytes` → `32 bytes`（避免与钱包地址混淆）
 - **铸造费用代币地址**：由旧构造函数传入改为 `init(firstTokenAddress)`，由 `Launch.init` 在创建首币时同步调用一次
 - **持有人枚举改分页**：`holdersCount()` 与 `holdersAtIndex(uint256 index)` 合并为 `holders(uint256 offset, uint256 limit, bool reverse) returns (address[] memory holderList, uint256 totalCount)`；`offset` 大于或等于总数时返回空数组与真实总数、不回滚，配套删除错误 `HolderIndexOutOfBounds(uint256 length)`。分页语义与 `Phase.syncObservations` 一致。持有人集合的精确去重语义不变（地址去重、自转账既不加入也不移除、移除采用 swap-and-pop）
-- **铸造路径内部整理**：费用扣款由旧 `SafeERC20.safeTransferFrom` 的 `SafeERC20FailedOperation(address)` 改为 `IERC20.transferFrom` 失败后回滚 `FeeTransferFailed()`，回滚面全部落在 `IMemberNFT.sol`、不再依赖 OZ 库内错误；`_validateName` 顺带返回规范化名称，`mint` 内 `_toLowerCase` 只算一次。对外 ABI 只多出 `FeeTransferFailed`
+- **铸造路径内部整理**：费用扣款由旧 `SafeERC20.safeTransferFrom` 的 `SafeERC20FailedOperation(address)` 改为 `IERC20.transferFrom` 失败后回滚 `FeeTransferFailed()`，回滚面全部落在 `IMemberNFT.sol`、不再依赖 OZ 库内错误；`_checkName` 顺带返回规范化名称，`mint` 内 `_toLowerCase` 只算一次。对外 ABI 只多出 `FeeTransferFailed`
 
 ---
 

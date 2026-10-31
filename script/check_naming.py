@@ -299,6 +299,8 @@ def check(files):
                 low = name.lower()
                 if name not in STD_EXEMPT and any(low.startswith(v) and name[len(v):len(v) + 1].isupper() for v in BANNED_VERBS):
                     add("N02", name, f, line, "禁用动词前缀 " + "/".join(BANNED_VERBS))
+                if re.match(r"_(require|validate)[A-Z]", name):
+                    add("N24", name, f, line, "守卫用 _check<宾语>、取值型用 _xxxOrRevert（§4.1）")
                 if UPPER.match(name) and fn["params"]:
                     add("N03", name, f, line, "冻结值命名不得带参数（返回值随入参变化）")
                 if fn["vis"] in ("external", "public"):
