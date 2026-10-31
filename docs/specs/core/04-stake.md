@@ -12,7 +12,6 @@ Stake 按 `tokenAddress + memberId` 维护流动性质押和加速质押，不�
 | `promisedWaitingPhases` | 承诺解锁期，单位 Phase |
 | `unlockRequestPhase` | 申请 Phase；0 表示未申请 |
 | `totalLiquidityShares` / `totalBoostShares` | 社区份额总量 |
-| `totalLp` | 合约记账的 LP 总量（等于 `lastWithdrawableLp + lastFeeLp`，不含他人主动转入的 LP） |
 | `lastWithdrawableLp` | 上次结算后的可提取 LP 基准 |
 | `lastFeeLp` | 上次结算后的协议手续费 LP 基准 |
 | `lastSqrtKOfLp` | 上次结算的 sqrt(k) 基准 |
@@ -24,6 +23,8 @@ Stake 按 `tokenAddress + memberId` 维护流动性质押和加速质押，不�
 | `pairAddress[tokenAddress]` | 社区对应的 Uniswap V2 兼容 Pair 地址 |
 | `totalBurnedToken[tokenAddress]` | 社区代币全局累计销毁量 |
 | `totalParentTokenBurned[tokenAddress]` | 该社区手续费中父币的累计数量（换币前） |
+
+`totalLp` 不是存储字段：`totalStake()` 与 `_updateSqrtKBaseline` 都在使用时由 `lastWithdrawableLp + lastFeeLp` 派生，值等于合约记账的 LP 总量（不含他人主动转入的 LP）。
 
 ## 流动性质押与手续费
 
@@ -58,7 +59,7 @@ newWithdrawableLp = floor(lastWithdrawableLp * lastSqrtKOfLp / currentSqrtKOfLp)
 newFeeLp = totalLp - newWithdrawableLp
 ```
 
-`totalLp` 是合约记账的 LP 总量（`lastWithdrawableLp + lastFeeLp`），`pairTotalSupply` 是 Pair 的 LP 总供应。两者必须同一口径：基线 `lastSqrtKOfLp` 与重分类都用记账量计算，任何人主动转入的 LP 既不影响基准也不进入可提取量，避免重分类两侧基数不一致。仅当 `currentSqrtKOfLp > lastSqrtKOfLp` 时重分类手续费；`pairTotalSupply == 0`、`currentSqrtKOfLp == 0` 或基准未增长时跳过结算，不能先除零再判断。结算更新 `lastWithdrawableLp`、`lastFeeLp` 和 `lastSqrtKOfLp`；`totalLp` 不单独写，它在每次基准更新（份额铸造、提取、结算）时由 `lastWithdrawableLp + lastFeeLp` 重算，这是它唯一的写入方式。
+`totalLp` 是合约记账的 LP 总量（`lastWithdrawableLp + lastFeeLp`），`pairTotalSupply` 是 Pair 的 LP 总供应。两者必须同一口径：基线 `lastSqrtKOfLp` 与重分类都用记账量计算，任何人主动转入的 LP 既不影响基准也不进入可提取量，避免重分类两侧基数不一致。仅当 `currentSqrtKOfLp > lastSqrtKOfLp` 时重分类手续费；`pairTotalSupply == 0`、`currentSqrtKOfLp == 0` 或基准未增长时跳过结算，不能先除零再判断。结算更新 `lastWithdrawableLp`、`lastFeeLp` 和 `lastSqrtKOfLp`；`totalLp` 不落存储，`totalStake()` 与 `_updateSqrtKBaseline` 都在使用时由 `lastWithdrawableLp + lastFeeLp` 派生。
 
 **流动性质押的执行顺序**：先重分类手续费（更新 `lastWithdrawableLp`），再按新的 `lastWithdrawableLp` 计算份额。两个公式都以 `lastWithdrawableLp` 为输入，顺序错误会导致份额和手续费计算错误。
 

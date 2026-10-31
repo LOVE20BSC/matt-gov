@@ -146,7 +146,7 @@ rg -n 'core\.md|action\.md|group-chat\.md|launchFirstToken|initializeGenesis|TOD
 | 激励 | `core/07`、`action/07`、`acceptance.md` | 预留、铸造、销毁和分配是否守恒 |
 | 发射 | `core/00`、`core/08`、`acceptance.md`、CHANGES | `Launch.init`、首币、次数和阈值是否一致 |
 | 参与 | `action/01`、`action/03`、Group Chat 类型 | 加入/退出、forceClearJoinState、资产和资格来源是否一致 |
-| 群聊身份 | `CONTEXT.md`、Group Chat 全部模块 | owner、delegate、sender、admin 是否都按 NFT 身份运行 |
+| 群聊身份 | `CONTEXT.md`、Group Chat 全部模块 | owner、sender、admin 是否都按 NFT 身份运行 |
 | 仓库边界 | `repositories.md`、各 README、规格依赖 | 是否存在越界 import、循环依赖或运行时依赖误标 |
 | 验收 | `acceptance.md`、各 testing 文件、CHANGES | 每个承诺是否都有测试和证据位置 |
 
@@ -207,9 +207,9 @@ rg -n 'core\.md|action\.md|group-chat\.md|launchFirstToken|initializeGenesis|TOD
 ### Group Chat
 
 - [ ] 一个 MemberNFT 只能对应一个 Chat
-- [ ] `senderId`、owner、delegate、admin 全部按 MemberNFT 校验
+- [ ] `senderId`、owner、admin 全部按 MemberNFT 校验
 - [ ] 不存在默认 NFT 映射和地址主体接口
-- [ ] owner/delegate 的资格绕过范围明确，admin 不会意外绕过黑名单
+- [ ] owner 的资格绕过范围明确，admin 不会意外绕过黑名单
 - [ ] scope → ban → before → 写入 → 事件 → after 的顺序固定
 - [ ] `beforePost` 失败回滚，`afterPost` 失败保留消息并记录错误
 - [ ] 消息、提及、引用、分页和 Round 索引的边界明确

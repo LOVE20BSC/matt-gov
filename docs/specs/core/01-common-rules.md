@@ -5,7 +5,7 @@
 - 业务主键为 MemberNFT 的 `memberId`；`author`、`submitterId`、`voterId` 均记录该身份，钱包地址仅作控制者或调用者。
 - 处分成员资产、权益或业务状态时校验 `MemberNFT.ownerOf(memberId) == msg.sender`。单向融合只增加目标状态，不要求调用者持有目标 NFT。
 - NFT 转移不改写历史质押、投票、发射、快照、已结算激励或事件。当前质押、未铸造激励、未用发射次数和解锁提取权由新持有人控制，解锁倒计时不重置。
-- Proposal Target 和首批代币 distributor 是明确的地址型角色；群聊委托属于 Group Chat 内部权限，见 [组织上下文](../../../CONTEXT.md)。
+- Proposal Target 和首批代币 distributor 是明确的地址型角色；群聊权限属于 Group Chat 内部事务，见 [组织上下文](../../../CONTEXT.md)。
 
 例：Phase 10 申请解锁，等待 5 个 Phase；Phase 12 转移 NFT，仍在 Phase 15 由新持有人提取。
 

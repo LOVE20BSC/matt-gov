@@ -4,7 +4,7 @@
 
 ## 配置与接口
 
-部署依赖通过一次性 `init` 绑定：ActionTarget 与 Stake（`ACTION_TARGET_ADDRESS()`、`STAKE_ADDRESS()`）；MemberNFT、Phase 与 Pair Factory 从 Stake 派生（`MEMBER_NFT_ADDRESS()`、`PHASE_ADDRESS()`、`PAIR_FACTORY_ADDRESS()`），不重复作为入参。每个行动的配置由创建回调解析，不能放进共享合约的全局 init。
+部署依赖通过构造函数绑定，且只收 ActionTarget：Stake 经 `ActionTarget.VOTE_ADDRESS()` 的 `STAKE_ADDRESS()` 反查，MemberNFT、Phase 与 Pair Factory 再从 Stake 派生（`MEMBER_NFT_ADDRESS()`、`PHASE_ADDRESS()`、`PAIR_FACTORY_ADDRESS()`）。每个行动的配置由创建回调解析，不进入构造函数。
 
 完整 ABI 见 [`ILpExecutor.sol`](https://github.com/LOVE20BSC/action/blob/main/src/interfaces/ILpExecutor.sol)。
 
@@ -14,7 +14,7 @@ Target Data 是无键数组，按位置读取。第 `0` 项是 ActionTarget 保�
 
 校验与回滚：
 
-`init` 只防重复初始化；ActionTarget、Stake 及从 Stake 派生的 MemberNFT、Phase、Pair Factory 有代码由 `DeployAction` 广播前校验；`21_check.sh` 直接读取 Stake 的派生 getter 与 core 地址文件复核。
+构造函数没有重复初始化入口；ActionTarget、Stake 及从 Stake 派生的 MemberNFT、Phase、Pair Factory 有代码由 `DeployAction` 广播前校验；`21_check.sh` 回读 `STAKE_ADDRESS()`、`MEMBER_NFT_ADDRESS()`、`PHASE_ADDRESS()` 并与 core 地址文件复核，`PAIR_FACTORY_ADDRESS()` 与 Stake 的工厂地址一致。
 
 | 条件 | 回滚错误 |
 | --- | --- |

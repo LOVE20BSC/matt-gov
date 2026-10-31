@@ -24,7 +24,7 @@
 | `compatibility` | 外部 WETH 与 Uniswap V2 兼容 DEX 测试 | 外部 WETH、Factory、Pair、Router 和本地 Uniswap V2 参考实现 | 进行中；PancakeSwap 兼容性验证已完成（BSC 主网与测试网），Git 仓库待建 |
 | `dex` | 独立部署的 Uniswap V2（`Factory`、`Pair`、`Router02`），上游源码零修改、永久关闭协议抽成 | 固定提交的上游 Uniswap `v2-core`/`v2-periphery`/`solidity-lib` 子模块 | 活跃 |
 | `action` | `ActionTarget`、LP、GroupAction 和 GroupService Executor | `core`（`libs`、OpenZeppelin 经 `core` 传递） | 活跃；ActionTarget、LP、GroupAction、GroupService 均已迁移并完成测试 |
-| `group-chat` | 群聊业务和 **Group Chat Delegate** | `action`（`core`、`libs`、OpenZeppelin 经 `action` 传递） | 活跃；群聊业务与 Group Chat Delegate 已实现并提交 |
+| `group-chat` | 群聊业务 | `action`（`core`、`libs`、OpenZeppelin 经 `action` 传递） | 活跃；群聊业务已实现并提交 |
 | `interface-test` | BSC 前端开发、集成和验收 | `core`、`action`、`group-chat` | 规划中；日常修改入口 |
 | `interface` | BSC 前端正式发布 | 验收后的 `interface-test` | 规划中；只接受人工同步 |
 | `periphery` | 跨仓库调用与外围适配 | `core`、`action` | 规划中 |
@@ -39,4 +39,4 @@
 
 旧 `LOVE20TKM/extension`、`LOVE20TKM/extension-group` 的业务迁入 `action`；旧 `LOVE20TKM/extension-lp` 仅迁移 V2 LP 业务，重写为 `action` 内的 LP 行动执行合约，V1 LP 实现及旧 LP 工厂不迁移。`burn`、未部署的 `chat` 和外部 `v2-periphery` 不在本组织清单中。Burn 业务合约不迁移到 LOVE20BSC 组织，但其空投合约（`Airdrop.sol`）必须在 Burn 活动结束后由旧 [`LOVE20TKM/burn`](https://github.com/LOVE20TKM/burn) 代码库单独部署到 BSC，作为首个代币 `distributor` 的外部依赖；部署记录必须公开指向 [`Airdrop.sol`](https://github.com/LOVE20TKM/burn/blob/main/src/Airdrop.sol)、[`DeployAirdrop.s.sol`](https://github.com/LOVE20TKM/burn/blob/main/script/DeployAirdrop.s.sol)、[`airdrop-design.md`](https://github.com/LOVE20TKM/burn/blob/main/docs/airdrop-design.md)，并记录实际使用的 Burn 提交、来源区块、Merkle Root 和已部署 Airdrop 地址。
 
-旧 `LOVE20TKM/group` 仓库中已部署且仍需要的 `LOVE20Group` 只迁移合约级实现，并入 `core` 后重命名为 `MemberNFT`；旧 `LOVE20Group` 是成员身份 NFT，不是“群”的 NFT，改名即为消除该误解——链群以 `groupId` 为业务标识，不存在第二套 GroupNFT 身份。`GroupDefaults` 属于地址到默认 NFT 的便利映射，BSC 版不迁移、不部署；不新增独立的 `group` 代码库。旧 GroupDelegate 不进入 `core`，Chat 所需的委托逻辑仅在 `group-chat` 内实现，并统一称为 **Group Chat Delegate**。
+旧 `LOVE20TKM/group` 仓库中已部署且仍需要的 `LOVE20Group` 只迁移合约级实现，并入 `core` 后重命名为 `MemberNFT`；旧 `LOVE20Group` 是成员身份 NFT，不是“群”的 NFT，改名即为消除该误解——链群以 `groupId` 为业务标识，不存在第二套 GroupNFT 身份。`GroupDefaults` 属于地址到默认 NFT 的便利映射，BSC 版不迁移、不部署；不新增独立的 `group` 代码库。旧 `GroupDelegate` 不进入 `core`，也不进入 BSC 版：群聊授权只认 NFT 当前持有人，代理需求留给上层托管合约，见 [ADR-005](adr/005-remove-group-chat-delegation.md)。

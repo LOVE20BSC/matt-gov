@@ -4,6 +4,25 @@
 
 > 本文记录迁移当时的新旧对照。2026-10-30 命名标准落地后，历史段落中的标识符未逐一回写（按「迁移历史不改写」保留）；当前 ABI 与命名以 `action/src/interfaces/`、[`docs/specs/action/`](action/) 与 [`naming-standards.md`](../naming-standards.md)（§14 进度）为准。
 
+## 构造函数收敛与 immutable（2026-10-31）
+
+三个 Executor 从「无参部署 + `init`」改为构造函数绑定，并删除 `initialized()`：
+
+- 构造函数：`LpExecutor(actionTargetAddress)`、`GroupActionExecutor(actionTargetAddress, splits)`、`GroupServiceExecutor(groupActionExecutorAddress)`。GroupService 的 ActionTarget 从 GroupActionExecutor 的 `ACTION_TARGET_ADDRESS()` 反查，其余 Executor 只收 ActionTarget；Stake 经 `ActionTarget.VOTE_ADDRESS()` → `Vote.STAKE_ADDRESS()` 反查，MemberNFT / Phase / Vote / Launch / PairFactory 再从 Stake 派生。
+- ABI：删除 `initialized()`；`IActionExecutor` 暴露 `STAKE_ADDRESS()` / `MEMBER_NFT_ADDRESS()` / `PHASE_ADDRESS()`，`GroupActionExecutor` 在 `IGroupActionExecutor` 另暴露 `VOTE_ADDRESS()`，`GroupServiceExecutor` 在 `IGroupServiceExecutor` 另暴露 `LAUNCH_ADDRESS()` / `MINT_ADDRESS()`，`LpExecutor` 保留 `PAIR_FACTORY_ADDRESS()`；这些 Executor 专属 getter 由 `21_check.sh` 回读核对。SDK、索引器与部署脚本需按新构造参数与 ABI 重新生成。
+- `MemberOwner.sol` 保留为跨仓共享原语（`MemberOwner.ownerOrZero`），group-chat 的 `@action/MemberOwner.sol` import 不变。
+- 外部库函数因 `GroupActionStorage.Protocol` 参数改变 ABI（仅内部链接，无外部消费者）。
+- 存储：`GroupActionStorage.Layout` / `GroupServiceStorage.Layout` 删除冻结地址与 `initialized`，`SPLITS` 与业务映射整体前移；本仓无生产部署，Layout 变更须整体重新部署（见 [05](action/05-group-action-executor.md) / [06](action/06-service-executor.md)）。
+- 部署脚本：`DeployAction.s.sol` 与 `31_verify.sh` 回填新构造参数；`21_check.sh` 按产物 `immutableReferences` 回填链上 immutable 槽后再逐字节比对，并逐个回读构造派生的地址。
+
+## 轮次轴分层（2026-10-31）
+
+`GroupActionRoundAxis` / `LpRoundAxis` 回归纯换算：只保留 `joinRound` / `verifyRound` / `mintRound` 与 `joinRound` / `mintRound`，不 import 错误接口、不 `revert`。未开始守卫按属主归位：`GroupActionManager.currentJoinRound` 覆盖 `GroupActionJoin` 与 `activateGroup` / `deactivateGroup` / `updateGroupConfig`；`GroupActionVerify.currentVerifyRound` 覆盖 GAE / GSE 的 public getter 与验证提交路径。`ExecutorBase` 的 `currentVoteRound` / `currentJoinRound` / `currentMintRound` 仍是 ABI 守卫层，按周期调用 `_joinRound` / `_mintRound`。
+
+- ABI 不变：`RoundNotStarted(uint256,uint256)` selector `0xea74f32b`、载荷 `(1, 0)`；错误声明仍只有 `IActionExecutorErrors` 一处，不新增 declarations。
+- 行为不变：两个 helper 都是 `internal`，编译期内联，不产生库间 DELEGATECALL；因内联，GAE / GSE 的 runtime 各增加 53 字节，三个 Executor 仍远低于 24,576。
+- registry 的 `RoundNotStarted` revert site 收敛为 `ExecutorBase` 三处、`GroupActionManager`、`GroupActionVerify`；轴库与 GAE / GSE 不再直接出现该 revert。
+
 ## 参数顺序统一（2026-10-31）
 
 对外签名统一为 `round`/`rounds` 在 `memberId` 之前：`isJoinedByRound`、`memberReward`、`mintMemberReward`、`verificationInfosByRound` 改为 `(tokenAddress, actionId, round, memberId)`；`mintMemberRewards` 改为 `(tokenAddress, actionIds[], rounds[], memberId)`。单轮入口的 selector 不变（三个 `uint256` 同型，仅解码顺序变化），因此旧 ABI 编码不会报错、只会把 `memberId` 当 `round`——前端、索引器与本地脚本必须按新 ABI 重新生成；`mintMemberRewards` 的 selector 由 `0xca7a9a12` 变为 `0xb43cd2aa`，旧 ABI 不可复用。内部辅助同步重排：`_registerMembership`、`_applyVerificationInfos`、`_emitLpWithdrawn`、`_verificationValues`、`_replaceApplication`、`_emitVerifierApplicationSubmitted` 均为 `round` 在 `memberId`/`verifierId` 之前，荷载与标志留在其后；`distribution` 的 `round` 移到 `groupReward` 之前（`groupId` 仍为作用域键）。

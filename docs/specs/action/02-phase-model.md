@@ -16,6 +16,8 @@
 
 投票、加入、铸币 Round 见 [`IActionExecutor.sol`](https://github.com/LOVE20BSC/action/blob/main/src/interfaces/IActionExecutor.sol)。GroupAction 和 GroupService 额外提供 `currentVerifyRound()`；LP 不提供虚构的验证接口。加入类写操作只写当前加入 Round，验证只接受当前验证 Round，历史领取允许 `1 <= round <= currentMintRound()`。
 
+实现分层：`GroupActionRoundAxis`（join/verify/mint）与 `LpRoundAxis`（join/mint）只做 `phase → round` 纯换算，入参是 Phase 地址、不 import 错误接口。未开始守卫由消费方承担：Executor 基座的 `currentVoteRound`/`currentJoinRound`/`currentMintRound` 是 ABI 查询入口；业务模块内部用到时，`GroupActionManager.currentJoinRound` 与 `GroupActionVerify.currentVerifyRound` 是共享实现，其他模块以 `internal` 内联复用。两条路径回滚同一载荷 `RoundNotStarted(1, 0)`。
+
 冷启动示例：
 
 | 当前 Phase | 已开始的最早业务 |

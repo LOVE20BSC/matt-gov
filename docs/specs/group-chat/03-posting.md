@@ -9,7 +9,7 @@
 3. Chat 已激活且 `postingAllowed = true`（`ChatNotActivated(groupId)` / `PostingNotAllowed(groupId)`）。
 4. content 非空（`ContentEmpty()`），字节数不超过 `MAX_CONTENT_LENGTH`，默认 4096（`ContentTooLong(length, maxLength)`）。
 5. 提及数不超过 `MAX_MENTIONED_SENDER_IDS`，默认 32（`TooManyMentionedSenderIds(length, maxLength)`）；每个 NFT 存在（缺失回 `ERC721NonexistentToken(mentionedSenderId)`）且不重复（`DuplicateMemberId(memberId)`）。
-6. mentionAll 为 true 时，sender 必须为群本身、有效 delegate 或有效 admin（`MentionAllUnauthorized(groupId, senderId)`）。
+6. mentionAll 为 true 时，sender 必须为群本身或有效 admin（`MentionAllUnauthorized(groupId, senderId)`）。
 7. quotedMessageId 为 0 表示无引用；非零必须指向本 Chat 已存在消息（`QuotedMessageNotFound(groupId, quotedMessageId)`）。
 8. 执行 [规则槽位](02-rules.md#顺序与例外) 的 scope、ban 和插件逻辑：scope 拒绝回 `ScopeRejected(groupId, senderId, source)`，ban 拒绝回 `BanRejected(groupId, senderId, source)`，外部源调用失败回 `ScopeSourceFailed(groupId, source)` / `BanSourceFailed(groupId, source)`。
 

@@ -4,6 +4,10 @@
 
 本文档列出 BSC Core 相对于 LOVE20TKM 旧协议的所有变更。保留项直接引用旧代码位置，避免重复描述。
 
+## 派生字段 totalLp（2026-10-31）
+
+`TotalStake.totalLp` 删除：`totalStake()` 读取时由 `lastWithdrawableLp + lastFeeLp` 派生，`_updateSqrtKBaseline` 用同一表达式计算基线。返回值与旧的存储字段在各写入路径上一致；`TotalStake` 的存储布局少一个槽位，`lastWithdrawableLp` / `lastFeeLp` / `lastSqrtKOfLp` / `totalBoostShares` 的槽位随之前移。
+
 ## 治理激励参数顺序（2026-10-31）
 
 `mintGovReward` 改为 `(tokenAddress, round, memberId, recipient)`、`mintGovRewards` 改为 `(tokenAddress, rounds[], memberId, recipient)`，与 `govRewardByMemberId` 等读取入口同序。`mintGovReward` 的 selector 不变（两个 `uint256` 同型，旧 ABI 会静默把 `memberId` 当 `round`，调用方必须重新生成 ABI）；`mintGovRewards` 由 `0x4a624a59` 变为 `0xc4a5477d`。

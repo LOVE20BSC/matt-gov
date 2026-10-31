@@ -53,10 +53,10 @@ BSC MemberNFT 的返回值/费用查询 ABI 与旧 group 不完全相同，迁�
 
 旧 Manager 没有 NFT 转出、NFT approve、配置重配、升级或恢复入口，BSC 也不新增。onERC721Received 只接受来自协议 NFT 合约、from 为零的铸造回调；普通安全转入被拒绝，这不代表能阻止 ERC721 的非安全 transferFrom 强行转入。
 
-Manager 无私钥，不存在自然人“丢失 Manager 私钥”；若依赖业务故障，按旧路径失败，不向激活付款者赋予接管权，也不自动替换映射。普通 owner Chat 的 NFT 可转移，委托/admin 有效性依旧按快照处理，不能与 managed NFT 混淆。
+Manager 无私钥，不存在自然人“丢失 Manager 私钥”；若依赖业务故障，按旧路径失败，不向激活付款者赋予接管权，也不自动替换映射。普通 owner Chat 的 NFT 可转移，admin 有效性依旧按快照处理，不能与 managed NFT 混淆。
 
 ## owner 管理型群组 Chat
 
-群组直接用 owner 持有的 MemberNFT 激活，不走 Manager；owner/有效 delegate 可更新四个槽位。GroupMemberScope 和组合归属源行为见 [类型与资格](05-chat-types.md)，后者只把旧 GroupJoin 地址关系查询替换为 BSC 标准 GroupAction Executor 的 memberId 查询。
+群组直接用 owner 持有的 MemberNFT 激活，不走 Manager；仅群 owner 可更新四个槽位。GroupMemberScope 和组合归属源行为见 [类型与资格](05-chat-types.md)，后者只把旧 GroupJoin 地址关系查询替换为 BSC 标准 GroupAction Executor 的 memberId 查询。
 
 核对来源：旧 `LOVE20TKM/group-chat/src/managers/BaseManager.sol`、`LOVE20TKM/group-chat/src/managers/BaseTokenScopeManager.sol`、`LOVE20TKM/group-chat/src/managers/BaseTokenActionScopeManager.sol`，提交见 [入口](README.md#已核对来源)。

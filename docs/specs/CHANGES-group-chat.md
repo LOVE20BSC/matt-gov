@@ -1,6 +1,19 @@
 # Group Chat 迁移差异
 
-用户确认：群聊几乎原样迁移，功能、流程、查询和失败行为保持；业务身份统一为 MemberNFT，删除地址主体平行路径，NFT 代理仅作用于群聊。
+用户确认：群聊几乎原样迁移，功能、流程、查询和失败行为保持；业务身份统一为 MemberNFT，删除地址主体平行路径。群内 NFT 委托已整体移除（2026-10-31），见下节与 [ADR-005](../adr/005-remove-group-chat-delegation.md)。
+
+## 移除群内 NFT 委托（2026-10-31）
+
+用户确认：删除 `GroupChatDelegate`，群聊授权只认 NFT 当前持有人。这是对「原样迁移」的明确差异，现行行为以 [01-lifecycle.md](group-chat/01-lifecycle.md) 为准：
+
+- **删除合约与接口**：`GroupChatDelegate.sol`、`IGroupChatDelegate.sol`；四个合约与接口删除 `GROUP_DELEGATE_ADDRESS` getter；`GroupChat` / `GroupAdmin` / `GroupMember` / `GroupChatBanList` 不再解析 owner/delegate。
+- **构造链**：`GroupAdmin` 构造函数改为 `(groupAddress, maxAdminIds)`，不再从委托合约派生 `GROUP_ADDRESS`；部署脚本少部署一个合约（13 → 12），`11_deploy.sh` / `21_check.sh` / `31_verify.sh` 的键集合与校验项同步。
+- **权限边界**：配置写入口（`setPostingAllowed` 与四个槽位）与管理员授予/撤销只接受群 owner；`operatorId` 参数保留用于事件，但必须等于 `groupId`，否则回 `NotGroupOperator(groupId, operatorId)`。成员名单与人工黑名单仍接受群 owner 或有效 admin。
+- **发言**：scope/ban 豁免只保留 `senderId == groupId`；`mentionAll` 只保留群 owner 与有效 admin（`isAdminId` 分支原本已存在）。
+- **`_isOperator` 内联**：`GroupMember` / `GroupChatBanList` 各自保留本地判定，先 `GroupNotExist(groupId)`，再 `ownerOf(operatorId) == msg.sender`，最后 `operatorId == groupId || isAdminId`；两个接口的 `I<Name>Errors` 补 `GroupNotExist(uint256 groupId)`。按 dev-standards §5.5，不再为去重新建共享库。
+- **删除的 ABI**：`setDelegateId`、`clearDelegatedGroupIds`、`setDelegationAcceptanceEnabled`、`isDelegationAcceptanceEnabled`、`effectiveDelegateId`、`effectiveDelegateIdsByGroupIds`、`delegatedGroupIds`、`ownerOrDelegateId`；事件 `DelegateChanged`、`DelegationCleared`、`DelegationAcceptanceChanged`；错误 `DelegateIsSelfGroup`、`DelegateNotAcceptingNewDelegations`。事件族 `gc.delegation` 随之消失。
+- **测试**：删除 `GroupChatDelegate.t.sol` 与 `MockGroupDelegate.sol`；原 delegate 用例改为 admin 或 owner 路径，新增「admin 不能改配置 / 不能任命管理员」的负向用例。门禁：**152 tests 全绿**（原 172，删除委托套件与其专属用例；后续追加 3 条缺失群/错误顺序用例）；`deploy_scripts_test.py` **13/13**。
+- **上层替代**：需要代理时由使用者在应用层部署托管合约（NFT 转入、记录原持有人与代理人、保留取回权）；该方案委派整个身份，不在本仓库实现。
 
 ## 命名标准落地（2026-10-30）
 
@@ -170,7 +183,7 @@ Group Chat 门禁：**148 tests 全绿**；`build --deny warnings`、`lint`、`c
 
 `script/` 按 [dev-standards §6](../../dev-standards.md) 重组为 `11_deploy.sh` / `21_check.sh` / `31_verify.sh` + `one_click_deploy.sh`；
 `DeployGroupChat.s.sol` 移入 `script/deploy/` 并改用 forge-std `Script`；依赖地址拆为 `addresses.core.params` / `addresses.action.params`；
-部署范围新增 `GroupChatDelegate`（旧流程由仓外文件提供地址），one-click 覆盖本库全部 13 个合约。
+部署范围新增 `GroupChatDelegate`（旧流程由仓外文件提供地址），one-click 覆盖本库全部 13 个合约。**2026-10-31 已移除委托，现行部署为 12 个合约，见文首「移除群内 NFT 委托」。**
 
 ## 验收
 

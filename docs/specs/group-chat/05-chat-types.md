@@ -41,7 +41,7 @@ supportWeight * 1e18 >= totalVoteWeight * 3e15
 
 `supportWeight` / `opposeWeight` / `isBanned` 都是**已结算**值，分母 `totalVoteWeight` 是**实时**值；跨轮或 Stake 变化不会自动刷新其他人的票，名单因此可能双向过期（该进未进、该出未出）。`refreshVoteByTargetSenderId` 无鉴权、幂等、结果与调用者无关，任何地址都可提前结算。
 
-投票身份按 voterId 该 MemberNFT 的**当前**持有人校验，不保存 owner 快照，与 admin/delegate 的双快照模型不同：NFT 转移后旧票仍按原 `settledWeight` 计数，新持有人可改票、撤票或刷新，旧持有人不再能操作该票。
+投票身份按 voterId 该 MemberNFT 的**当前**持有人校验，不保存 owner 快照，与 admin 的双快照模型不同：NFT 转移后旧票仍按原 `settledWeight` 计数，新持有人可改票、撤票或刷新，旧持有人不再能操作该票。
 
 查询视图对 source 无代码的处理：单条 `voteStatusBySenderId` 返回 `(false, 0, 0)`；批量 `voteStatusBySenderIds`、`isBanned`、`isSenderIdBannedBatch` 不检查 source，直接读已结算名单与权重。已结算值照常可读，权重查询才需要 source 合约存在。
 

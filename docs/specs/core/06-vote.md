@@ -34,8 +34,8 @@ Vote 管理当前治理 Round 的 Proposal 投票和加速快照。Proposal 的�
    1. **推举状态**：本轮已推举（`ProposalNotSubmitted(tokenAddress, round, proposalId)`）
    2. **票数**：本次增量为正（`ZeroVoteAmount(proposalId)`）
    3. 记录加速快照：首投记全量，后续只补正增量
-   4. 累加票数，维护本轮有票 Proposal 与投票者集合
-   5. **额度**：成员本轮累计票数不超过票上限（`VoteLimitExceeded(tokenAddress, round, memberId, cumulativeVoteAmount, maxVoteAmount)`，`cumulativeVoteAmount` 为加上本笔后的成员累计票数）
+   4. **额度**：先算加上本笔后的成员累计票数，超过票上限回滚（`VoteLimitExceeded(tokenAddress, round, memberId, cumulativeVoteAmount, maxVoteAmount)`，`cumulativeVoteAmount` 为加上本笔后的成员累计票数）
+   5. 累加票数，维护本轮有票 Proposal 与投票者集合
    6. 发出 `VoteCast` 事件（含本次 `voteAmount`、成员加速快照 `voterBoost` 与全局 `totalVoterBoost`）
    7. `Callback` 且 `target` 非零时回调 `IProposalTarget.onProposalVoted`，失败回滚整笔
 

@@ -1,17 +1,17 @@
 # Group Chat 规格
 
-**迁移原则：保留旧群聊功能和业务行为，只删除地址主体平行路径、适配 MemberNFT/Core/Action 接口，并将 NFT 委托限制在 group-chat 内。** 不把已有支付、管理、分页或失效处理重新列为待设计。
+**迁移原则：保留旧群聊功能和业务行为，只删除地址主体平行路径与群内 NFT 委托、适配 MemberNFT/Core/Action 接口。** 不把已有支付、管理、分页或失效处理重新列为待设计。
 
 ## 已核对来源
 
 - 旧 `LOVE20TKM/group-chat`。
-- 旧 `LOVE20TKM/group/src/GroupDelegate.sol` 的 NFT 委托，接口同一提交。
+- 旧 `LOVE20TKM/group/src/GroupDelegate.sol` 仅用于确认被删除的委托行为，不再迁移。
 - 这些是本地干净工作区的源码基线，不等同于链上部署证明。迁移前仍须核对实际部署来源。
 
 | 文档 | 职责 |
 | --- | --- |
 | [00-overview.md](00-overview.md) | 迁移范围、身份和数据对象 |
-| [01-lifecycle.md](01-lifecycle.md) | 激活、管理和群聊内 NFT 委托 |
+| [01-lifecycle.md](01-lifecycle.md) | 激活、管理和权限边界 |
 | [02-rules.md](02-rules.md) | 规则槽位与身份接口 |
 | [03-posting.md](03-posting.md) | 发言校验和插件失败 |
 | [04-query.md](04-query.md) | Round、消息与分页 |

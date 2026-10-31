@@ -10,14 +10,14 @@
 ## 顺序与例外
 
 ```text
-核心身份和内容校验 -> owner/delegate 资格绕过判断
+核心身份和内容校验 -> owner 资格绕过判断
 -> scopeSource -> banSource -> beforePostPlugin
 -> 写入消息 -> 消息/提及事件 -> afterPostPlugin
 ```
 
-只有 `senderId == groupId` 或 senderId 等于当前有效 delegateId 可跳过 scope/ban；sender 存在及调用者持有的鉴权、群存在、激活、发言开关的校验仍必须执行。
+只有 `senderId == groupId` 可跳过 scope/ban；sender 存在及调用者持有的鉴权、群存在、激活、发言开关的校验仍必须执行。
 
-sender 为群本身（`senderId == groupId`）、有效 delegate 或有效 admin 可 `mentionAll`；admin 不因此绕过 scope/ban。插件失败处理见 [发言](03-posting.md#消息与插件)。
+sender 为群本身（`senderId == groupId`）或有效 admin 可 `mentionAll`；admin 不因此绕过 scope/ban。插件失败处理见 [发言](03-posting.md#消息与插件)。
 
 ## 标准接口
 

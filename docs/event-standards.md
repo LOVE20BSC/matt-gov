@@ -94,7 +94,7 @@
 - 初始化事件携带对象的初始状态，没有旧值。
 - 生命周期事件由事件类型表达迁移方向（`Activated` / `Deactivated`、`Joined` / `Exited`），不再重复携带旧状态。
 - 事件中不得使用哨兵值表达「不存在」：创世与发起拆成不同事件；可选引用用显式布尔字段（如 `hasQuote`）区分。
-- `DelegateChanged.delegateId = 0` 是显式清除编码；`GroupActionJoined/Withdrawn.providerId = 0` 是 self 角色。两者是词表定义的显式值，不是「不存在」的哨兵。
+- `GroupActionJoined/Withdrawn.providerId = 0` 是 self 角色，是词表定义的显式值，不是「不存在」的哨兵。
 
 ### 3.7 部署后冻结
 
@@ -205,10 +205,10 @@ ERC-20 / ERC-721 标准事件保持不变，不进入本规范正文。`AddHolde
 
 强制要求：
 
-- 根键（该事件所属域的顶层标识）必须是第一个字段。根键由发射者自身代表时可以省略：`LOVE20Token` 的 `TokenMinted` / `TokenBurned`、`MemberNFT` 的 `MemberMinted`、`Phase` 的 `PhaseSynchronized` / `PhaseAdjusted` 都不带根键字段。delegation 域（接受开关）的根键是 `delegateId`。
+- 根键（该事件所属域的顶层标识）必须是第一个字段。根键由发射者自身代表时可以省略：`LOVE20Token` 的 `TokenMinted` / `TokenBurned`、`MemberNFT` 的 `MemberMinted`、`Phase` 的 `PhaseSynchronized` / `PhaseAdjusted` 都不带根键字段。
 - 同一事件族内槽位固定，不得族内漂移；各族由 `script/events/check-events.py` 按 `script/events/event-families.txt` 校验（族覆盖、根键首字段、`round` 锚点），ABI 顺序由 `script/events/events-baseline.txt` 锁定。
 - actor 的 id 必须在其地址之前（`operatorId` → `operator`）；actor 地址与对象地址不共槽位。
-- 配置/状态事件默认先携带新值、后携带旧值（`prev*` / `old*`）；整组替换按新组→旧组；旧值组内部沿用新值组的槽位顺序（`DelegateChanged` 的 `prevDelegateId` 与两个 `prev*` 快照同组）；以迁移量本身为事实的 diff 事件（如 `PhaseAdjusted`）按旧→新。
+- 配置/状态事件默认先携带新值、后携带旧值（`prev*` / `old*`）；整组替换按新组→旧组；旧值组内部沿用新值组的槽位顺序；以迁移量本身为事实的 diff 事件（如 `PhaseAdjusted`）按旧→新。
 
 | 族 | 槽位序列 | 事件 |
 |---|---|---|
@@ -228,8 +228,7 @@ ERC-20 / ERC-721 标准事件保持不变，不进入本规范正文。`AddHolde
 | action.verification | 根键 → actionId → 主体 id（`memberId`/`groupId`/`voterId`/`verifierId`）→ round → `applicationId`/`verifierId` → 次级 id（被投的验证者 / 上一申请）→ 数值/布尔 → 文本/数组 | `OriginScoresSubmitted`、`VerifierApplicationSubmitted`、`VerifierApplicationCancelled`、`VerifierStakeDeposited`、`VerifierStakeRefunded`、`VerifierLocked`、`ApplicationVoteRecorded` |
 | action.recipients | 根键 → sourceActionId → round → groupId → 新表 → 旧表 | `RecipientTableChanged` |
 | action.service | 根键 → serviceActionId → round → 对象链（groupId 或 actionTokenAddress）→ 源链/角色 → 数值 | `RecipientPaid`、`ServiceRewardsDistributed` |
-| gc.management | 根键 → 对象标识（id 或对象地址）→ actor id → actor 地址 → 新值组 → 旧值组 | `AdminChanged`、`MemberStatusChanged`、`SenderBanChanged`、`GroupChatActivated`、`PostingAllowedChanged`、`ScopeSourceChanged`、`BanSourceChanged`、`BeforePostPluginChanged`、`AfterPostPluginChanged`、`DelegateChanged`、`DelegationCleared` |
-| gc.delegation | delegateId → delegateOwner → 值 | `DelegationAcceptanceChanged` |
+| gc.management | 根键 → 对象标识（id 或对象地址）→ actor id → actor 地址 → 新值组 → 旧值组 | `AdminChanged`、`MemberStatusChanged`、`SenderBanChanged`、`GroupChatActivated`、`PostingAllowedChanged`、`ScopeSourceChanged`、`BanSourceChanged`、`BeforePostPluginChanged`、`AfterPostPluginChanged` |
 | gc.ban-vote | 根键 → targetSenderId → voterId → 布尔 → 数值 | `SenderBanVoteCast`、`GovSenderBanChanged` |
 | gc.message | 根键 → messageId → senderId → sender → round → 引用 messageId → 数值/布尔 → content | `MessagePosted`、`SenderMentioned` |
 | gc.plugin | 根键 → messageId → round → pluginAddress → 错误指纹 | `AfterPostPluginFailed` |
@@ -257,22 +256,22 @@ ERC-20 / ERC-721 标准事件保持不变，不进入本规范正文。`AddHolde
 - 纯链路事件（`TokenActionGroupActivated`）的 3 个槽给链路键；actor 入 payload。
 - `string` / `bytes` / 动态数组绝不 indexed；禁止 anonymous event。
 - actor 与主对象 id 应当 indexed；同组事件必须在迁移中对齐（`VerifierLocked`、`StakesMerged`）。
-- `gc.management` / `gc.delegation` 族的 actor 在只剩一个槽时按「对象标识形态」择一：对象标识是 **id** 时第三个槽给 actor **地址**（`AdminChanged`、`MemberStatusChanged`、`SenderBanChanged`、`DelegateChanged`、`DelegationCleared`、`DelegationAcceptanceChanged`）；对象标识是**地址**时第三个槽给 actor **id**（`ScopeSourceChanged`、`BanSourceChanged`、`BeforePostPluginChanged`、`AfterPostPluginChanged`）；对象只有根键时 id 与地址都 indexed（`PostingAllowedChanged`、`GroupChatActivated`；后者的 `ownerId` 是 actor id 且恒等于 `groupId`）。这样每个事件至少提供一个对象键和一个 actor 的可过滤形式——钱包按地址订阅、协议按 id 对账各取所需。
+- `gc.management` 族的 actor 在只剩一个槽时按「对象标识形态」择一：对象标识是 **id** 时第三个槽给 actor **地址**（`AdminChanged`、`MemberStatusChanged`、`SenderBanChanged`）；对象标识是**地址**时第三个槽给 actor **id**（`ScopeSourceChanged`、`BanSourceChanged`、`BeforePostPluginChanged`、`AfterPostPluginChanged`）；对象只有根键时 id 与地址都 indexed（`PostingAllowedChanged`、`GroupChatActivated`；后者的 `ownerId` 是 actor id 且恒等于 `groupId`）。这样每个事件至少提供一个对象键和一个 actor 的可过滤形式——钱包按地址订阅、协议按 id 对账各取所需。
 
 ### 6.4 角色词表
 
 角色词表是封闭的：同一角色在全协议只用一种写法。
 
 - `<role>` 表示地址，`<role>Id` 表示协议 id；同一角色同时出现地址与 id 时必须成对，且 **id 在地址之前**（`operatorId` → `operator`、`ownerId` → `owner`、`senderId` → `sender`）。
-- 固定取值包括：`tokenAddress`、`sender` / `senderId`、`owner` / `ownerId`、`operator` / `operatorId`、`admin` / `adminId`、`delegate` / `delegateId`、`delegateOwner`、`memberId`、`voterId`、`submitterId`、`recipientId`、`providerId`、`verifierId`、`launcherMemberId`、`authorId`、`targetSenderId`、`mentionedSenderId`、`sourceMemberId` / `targetMemberId`。
-- 角色 id 的旧值加 `prev` 前缀（`prevDelegateId`）；成员 id 一律写 `memberId`，不得写成 `id`（`MemberMinted` 已统一）。
+- 固定取值包括：`tokenAddress`、`sender` / `senderId`、`owner` / `ownerId`、`operator` / `operatorId`、`admin` / `adminId`、`memberId`、`voterId`、`submitterId`、`recipientId`、`providerId`、`verifierId`、`launcherMemberId`、`authorId`、`targetSenderId`、`mentionedSenderId`、`sourceMemberId` / `targetMemberId`。
+- 角色 id 的旧值加 `prev` 前缀；成员 id 一律写 `memberId`，不得写成 `id`（`MemberMinted` 已统一）。
 - 对象 id 一律写 `<object>Id`：`actionId`、`proposalId`、`applicationId`、`previousApplicationId`、`messageId`、`quotedMessageId`、`groupId`、`serviceActionId` / `sourceActionId`。对象 id 不登记为角色。
 - 对象地址与 actor 地址分列：`executor`、`distributor`、`recipient`、`target`、`joinTokenAddress`、`actionTokenAddress`、`sourceAddress`、`pluginAddress`、`to` / `from` 是对象或对手方地址，不占 actor 槽位。
-- 快照角色统一为 `<object>Snapshot`：`ownerSnapshot`、`delegateOwnerSnapshot`、`groupOwnerSnapshot`、`adminOwnerSnapshot`；旧值加 `prev` 前缀（`prevOwnerSnapshot`、`prevDelegateOwnerSnapshot`、`prevGroupOwnerSnapshot`、`prevAdminOwnerSnapshot`）。
+- 快照角色统一为 `<object>Snapshot`：`ownerSnapshot`、`groupOwnerSnapshot`、`adminOwnerSnapshot`；旧值加 `prev` 前缀（`prevOwnerSnapshot`、`prevGroupOwnerSnapshot`、`prevAdminOwnerSnapshot`）。
 - 配置地址按配置项命名：`scopeSource`、`banSource`、`beforePostPlugin`、`afterPostPlugin`；旧值加 `prev` 前缀（`prevSourceAddress`、`prevPluginAddress`）。
 - 父链根键：`parentTokenAddress`；`tokenAddress` 是根键本身，两者不得互换成 `token` / `parent`。
 - 跨 token 的服务事件使用限定角色：`sourceTokenAddress` / `sourceActionId`、`serviceTokenAddress` / `serviceActionId`、`actionTokenAddress`。
-- `providerId = 0` 表示自筹来源（self）；`DelegateChanged.delegateId = 0` 表示清除委托。两者是显式值，不另设布尔。
+- `providerId = 0` 表示自筹来源（self），是显式值，不另设布尔。
 - 禁止同义混用：`author`（id）改为 `authorId`，`senderAddress` 改为 `sender`，`token` 改为 `tokenAddress`。
 
 ### 6.5 金额与 Token 语义
@@ -295,7 +294,7 @@ ERC-20 / ERC-721 标准事件保持不变，不进入本规范正文。`AddHolde
 - 表状/结构配置一律旧+新；批量配置的低频事件可以因此变大。
 - 初始化事件无旧值；生命周期事件不重复旧状态。
 - 非配置的状态迁移（投票、销毁等）由上一条同对象事件提供旧值。
-- 快照型配置按「新快照组 → 旧快照组」排列，组内沿用新值组的槽位顺序：`DelegateChanged` 的 `delegateId, owner, ownerSnapshot, delegateOwnerSnapshot` 之后才是 `prevDelegateId, prevOwnerSnapshot, prevDelegateOwnerSnapshot`；`AdminChanged` 的 `listed, groupOwnerSnapshot, adminOwnerSnapshot` 之后才是 `prevListed, prevGroupOwnerSnapshot, prevAdminOwnerSnapshot`。
+- 快照型配置按「新快照组 → 旧快照组」排列，组内沿用新值组的槽位顺序：`AdminChanged` 的 `listed, groupOwnerSnapshot, adminOwnerSnapshot` 之后才是 `prevListed, prevGroupOwnerSnapshot, prevAdminOwnerSnapshot`。
 
 ### 6.8 动态字段上限
 
@@ -331,7 +330,7 @@ v1 基线：
 2. 标准事件（ERC-20 / ERC-721 / UniswapV2 `Sync` 等）；
 3. 不可变部署参数。
 
-当前派生缓存清单与推导来源见 `.scratch/events-spec/01-gap-table.md` §7，包括 Launch credit、Stake LP 基准、pair 地址、Phase 观测、holder 集合、分红除数、`govRatioAtMint`、验证排名、provider 索引、join block/amount、mint nonce、delegate 索引、ban operator 状态、admin 有效性与消息索引。
+当前派生缓存清单与推导来源见 `.scratch/events-spec/01-gap-table.md` §7，包括 Launch credit、Stake LP 基准、pair 地址、Phase 观测、holder 集合、分红除数、`govRatioAtMint`、验证排名、provider 索引、join block/amount、mint nonce、ban operator 状态、admin 有效性与消息索引。
 
 ### 6.10 注释
 
@@ -399,7 +398,6 @@ v1 基线：
 | AdminSet | 管理员增删、快照刷新 | `AdminChanged` |
 | MemberSet | 成员状态 | `MemberStatusChanged` |
 | BanSet | 管理员封禁、投票、结果封禁 | `SenderBanChanged`、`SenderBanVoteCast`、`GovSenderBanChanged` |
-| Delegation | 设置、清零、接受开关 | `DelegateChanged`、`DelegationCleared`、`DelegationAcceptanceChanged` |
 | ManagerLink | token → group、token+action → group | `TokenGroupActivated`、`TokenActionGroupActivated` |
 | GroupName | 群名铸造 | core `MemberMinted`（跨仓链路） |
 
@@ -460,5 +458,5 @@ v1 基线：
 - 接口（精确签名）：
   - `core/src/interfaces/ILOVE20Token.sol`、`ILaunch.sol`、`IMemberNFT.sol`、`IMint.sol`、`IPhase.sol`、`IStake.sol`、`ISubmit.sol`、`IVote.sol`
   - `action/src/interfaces/IActionTarget.sol`、`IActionExecutor.sol`、`IGroupActionManager.sol`、`IGroupActionJoin.sol`、`IGroupActionVerify.sol`、`IGroupRecipients.sol`、`IGroupServiceExecutor.sol`、`ILpExecutor.sol`
-  - `group-chat/src/interfaces/IGroupChat.sol`、`IGroupAdmin.sol`、`IGroupMember.sol`、`IGroupChatBanList.sol`、`IGroupChatDelegate.sol`、`sources/ban/IGovVotedBanSource.sol`、`managers/ITokenScopeManagerBase.sol`、`managers/ITokenActionScopeManagerBase.sol`
+  - `group-chat/src/interfaces/IGroupChat.sol`、`IGroupAdmin.sol`、`IGroupMember.sol`、`IGroupChatBanList.sol`、`sources/ban/IGovVotedBanSource.sol`、`managers/ITokenScopeManagerBase.sol`、`managers/ITokenActionScopeManagerBase.sol`
 - 错误规范：`matt-gov/docs/error-standards.md`（事件与错误的分工：revert 用错误，成功/捕获型失败用事件）

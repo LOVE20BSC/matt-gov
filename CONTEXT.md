@@ -43,5 +43,5 @@
 - **核心治理层**：`core` 提供 `Stake`、`Submit`、`Vote`、`Mint`、`MemberNFT`、`Phase` 和基础子币发射能力（包括发射次数账本、次数融合/消耗和子币创建）等通用能力。核心治理激励不依赖具体提案扩展的业务结果。
 - **提案扩展层**：按 Proposal 类型实现 Target。当前社群行动类型由 `action` 代码库维护，包含由旧 `LOVE20TKM/extension-lp` V2 重写而来的 LP Executor、GroupAction Executor 和 GroupService Executor；其内部是否拆分执行器、验证器或分配器属于该业务自身。
 - **发射分配层**：公平发射后的复杂分配机制本阶段不创建 `launch` 代码库；未来需求明确后再作为独立扩展建立，不影响 `core` 的发射基础能力。
-- **群聊边界**：`group-chat` 保留旧群聊功能和业务行为，仅删除地址主体平行路径并适配 MemberNFT/Core/Action。**Group Chat Delegate** 仍是 NFT 到 NFT 的委托，保留群内配置、管理员、成员与人工黑名单管理权限，但仅由 group-chat 使用；Core、Action、Launch 不读取此委托作为授权。付款地址、owner 快照和审计地址不属于要删除的业务身份。
+- **群聊边界**：`group-chat` 保留旧群聊功能和业务行为，仅删除地址主体平行路径与群内 NFT 委托并适配 MemberNFT/Core/Action。群聊授权只认 NFT 当前持有人，不存在 `GroupChatDelegate` 或 `GROUP_DELEGATE_ADDRESS`；需要代理时由上层托管合约完成，见 [ADR-005](docs/adr/005-remove-group-chat-delegation.md)。付款地址、owner 快照和审计地址不属于要删除的业务身份。
 - **配套仓库**：`compatibility` 专门验证外部 WBNB/WETH9 与 Uniswap V2 兼容的 PancakeSwap 依赖的接口和实际行为；`periphery`、`script`、`love20-anvil`、`interface-test`、`interface`、`batch-transfer` 和 `docs` 是外围、部署、集成测试、前端或文档仓库，不改变核心领域关系。`compatibility` 不属于任何生产合约的运行时依赖。

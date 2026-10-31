@@ -7,16 +7,16 @@
 **通用部分**（在 `IActionExecutor` 中定义）：
 - 继承 `IProposalTarget`，实现 Core 层的三类回调；回调仅接受 ActionTarget 调用
 - `ACTION_TARGET_ADDRESS()` — 自证绑定：ActionTarget 在 `onProposalCreated` 用它与 `address(this)` 握手，防止 executor 误配
-- `initialized()` — 与 core 六个接口同形
 - `exit(tokenAddress, actionId, memberId)` — 完全退出的签名是通用的
 - `mintMemberReward(...)` / `memberReward(...)` 与事件 `MemberRewardMinted` — 成员级奖励的铸造与查询，签名三家一致（成员级奖励裁决）
 - `mintMemberRewards(...)` — 批量成员结算（平行数组按下标配对，任一元素失败整笔回滚）
 - `joinedAmountByActionId(...)` / `joinedAmountByMemberId(...)` / `joinTokenAddress(...)` — 截止加入轮 `round` 结束的累计参与量、按成员累计量与参与计价代币（`round` 大于当前加入轮时按未开始返回 0；计价代币与轮次无关，不带 `round`；口径由各 Executor 规格固定）。计价代币是 `joinedAmountByActionId` 的计价单位：LP 为 LP 对币、GroupAction 为 join token、GroupService 为行动代币（按激活质押代理计量）。前端展示行动列表与派生指标时只需读基座三者，无需按 Executor 分支。GroupAction 另有成员记录快照 `joinInfo(tokenAddress, actionId, round, memberId) returns (JoinInfo)`（`joinedRound` / `groupId` / `ownAmount` / `providerAmount`）：它**不重复给出聚合总量**，总量只有基座 `joinedAmountByMemberId` 一个来源
 - 基座 `joinTokenAddress` 是唯一的通用计价代币 getter；LP 与 GroupAction 直接使用该名（不再重复声明）。GroupService 的计价代币语义是行动代币，保留 `actionTokenAddress` 作为领域别名，与基座 `joinTokenAddress` 同键同值——这是登记在案的单点例外，改其一必须同批改另一个
 - `currentVoteRound()` / `currentJoinRound()` / `currentMintRound()` — 从 `Phase.currentPhase()` 推导的三阶段 Round；未开始回滚 `RoundNotStarted(1, 0)`（`requiredRound` 为 1，`currentRound` 为推导出的 0；0 是派生轮未开始的哨兵，需要当前 phase 时读 `Phase.currentPhase()`）
+  推导与守卫分层见 [阶段模型](02-phase-model.md)：轴库只做 `phase → round` 纯换算，不 import 错误接口。
 
 **非通用部分**（各 Executor 自行定义）：
-- `init` 与配置项 — 各 Executor 依赖不同，配置来自行动创建时的 Target Data
+- 构造函数与配置项 — LpExecutor / GroupActionExecutor 只收 ActionTarget（后者另收 splits），GroupServiceExecutor 只收 GroupActionExecutor（ActionTarget 从它反查）；行动配置来自行动创建时的 Target Data
 - `join` — 参数因行动类型而异：
   - `ILpExecutor`: `join(tokenAddress, actionId, memberId, amount)`
   - `IGroupActionExecutor`: `join(tokenAddress, actionId, groupId, memberId, amount, providerId, verificationValues)` — 多了 `groupId` 与 `providerId`
@@ -59,7 +59,9 @@ event GroupActionJoined(address indexed tokenAddress, uint256 indexed actionId,
 ```solidity
 interface IActionExecutor is IProposalTarget, IActionExecutorEvents, IActionExecutorErrors {
     function ACTION_TARGET_ADDRESS() external view returns (address);
-    function initialized() external view returns (bool);
+    function STAKE_ADDRESS() external view returns (address);
+    function MEMBER_NFT_ADDRESS() external view returns (address);
+    function PHASE_ADDRESS() external view returns (address);
 
     function exit(address tokenAddress, uint256 actionId, uint256 memberId) external;
     function mintMemberReward(address tokenAddress, uint256 actionId, uint256 round, uint256 memberId)

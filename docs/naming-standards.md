@@ -38,12 +38,12 @@
 1. `_` 只出现在 internal/private 函数与**可变**的非 public 状态变量上。常量、冻结值、public 状态、参数、返回值、结构体字段一律不带 `_`。库（`library`）的内部函数不加 `_`：调用点 `Uint256Set.add(set, x)` 已经表明来源。
 2. 除上述两处，标识符里不出现下划线。接口参数不带 `_`（见 §十一）。
 3. 只有两种大小写参与语义判断：`lowerCamelCase` 与 `UPPER_SNAKE`。
-4. **同一合约内，函数名、参数名、状态变量名不得重名**。Solidity 对参数遮蔽函数名报 8760，`deny = "warnings"` 下直接编译失败。冲突时改**参数**而不是函数名：函数名是 ABI，参数名只是源码与 ABI JSON 里的字段。例：`memberName(uint256 tokenId)` 给 `memberId(string name)` 让位——`MemberNFT` 是 ERC-721，`ownerOf`/`tokenURI` 的参数本来就叫 `tokenId`。**例外一**：若该参数名同时是结构体字段或事件字段（§十一 四处同源），改**函数名**而不是参数名——此时参数名也是 ABI，改它会让入参/结构体/事件三处一起失配，代价更大。例：`delegateId(groupId)` 让位给 `setDelegateId` 的入参 `delegateId`（该名字同时是 `DelegateState.delegateId`、`DelegateChanged.delegateId`、`DelegationCleared.delegateId` 与 `DelegateNotAcceptingNewDelegations` 的载荷），读入口改 `effectiveDelegateId`。**例外二（读取 getter）**：冲突方是同合约的**读取 getter**、而该参数名同时被 §十一 绑定时，例外一与「getter 是既有 ABI」互相抵触，按「谁进 selector」裁决——函数名进 selector，参数名只进 ABI JSON 字段，所以**改参数名**（加 §十 的实体后缀），getter 不动。例：`scopeSource` 同时是 `ChatConfig.scopeSource`、`ChatInfo.scopeSource`、`GroupChatActivated.scopeSource` 与 getter `scopeSource(uint256)` 的名字，`activateChat` 与 `setScopeSource` 的入参统一改 `scopeSourceAddress`，`banSource` / `beforePostPlugin` / `afterPostPlugin` 同理；§十一 的四处同源在这一层让步（入参带 `Address`、字段与事件保留角色名），见 §十一 的登记例外。
+4. **同一合约内，函数名、参数名、状态变量名不得重名**。Solidity 对参数遮蔽函数名报 8760，`deny = "warnings"` 下直接编译失败。冲突时改**参数**而不是函数名：函数名是 ABI，参数名只是源码与 ABI JSON 里的字段。例：`memberName(uint256 tokenId)` 给 `memberId(string name)` 让位——`MemberNFT` 是 ERC-721，`ownerOf`/`tokenURI` 的参数本来就叫 `tokenId`。**例外一**：若该参数名同时是结构体字段或事件字段（§十一 四处同源），改**函数名**而不是参数名——此时参数名也是 ABI，改它会让入参/结构体/事件三处一起失配，代价更大。**例外二（读取 getter）**：冲突方是同合约的**读取 getter**、而该参数名同时被 §十一 绑定时，例外一与「getter 是既有 ABI」互相抵触，按「谁进 selector」裁决——函数名进 selector，参数名只进 ABI JSON 字段，所以**改参数名**（加 §十 的实体后缀），getter 不动。例：`scopeSource` 同时是 `ChatConfig.scopeSource`、`ChatInfo.scopeSource`、`GroupChatActivated.scopeSource` 与 getter `scopeSource(uint256)` 的名字，`activateChat` 与 `setScopeSource` 的入参统一改 `scopeSourceAddress`，`banSource` / `beforePostPlugin` / `afterPostPlugin` 同理；§十一 的四处同源在这一层让步（入参带 `Address`、字段与事件保留角色名），见 §十一 的登记例外。
 5. **不用单字母或缩写式语义前缀**。`gGroupIds` 的 `g`（global）没有信息量，改写成名词 `joinedGroupIds`；布局结构体 `s` 改 `_layout`（§8.5）。
 
 ### 3.1 冻结值为什么全大写
 
-`Mint.VOTE_ADDRESS` 在 `init` 后不可更改，`GroupChat.scopeSource` 可由群主或委托人 `setScopeSource` 更改。两者都是「某个合约的地址依赖」，但一个全大写、一个 camelCase——区别就是会不会变。若不用大小写编码，两者在 ABI 上完全同形，集成方必须读源码才能区分。本协议的安全模型建立在"哪些值部署后不再变"之上，这个区别必须在名字里可见，所以：**部署后冻结 = 全大写**，与它是 `constant`、`immutable` 还是 `init` 写入的存储无关。
+`Mint.VOTE_ADDRESS` 在 `init` 后不可更改，`GroupChat.scopeSource` 可由群主 `setScopeSource` 更改。两者都是「某个合约的地址依赖」，但一个全大写、一个 camelCase——区别就是会不会变。若不用大小写编码，两者在 ABI 上完全同形，集成方必须读源码才能区分。本协议的安全模型建立在"哪些值部署后不再变"之上，这个区别必须在名字里可见，所以：**部署后冻结 = 全大写**，与它是 `constant`、`immutable` 还是 `init` 写入的存储无关。
 
 这与 OZ 惯例（immutable 用 camelCase）不同，是有意偏离：OZ 面向可升级/可治理合约，冻结与否不是主要矛盾；本协议没有升级路径，冻结与否是主要矛盾。`dev-standards.md` §5.2 已经为 init 固定的配置常量选了大写，本条把它推广成一条轴，而不是引入新约定。
 
@@ -174,7 +174,7 @@
 
 自有读取函数不用 `Of` 后缀（含中缀：`tokenOfGroup`、`groupIdOfAction` 一律不合格；`N20` 匹配「`Of` 后接大写字母或字符串结尾」，中缀由检查器覆盖）。两种合格写法：
 
-- **单实体属性读**：`<属性名>(<key>)`，键由入参名给出——`memberName(tokenId)`、`delegateId(groupId)`、`voteWeight(groupId, voterId)`。
+- **单实体属性读**：`<属性名>(<key>)`，键由入参名给出——`memberName(tokenId)`、`scopeSource(groupId)`、`voteWeight(groupId, voterId)`。
 - **集合筛选**：`<noun>By<Key>`——`proposalIdsByAuthor`、`messagesBySenderId`。
 
 单实体属性读与同合约的入参同名时（`groupId(tokenAddress)` 会撞 `voteWeight(uint256 groupId, …)` 的入参），退回 `<noun>By<Key>`（`groupIdByTokenAddress(tokenAddress)`）——键仍由入参名给出，理由同 §3 硬约束 4 的例外。
@@ -306,10 +306,12 @@ Layout 中**部署后冻结的字段**按 §3.1 用 `UPPER_SNAKE`（`ACTION_TARG
 
 ## 十四、门禁与迁移
 
+2026-10-30 的进度记录包含 delegate 相关名字；这些名字已随 ADR-005 于 2026-10-31 删除，记录保留原样。
+
 - 检查器：`python3 matt-gov/script/check_naming.py` 输出违规；`--check` 对比基线，只拦新增；`--update-baseline` 仅在批量改名落地后重写。
 - 基线：`matt-gov/registry/naming-baseline.txt`，当前 **0 条**（按文件×符号记录，接口与实现各记一条；`core`、`action`、`group-chat` 均已清零）。2026-10-30 由符号粒度改为文件×符号并一次性重写；此后**只减不增**。
 - 迁移按依赖顺序 `libs → core → action → group-chat`，每仓一次提交，`forge test` 全绿。改名落地时同批更新 `CONTEXT.md`（§GroupAction 参与归属）、`docs/specs/` 中引用旧名的条目与 `CHANGES-*.md` 对账表。
-- 进度：`core` 的 23 条机器规则已清零（2026-10-30，473 个用例全绿）；本批同时修正了构造函数参数、局部变量与本次改名涉及的映射名。`action` 已于 2026-10-30 清零（当前 468 个用例全绿，2026-10-31 新增 `test_ZeroBoundaries`），同批人工核对落实：`s` 根布局改 `_layout`（库参数 `self`）、`init` 冻结依赖改 `ACTION_TARGET_ADDRESS`/`GROUP_ACTION_EXECUTOR_ADDRESS` 等全大写 getter、`providerQuota*` 等写入口改动词首位、`_` 后缀参数与局部变量去掉后缀、`RecipientPaidArgs` 改 `RecipientPaidParams`、`MemberOwner.ofOrZero` 改 `ownerOrZero`、LpExecutor 的 `_deduction`/`_joinBlocks`/`_joinAmounts`/`_createdRound` 等映射名按 §8.3 补齐键；`votes` 返回数组与按申请账本按 §9 改为 `voteAmount(s)`；Layout 的冻结字段改全大写（N17 增加 Layout 冻结字段例外）、`groupIds`/`actionIds` 函数改 `groupIdsByRound`/`actionIdsWithActiveGroups`、`totalJoinedAmount*` 改 `joinedAmountByActionId`/`joinedAmountByGroupId`、事件票数字段改 `voteAmountAdded`/`voteAmountTotal`、`applicationIdCounter` 改 `applicationIdCount`；基座计价代币 getter 统一为 `joinTokenAddress`（GroupService 的 `actionTokenAddress` 为单点例外）、`joinInfo` 返回 `joinedAmount`（2026-10-31 改为 `JoinInfo` 记录并删去该派生总量，见 `CHANGES-action.md`）、基座 action 级累计量改 `joinedAmountByActionId`。
+- 进度：`core` 的 23 条机器规则已清零（2026-10-30，473 个用例全绿）；本批同时修正了构造函数参数、局部变量与本次改名涉及的映射名。`action` 已于 2026-10-30 清零（当前 469 个用例全绿，2026-10-31 新增 `test_ZeroBoundaries` 与两条轮次守卫用例），同批人工核对落实：`s` 根布局改 `_layout`（库参数 `self`）、`init` 冻结依赖改 `ACTION_TARGET_ADDRESS`/`GROUP_ACTION_EXECUTOR_ADDRESS` 等全大写 getter、`providerQuota*` 等写入口改动词首位、`_` 后缀参数与局部变量去掉后缀、`RecipientPaidArgs` 改 `RecipientPaidParams`、`MemberOwner.ofOrZero` 改 `ownerOrZero`、LpExecutor 的 `_deduction`/`_joinBlocks`/`_joinAmounts`/`_createdRound` 等映射名按 §8.3 补齐键；`votes` 返回数组与按申请账本按 §9 改为 `voteAmount(s)`；Layout 的冻结字段改全大写（N17 增加 Layout 冻结字段例外）、`groupIds`/`actionIds` 函数改 `groupIdsByRound`/`actionIdsWithActiveGroups`、`totalJoinedAmount*` 改 `joinedAmountByActionId`/`joinedAmountByGroupId`、事件票数字段改 `voteAmountAdded`/`voteAmountTotal`、`applicationIdCounter` 改 `applicationIdCount`；基座计价代币 getter 统一为 `joinTokenAddress`（GroupService 的 `actionTokenAddress` 为单点例外）、`joinInfo` 返回 `joinedAmount`（2026-10-31 改为 `JoinInfo` 记录并删去该派生总量，见 `CHANGES-action.md`）、基座 action 级累计量改 `joinedAmountByActionId`。
 - `group-chat` 已于 2026-10-30 清零（172 个用例全绿），同批落实：
   - **P0 语义错误**：`postingAllowed(groupId)` → `isPostingAllowed(groupId)`（N04）；`voteBySenderId` / `clearVoteBySenderId` / `refreshVoteBySenderId` 改 `voteByTargetSenderId` / `clearVoteByTargetSenderId` / `refreshVoteByTargetSenderId`（N05）。**入参保持 `targetSenderId`**：它同时是 `SenderBanVoteCast.targetSenderId`（由 event-standards §6.1 的 `gc.ban-vote` 槽位冻结）与 `TargetState` 的内部键，按 §3 硬约束 4 的例外让**函数名**让位，而不是改入参——否则 §十一 的四处同源会断。
   - **P1 一致性**：`GroupChatBanList` 的 `_groupAddress` / `_groupDelegateAddress` 与 `GroupMember` 的 `_groupDelegateAddress` 改全大写 immutable `GROUP_ADDRESS` / `GROUP_DELEGATE_ADDRESS`（N10）；`ManagedAction.token` → `tokenAddress`（N14）；`delegateIdOf` / `delegateIdsOf` → `effectiveDelegateId` / `effectiveDelegateIdsByGroupIds`（`delegateId(groupId)` 会与 `setDelegateId` 的入参 `delegateId` 撞 solc 8760，按 §3 硬约束 4 的例外让函数名让位）、`ownerOrDelegateIdOf` → `ownerOrDelegateId`、`voteWeightOf` → `voteWeight`（N20）。
