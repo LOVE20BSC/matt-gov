@@ -2,7 +2,7 @@
 
 本文档列出 BSC Action 相对于 LOVE20TKM 旧协议的所有变更。保留项直接引用旧代码位置，避免重复描述。
 
-> 本文记录迁移当时的新旧对照。2026-10-30 命名标准落地后，历史段落中的标识符未逐一回写（按「迁移历史不改写」保留）；当前 ABI 与命名以 `action/src/interfaces/`、[`docs/specs/action/`](action/) 与 [`naming-standards.md`](../naming-standards.md)（§14 进度）为准。
+> 本文记录迁移当时的新旧对照。标识符回写口径（2026-11-01 定）：「旧 → 新」对照列和记录迁移当时状态的叙述保留旧名，不逐一回写；描述当前 ABI 或当前行为的句子随改名回写（如「轮次轴分层」段里守卫所覆盖的入口名）。当前 ABI 与命名以 `action/src/interfaces/`、[`docs/specs/action/`](action/) 与 [`naming-standards.md`](../naming-standards.md)（§14 进度）为准。
 
 ## 群配置与收款表改名（2026-10-31）
 
