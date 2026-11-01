@@ -1,6 +1,15 @@
 # Group Chat 迁移差异
 
-用户确认：群聊几乎原样迁移，功能、流程、查询和失败行为保持；业务身份统一为 MemberNFT，删除地址主体平行路径。群内 NFT 委托已整体移除（2026-10-31），见下节与 [ADR-005](../adr/005-remove-group-chat-delegation.md)。
+用户确认：群聊几乎原样迁移，功能、流程、查询和失败行为保持；业务身份统一为 MemberNFT，删除地址主体平行路径。群内 NFT 委托已整体移除（2026-10-31），见下节与 [ADR-005](../adr/005-remove-group-chat-delegation.md)；消息正文与提及上限已改为协议常量（2026-11-02），见下节与 [ADR-006](../adr/006-group-chat-limits-as-protocol-constants.md)。
+
+## 消息上限改为协议常量（2026-11-02）
+
+用户确认：`MAX_CONTENT_LENGTH = 4096` 与 `MAX_MENTIONED_SENDER_IDS = 32` 是协议常量而非部署参数，见 [ADR-006](../adr/006-group-chat-limits-as-protocol-constants.md)。这是对「保留构造参数而非新增硬编码」的明确反转，理由是单条消息的日志体量与该上限直接相关，可配置等于让 gas 估算与索引器资源边界失效：
+
+- **合约**：两项由 `immutable` 改为 `public constant`，`GroupChat` 构造函数收敛为 `(groupAdminAddress, phaseAddress)`。
+- **配置**：`GROUP_CHAT_MAX_CONTENT_LENGTH` / `GROUP_CHAT_MAX_MENTIONED_SENDER_IDS` 从 `group-chat.params` 移除，`DeployGroupChat.DeployConfig` 删除对应两项。
+- **脚本**：`DeployGroupChat.s.sol` 少四条 `require`（`_validateConfig` 的两条零值校验、`_validateDeployment` 的两条「链上值 == 配置值」断言）；`11_deploy.sh` 少两行 `unset`（改由 `params_unset_all` 从文件键集合派生）；`21_check.sh` 改为复核链上取值非零；`31_verify.sh` 的构造参数编码改为 `(address,address)`。
+- **测试**：`GroupChatLifecycle.t.sol` 以 `assertEq` 锁定 4096 / 32；`DeployGroupChat.t.sol` 删除 `testT171`（零值拒绝用例随参数一起消失）。门禁：`forge test` **151 tests 全绿**，`deploy_scripts_test.py` **13/13**。
 
 ## 移除群内 NFT 委托（2026-10-31）
 
@@ -128,15 +137,15 @@ Group Chat 门禁：**148 tests 全绿**；`build --deny warnings`、`lint`、`c
 | --- | --- | --- | --- | --- |
 | 函数 | `currentRound()`、三个地址 getter、两个上限 getter、`activateChat`、`post`、`chatInfo` / `chatInfosByGroupIds`、五个槽位 getter、`messages*` / `message` / `messagesBy*` / `messageIds*` / `senderIds` / `groupIds` / `rounds` / `roundInfo` / `roundInfosByRounds` | `canPost(uint256,uint256,address)` → `canPost(uint256,uint256)`；五个配置 setter 各增 `uint256 operatorId` | `PHASE_ADDRESS()` | `originBlocks()` / `phaseBlocks()`、`postAsDefaultSender(...)`、`GROUP_DEFAULTS_ADDRESS()` |
 | 事件 | `PostMessage` / `MentionSenderId` / `MentionAll` / `FailAfterPostPlugin` | 五个配置事件各增 `uint256 indexed operatorId`；`Activate(uint256,address)` → `Activate(uint256,uint256,address)` | — | — |
-| 错误 | `GroupNotExist` / `ChatAlreadyActivated` / `ChatNotActivated` / `PostingNotAllowed` / `RoundNotStarted` / `Reentrant` / `ZeroPhaseBlocks` / `ZeroMaxContentLength` / `SourceNotContract` / `PluginNotContract` / `ContentEmpty` / `ContentTooLong` / `TooManyMentionedSenderIds` / `QuotedMessageNotFound` / `MessageNotFound` / `GroupAdminNotContract` / `GroupDelegateNotContract` / `MentionAllUnauthorized` / `ScopeRejected` / `BanRejected` / `ScopeSourceFailed` / `BanSourceFailed` | `SenderAddressNotSenderIdOwner()` → `NotMemberOwner(uint256 memberId)`；`GroupNotExist()` → `GroupNotExist(uint256 groupId)`；`GroupDelegateGroupMismatch()` → `GroupAddressMismatch(address expected, address actual)` | `PhaseNotContract(address dependency)`、`ZeroMaxMentionedSenderIds()`、`NotGroupOwner(uint256 groupId)`、`NotGroupOperator(uint256 groupId, uint256 operatorId)`、`DuplicateMemberId(uint256 memberId)` | `DefaultGroupIdNotSet()` / `GroupDefaultsHasNoCode()` / `GroupDefaultsGroupMismatch()` |
+| 错误 | `GroupNotExist` / `ChatAlreadyActivated` / `ChatNotActivated` / `PostingNotAllowed` / `RoundNotStarted` / `Reentrant` / `SourceNotContract` / `PluginNotContract` / `ContentEmpty` / `ContentTooLong` / `TooManyMentionedSenderIds` / `QuotedMessageNotFound` / `MessageNotFound` / `MentionAllUnauthorized` / `ScopeRejected` / `BanRejected` / `ScopeSourceFailed` / `BanSourceFailed` | `SenderAddressNotSenderIdOwner()` → `NotMemberOwner(uint256 memberId)`；`GroupNotExist()` → `GroupNotExist(uint256 groupId)` | `NotGroupOwner(uint256 groupId)`、`NotGroupOperator(uint256 groupId, uint256 operatorId)`、`DuplicateMemberId(uint256 memberId)` | `DefaultGroupIdNotSet()` / `GroupDefaultsHasNoCode()` / `GroupDefaultsGroupMismatch()` / `GroupDelegateGroupMismatch()` |
 
-构造签名 `(groupAdmin, originBlocks, phaseBlocks, maxContentLength, maxMentionedSenderIds)` → `(groupAdmin, phaseAddress, maxContentLength, maxMentionedSenderIds)`；`currentRound()` 签名保留，语义改为直接映射 Phase（Phase 前回滚 `RoundNotStarted`，从 1 起）；`Message.round` 由发言时的 Phase 轮次固定（[04-query.md](group-chat/04-query.md)）。缺失成员角色 ID（sender/member/admin/delegate/mention/voter）回 `ERC721NonexistentToken(id)`；非 owner 的发言/delegate 写入口回 `NotMemberOwner(senderId)` / `NotMemberOwner(delegateId)`；GovVoted 的 voter 非 owner 回 `NotMemberOwner(voterId)`；群 owner 非 owner 回 `NotGroupOwner(groupId)`，owner/delegate/admin 复合鉴权回 `NotGroupOperator(groupId, operatorId)`；数组内重复成员回 `DuplicateMemberId(memberId)`；delegate 查询缺失 delegate 返回 false/0/空，不回滚；缺失群回 `GroupNotExist(groupId)`。旧 `NotChatOwner` / `NotChatOwnerOrDelegateIdOwner` / `DuplicateMentionedSenderId` / `SenderNotMemberOwner` / `SenderNotDelegateOwner` 已删除。
+构造签名 `(groupAdmin, originBlocks, phaseBlocks, maxContentLength, maxMentionedSenderIds)` → `(groupAdmin, phaseAddress)`，正文与提及上限改为协议常量 `MAX_CONTENT_LENGTH` / `MAX_MENTIONED_SENDER_IDS` 而非构造参数；`currentRound()` 签名保留，语义改为直接映射 Phase（Phase 前回滚 `RoundNotStarted`，从 1 起）；`Message.round` 由发言时的 Phase 轮次固定（[04-query.md](group-chat/04-query.md)）。缺失成员角色 ID（sender/member/admin/delegate/mention/voter）回 `ERC721NonexistentToken(id)`；非 owner 的发言/delegate 写入口回 `NotMemberOwner(senderId)` / `NotMemberOwner(delegateId)`；GovVoted 的 voter 非 owner 回 `NotMemberOwner(voterId)`；群 owner 非 owner 回 `NotGroupOwner(groupId)`，owner/delegate/admin 复合鉴权回 `NotGroupOperator(groupId, operatorId)`；数组内重复成员回 `DuplicateMemberId(memberId)`；delegate 查询缺失 delegate 返回 false/0/空，不回滚；缺失群回 `GroupNotExist(groupId)`。旧 `NotChatOwner` / `NotChatOwnerOrDelegateIdOwner` / `DuplicateMentionedSenderId` 已删除。
 
 ### GroupAdmin / GroupMember
 
 | 接口 | 改参 | 新增 | 删除 |
 | --- | --- | --- | --- |
-| `IGroupAdmin` | `addAdmins` / `removeAdmins` 各增 `uint256 operatorId`；构造删 `groupDefaults` 参 | — | `GROUP_DEFAULTS_ADDRESS()`、`adminIdOf(uint256,address)`、`ownerOrDelegateIdOf(uint256,address)`、错误 `GroupDelegateGroupMismatch()`（新名 `GroupAddressMismatch(address expected, address actual)`，由 `IGroupChat` 承载） |
+| `IGroupAdmin` | `addAdmins` / `removeAdmins` 各增 `uint256 operatorId`；构造删 `groupDefaults` 参 | — | `GROUP_DEFAULTS_ADDRESS()`、`adminIdOf(uint256,address)`、`ownerOrDelegateIdOf(uint256,address)`、错误 `GroupDelegateGroupMismatch()` |
 | `IGroupMember` | `addMemberIds` / `removeMemberIds` 各增 `uint256 operatorId` | — | — |
 
 错误：缺失成员/管理员（含 `0`）回 `ERC721NonexistentToken`；缺失群回 `GroupNotExist(groupId)`；群操作者鉴权回 `NotGroupOperator(groupId, operatorId)`；重复管理员回 `DuplicateMemberId(memberId)`。`TargetMemberIdZero`、`UnauthorizedGroup*Manager`、`DuplicateAdminId` 已删除。

@@ -81,7 +81,7 @@ settlementUnit = floor(withdrawableLp * FEE_SETTLEMENT_RATIO / 1e18)
 单笔处理量      processedFeeLp = settlementUnit
 ```
 
-`FEE_SETTLEMENT_RATIO` 是单笔结算占可提取 LP 的比例，以 `1e18` 表示 100%（配置值 `3e15` 即 0.3%）；部署时要求 `0 < FEE_SETTLEMENT_RATIO <= 1e18` 且不大于目标池费率（当前 `3e15`）。
+`FEE_SETTLEMENT_RATIO` 是单笔结算占可提取 LP 的比例，以 `1e18` 表示 100%（配置值 `25e14`，即 0.25%）；部署时要求 `0 < FEE_SETTLEMENT_RATIO <= MAX_FEE_SETTLEMENT_RATIO`（源码常量 `2.5e15`，本身已小于 `1e18`）。
 
 阈值同时定义「何时开始烧」和「一次烧多少」：达到一个单位就结算一个单位，剩余 `feeLp - settlementUnit` 留待下个 Phase。这样不需要第二个参数。
 
@@ -91,7 +91,7 @@ settlementUnit = floor(withdrawableLp * FEE_SETTLEMENT_RATIO / 1e18)
 FEE_SETTLEMENT_RATIO <= 池费率
 ```
 
-夹子需要在一次往返中盖过两倍池费才有利润，上式让单笔价格移动不超过一个池费率，往返成本为两个池费。目标池费率 0.30% 时要求该值不大于 `3e15`；配置使用的 `3e15`（0.3%）即取该上界。取值高于该上界会静默放大夹子敞口，部署前须按目标 DEX 的实际池费率核对。
+夹子需要在一次往返中盖过两倍池费才有利润，上式让单笔价格移动不超过一个池费率，往返成本为两个池费。部署期上界 `2.5e15`（0.25%，低于池费率；该值是源码常量，参数文件里因指数写法只收整数尾数而写成 `25e14`）。取值高于该上界会静默放大夹子敞口，由部署脚本在广播前拒绝。
 
 单笔量过小、无法让 Pair 两侧都产出非零数量时（`pair.burn` 会回滚 `INSUFFICIENT_LIQUIDITY_BURNED`），本次不结算也不消耗本 Phase 的额度。
 
@@ -164,7 +164,7 @@ totalValidBoostShares(R) = totalValidBoostSharesAdded(R) - totalValidBoostShares
 | --- | --- | --- |
 | 1 | 已初始化 | `AlreadyInitialized()` |
 
-Factory 与 `Router.factory()` 一致、`promisedWaitingPhasesMin > 0`、`0 < feeSettlementRatio <= 目标池费率（当前 3e15）`、`min <= max` 由 DeployCore 广播前校验；六个依赖地址有代码由 DeployCore 部署后校验；两者均由 21_check 独立复核；`init` 只防重复初始化并保存入参。
+Factory 与 `Router.factory()` 一致、`promisedWaitingPhasesMin > 0`、`0 < feeSettlementRatio <= MAX_FEE_SETTLEMENT_RATIO（2.5e15）`、`min <= max` 由 DeployCore 广播前校验；六个依赖地址有代码由 DeployCore 部署后校验；两者均由 21_check 独立复核；`init` 只防重复初始化并保存入参。
 
 ### `stakeLiquidity`
 

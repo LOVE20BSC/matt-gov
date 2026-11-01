@@ -256,7 +256,8 @@ script/
 │   ├── 21_check.sh                # 部署与初始化正确性校验（自载入校验文件）
 │   ├── 31_verify.sh               # 合约开源验证（自载入网络与地址文件）
 │   ├── Deploy<Xxx>.s.sol          # Foundry 部署、初始化与部署期校验
-│   └── Check<Xxx>.s.sol           # 可选：21_check 调用的只读绑定检查
+│   ├── Check<Xxx>.s.sol           # 可选：21_check 调用的只读绑定检查
+│   └── params.sh                  # 参数载入器：词法展开、继承值清扫、必填键断言
 └── network/
     ├── anvil31337_dev/            # 本地 anvil · dev
     └── <链名><链id>_<部署类型>/    # 其它网络按需新建，见 6.2
@@ -267,6 +268,7 @@ script/
 - **`one_click_deploy.sh` 必需**：一键部署本代码库的全部合约。后续新增合约/模块时额外增加 `one_click_deploy_xxx.sh`（只部署该部分）。
 - **步骤脚本只做自己那一步、互不调用**（`11_deploy.sh` 不得调用 `21_check.sh`）；顺序编排与失败处理（如校验失败不得覆盖上次已保存的地址）只放在 `one_click_deploy.sh` 一类入口脚本里。
 - **步骤脚本自包含**：统一 `<step>.sh <network>` 一种调用形态，网络目录校验、配置存在性检查、文件载入、链 ID 核对都在步骤内完成；不依赖调用方预载环境，也没有文件互相 source。入口脚本不 source 任何文件，只做编排。共享 `00_init.sh` 一类的环境初始化文件不再单设，其职责并入 `11_deploy.sh`。
+- **参数载入器只有 `params.sh` 一份**：每个步骤 `source` 它，由它提供三件事——`params_load`（`1e17`/`1_000_000` 的词法展开）、`params_unset_all`（按文件里出现的键清掉调用方继承值）、`params_require_keys` / `params_require_values`（按文件断言必填键）。四个仓各持一份**逐字节相同**的副本：每仓都要能独立部署，文件无法共享，改动须一次改四处，并由仓内回归测试用 sha256 钉住，漂移即失败。
 - **步骤编号**：deploy 步骤以 `1` 开头、check 以 `2` 开头、verify 以 `3` 开头，第二位为模块序号——`1x` 部署、`2x` 校验、`3x` 验证同属模块 `x`（如 `dex`：WETH 模块 `11_deploy_weth`/`21_check_weth`/`31_verify_weth`，UniswapV2 模块 `12_deploy_uniswapv2`/`22_check_uniswapv2`/`32_verify`；单模块仓库即 `11`/`21`/`31`）。无可验证合约的模块不设 verify 步骤。
 - 新增合约/模块 = 一套自包含脚本（`one_click_deploy_<x>.sh` + 自己的步骤脚本 + 自己的参数文件），各模块的部署输入互不要求存在——部署模块 A 不会因模块 B 的参数缺失或变动而失败。
 - **账户签名统一走 keystore**：`.account` 是必需文件，提供 `KEYSTORE_ACCOUNT` 与 `ACCOUNT_ADDRESS`；不按链 ID 提供 `--unlocked` 回退，本地链与公共网络同一签名路径。
@@ -282,7 +284,7 @@ script/
 | `21_check.sh`  | 校验部署与初始化是否正确（只读、可重复运行）；自载入校验文件，含上次部署写入的地址文件 |
 | `31_verify.sh` | 合约开源验证（链支持开源验证时才需要）；自载入网络与地址文件 |
 
-- 支持开源验证的链**必须包含验证环节**（`31_verify.sh`）；不支持的链上该步骤应跳过并返回成功，不视为失败，否则本地链与未接入浏览器的链无法一键跑通。
+- 支持开源验证的链**必须包含验证环节**（`31_verify.sh`）。验证**默认开启**：验证器端点取自 `script/network/verifier.params` 的 `ETHERSCAN_VERIFIER_URL`（Etherscan V2 用一个端点覆盖全部支持链；换自建或第三方验证器只改这个键），只有列在 `VERIFY_SKIP_CHAIN_IDS` 的链才跳过并返回成功——本地链与没有浏览器的链写进该名单，漏配的后果是该步骤失败，而不是一条没验证的部署看起来像成功。`56` / `97` 不得出现在跳过名单，部署回归测试拒绝。API Key 取自 `network.params` 的 `ETHERSCAN_API_KEY`，为空时该步骤**直接失败**。
 - **部署脚本改动先在本地链端到端验证再提交**：按依赖顺序先部署被依赖的代码库（如 `core` 依赖 `dex`），再跑本库入口脚本，确认校验步骤全部通过、工作区无残留改动；只有回归测试或"能编译"不算验证。
 
 ### 6.2 network 配置
@@ -296,15 +298,18 @@ script/
 | 文件                        | 内容                                                             |
 | ------------------------- | -------------------------------------------------------------- |
 | `.account`                | `KEYSTORE_ACCOUNT`（keystore 路径或账户标识）、`ACCOUNT_ADDRESS`（部署账户地址）、`KEYSTORE_PASSWORD`（可选，口径见 6.1）；不含私钥，签名统一走 keystore |
-| `network.params`          | `CHAIN_ID`、`RPC_URL`                                           |
+| `network.params`          | `CHAIN_ID`、`RPC_URL`；另带开源验证凭据 `ETHERSCAN_API_KEY`（空=验证步骤直接失败） |
 | `<代码库名>.params`           | 构造函数或 `init` 所需的全部参数；参数名与接口声明一致                                |
 | `addresses.<代码库名>.params` | 已部署的链上地址记录，供后续脚本引用与验证；代码库按模块拆分部署时，一个模块一个 `addresses.<模块名>.params`（如 `addresses.weth.params`、`addresses.uniswapv2.params`） |
+
+`script/network/verifier.params` 不在网络目录里，由该仓所有网络共用：`ETHERSCAN_VERIFIER_URL`（验证器端点；Etherscan V2 用一个端点覆盖全部支持链，换自建或第三方验证器只改这个键）与 `VERIFY_SKIP_CHAIN_IDS`（逗号分隔的跳过链，可为空；`56`/`97` 不得出现）。跳过按**链 ID** 定义而不是按 profile 定义，同一链的多个 profile 因此不可能给出不同答案。
 
 - 配置键统一 **`UPPER_SNAKE_CASE`**：大写英文单词，多词用 `_` 分隔；`NFT`、`LP`、`URL`、`ID`、`RPC` 等缩写视为一个词。地址键以 `_ADDRESS` 结尾，例如 `ACTION_TARGET_ADDRESS`、`GROUP_ACTION_EXECUTOR_ADDRESS`、`MEMBER_NFT_ADDRESS`、`LP_EXECUTOR_ADDRESS`；不写 `ACTIONTARGET_ADDRESS`、`MEMBERNFT_ADDRESS`。禁止首尾或连续下划线；数字随所属单词（`LOVE20_TOKEN_ADDRESS`）。
 - 生产方与消费方必须使用同一键名；跨库地址文件应可直接复制，不得在复制时手工映射。键名是部署接口的一部分，改名须同步生产方、消费方、配置模板、README 与部署回归测试。
 - 该规则只约束部署配置与环境变量键，不改变 Solidity ABI、getter 或合约内 immutable 的命名。
 - **参数文件的键必须显式写出，不靠默认值兜底**：`<代码库名>.params` 里每个键都要出现，空态用显式哨兵值表达（零地址=不挂载/本地部署、空串=未配置），不省略键。`Deploy<X>.s.sol` 用 `vm.envUint`/`vm.envAddress`/`vm.envString` 读取业务参数，缺键在广播前 revert 并指出键名；只有「可选依赖的缺省即为合法终态、且该值有独立互斥校验」时才允许 `vm.envOr`，默认值须与显式哨兵值同义。
-- **参数只来自文件**：`<代码库名>.params` 是唯一取值来源。文件里的键由载入器 `export`，必然覆盖调用方的同名变量；键必须齐全（上一条），所以 `.s.sol` 的 `vm.env*` 不会读到「文件缺键、环境补位」的取值。但在 shell 里直接读参数值的步骤（取密码前的键存在性检查、`2x` 对账）仍需在载入前 `unset` 相关键 —— `${VAR:-}` 不因文件完整而免疫，继承值会让缺键检查与对账一起退化为自证。取值合法性仍只由 `.s.sol` 判定。
+- **参数只来自文件**：`<代码库名>.params` 是唯一取值来源。载入前一律先跑 `params_unset_all <文件…>`：它按这些文件里出现的键清掉调用方同名变量，`params_load` 再按文件 `export` 一次，因此「文件缺键、环境补位」不会发生。它只认识文件里还写着的键——文件**可能省略**的键（如只在本地部署分支才需要的 `WETH_NAME`/`WETH_SYMBOL`）必须在 `params_unset_all` **之前**显式 `unset`，否则继承值会漏进 `vm.envOr` 和 `2x` 对账，把一份正确配置判成冲突。`${VAR:-}` 不因文件完整而免疫。取值合法性仍只由 `.s.sol` 判定。
+- **必填键在调用点断言**：缺键会静默改变行为的键（插件槽位、模式开关、空值本身合法的分层配置）由**读取该文件的每个步骤**用 `params_require_keys`（只判存在）或 `params_require_values`（存在且非空）断言，入参是「文件名 + 键名」而不是变量——变量可以被继承值满足。同一文件上的必填键集合必须在所有步骤一致，回归测试按「读取该文件的脚本集合」交叉断言，漏一处即失败。不设集中键表文件，也不为它新增共享脚本。
 - **同一个值只能有一个来源**：复核步骤（`2x`）用参数文件里的原始值对账，不得再套一层与部署侧相同的默认值展开——两侧共用同一个默认值时，缺键会让期望值与链上值同时变成默认值，复核退化为自证。
 - `.account` 含敏感信息，必须加入 `.gitignore`；其余三个提交进 Git。
 - 部署脚本从这些文件读配置，不得硬编码网络参数或地址。网络切换只切 `network/` 子目录，不改脚本。

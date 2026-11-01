@@ -4,6 +4,24 @@
 
 本文档列出 BSC Core 相对于 LOVE20TKM 旧协议的所有变更。保留项直接引用旧代码位置，避免重复描述。
 
+## 部署参数改名与手续费结算比例上界（2026-11-02）
+
+部署配置的三个键改名，合约的 `init` 签名与 ABI 不变，变的是键名与部署脚本：
+
+| 旧键 | 新键 | 对应参数 |
+| --- | --- | --- |
+| `INITIAL_SUPPLY` | `LAUNCH_AMOUNT` | `Launch.init.launchAmount`（首币首批供应） |
+| `GOV_REWARD_RATIO` | `ROUND_REWARD_GOV_RATIO` | `Mint.init.roundRewardGovRatio` |
+| `PROPOSAL_REWARD_RATIO` | `ROUND_REWARD_PROPOSAL_RATIO` | `Mint.init.roundRewardProposalRatio` |
+
+`DeployCore.CoreConfig.initialSupply` 随之改名 `launchAmount`，广播前的校验文案由 `Initial supply out of range` 改为 `Launch amount out of range`。改名同步到 `21_check.sh` 的对账、`31_verify.sh` 的 `LOVE20Token` 构造参数编码、`core.params`、部署 README 示例与部署回归测试。
+
+`MAX_FEE_SETTLEMENT_RATIO` 是 `DeployCore` 的编译期常量，取 `2.5e15`（0.25%，低于池费率）：单笔结算的价格移动严格小于一个池费，一次往返的夹子成本仍为两个池费。广播前拒绝超过它的配置；`21_check.sh` 用同一上界复核链上取值，回归测试把两处字面量钉在一起，任一处漂移即失败。`Stake.init` 仍不校验上界，取值合法性只在部署期判定。
+
+`Launch` 新增 `TEST_PREFIX_BYTES = 4` 并声明进 `ILaunch`：测试网 `Test` 前缀的余量校验（`tokenSymbolLength + TEST_PREFIX_BYTES <= MAX_TOKEN_SYMBOL_LENGTH`）不再在脚本里各写一个 `4`。`DeployCore` 部署后断言这两个常量与 `Launch` 一致，`21_check.sh` 改为从链上读 `TOKEN_SYMBOL_LENGTH`、`TEST_PREFIX_BYTES`、`MAX_TOKEN_SYMBOL_LENGTH` 三者再做比较。
+
+Core 门禁：**473 tests 全绿**；`build --deny warnings`、`lint`、`deploy_scripts_test.py`（38 项）通过。
+
 ## 派生字段 totalLp（2026-10-31）
 
 `TotalStake.totalLp` 删除：`totalStake()` 读取时由 `lastWithdrawableLp + lastFeeLp` 派生，`_updateSqrtKBaseline` 用同一表达式计算基线。返回值与旧的存储字段在各写入路径上一致；`TotalStake` 的存储布局少一个槽位，`lastWithdrawableLp` / `lastFeeLp` / `lastSqrtKOfLp` / `totalBoostShares` 的槽位随之前移。

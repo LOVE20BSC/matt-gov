@@ -102,7 +102,7 @@ Launch 只保存“成员可用整数次数”和“社区累计已产生次数�
 
 `tokenSymbol` 按 UTF-8 字节校验：字节长度必须等于部署配置的 `TOKEN_SYMBOL_LENGTH`；首字符必须为 ASCII `A-Z` 或汉字；其余字符必须为 ASCII `A-Z`、`0-9` 或汉字。汉字限定为 CJK 统一表意文字基本区 `U+4E00`–`U+9FFF` 的三字节编码；中英数字可混排，纯汉字符号要求配置长度为 3 的倍数（如配置 6 对应两个汉字）。长度口径与旧实现一致（UTF-8 字节数），字符集在旧实现的 ASCII 基础上扩展出汉字。字节长度不等于配置值时回滚 `InvalidTokenSymbolLength(length, TOKEN_SYMBOL_LENGTH)`；长度正确但字符集不合法时，其余任何字节序列——其他多字节字符、不完整的 UTF-8、超出基本区的码点——都回滚 `InvalidTokenSymbolCharacters()`。
 
-测试网前缀沿用旧实现：先按配置长度校验 `tokenSymbol`，再读取前缀判定符号——父币为根父币的根级发射取 `FIRST_TOKEN_ADDRESS` 的符号，其余发射取 `parentTokenAddress` 的符号；判定符号前 4 字节等于 `Test` 时给符号加上 `Test` 前缀，然后生成名称。该前缀施加在校验之后，因此测试网子币的**配置长度**可以超出实际符号长度；但施加前缀后的最终符号仍受 `MAX_TOKEN_SYMBOL_LENGTH = 32` 约束，超出即回滚 `TokenSymbolTooLong(length, 32)`。因此测试网要求 `tokenSymbolLength + 4 <= 32`，部署脚本在配置校验阶段校验该不等式。首币不施加该前缀。根级发射改用首币符号判定，因为根父币符号跨网络共用，不能标记测试网。
+测试网前缀沿用旧实现：先按配置长度校验 `tokenSymbol`，再读取前缀判定符号——父币为根父币的根级发射取 `FIRST_TOKEN_ADDRESS` 的符号，其余发射取 `parentTokenAddress` 的符号；判定符号前 `TEST_PREFIX_BYTES`（4）个字节等于 `Test` 时给符号加上 `Test` 前缀，然后生成名称。该前缀施加在校验之后，因此测试网子币的**配置长度**可以超出实际符号长度；但施加前缀后的最终符号仍受 `MAX_TOKEN_SYMBOL_LENGTH = 32` 约束，超出即回滚 `TokenSymbolTooLong(length, 32)`。因此测试网要求 `tokenSymbolLength + TEST_PREFIX_BYTES <= MAX_TOKEN_SYMBOL_LENGTH`，部署脚本在配置校验阶段校验该不等式，并在部署后断言两个常量与 `Launch` 一致。首币不施加该前缀。根级发射改用首币符号判定，因为根父币符号跨网络共用，不能标记测试网。
 
 普通发射的社区必须与 `parentTokenAddress` 一致，父币必须是已登记 LOVE20 代币或根父币，`distributor` 非零。父币为根父币的发射称为根级发射：消耗根级次数，创建与首币平级、父币同为根父币的同级币；除父币与次数维度外，创建、登记、子币列表、Pair、分发与回调与普通发射完全一致。分发支持 `NoCallback` 和 `Callback` 两种模式。普通发射携带一个 `bytes[] distributorData` 数组；可以为空，不设长度上限，元素内容与编码由 distributor 自行约定：Launch 只原样透传，不遍历、不解析。
 

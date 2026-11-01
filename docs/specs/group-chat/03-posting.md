@@ -7,8 +7,8 @@
 1. senderId 的 NFT 存在，且调用者为当前 owner（鉴权 modifier；缺失回 `ERC721NonexistentToken(senderId)`，非 owner 回 `NotMemberOwner(senderId)`）。
 2. groupId 的 NFT 存在（`GroupNotExist(groupId)`）。
 3. Chat 已激活且 `postingAllowed = true`（`ChatNotActivated(groupId)` / `PostingNotAllowed(groupId)`）。
-4. content 非空（`ContentEmpty()`），字节数不超过 `MAX_CONTENT_LENGTH`，默认 4096（`ContentTooLong(length, maxLength)`）。
-5. 提及数不超过 `MAX_MENTIONED_SENDER_IDS`，默认 32（`TooManyMentionedSenderIds(length, maxLength)`）；每个 NFT 存在（缺失回 `ERC721NonexistentToken(mentionedSenderId)`）且不重复（`DuplicateMemberId(memberId)`）。
+4. content 非空（`ContentEmpty()`），字节数不超过 `MAX_CONTENT_LENGTH`（`ContentTooLong(length, maxLength)`）。
+5. 提及数不超过 `MAX_MENTIONED_SENDER_IDS`（`TooManyMentionedSenderIds(length, maxLength)`）；每个 NFT 存在（缺失回 `ERC721NonexistentToken(mentionedSenderId)`）且不重复（`DuplicateMemberId(memberId)`）。
 6. mentionAll 为 true 时，sender 必须为群本身或有效 admin（`MentionAllUnauthorized(groupId, senderId)`）。
 7. quotedMessageId 为 0 表示无引用；非零必须指向本 Chat 已存在消息（`QuotedMessageNotFound(groupId, quotedMessageId)`）。
 8. 执行 [规则槽位](02-rules.md#顺序与例外) 的 scope、ban 和插件逻辑：scope 拒绝回 `ScopeRejected(groupId, senderId, source)`，ban 拒绝回 `BanRejected(groupId, senderId, source)`，外部源调用失败回 `ScopeSourceFailed(groupId, source)` / `BanSourceFailed(groupId, source)`。
@@ -50,4 +50,4 @@ enum PostRejectionReason {
 
 成功返回 `(true, PostRejectionReason.None)`；失败返回 `(false, reason)`。无内容预检查不验证正文、提及、引用或 before 插件。预检查不验证 sender 所有权；缺失 senderId 返回 `SenderNotExist`，实际 `post` 写入路径按成员错误回滚（缺失回 `ERC721NonexistentToken`，非 owner 回 `NotMemberOwner(senderId)`）。该例外只适用于 `canPost` 的原因枚举；`post` 写入路径和其它入口仍按成员角色错误回滚，不得据此扩展 `GroupNotExist`。
 
-正文 4096 bytes、提及 32 个是旧公测 profile 的部署值，保留构造参数而非新增硬编码。错误和插件捕获机制沿用已核对的旧 GroupChat，不另设计恢复流程。身份接口和事件按 [迁移边界](00-overview.md#迁移边界) 适配，验收见 [群聊验收](08-testing.md)。
+正文上限 `MAX_CONTENT_LENGTH = 4096` 字节、提及上限 `MAX_MENTIONED_SENDER_IDS = 32` 是协议常量而非部署参数（决策与取舍见 [ADR-006](../../adr/006-group-chat-limits-as-protocol-constants.md)）：单条消息的日志体量随正文与提及条数线性增长，上文 gas 估算以 4096 字节正文为前提（每条提及另发一个 `SenderMentioned`，其条数同样由该上限约束），允许按部署放大等于让该估算失效，故不设可调项。`21_check.sh` 只复核两者非零，具体取值由开源验证比对源码。错误和插件捕获机制沿用已核对的旧 GroupChat，不另设计恢复流程。身份接口和事件按 [迁移边界](00-overview.md#迁移边界) 适配，验收见 [群聊验收](08-testing.md)。
