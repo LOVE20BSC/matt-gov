@@ -42,7 +42,7 @@ Core 不解释具体 Proposal 的业务字段，扩展通过 Target 接入。
 | Launch | `MINT_ADDRESS`、`MEMBER_NFT_ADDRESS`、`PAIR_FACTORY_ADDRESS` | 铸造、身份与建池依赖；每个代币在创建时即创建或复用 Pair |
 | Launch | `ROOT_PARENT_TOKEN_ADDRESS` | 根父币（Router.WETH() 读取）；首币与根级同级币的父币，也是根级次数的账本维度 |
 | Launch | `distributor`、`name`、`symbol` | 首币分发目标、名称和符号；首币固定使用 `NoCallback`，`distributor` 非零 |
-| Launch | `launchRatio` | 发射阈值比例；状态变量和公开 getter 为 `LAUNCH_RATIO`，`1e18` 精度，如 `1e16 = 1%` |
+| Launch | `launchCountThresholdRatio` | 发射次数阈值比例；状态变量和公开 getter 为 `LAUNCH_COUNT_THRESHOLD_RATIO`，`1e18` 精度，如 `1e17 = 10%` |
 | Launch | `maxLaunchCount` | 每社区累计次数上限；状态变量和公开 getter 为 `MAX_LAUNCH_COUNT`，如 `100` |
 | Launch | `tokenSymbolLength` | 子币符号固定 UTF-8 字节长度，汉字占 3 字节；状态变量和公开 getter 为 `TOKEN_SYMBOL_LENGTH`，长度与字符集校验见 [Launch](08-launch.md#普通发射) |
 | Launch | `launchAmount`、`maxSupply` | 首批/最大供应量，`Launch.init` 固定；状态变量和公开 getter 为 `LAUNCH_AMOUNT`、`MAX_SUPPLY`；`0 < launchAmount <= maxSupply` |

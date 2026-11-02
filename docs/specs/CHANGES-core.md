@@ -4,6 +4,14 @@
 
 本文档列出 BSC Core 相对于 LOVE20TKM 旧协议的所有变更。保留项直接引用旧代码位置，避免重复描述。
 
+## 发射次数阈值参数改名（2026-11-03）
+
+`Launch` 的发射次数门槛参数由 `LAUNCH_RATIO` 改名为 `LAUNCH_COUNT_THRESHOLD_RATIO`：`LaunchInitParams.launchRatio` → `launchCountThresholdRatio`，公开 getter 与部署键同步改名；`Mint._updateLaunchCredit` 的读数改为 `launch.LAUNCH_COUNT_THRESHOLD_RATIO()`。旧名容易被理解为 `LAUNCH_AMOUNT` 的占比，新名明确它是对发射次数的门槛比例，公式不变：`threshold = ceil((MAX_SUPPLY - totalSupplyBeforeMint) × LAUNCH_COUNT_THRESHOLD_RATIO / 1e18)`。
+
+这是破坏性 ABI/配置键变更：getter selector 与 `LaunchInitParams` 的 ABI JSON 字段名变化；旧 `core.params` 的 `LAUNCH_RATIO` 不再读取，新键缺失会让部署在模拟阶段失败。pre-mainnet 不保留旧 getter 别名。同步范围：`Launch`/`ILaunch`/`Mint`、`DeployCore`、`21_check.sh`、`core.params`、部署 README、核心测试与 deploy 回归、`compatibility` 审计测试、action 集成 fixture 与 `matt-gov` 规格；历史审计与 `.scratch` 不改。正式示例与 anvil dev profile 统一取 10%（`1e17`）。
+
+Core 门禁：`forge build --deny warnings` 通过；**490 tests 全绿**（不含 `test/audit/`）；`deploy_scripts_test.py` 41 项通过。
+
 ## 手续费重分类事件与 LP 账本闭环（2026-11-02）
 
 `Stake` 新增 `FeeReclassified(tokenAddress, round, feeLpAdded, withdrawableLpRemoved, totalFeeLp, totalWithdrawableLp, sqrtKOfLp, pairTotalSupply)`：`settleFees`、`withdraw` 的结算段与 `stakeLiquidity` 的重分类段在 √K 增长时发射；前两个字段是本次改标量，两个 `total*` 是后置总账，`sqrtKOfLp` 是重分类后的基线（同交易内后续流动性变动会再次刷新）。

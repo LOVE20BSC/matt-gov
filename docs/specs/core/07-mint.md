@@ -164,12 +164,12 @@ Mint 保存 `launchCredit[tokenAddress][memberId]`：尚未转换成整数发射
 4. 正数新增次数由 Mint 调用 `Launch.addLaunchCount(tokenAddress, memberId, count)` 增加；Launch 只接受 Mint 调用并在越限时回滚。次数增加与治理激励铸造整体回滚。当 `tokenAddress` 是首币时，Launch 在同一调用内把同一 `count` 1:1 记入根父币维度（根级次数）并发第二条 `LaunchCountAdded`；伴生由 Launch 完成，Mint 不额外调用、不感知，也不为根级次数维护 `launchCredit`，见 [Launch 的根级次数与伴生规则](08-launch.md#根级次数与伴生规则)。
 
 ```text
-threshold = ceil((MAX_SUPPLY - totalSupplyBeforeMint) * Launch.LAUNCH_RATIO() / 1e18)
+threshold = ceil((MAX_SUPPLY - totalSupplyBeforeMint) * Launch.LAUNCH_COUNT_THRESHOLD_RATIO() / 1e18)
 count = min(floor(launchCredit / threshold), Launch.MAX_LAUNCH_COUNT() - issuedLaunchCount)
 launchCredit -= count * threshold
 ```
 
-`MAX_SUPPLY` 和 `totalSupplyBeforeMint` 都取自该社区代币；`LAUNCH_RATIO` 使用 `1e18` 精度。`LAUNCH_RATIO` 和 `MAX_LAUNCH_COUNT` 为非零/上界由 DeployCore 广播前校验、21_check 复核，Mint 不重复校验。
+`MAX_SUPPLY` 和 `totalSupplyBeforeMint` 都取自该社区代币；`LAUNCH_COUNT_THRESHOLD_RATIO` 使用 `1e18` 精度。`LAUNCH_COUNT_THRESHOLD_RATIO` 和 `MAX_LAUNCH_COUNT` 为非零/上界由 DeployCore 广播前校验、21_check 复核，Mint 不重复校验。
 
 次数消耗或融合不释放累计上限；达到 `MAX_LAUNCH_COUNT` 后不再产生新次数或累计新额度，已有整数次数仍可使用。首币达到上限时根级伴生同步停止（不变式：根级累计恒等于首币累计，见 [Launch 的根级次数与伴生规则](08-launch.md#根级次数与伴生规则)）。
 
