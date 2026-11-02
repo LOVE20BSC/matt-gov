@@ -29,7 +29,7 @@
 | 发射者 | 运行时写出该事实的合约；必须是该状态的所有者 |
 | actor | 业务语义上的发起人；不是 `msg.sender` 的同义词 |
 | 共享事件类 | 同一 schema、同一语义、可被多个发射者发射的事件类 |
-| 派生缓存 | 可由事件流、标准事件与不可变配置确定性推导的内部值；不进入事件 |
+| 派生缓存 | 可由事件流、标准事件与不可变配置确定性推导的内部值；不进入事件（LP 账本的唯一例外见 §6.9） |
 | 捕获型失败 | 被显式捕获、业务继续执行的失败；与 revert 不同 |
 | 纪元 | 协议轮次 `round`，是业务键，不是时间值 |
 
@@ -54,7 +54,7 @@
 
 - 所有影响业务对象状态、生命周期、余额/份额/额度、以及影响解释的配置参数的可变写入，必须有事件覆盖。
 - 不可变部署参数（constructor/immutable/一次性 `init`）不进入事件；其来源由部署清单与脚本承担。
-- 派生缓存不进入事件；规范必须列明其推导来源（见 `.scratch/events-spec/01-gap-table.md` §7）。
+- 派生缓存不进入事件；规范必须列明其推导来源（见 `.scratch/events-spec/01-gap-table.md` §7）。LP 账本的唯一例外见 §6.9。
 - 配置与治理参数的任何可变变更都属于状态迁移，必须事件化。
 
 ### 3.3 折叠完整性
@@ -217,7 +217,7 @@ ERC-20 / ERC-721 标准事件保持不变，不进入本规范正文。`AddHolde
 | core.member | 对象 id → 角色 → 数值 → 文本 | `MemberMinted` |
 | core.round | 根键 → round → 对象 id → 角色 → 数值 → 枚举 | `RewardPrepared`、`GovRewardMinted`、`ProposalRewardMinted`、`RewardBurned` |
 | core.phase | 对象 id → 数值（diff 事件旧→新） | `PhaseSynchronized`、`PhaseAdjusted` |
-| core.stake | 根键 → round → memberId 链（1–2 个）→ 数值 | `LiquidityStaked`、`BoostStaked`、`Unstaked`、`StakeWithdrawn`、`FeesSettled`、`StakesMerged` |
+| core.stake | 根键 → round → memberId 链（0–2 个）→ 数值 | `LiquidityStaked`、`BoostStaked`、`Unstaked`、`StakeWithdrawn`、`FeesSettled`、`FeeReclassified`、`StakesMerged` |
 | core.proposal | 根键 → round → 对象/actor id 链（1–2 个）→ 地址 → 枚举 → bytes → 文本 | `ProposalCreated`、`ProposalSubmitted`、`VoteCast` |
 | action.registry | 根键 → actionId → round → executor | `ActionRegistered` |
 | action.config | 根键 → actionId → 配置地址 → 配置数值 → 文本数组 | `GroupActionCreated`、`ServiceActionCreated`、`LpActionCreated` |
@@ -330,6 +330,8 @@ v1 基线：
 2. 标准事件（ERC-20 / ERC-721 / UniswapV2 `Sync` 等）；
 3. 不可变部署参数。
 
+**唯一例外（LP 账本）**：`FeeReclassified.sqrtKOfLp` 可携带重分类后的基线。其推导来源是 Pair `Sync` + `totalLp`；同一交易内后续 `_updateSqrtKBaseline` 会再次刷新基线，事件值是重分类时点快照，不能作为最终值折叠；该字段不替代 `feeLpAdded`/`withdrawableLpRemoved`。`pairTotalSupply` 是 Pair ERC-20 `totalSupply()` 的外部标准值，不是派生缓存。其他派生缓存不得援引此例外。
+
 当前派生缓存清单与推导来源见 `.scratch/events-spec/01-gap-table.md` §7，包括 Launch credit、Stake LP 基准、pair 地址、Phase 观测、holder 集合、分红除数、`govRatioAtMint`、验证排名、provider 索引、join block/amount、mint nonce、ban operator 状态、admin 有效性与消息索引。
 
 ### 6.10 注释
@@ -360,7 +362,7 @@ v1 基线：
 | TokenRegistry | 创世、发起子币、额度发放/合并/消耗 | `GenesisTokenCreated`、`TokenLaunched`、`LaunchCountAdded`、`LaunchCountMerged`、`LaunchCountConsumed` |
 | MemberNFT | 铸造、转移、持有人集合 | `MemberMinted`；标准 `Transfer` / `Approval` / `ApprovalForAll` |
 | Phase | 同步观测、调整段长 | `PhaseSynchronized`、`PhaseAdjusted` |
-| StakePosition | 加流动性、加 boost、解锁、提取、手续费结算、合并 | `LiquidityStaked`、`BoostStaked`、`Unstaked`、`StakeWithdrawn`、`FeesSettled`、`StakesMerged` |
+| StakePosition | 加流动性、加 boost、解锁、提取、手续费结算、手续费重分类、合并 | `LiquidityStaked`、`BoostStaked`、`Unstaked`、`StakeWithdrawn`、`FeesSettled`、`FeeReclassified`、`StakesMerged` |
 | Proposal | 创建、提交 | `ProposalCreated`、`ProposalSubmitted` |
 | Vote | 投票 | `VoteCast` |
 | RewardRound | 准备奖池、gov 奖励、提案奖励、取消池燃烧 | `RewardPrepared`、`GovRewardMinted`、`ProposalRewardMinted`、`RewardBurned` |
@@ -418,8 +420,8 @@ v1 基线：
 4. 事件声明与 emit 点不写注释；语义只写在本文。
 5. 事件签名以各仓 `src/interfaces/` 为准；本文不复制签名。
 6. 共享事件类的全部发射者必须在本文 §4.2 与 ABI 基线中列明。
-7. 顺序测试必须覆盖依赖序（§3.4 第 5 条），至少：`RewardBurned → RewardPrepared`、`FeesSettled → StakeWithdrawn`、`TokenMinted`/`LaunchCountAdded` → 依赖它们的 `GovRewardMinted`。
-8. 累计值测试必须断言 `cumulative == fold`，至少覆盖 `RewardPrepared.rewardBurned`/`rewardReserved`、`OriginScoresSubmitted.totalFinalScore`、`LaunchCountAdded.issuedCount`、`ApplicationVoteRecorded.voteAmountTotal`、`FeesSettled.totalBurnedToken`/`totalParentTokenBurned`，以及按事件逐个枚举的聚合量：`totalValidGovVotes` 在 `LiquidityStaked`/`BoostStaked`/`Unstaked`/`StakesMerged`；`totalValidBoostShares` 在 `BoostStaked`/`Unstaked`；`totalBoostShares` 在 `BoostStaked`/`StakeWithdrawn`；`totalLiquidityShares` 在 `LiquidityStaked`/`StakeWithdrawn`。两个 `valid*` 总量必须等于同轮 `Added - Removed`，两个余额/份额总量必须等于 `totalStake` 的同名字段——只断言其中一个锚点不算覆盖。
+7. 顺序测试必须覆盖依赖序（§3.4 第 5 条），至少：`RewardBurned → RewardPrepared`、`FeeReclassified → FeesSettled`、`FeeReclassified → StakeWithdrawn`/`LiquidityStaked`、`FeesSettled → StakeWithdrawn`、`TokenMinted`/`LaunchCountAdded` → 依赖它们的 `GovRewardMinted`。
+8. 累计值测试必须断言 `cumulative == fold`，至少覆盖 `RewardPrepared.rewardBurned`/`rewardReserved`、`OriginScoresSubmitted.totalFinalScore`、`LaunchCountAdded.issuedCount`、`ApplicationVoteRecorded.voteAmountTotal`、`FeesSettled.totalBurnedToken`/`totalParentTokenBurned`，以及按事件逐个枚举的聚合量：`totalValidGovVotes` 在 `LiquidityStaked`/`BoostStaked`/`Unstaked`/`StakesMerged`；`totalValidBoostShares` 在 `BoostStaked`/`Unstaked`；`totalBoostShares` 在 `BoostStaked`/`StakeWithdrawn`；`totalLiquidityShares` 在 `LiquidityStaked`/`StakeWithdrawn`；`totalWithdrawableLp` 在 `FeeReclassified`/`LiquidityStaked`/`StakeWithdrawn`；`totalFeeLp` 在 `FeeReclassified`/`FeesSettled`。两个 `valid*` 总量必须等于同轮 `Added - Removed`，两个余额/份额总量必须等于 `totalStake` 的同名字段——只断言其中一个锚点不算覆盖。
 9. 例外路径测试必须逐条覆盖 E1–E4：
    - E1：`TokenMinted → GenesisTokenCreated`/`TokenLaunched`，事件中的地址与部署地址一致；
    - E2：mock 返回值与预计算不同，事件报告实际返回值；

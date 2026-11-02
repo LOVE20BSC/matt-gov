@@ -53,7 +53,7 @@
 
 - P1 文档：`03-participation`/`05-group-action-executor`/`08-testing`/`acceptance` 的 Provider 退出改为「自有金额发 `GroupActionWithdrawn` + 每个 Provider 发 `ProviderQuotaRefunded`」。
 - `MemberMinted` 字段顺序改为 `memberId, owner, cost, name, normalizedName`；规范 §6.1 增参与类事件「memberId 在 round/groupId 前」的族规则。
-- 规范 §6.8 补 `VerifierApplicationSubmitted.description`≤1024；`.scratch` 的「待写正文」改为「已写」；`core/04-stake` 补 `StakeWithdrawn.lpBurned`/`lpTransferred`。
+- 规范 §6.8 补 `VerifierApplicationSubmitted.description`≤1024；`.scratch` 的「待写正文」改为「已写」；`core/04-stake` 补 `StakeWithdrawn.withdrawableLpBurned`/`withdrawableLpToMember`（2026-11-02 由 `lpBurned`/`lpTransferred` 改名）。
 - `_emitMessagePosted` 逐行参数/空行；`Mint` 残留注释删除；剩余 action 错误参数名统一 `maxLength`/`maxCount`/`maxScore`/`maxAmount`。
 - Checker build 加 `--locked`；CI 增 `permissions: contents: read` 与 `forge test --summary`；三仓 flow 同步。
 - 测试 463/445/162；checker 28/34/23；仍未 commit（按用户要求），等待最后一轮 review。
@@ -111,6 +111,7 @@
 | `DelegateChanged` | `owner` / `ownerSnapshot`（`delegateId != 0`） | actor 地址槽与新快照组在非零委托时取同一个值：`owner` 是当前群主（actor），`ownerSnapshot` 写入的也是当前群主；`delegateId = 0` 时快照写零而 `owner` 非零，两者可分。结构上必须保留两个槽（actor 地址 + 新快照组），夹具无法区分只能登记 |
 | `StakesMerged` | `targetGovVotes` ≡ `targetLiquidityShares` × `targetPromisedWaitingPhases` | 同事件内两个字段的乘积；保留派生值让消费方免于复算 |
 | `StakesMerged` | `prevSourceGovVotes` ≡ `liquiditySharesMerged` × `prevSourcePromisedWaitingPhases` | 同上；`prevSource*` 是融合前源成员状态，源被清空后只能由此处取 |
+| `FeeReclassified` | `feeLpAdded` / `withdrawableLpRemoved` | 重分类保持 `lastFeeLp + lastWithdrawableLp` 不变，手续费增量恒等于可提取 LP 的减少量；两个方向都保留，消费者不必知道总账方向 |
 | `MessagePosted` | `hasQuote` ≡ (`quotedMessageId` != 0) | §3.6 禁哨兵：省略布尔就得把 `0` 读作「不存在」；保留派生布尔让消费方不必解读哨兵 |
 | `MessagePosted` | `mentionedSenderCount` ≡ 紧随其后、同 `messageId` 的 `SenderMentioned` 条数 | §3.1 条数锚点：让单条消息无须依赖「下一条 `MessagePosted` 之前」的区间约定即可自证提及列表长度 |
 

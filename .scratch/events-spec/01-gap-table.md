@@ -1,8 +1,8 @@
 # LOVE20BSC 事件统一规范 · 逐事件差距表
 
 日期：2026-10-26  
-状态：已确认（2026-10-26）；本表只做设计裁决，不改代码。**2026-10-28 修订**：O11 改判、`LaunchCountConsumed.count` 删除、stake 系补全局总量、`lpTransferred` → `lpToMember`、`boostSharesAdded` 删除（见 O11/O15 与各事件行）  
-基线：`core/src` 23 个声明、`action/src` 27 个声明、`group-chat/src` 23 个声明，共 73 个声明 / 66 个唯一名；全部有发射点；`libs/src` 无事件；`dex` 排除。  
+状态：已确认（2026-10-26）；本表只做设计裁决，不改代码。**2026-10-28 修订**：O11 改判、`LaunchCountConsumed.count` 删除、stake 系补全局总量、`lpTransferred` → `lpToMember`、`boostSharesAdded` 删除（见 O11/O15 与各事件行）。**2026-11-02 修订**：`lpBurned`/`lpToMember` → `withdrawableLpBurned`/`withdrawableLpToMember`，`FeesSettled.feeLp` → `feeLpBurned`（见事件行与 `04-stake`）<br>
+基线：`core/src` 24 个声明、`action/src` 27 个声明、`group-chat/src` 23 个声明，共 74 个声明 / 67 个唯一名；全部有发射点；`libs/src` 无事件；`dex` 排除。<br>
 规则索引：见 `matt-gov/docs/event-standards.md`（正文已写）；本文引用裁决编号 Q1–Q32。
 
 ---
@@ -21,7 +21,7 @@
 
 ---
 
-## 1. Core（23 个声明）
+## 1. Core（24 个声明）
 
 | # | 现事件（声明） | 目标事件 | 处置 | 目标字段 / 变更 | 备注 |
 |---|---|---|---|---|---|
@@ -40,11 +40,12 @@
 | 12 | `RewardBurned` `IMint:35` | `RewardBurned` | 保留 | 不变：`tokenAddress` i、`round` i、`amount`、`reason` | `reason` 为有界 enum |
 | 13 | `PhaseSynchronized` `IPhase:9` | `PhaseSynchronized` | 改形 | 删 `blockNumber`、`timestamp`、`adjusted`；保留 `phase` i、`phaseBlocks` | 块高/时间为日志元数据；`adjusted` 由同 tx 的 `PhaseAdjusted` 推导 |
 | 14 | `PhaseAdjusted` `IPhase:16` | `PhaseAdjusted` | 保留 | 不变：`effectivePhase` i、`oldPhaseBlocks`、`newPhaseBlocks` | 新 segment `startBlock` 由日志块高推导 |
-| 15 | `StakeLiquidity` `IStake:44` | `LiquidityStaked` | 改名+改形 | 增 `totalLiquidityShares`、`totalValidGovVotes`（全局后置）；其余不变 | LP 基准（`lastFeeLp` 等）为派生缓存，见 §7 |
+| 15 | `StakeLiquidity` `IStake:44` | `LiquidityStaked` | 改名+改形 | 增 `totalLiquidityShares`、`totalValidGovVotes`、`totalWithdrawableLp`（全局后置）；删调用方期望量 | LP 基准（`lastFeeLp` 等）由后置总量直接折叠，见 §7 |
 | 16 | `StakeBoost` `IStake:58` | `BoostStaked` | 改名+改形 | 增 `totalBoostShares`、`totalValidBoostShares`、`totalValidGovVotes`；删与 `boostAmount` 恒等的 `boostSharesAdded` | 余额总量与当轮有效总量并存，见 O15 |
 | 17 | `Unstake` `IStake:69` | `Unstaked` | 改名+改形 | 增 `totalValidBoostShares`、`totalValidGovVotes` | `unlockRequestPhase = round`，文档化 |
-| 18 | `Withdraw` `IStake:78` | `StakeWithdrawn` | 改名+改形 | 增 `lpBurned`、`lpToMember`、`totalLiquidityShares`、`totalBoostShares` | 覆盖 LP 派发方式；基准为派生缓存；`lpTransferred` 2026-10-28 改名为 `lpToMember` |
-| 19 | `FeesSettled` `IStake:88` | `FeesSettled` | 改形 | 增 `totalBurnedToken`、`totalParentTokenBurned`（累计） | 无实现手续费的 early-return 仅写派生缓存，不发事件（§7） |
+| 18 | `Withdraw` `IStake:78` | `StakeWithdrawn` | 改名+改形 | 增 `withdrawableLpBurned`、`withdrawableLpToMember`、`totalLiquidityShares`、`totalBoostShares`、`totalWithdrawableLp` | 覆盖 LP 派发方式；`lastWithdrawableLp` 由后置总量直接折叠；2026-11-02 字段改名为 `withdrawableLpBurned`/`withdrawableLpToMember` |
+| 19 | `FeesSettled` `IStake:88` | `FeesSettled` | 改形 | 增 `totalBurnedToken`、`totalParentTokenBurned`（累计）与 `totalFeeLp`（后置） | 不实际销毁时只重分类（若 √K 增长则发 `FeeReclassified`），不发 `FeesSettled`（§7） |
+| — | — | `FeeReclassified` | 新增 | `tokenAddress` i、`round` i、`feeLpAdded`、`withdrawableLpRemoved`、`totalFeeLp`、`totalWithdrawableLp`、`sqrtKOfLp`、`pairTotalSupply` | √K 增长时发射；`feeLpAdded ≡ withdrawableLpRemoved`（恒等对已登记）；两个 `total*` 为后置总账；`sqrtKOfLp` 是派生缓存例外（`event-standards.md` §6.9），只作时点快照、不能用于折叠 |
 | 20 | `StakeMerged` `IStake:95` | `StakesMerged` | 改名+改形 | 增 `targetGovVotes`、`targetLiquidityShares`、`targetBoostShares`、`targetPromisedWaitingPhases`、`prevSourceGovVotes`、`prevSourcePromisedWaitingPhases`、`totalValidGovVotes`；indexed 改为 `tokenAddress`、`sourceMemberId`、`targetMemberId`（`round` 改非 indexed） | 修复 target 未 indexed 的不一致；源被清空后其旧状态只能由 `prevSource*` 承载 |
 | 21 | `ProposalCreated` `ISubmit:47` | `ProposalCreated` | 改形 | 增 `targetData`（`bytes[]`，新增链上总字节/元素上限）；`title`/`details` 加上限 | `targetData` 是提案可执行载荷，当前只有 calldata 有；见开放项 O4 |
 | 22 | `ProposalSubmitted` `ISubmit:57` | `ProposalSubmitted` | 保留 | 不变：`tokenAddress` i、`round`、`submitterId` i、`proposalId` i | — |
@@ -162,12 +163,12 @@
 
 ---
 
-## 7. 派生缓存（明确不进入事件，附推导来源）
+## 7. 派生缓存（附推导来源）
 
 | 状态 | 位置 | 推导来源 |
 |---|---|---|
 | `_launchCredit` | `Mint.sol:519,530` | `GovRewardMinted.voteReward+boostReward` − `LaunchCountAdded.count × threshold`；threshold 由 `TokenMinted` + 不可变 `LAUNCH_RATIO`/`maxSupply` 计算 |
-| Stake 全局/成员 LP 基准（`lastFeeLp`、`lastWithdrawableLp`、`lastSqrtKOfLp`、`totalLp`） | `Stake.sol:542,545,579-580,692-693,705,731-734` | 由 `LiquidityStaked`/`StakeWithdrawn`/`StakesMerged`/`FeesSettled` 的份额与金额，配合 Uniswap pair `Sync` 折叠 |
+| Stake 全局/成员 LP 基准（`lastFeeLp`、`lastWithdrawableLp`、`lastSqrtKOfLp`、`totalLp`） | `Stake.sol` 的 `_applyReclassification` / `_creditLiquidity` / `_withdrawLiquidity` / `_realizeFees` / `_updateSqrtKBaseline` | `lastFeeLp`/`lastWithdrawableLp` 由 `FeeReclassified`/`LiquidityStaked`/`StakeWithdrawn`/`FeesSettled` 的后置总量直接折叠；`lastSqrtKOfLp` **不能**由 `FeeReclassified.sqrtKOfLp` 折叠——后者是重分类时点快照，`_updateSqrtKBaseline` 会在增/减流动性与结算后无事件刷新；唯一推导来源是 Pair `Sync` + `totalLp`。`FeeReclassified.pairTotalSupply` 的来源是 Pair ERC-20 `totalSupply()`，只用于解释结算单位 |
 | `_pairAddress` | `Stake.sol:475` | `factory.getPair(token,parent)`，可从不可变配置推导 |
 | `_lastSettlePhase`、Phase 观测历史 | `Stake.sol:774`、`Phase.sol:102-105` | 内部计时缓存；业务结果由 `FeesSettled`/`PhaseSynchronized`/`PhaseAdjusted` 覆盖 |
 | MemberNFT 持有人集合 | `MemberNFT.sol:252-291` | ERC721 `Transfer` 折叠（若删除 `AddHolder`/`RemoveHolder`） |

@@ -1346,7 +1346,7 @@
         "core/src/Launch.sol:55",
         "core/src/MemberNFT.sol:55",
         "core/src/Mint.sol:83",
-        "core/src/Stake.sol:83",
+        "core/src/Stake.sol:87",
         "core/src/Submit.sol:56",
         "core/src/Vote.sol:53"
       ],
@@ -1455,7 +1455,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Stake.sol:236"
+        "core/src/Stake.sol:241"
       ],
       "selector": "0x84d77e73",
       "signature": "InsufficientWaitingPhases(uint256,uint256)"
@@ -1485,7 +1485,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Stake.sol:469"
+        "core/src/Stake.sol:479"
       ],
       "selector": "0x50a046ad",
       "signature": "InvalidPromisedWaitingPhases(uint256,uint256,uint256)"
@@ -1680,7 +1680,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Stake.sol:492"
+        "core/src/Stake.sol:502"
       ],
       "selector": "0x42b29552",
       "signature": "NoStakedLiquidity(address,uint256)"
@@ -1710,7 +1710,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Stake.sol:464"
+        "core/src/Stake.sol:474"
       ],
       "selector": "0xbe9cd064",
       "signature": "NotAllowedToStakeAtRoundZero()"
@@ -1735,7 +1735,7 @@
       "revert_sites": [
         "core/src/Launch.sol:37",
         "core/src/Mint.sol:227",
-        "core/src/Stake.sol:102",
+        "core/src/Stake.sol:106",
         "core/src/Submit.sol:100",
         "core/src/Vote.sol:64"
       ],
@@ -1812,7 +1812,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Stake.sol:519"
+        "core/src/Stake.sol:529"
       ],
       "selector": "0xeabd8816",
       "signature": "PairMissing(address)"
@@ -1859,8 +1859,8 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Stake.sol:124",
-        "core/src/Stake.sol:144"
+        "core/src/Stake.sol:128",
+        "core/src/Stake.sol:149"
       ],
       "selector": "0x80336ded",
       "signature": "PromisedWaitingPhasesDecreased(uint256,uint256)"
@@ -1995,7 +1995,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Stake.sol:449"
+        "core/src/Stake.sol:459"
       ],
       "selector": "0xea74f32b",
       "signature": "RoundNotStarted(uint256,uint256)"
@@ -2010,7 +2010,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Stake.sol:721"
+        "core/src/Stake.sol:757"
       ],
       "selector": "0x71c4efed",
       "signature": "SlippageExceeded(uint256,uint256)"
@@ -2028,7 +2028,7 @@
       "repo": "core",
       "revert_sites": [
         "core/src/Launch.sol:159",
-        "core/src/Stake.sol:274"
+        "core/src/Stake.sol:284"
       ],
       "selector": "0x1049dc75",
       "signature": "SourceAndTargetMemberIdsMustBeDifferent(uint256,uint256)"
@@ -2043,8 +2043,8 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Stake.sol:192",
-        "core/src/Stake.sol:287"
+        "core/src/Stake.sol:197",
+        "core/src/Stake.sol:297"
       ],
       "selector": "0xd2632e80",
       "signature": "StakeRightsUsed(address,uint256,uint256)"
@@ -2119,7 +2119,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Stake.sol:535"
+        "core/src/Stake.sol:545"
       ],
       "selector": "0xe393d50b",
       "signature": "TargetPromisedWaitingPhasesTooShort(uint256,uint256)"
@@ -2198,7 +2198,7 @@
       "revert_sites": [
         "core/src/Launch.sol:164",
         "core/src/Launch.sol:192",
-        "core/src/Stake.sol:476"
+        "core/src/Stake.sol:486"
       ],
       "selector": "0xddef98d7",
       "signature": "TokenNotRegistered(address)"
@@ -2258,7 +2258,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Stake.sol:484"
+        "core/src/Stake.sol:494"
       ],
       "selector": "0xe8e88f47",
       "signature": "UnstakeAlreadyRequested(address,uint256)"
@@ -2273,7 +2273,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Stake.sol:228"
+        "core/src/Stake.sol:233"
       ],
       "selector": "0x44357cd8",
       "signature": "UnstakeNotRequested(address,uint256)"
@@ -2303,7 +2303,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Stake.sol:136"
+        "core/src/Stake.sol:141"
       ],
       "selector": "0xbbaa8875",
       "signature": "ZeroBoostAmount()"
@@ -2367,7 +2367,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Stake.sol:652"
+        "core/src/Stake.sol:658"
       ],
       "selector": "0xf4791324",
       "signature": "ZeroLiquidityMinted()"
@@ -2382,7 +2382,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Stake.sol:115"
+        "core/src/Stake.sol:119"
       ],
       "selector": "0xe6e1b13a",
       "signature": "ZeroParentTokenAmount()"
@@ -2428,7 +2428,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Stake.sol:114"
+        "core/src/Stake.sol:118"
       ],
       "selector": "0x82c4a8c9",
       "signature": "ZeroTokenAmount()"

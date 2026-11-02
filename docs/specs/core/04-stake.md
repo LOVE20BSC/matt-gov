@@ -13,7 +13,7 @@ Stake 按 `tokenAddress + memberId` 维护流动性质押和加速质押，不�
 | `unlockRequestPhase` | 申请 Phase；0 表示未申请 |
 | `totalLiquidityShares` / `totalBoostShares` | 社区份额总量 |
 | `lastWithdrawableLp` | 上次结算后的可提取 LP 基准 |
-| `lastFeeLp` | 上次结算后的协议手续费 LP 基准 |
+| `lastFeeLp` | 上次结算后的协议增值 LP 基准 |
 | `lastSqrtKOfLp` | 上次结算的 sqrt(k) 基准 |
 | `lastSettlePhase[tokenAddress]` | 上次**实际**结算的 Phase；等于当前 Phase 时本 Phase 不再结算，仅内部使用、不对外提供 getter |
 | `validGovVotes[tokenAddress][round][memberId]` | 成员在指定治理 Round 的**有效**治理票：`stakeLiquidity` 与提升等待期的 `stakeBoost` 加，申请解锁清零，融合按源→目标搬移；未开始的 Round 回滚 `RoundNotStarted` |
@@ -63,7 +63,7 @@ newFeeLp = totalLp - newWithdrawableLp
 
 **流动性质押的执行顺序**：先重分类手续费（更新 `lastWithdrawableLp`），再按新的 `lastWithdrawableLp` 计算份额。两个公式都以 `lastWithdrawableLp` 为输入，顺序错误会导致份额和手续费计算错误。
 
-手续费增量归协议，不归旧质押者。重分类后可提取 LP 下降；相同新存入 LP 对应更多份额。无池价变化的比例模型中，这是剥离手续费，不是损失本金；整数舍入仍须按公式计算。
+手续费是质押 LP 的全部 √K 增值，不区分 swap 手续费与外部捐赠；增量归协议，不归旧质押者。只有质押 LP 的增值被剥离，未质押 LP 保留自己的份额；剥离没有上限，任何地址都能触发。直接转账进池只有在被 `sync`/`mint`/`burn` 折入储备后才计入；折入前可被任何人 `skim` 取回。重分类后可提取 LP 下降；相同新存入 LP 对应更多份额。无池价变化的比例模型中，这是剥离增值，不是损失本金；整数舍入仍须按公式计算。
 
 例（整数模型）：原可提取 LP 为 120，旧/新 sqrt(k) 基准为 100/120，重分类后可提取 LP 为 100、手续费 LP 为 20。原总份额为 120 时，新存入 100 LP 得到 120 份额。
 
@@ -76,24 +76,26 @@ newFeeLp = totalLp - newWithdrawableLp
 **二、单笔结算量就是一个阈值单位。**
 
 ```text
-settlementUnit = floor(withdrawableLp * FEE_SETTLEMENT_RATIO / 1e18)
+settlementUnit = floor(pairTotalSupply * FEE_SETTLEMENT_RATIO / 1e18)
 触发条件        feeLp >= settlementUnit
 单笔处理量      processedFeeLp = settlementUnit
 ```
 
-`FEE_SETTLEMENT_RATIO` 是单笔结算占可提取 LP 的比例，以 `1e18` 表示 100%（配置值 `25e14`，即 0.25%）；部署时要求 `0 < FEE_SETTLEMENT_RATIO <= MAX_FEE_SETTLEMENT_RATIO`（源码常量 `2.5e15`，本身已小于 `1e18`）。
+`FEE_SETTLEMENT_RATIO` 是单笔结算占 Pair 的 LP 总供应的比例，以 `1e18` 表示 100%（配置值 `25e14`，即 0.25%）；部署时要求 `0 < FEE_SETTLEMENT_RATIO <= MAX_FEE_SETTLEMENT_RATIO`（源码常量 `2.5e15`，本身已小于 `1e18`）。
 
-阈值同时定义「何时开始烧」和「一次烧多少」：达到一个单位就结算一个单位，剩余 `feeLp - settlementUnit` 留待下个 Phase。这样不需要第二个参数。
+阈值同时定义「何时开始烧」和「一次烧多少」：手续费 LP 达到一个单位才结算一个单位，剩余 `feeLp - settlementUnit` 留待下个 Phase。这样不需要第二个参数。可提取 LP 归零不影响单位本身：只要 `pairTotalSupply × FEE_SETTLEMENT_RATIO / 1e18 > 0`，单位仍为正；再满足社区质押 LP 占全池比例大于结算比例且手续费 LP 不少于一个结算单位时，任何人仍可按同一比例释放。手续费 LP 不足一个结算单位时，手续费 LP 留在合约（仍是池中 LP），不会实际销毁；精确边界是 `feeLp >= floor(S × r / 1e18)`，份额低于比例但落在取整边界上的例外见下。
 
-结算把 `processedFeeLp / pairTotalSupply` 的流动性按比例取出，再把其中父币那半卖出，价格移动比例恰为 `processedFeeLp / pairTotalSupply`，即 `(withdrawableLp * FEE_SETTLEMENT_RATIO) / (pairTotalSupply * 1e18)`——不超过 `FEE_SETTLEMENT_RATIO / 1e18`（Stake 持满整个 Pair 时趋近该上界；因结算要求 `feeLp > 0`，实际严格小于）。**因此该参数同时是夹子敞口的尺度，取值必须满足**：
+手续费 LP 恒不超过社区记账 LP：`lastFeeLp <= lastFeeLp + lastWithdrawableLp = L`，而 `settlementUnit` 按 `pairTotalSupply = S` 计价。设重分类前 `s = L / S`、`r = FEE_SETTLEMENT_RATIO`，实际销毁的精确必要条件是 `feeLp >= floor(S × r / 1e18)`。当 `s < r` 时 `L < rS`；若 `rS` 非整数，`L` 仍可能等于 `floor(rS)`。因此「`s < r` 就永不销毁」只在取整边界之外成立：边界外 `L < settlementUnit`，手续费账本的上限不到一个单位，`settleFees` 只重分类、不实际销毁，手续费 LP 留在合约（仍是池中 LP），直到社区质押增长；边界内 `L == settlementUnit`，手续费账本的上限恰好是一个单位，重分类把全部记账 LP 转为手续费时（如 `L = 1` 时的任意增长）仍会结算。份额达标后，首次销毁所需的 √K 增长 `g` 满足 `g / (1 + g) >= r / s`，即 `g >= (r / s) / (1 - r / s)`；例如 `r = 0.25%`、`s = 1%` 时约需 33% 的 √K 增长。`s = r` 时分母为零：有限增长下需 `s > r`，`s = r` 只有把可提取 LP 全部重分类为手续费的极限才够一个单位。
+
+结算把 `processedFeeLp / pairTotalSupply` 的流动性按比例取出，再把其中父币那半卖出。`processedFeeLp = pairTotalSupply × FEE_SETTLEMENT_RATIO / 1e18`，所以单笔销毁占 Pair LP 总供应的比例恰为配置值；卖出量占父币储备的比例与它相同，成交价相对结算前偏离恰为配置值，池子的现货价移动约为其两倍。**因此该参数同时是夹子敞口的尺度，取值必须满足**：
 
 ```text
 FEE_SETTLEMENT_RATIO <= 池费率
 ```
 
-夹子需要在一次往返中盖过两倍池费才有利润，上式让单笔价格移动不超过一个池费率，往返成本为两个池费。部署期上界 `2.5e15`（0.25%，低于池费率；该值是源码常量，参数文件里因指数写法只收整数尾数而写成 `25e14`）。取值高于该上界会静默放大夹子敞口，由部署脚本在广播前拒绝。
+夹子往返成本为两倍池费；只要 `FEE_SETTLEMENT_RATIO <= 池费率`，成交价偏离低于一个池费，现货价移动（约为两倍比例）也不超过两倍池费，往返无利可图。部署期上界 `2.5e15`（0.25%，低于池费率；该值是源码常量，参数文件里因指数写法只收整数尾数而写成 `25e14`）。取值高于该上界会静默放大夹子敞口，由部署脚本在广播前拒绝。
 
-单笔量过小、无法让 Pair 两侧都产出非零数量时（`pair.burn` 会回滚 `INSUFFICIENT_LIQUIDITY_BURNED`），本次不结算也不消耗本 Phase 的额度。
+单笔量过小、无法让 Pair 两侧都产出非零数量时（`pair.burn` 会回滚 `INSUFFICIENT_LIQUIDITY_BURNED`），本次不结算也不消耗本 Phase 的额度。`feeLp < settlementUnit` 时同样跳过；不足一个单位的手续费 LP 留在合约（仍是池中 LP），等手续费 LP 或社区质押份额增长到满足条件后继续释放；`settlementUnit` 向下取整为零时无法释放。
 
 达到门槛且本 Phase 未结算时，从 Pair 取回 `processedFeeLp` 对应双币：
 
@@ -137,7 +139,7 @@ totalValidBoostShares(R) = totalValidBoostSharesAdded(R) - totalValidBoostShares
 2. 满足 `currentPhase > unlockRequestPhase + promisedWaitingPhases` 后，当前持有人一次提取 LP 对应双币和加速代币；不能分别解锁、分别提取。等待期按「申请 Phase 之后再等满 `promisedWaitingPhases` 个完整 Phase」计量，与旧 `LOVE20Stake.withdraw` 同口径：申请轮加 `promisedWaitingPhases` 的那一个 Phase 仍然太早，例如在 Phase 100 申请、承诺 `1` 时，Phase 102 起才可提取。
 3. NFT 转移不重置等待期，不限制解锁中的 NFT 转移。查询应返回申请 Phase、承诺等待期和是否可提取，任何人可按社区和成员查询。
 
-提取先按原规则结算手续费，再以 `floor(liquidityShares * lastWithdrawableLp / totalLiquidityShares)` 折算 LP。结果为零时跳过 LP 转账与 Pair 销毁，仍归还全部加速代币、扣减成员及社区份额并清理头寸；`StakeWithdrawn` 的双币数量为零。退出者放弃不足一个 LP 最小单位的尾差，零额提取不扣减可提取 LP 总账，余量由剩余份额承接。LP 非零时，只有两侧产出都非零（`lpAmount * reserve_i >= pairTotalSupply`，`i` 取两币）才转入 Pair 并销毁；否则 `pair.burn` 会因一侧取整为零而回滚，而 `withdraw` 是原子的、加速代币返还排在其后，整笔头寸（本金与 boost）将永久锁死。因此「非零但不可烧」时 LP 原样转给提取者：不转入 Pair、不销毁，`StakeWithdrawn` 的双币数量为零，份额与可提取 LP 总账照常扣减，LP 转出同时由 `StakeWithdrawn.lpBurned`/`lpToMember` 记录，Pair 代币的 Transfer 仍可作标准审计；提取人持 LP 自行退出 Pair，这是协议唯一的直接 LP 出口，仅在销毁会回滚时启用。LP 转出不改变 `pairTotalSupply`，手续费分类与基线照常重算，不受影响。手续费结算或后续资产交付失败仍整笔回滚。
+提取先按原规则结算手续费，再以 `floor(liquidityShares * lastWithdrawableLp / totalLiquidityShares)` 折算 LP。结果为零时跳过 LP 转账与 Pair 销毁，仍归还全部加速代币、扣减成员及社区份额并清理头寸；`StakeWithdrawn` 的双币数量为零。退出者放弃不足一个 LP 最小单位的尾差，零额提取不扣减可提取 LP 总账，余量由剩余份额承接。LP 非零时，只有两侧产出都非零（`lpAmount * reserve_i >= pairTotalSupply`，`i` 取两币）才转入 Pair 并销毁；否则 `pair.burn` 会因一侧取整为零而回滚，而 `withdraw` 是原子的、加速代币返还排在其后，整笔头寸（本金与 boost）将永久锁死。因此「非零但不可烧」时 LP 原样转给提取者：不转入 Pair、不销毁，`StakeWithdrawn` 的双币数量为零，份额与可提取 LP 总账照常扣减，LP 转出同时由 `StakeWithdrawn.withdrawableLpBurned`/`withdrawableLpToMember` 记录，Pair 代币的 Transfer 仍可作标准审计；提取人持 LP 自行退出 Pair，这是协议唯一的直接 LP 出口，仅在销毁会回滚时启用。LP 转出不改变 `pairTotalSupply`，手续费分类与基线照常重算，不受影响。手续费结算或后续资产交付失败仍整笔回滚。
 
 ## 融合
 
@@ -242,20 +244,23 @@ Factory 与 `Router.factory()` 一致、`promisedWaitingPhasesMin > 0`、`0 < fe
 
 ## 事件
 
-事件签名见 [`IStake.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/IStake.sol)。三个聚合量——流动性份额、加速份额、治理票——在**改变它们的每个事件**上都携带后置总量，与增量字段并存：增量用于折叠，总量用于对账。`totalLiquidityShares` / `totalBoostShares` 必须等于 `totalStake` 的同名字段；`totalValidGovVotes` / `totalValidBoostShares` 必须等于 `totalValidGovVotes(tokenAddress, round)` / `totalValidBoostShares(tokenAddress, round)`，也就是同轮 `Added` 与 `Removed` 之差。
+事件签名见 [`IStake.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/IStake.sol)。三个聚合量——流动性份额、加速份额、治理票——在**改变它们的每个事件**上都携带后置总量，与增量字段并存：增量用于折叠，总量用于对账。`totalLiquidityShares` / `totalBoostShares` 必须等于 `totalStake` 的同名字段；`totalValidGovVotes` / `totalValidBoostShares` 必须等于 `totalValidGovVotes(tokenAddress, round)` / `totalValidBoostShares(tokenAddress, round)`，也就是同轮 `Added` 与 `Removed` 之差。`lastFeeLp` 与 `lastWithdrawableLp` 同样在**每个改变它们的事件**上携带后置总量，两个账本可从事件逐笔折叠，不需要反推份额公式或读取 Pair 日志。
 
 | 事件 | 触发入口 | 字段 |
 | --- | --- | --- |
-| `LiquidityStaked(tokenAddress, round, memberId, tokenAmountDesired, parentTokenAmountDesired, tokenAmount, parentTokenAmount, promisedWaitingPhases, govVotesAdded, govVotes, liquiditySharesAdded, liquidityShares, totalLiquidityShares, totalValidGovVotes)` | `stakeLiquidity` | `tokenAmountDesired`/`parentTokenAmountDesired` 为调用方期望量，`tokenAmount`/`parentTokenAmount` 为折算后实际入池量；`govVotesAdded` = `(旧份额 + 新份额) × promisedWaitingPhases - 旧票权`；`govVotes` 为成员后置票权；`liquiditySharesAdded`/`liquidityShares` 为本次新增份额与成员后置份额；两个 `total*` 为社区后置总量 |
+| `LiquidityStaked(tokenAddress, round, memberId, tokenAmount, parentTokenAmount, promisedWaitingPhases, govVotesAdded, govVotes, liquiditySharesAdded, liquidityShares, totalLiquidityShares, totalValidGovVotes, totalWithdrawableLp)` | `stakeLiquidity` | `tokenAmount`/`parentTokenAmount` 为折算后实际入池量；`govVotesAdded` = `(旧份额 + 新份额) × promisedWaitingPhases - 旧票权`；`govVotes` 为成员后置票权；`liquiditySharesAdded`/`liquidityShares` 为本次新增份额与成员后置份额；`totalLiquidityShares`/`totalValidGovVotes` 为社区后置总量；`totalWithdrawableLp` 为加入本次 LP 后的后置可提取 LP 账本 |
 | `BoostStaked(tokenAddress, round, memberId, boostAmount, promisedWaitingPhases, govVotesAdded, govVotes, boostShares, totalBoostShares, totalValidBoostShares, totalValidGovVotes)` | `stakeBoost` | `boostAmount` 为本次转入的加速代币数量，同时也是本次份额增量（1:1，不再重复成 `boostSharesAdded`）；`govVotesAdded` 仅在等待期提升时为正；`boostShares` 为成员后置**余额**；`totalBoostShares` 为社区余额合计；`totalValidBoostShares` 为 `round` 当轮有效加速份额合计；`totalValidGovVotes` 为社区后置票权总量 |
 | `Unstaked(tokenAddress, round, memberId, promisedWaitingPhases, govVotes, liquidityShares, boostShares, totalValidBoostShares, totalValidGovVotes)` | `unstake` | `round` 同时是本次写入的 `unlockRequestPhase`；`govVotes` 为被清零的票权（社区总量同步减该值）；`liquidityShares`/`boostShares` 为成员仍保留的余额；`totalValidBoostShares` 为扣减后当轮有效加速份额合计；`totalValidGovVotes` 为扣减后社区票权总量 |
-| `StakeWithdrawn(tokenAddress, round, memberId, promisedWaitingPhases, liquidityShares, tokenAmountForLiquidity, parentTokenAmountForLiquidity, boostShares, lpBurned, lpToMember, totalLiquidityShares, totalBoostShares)` | `withdraw` | `tokenAmountForLiquidity`/`parentTokenAmountForLiquidity` 为销毁 LP 取回的双币数量；`boostShares` 为归还的加速代币；`lpBurned` 与 `lpToMember` **互斥**，二者之和等于本次折算出的 LP `floor(liquidityShares × lastWithdrawableLp / totalLiquidityShares)`——`liquidityShares` 是份额，与 LP 不同量纲，不能直接与这两个字段相加；`lpToMember` 是「非零但不可烧」时原样交给成员的那一支 |
-| `FeesSettled(tokenAddress, round, feeLp, tokenBurned, parentTokenBurned, totalBurnedToken, totalParentTokenBurned)` | `settleFees`、`withdraw` 的结算段 | `feeLp` 为本次处理的费用 LP；`tokenBurned` 为社区代币销毁量（含父币换得的部分），`parentTokenBurned` 为换币前的父币数量；后两个 `total*` 为社区累计销毁量 |
+| `StakeWithdrawn(tokenAddress, round, memberId, promisedWaitingPhases, liquidityShares, tokenAmountForLiquidity, parentTokenAmountForLiquidity, boostShares, withdrawableLpBurned, withdrawableLpToMember, totalLiquidityShares, totalBoostShares, totalWithdrawableLp)` | `withdraw` | `tokenAmountForLiquidity`/`parentTokenAmountForLiquidity` 为销毁 LP 取回的双币数量；`boostShares` 为归还的加速代币；`withdrawableLpBurned` 与 `withdrawableLpToMember` **互斥**，二者之和等于本次折算出的 LP `floor(liquidityShares × lastWithdrawableLp / totalLiquidityShares)`——`liquidityShares` 是份额，与 LP 不同量纲，不能直接与这两个字段相加；`withdrawableLpBurned` 是可提取 LP 账本中真正烧成双币返还成员的部分，`withdrawableLpToMember` 是「非零但不可烧」时原样交给成员的那一支；`totalWithdrawableLp` 为扣减后的后置账本 |
+| `FeesSettled(tokenAddress, round, feeLpBurned, tokenBurned, parentTokenBurned, totalBurnedToken, totalParentTokenBurned, totalFeeLp)` | `settleFees`、`withdraw` 的结算段 | `feeLpBurned` 为本次销毁的费用 LP；`tokenBurned` 为社区代币销毁量（含父币换得的部分），`parentTokenBurned` 为换币前的父币数量；`totalBurnedToken`/`totalParentTokenBurned` 为社区累计销毁量；`totalFeeLp` 为扣减后的后置费用账本 |
+| `FeeReclassified(tokenAddress, round, feeLpAdded, withdrawableLpRemoved, totalFeeLp, totalWithdrawableLp, sqrtKOfLp, pairTotalSupply)` | `settleFees`、`withdraw` 的结算段、`stakeLiquidity` 的重分类段 | `feeLpAdded` 为本次转入手续费账本的 LP，`withdrawableLpRemoved` 为可提取 LP 的等量减少（`totalLp` 守恒，二者恒等，见恒等对登记）；`totalFeeLp`/`totalWithdrawableLp` 为后置总账；`sqrtKOfLp` 为重分类后的基线（同一交易内若随后增减流动性或销毁，会再次刷新）；`pairTotalSupply` 为重分类时的 LP 总供应。仅在 √K 增长时发射；`sqrtKOfLp` 是重分类时点快照，不作为折叠来源，`lastSqrtKOfLp` 仍由 Pair `Sync` + `totalLp` 派生 |
 | `StakesMerged(tokenAddress, round, sourceMemberId, targetMemberId, liquiditySharesMerged, boostSharesMerged, targetGovVotes, targetLiquidityShares, targetBoostShares, targetPromisedWaitingPhases, prevSourceGovVotes, prevSourcePromisedWaitingPhases, totalValidGovVotes)` | `mergeStake` | `*Merged` 为源侧迁出的份额；`target*` 为目标的后置状态；`prevSource*` 为**融合前**源成员的状态——融合后源被清空、等同于从未质押，因此这两个字段是旧值而非现状，`prevSourceGovVotes` = `liquiditySharesMerged × prevSourcePromisedWaitingPhases`；`totalValidGovVotes` 为社区后置票权总量 |
 
 事件里成员级**没有**单独的有效加速份额字段（查询侧有 `validBoostShares`）：`BoostStaked`、`StakesMerged`、`StakeWithdrawn` 三个时点上 `boostShares` 本身就是有效值（未申请解锁的成员，余额与当轮有效份额相等），而 `Unstaked` 之后有效值恒为 `0`，由事件名承载——另设字段只会是恒等对或常量。全局侧则相反：`totalBoostShares`（余额合计，提取才减）与 `totalValidBoostShares`（当轮有效合计，申请解锁即减）会在「已申请解锁、尚未提取」的成员上分叉，两者必须并存；加速质押的业务趋势以 `totalValidBoostShares` 为准，而不是滞后的 `totalBoostShares`；成员级同理，趋势看 `validBoostShares(tokenAddress, round, memberId)`，而不是 `boostShares`。两个 `valid*` 值都能直接查询，事件里的总量与查询结果必须逐条相等。
 
 `StakeWithdrawn` 不携带 `totalValidGovVotes`：票权在 `unstake` 已清零，提取不再改变它，重复携带属于复述未变化字段。
+
+`withdrawableLpBurned` 与 `feeLpBurned` 都调用 `pair.burn`，但分属两个账本：前者是可提取 LP 账本中被烧成双币返还成员的部分，后者是手续费账本中被销毁的部分（父币先换成社区代币再销毁）；`StakeWithdrawn` 不报告手续费 LP，手续费 LP 只在同一笔交易更早的 `FeesSettled` 中。
 
 ## 实现约束
 

@@ -32,11 +32,12 @@
 | LaunchCredit | 治理奖励转 launch credit | 派生 | credit 余额 | `GovRewardMinted` + `LaunchCountAdded` + 不变量推导（§01 §7） |
 | Phase | 同步观测 | `PhaseSynchronized` | phase、phaseBlocks | 观测数组为内部计时缓存；删除块高/时间戳/adjusted |
 | Phase | 调整段长 | `PhaseAdjusted` | old/new phaseBlocks、effectivePhase | 新段 startBlock 由日志块高推导 |
-| StakePosition | 加流动性 | `LiquidityStaked` | 金额、shares、govVotes、全局 total | 增 `totalLiquidityShares` 与 `totalValidGovVotes`；LP 基准为派生缓存 |
+| StakePosition | 加流动性 | `LiquidityStaked` | 金额、shares、govVotes、全局 total、可提取 LP 后置 | 增 `totalLiquidityShares`/`totalValidGovVotes`/`totalWithdrawableLp`；删调用方期望量；LP 基准由后置总量折叠，`lastSqrtKOfLp` 仍为派生缓存 |
 | StakePosition | 加 boost | `BoostStaked` | boostShares、govVotes、全局 total | 增 `totalBoostShares`/`totalValidBoostShares`/`totalValidGovVotes`；删恒等的 `boostSharesAdded` |
 | StakePosition | 发起解锁 | `Unstaked` | unlockRound、govVotes、两个全局 total | `unlockRequestPhase = round`，文档化；增 `totalValidBoostShares`/`totalValidGovVotes` |
-| StakePosition | 提取 | `StakeWithdrawn` | 金额、LP 派发、shares、全局 total | 增 `lpBurned`/`lpToMember`/两个 total；票权已清零故不带 `totalValidGovVotes` |
-| StakePosition | 手续费结算 | `FeesSettled` | realized fee、两类 burn、累计 burn | 增 `totalBurnedToken`/`totalParentTokenBurned`；零手续费路径只写派生缓存，不发事件 |
+| StakePosition | 提取 | `StakeWithdrawn` | 金额、LP 派发、shares、全局 total、可提取 LP 后置 | 增 `withdrawableLpBurned`/`withdrawableLpToMember`/两个 total/`totalWithdrawableLp`；票权已清零故不带 `totalValidGovVotes` |
+| StakePosition | 手续费结算 | `FeesSettled` | realized fee、两类 burn、累计 burn、费用 LP 后置 | 增 `totalBurnedToken`/`totalParentTokenBurned`/`totalFeeLp`；不实际销毁的路径不发 `FeesSettled`；若 √K 增长，重分类仍发 `FeeReclassified` |
+| StakePosition | 手续费重分类 | `FeeReclassified` | √K 增长、手续费增量、可提取减少、后置总账、新基线、LP 总供应 | 增量与后置总量并存；`feeLpAdded ≡ withdrawableLpRemoved` 已登记恒等对 |
 | StakePosition | 合并 | `StakesMerged` | source 清空、target 后置 shares/govVotes、全局票权 | 增 `prevSource*`（融合前源状态）、`totalValidGovVotes`；indexed 对齐 |
 | Proposal | 创建 | `ProposalCreated` | proposalId、authorId、target、targetMode、targetData、title、details | 已带 `targetData`；title/details 1024B、targetData 16 KiB/16 项 |
 | Proposal | 提交 | `ProposalSubmitted` | round、submitter、proposalId | — |
@@ -109,7 +110,7 @@
 2. **消息**：`MessagePosted` + `SenderMentioned` 折叠 = 消息正文、引用、mentionAll、sender、round、messageId、提及集合。
 3. **管理员有效性**：`AdminChanged`（快照旧/新 + listed） + core ERC721 `Transfer`（owner 变化）折叠 = `isAdminId`。
 4. **封禁**：`SenderBanChanged`/`SenderBanVoteCast`/`GovSenderBanChanged` 折叠 = 封禁集合与权重。
-5. **质押**：`LiquidityStaked`/`BoostStaked`/`Unstaked`/`StakeWithdrawn`/`FeesSettled`/`StakesMerged` 折叠 = 成员 shares/govVotes/待解锁轮 + 全局 shares/govVotes/有效 boost/累计 burn；LP 基准按 §7 派生。
+5. **质押**：`LiquidityStaked`/`BoostStaked`/`Unstaked`/`StakeWithdrawn`/`FeesSettled`/`FeeReclassified`/`StakesMerged` 折叠 = 成员 shares/govVotes/待解锁轮 + 全局 shares/govVotes/有效 boost/累计 burn；LP 基准按 §7 派生。
 6. **额度**：`LaunchCountAdded`/`LaunchCountMerged`/`LaunchCountConsumed` 折叠 = 成员余额 + 发行总量（含首 token 的根账本镜像）。
 7. **奖励**：`RewardPrepared`/`GovRewardMinted`/`ProposalRewardMinted`/`RewardBurned` 折叠 = 奖池、minted、burned、成员 entitlement；`_launchCredit` 按 §7 派生。
 8. **Action 配置**：`ActionRegistered` + 三个 `*ActionCreated` 折叠 = executor 的 action 配置全量；`MemberRewardMinted`/`ServiceRewardsDistributed`/`RecipientPaid` 折叠 = 成员实收与分发。
@@ -129,7 +130,7 @@
 | `GroupChatBanList` 解禁时 operator 字段语义 | 旧 operator 状态已删，事件 actor 是执行者 | 规范明确 operator = 本次执行者 |
 | NFT 转移导致 admin 失效 | 跨合约派生 | core `Transfer` 折叠；不新增 group-chat 事件 |
 | `originScoreDeduction=0` 满分/未提交歧义 | 存储哨兵 | 以 `OriginScoresSubmitted` 是否覆盖该成员/批次区分 |
-| LP 基准、`cacheDenominator`、`_govRatioAtMint`、pair 地址、观测历史、`_mintNonce` | 派生缓存 | 不进入事件；§01 §7 给出推导来源 |
+| LP 基准、`cacheDenominator`、`_govRatioAtMint`、pair 地址、观测历史、`_mintNonce` | 派生缓存 | 默认不进事件；`FeeReclassified.sqrtKOfLp` 为唯一已登记例外，§01 §7 给出推导来源 |
 | 不可变部署参数（constructor/init） | 非可变状态 | 不进事件；由部署清单/脚本承担来源 |
 | 无界存储集合（memberIds、ban 集合、白名单） | 存储无界但事件逐条 | 事件侧无数组，不违反动态字段上限 |
 | 消息正文/提案 title/details/remarks/verification schema/values、targetData | 无上限或需新增上限 | Q31(a) 要求补链上上限（O4–O7、O12） |
