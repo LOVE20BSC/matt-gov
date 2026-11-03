@@ -112,6 +112,8 @@ Launch 只保存“成员可用整数次数”和“社区累计已产生次数�
 
 回调仅由 Launch 调用，发生于代币创建、首批供应到账、代币登记与次数扣减之后；`TokenLaunched.launcherMemberId` 取本次 `memberId`。distributor 校验调用方并防止同一 token 重复处理；Launch 不开放额外的补触发回调入口。两种模式均允许非零合约接收，EOA 仅允许 NoCallback。
 
+回调可重入 `launchToken`：外层账本（次数递减、代币列表、父币映射、符号映射、子币列表）在回调前已封账，重入等价于同一交易内连续发射两次，两次都消耗该成员在对应父币维度的剩余次数。distributor 若需拒绝重入应自行加锁，不能依赖 Launch。
+
 distributor 自行实现领取与查询逻辑，`claim(tokenAddress)` 只是建议接口，不是协议必需 ABI。发射者负责选择分发目标，承担其失败和 Gas 耗尽风险。
 
 校验顺序固定为鉴权 → 参数 → 存在性 → 账本 → 扣减 → 最终符号唯一性：先校验调用者持有 `memberId`，再校验参数（`tokenSymbol`、`distributor` 与分发模式），再校验存在性（`parentTokenAddress` 已登记或为根父币；`memberId` 存在性由鉴权覆盖），再校验账本余量并扣减次数，最后按施加 `Test` 前缀后的最终符号校验唯一性。唯一性校验必须排在父币存在性校验之后：最终符号要先读取父币（根级发射为首币）符号才能得到。
@@ -167,7 +169,7 @@ LOVE20Token 的错误走本地具体错误：零 `initialSupply` 回 `ZeroInitia
 
 - LOVE20Token 不提供 `init`；构造函数直接接收 `name`、`symbol`、`initialSupply`、`maxSupply`、`distributor`、`minter` 和 `parentTokenAddress`。
 - `MemberNFT.init(firstToken)` 由 `Launch.init` 在创建首币时同步调用完成；MemberNFT 不保存 Launch 地址，费用代币地址是唯一外部地址依赖。
-- `MINT_ADDRESS` 在 `init` 后不可变更，并作为此后每个 LOVE20Token 的 `MINTER`。升级 Mint 需要连同 `Launch` 一起重部署，已发射代币的 `minter` 不会随之改写。
+- `MINT_ADDRESS` 在 `init` 后不可变更，并作为此后每个 LOVE20Token 的 `MINTER`。升级 Mint 需要连同 `Launch` 一起重部署，已发射代币的 `minter` 不会随之改写。发布检查应同时核对 `Launch.MINT_ADDRESS` 与首币 `MINTER`：二者不一致说明部署引用了不同的 Mint，表现为「能加次数不能铸币」或反之。
 
 旧来源 `LOVE20TKM/core/src/LOVE20Launch.sol`（提交见[旧代码基线](../../repositories.md#旧代码基线)）已逐项核对。BSC 版**保留**的旧行为：`isLOVE20Token` 的登记判定、`tokenSymbol` 的字节长度口径（字符集在本版扩展出汉字，见[普通发射](#普通发射)）、`tokenSymbol + "@" + parentTokenSymbol` 名称拼法与测试网 `Test` 前缀、`launchToken` 的“检查—创建—登记”外部调用骨架、代币列表与某社区子币列表的链上枚举（旧 `tokensCount`/`tokensAtIndex`、`childTokensCount`/`childTokensAtIndex` 改为分页查询）、符号到地址账本（旧 `tokenAddressBySymbol` 与 `TokenSymbolAlreadyExists` 唯一性校验），以及代币地址到父币地址（旧 `LaunchInfo.parentTokenAddress`）。其余整块删除：公平发射募资与认购领取（`contribute`/`withdraw`/`claim`/`claimInfo`）、`LaunchInfo` 的其余 10 个字段、`CLAIM_DELAY_BLOCKS`，以及按发射者或募资状态划分的其余枚举（`childTokensByLauncher*`、`launching*`、`launched*`、`participatedTokens*`）。次数阈值换算、额度余数结转、社区上限、次数融合和根级次数伴生都不在旧实现中，属新设计，见 [Mint 的发射额度](07-mint.md#发射额度的生成) 与[根级次数与伴生规则](#根级次数与伴生规则)。
 

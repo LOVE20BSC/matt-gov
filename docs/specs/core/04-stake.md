@@ -194,9 +194,10 @@ Factory 与 `Router.factory()` 一致、`promisedWaitingPhasesMin > 0`、`0 < fe
 | 2 | `boostAmount` 为零 | `ZeroBoostAmount()` |
 | 3 | `promisedWaitingPhases` 不在 `[PROMISED_WAITING_PHASES_MIN, PROMISED_WAITING_PHASES_MAX]` 范围 | `InvalidPromisedWaitingPhases(promisedWaitingPhases, PROMISED_WAITING_PHASES_MIN, PROMISED_WAITING_PHASES_MAX)` |
 | 4 | `tokenAddress` 未由 Launch 登记 | `TokenNotRegistered(tokenAddress)` |
-| 5 | 已申请解锁 | `UnstakeAlreadyRequested(tokenAddress, memberId)` |
-| 6 | 无流动性质押 | `NoStakedLiquidity(tokenAddress, memberId)` |
-| 7 | `promisedWaitingPhases` 小于已有值 | `PromisedWaitingPhasesDecreased(promisedWaitingPhases, member.promisedWaitingPhases)` |
+| 5 | 当前 Phase 为 `0` | `NotAllowedToStakeAtRoundZero()` |
+| 6 | 已申请解锁 | `UnstakeAlreadyRequested(tokenAddress, memberId)` |
+| 7 | 无流动性质押 | `NoStakedLiquidity(tokenAddress, memberId)` |
+| 8 | `promisedWaitingPhases` 小于已有值 | `PromisedWaitingPhasesDecreased(promisedWaitingPhases, member.promisedWaitingPhases)` |
 
 ### `unstake`
 
@@ -268,6 +269,7 @@ Factory 与 `Router.factory()` 一致、`promisedWaitingPhasesMin > 0`、`0 < fe
 
 - 当前质押余额为 `0` 就表示没有质押；只有 RoundHistory 的历史查询需要区分”本轮没有记录”和”本轮明确归零”，直接沿用旧 RoundHistory 的显式记录语义，不新增额外布尔状态。
 - 流动性写操作先按条件表顺序完成鉴权、参数与存在性校验——校验自身允许读取 Factory、代币合约与 MemberNFT 的只读接口——**再发起会改变资产或记账的外部调用**（转入代币、向 Pair 铸出或退出 LP、经 Router 换币），并以这些调用实际返回的数量记账；不设重入锁，一致性由这一顺序保证（与 [通用规则](01-common-rules.md#初始化与安全)的检查—更新—交互顺序的差别在此）。读取 Pair 状态，在任何除法前处理 `pairTotalSupply == 0`、`currentSqrtKOfLp == 0` 和基准未增长；需要 Router、Pair 或 ERC20 调用时，以外部调用成功返回的实际数量计算并更新 `lastWithdrawableLp`、`lastFeeLp`、`lastSqrtKOfLp`、成员份额和社区总份额。任一步失败全部回滚。BSC 不使用 SL/ST 凭证，所有份额和可提取 LP 直接存入 Stake。
+- 「不设重入锁」的前提是**所有外部调用的接收方都不触发回调**：`tokenAddress` 只能是 Launch 创建的标准 `LOVE20Token`，Pair 是标准 UniswapV2Pair，Router 是部署期固定的可信合约，三者的转账与 `mint`/`burn`/`swap` 都不回调发起方。`withdraw` 在发起任何外部调用之前先 `delete` 成员记录（等待期、流动性份额、加速份额已先读入内存），因此即使存在回调也无法二次提取同一份份额。若将来引入带接收回调的代币标准或替换 Pair 实现，必须先恢复重入锁或补齐完整 CEI。
 - 手续费结算失败（Pair 取回、Router 兑换、销毁或统计更新任一失败）时整笔结算回滚；提取本金前自动结算手续费，手续费结算失败则提取也回滚。
 - 空目标沿用本文件的等待期继承例外；`MemberStake` 和 `TotalStake` 结构体仅用于内部存储，不作为查询返回格式。
 - `memberId == 0` 与不存在的 `memberId` 同走 `MemberNFT.ownerOf`，由 OpenZeppelin 抛出 `ERC721NonexistentToken`；Stake 不声明 `InvalidMemberId()`，与 `Launch` 的既有实现一致。

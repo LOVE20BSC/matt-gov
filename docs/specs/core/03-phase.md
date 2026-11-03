@@ -29,6 +29,8 @@ Phase 维护连续的无语义时间片、同步观测和动态校准，不内�
 
 维护 `lastSyncPhase`，初值为 0。若等于本次 Phase，直接返回 `(false, currentPhaseBlocks)`，不追加观测、不调整参数、不发事件；否则记录本 Phase 并追加 `block.number`、`block.timestamp`。首次同步或未达到调整条件仍消耗本轮同步机会，失败回滚则不消耗。
 
+**机会一旦消耗，本 Phase 内不再有任何调用能触发校准。** 这是无许可入口的治理含义：抢跑者能决定的只是采样时点，既不能在同一 Phase 内多次采样取最有利值，也不能伪造 `elapsedBlocks` / `elapsedSeconds`——两者都来自链上真实值，`observed` 是同一段真实时间上的比值估计，采样时点只改变方差、不改变期望方向。
+
 每轮首个成功推举仍自动调用 `sync`；如果已经有人同步，自动调用无操作返回，不能阻塞推举。没有推举时任何人仍可同步；投票和铸造本身不触发同步。无人调用也不停止 Phase 推进。
 
 首次有效同步只追加观测。每次有效同步发出且只发一条 `PhaseSynchronized(phase, currentPhaseBlocks, nextPhaseBlocks)`，它是本次同步时点的**段长快照**：`currentPhaseBlocks` 是 Phase `phase` 的段长，`nextPhaseBlocks` 是 Phase `phase + 1` 起的段长；块高与时间由日志元数据承担，不进入载荷。快照携带整组段长，未调整时两者相等——`AdminChanged` 携带整组新快照（哪怕只改一项）是同一先例，快照的完整性优先于「不重复未变化字段」（§3.1）。
@@ -38,6 +40,8 @@ Phase 维护连续的无语义时间片、同步观测和动态校准，不内�
 相邻两次有效同步满足 `e2.currentPhaseBlocks == e1.nextPhaseBlocks`；中间跳过的空 Phase 不影响该式，因为生效段始终是 `p1 + 1`。`nextPhaseBlocks == currentPhaseBlocks` 只表示段长不变，不承诺区分「未调整」与「发生过一次同长度重写」：`currentPhaseBlocks == 1` 且估算为 0 时新长度被钳到 1，会写一段等长段，投影上与旧外推一致。`adjusted` 返回值只供调用方判断本次是否写入了新段，不进入事件。
 
 新参数不得改变当前或过去 Phase 的编号和边界，不能通过校准重获本轮同步机会。`adjusted = false` 时，`newPhaseBlocks` 返回当前值。
+
+`lastSyncPhase` 是 private，不提供 getter。判断「本 Phase 是否已同步」以 `observations` 的最后一条记录为准：本 Phase 已被同步后的重复调用静默返回、不发事件，因此**不能用 `PhaseSynchronized` 的事件计数推断同步状态**。
 
 ## 校准
 

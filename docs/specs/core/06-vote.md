@@ -79,4 +79,6 @@ Vote 管理当前治理 Round 的 Proposal 投票和加速快照。Proposal 的�
 
 `voteAmount` 为本次增量，不是累计票数；Target Data 为不透明 `bytes[]`，由 Target 解释。空 Target Data 仍必须触发回调。投票回调仅接受 Vote，Executor 仅接受 ActionTarget 转发；回调前先写入投票状态，失败则一并回滚。
 
+回调可重入 `vote`：重入时重新读取 `Stake.validGovVotes` 作为票上限，成员累计票数仍受该上限约束，因此回调不能突破本轮票权；若回调期间成员自己在 Stake 增加了质押，重入可按新上限继续投，等价于同一交易内先加杠杆再投票。
+
 Mint 的 `voterBoost` / `totalVoterBoost` 直接取 Vote 的同名冻结快照。验收见 [Core 验收](09-testing.md)。

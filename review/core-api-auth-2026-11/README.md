@@ -163,7 +163,7 @@
 
 - 所有 `ownerOf(memberId)` 鉴权在 `memberId` 未铸造时由 OZ revert，选择器不是本合约的 `NotMemberOwner`。
 - 与 §5.5「非授权方只拿到鉴权错误」字面冲突，但 `memberId` 由 ERC721Enumerable 公开可枚举，无信息增量。
-- `06-vote.md` 已单独声明这条；其余四处（`Launch`、`Stake`、`Submit`、`Mint`）未声明。建议提升到 `01-common-rules.md` 一次说清。
+- `04-stake.md`（拒绝条件段）与 `06-vote.md` 已单独声明这条；`Launch`、`Submit`、`Mint` 三处未声明。这条应提升到 `01-common-rules.md` 一次说清。
 - 落点：`02-launch.md` LCH-03、`06-submit.md` SUB-04。
 
 ### G-06（Info）跨合约错误穿透

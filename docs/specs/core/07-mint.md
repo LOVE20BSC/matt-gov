@@ -71,6 +71,8 @@ if eligibleProposalVoteAmount == 0:
 
 只允许该 Proposal 已记录的 Target 调用，每个 token、Round、Proposal 只能结算一次；未结束、Proposal 不达标或 `eligibleProposalVoteAmount == 0` 时拒绝。若该 Round 尚未准备，入口先自动准备。
 
+领取权只由「票数达标 + 是 target」两点决定，与提案是否被执行无关：`NoCallback` 的 target 可为 EOA，协议不校验它与提案主题相关，也不读取任何执行状态。投票者投的是内容，收款的是 target，两者之间没有链上约束。
+
 校验顺序：
 
 | 条件 | 回滚 |

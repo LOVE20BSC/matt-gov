@@ -35,6 +35,8 @@ Proposal 由合约分配的头部与创建者提供的主体组成，对外以 `
 
 显式销毁可由专用 Target 合约接收后执行，不能用零 Target 隐式销毁。
 
+`target` 同时是提案奖励的唯一领取主体：`Mint.mintProposalReward` 只接受该地址调用，领取规则见 [Mint 的 Proposal 结算](07-mint.md#proposal-结算)。`Callback` 模式要求它是合约，`NoCallback` 模式允许 EOA。
+
 结构体见 [`ISubmit.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/ISubmit.sol)。
 
 `submitNewProposal` 在一笔交易内完成「创建 + 推举」两步：先保存 Proposal，再写入当前 Round 的推举状态，最后执行创建与推举回调。调用者须持有 `memberId` 且满足 `canSubmit`，并因此消耗本 Round 的推举名额；回调执行时 Proposal 与推举状态都已完整写入，不能通过融合转出来源质押。创建后内容和 Target 不变，重名标题不等于重复 Proposal。
