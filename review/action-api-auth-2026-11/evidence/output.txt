@@ -1,0 +1,222 @@
+# action 接口调用权限专项 · 证据输出
+# 生成时间 2026-11-03 18:42:47 CST
+# 基线 action@e849e36  工作树 0 项改动
+
+## 1. check_caller_auth.py action/src
+violations: 0
+
+## 2. ABI 对账（实现 vs 自有接口）
+ActionTarget vs IActionTarget: 0 差异
+LpExecutor vs ILpExecutor: 0 差异
+GroupActionExecutor vs IGroupActionExecutor: 0 差异
+GroupServiceExecutor vs IGroupServiceExecutor: 0 差异
+
+## 3. 函数计数
+ActionTarget: ABI 24 = 写 8 + 读 16
+LpExecutor: ABI 25 = 写 8 + 读 17
+GroupActionExecutor: ABI 78 = 写 17 + 读 61
+GroupServiceExecutor: ABI 35 = 写 8 + 读 27
+
+## 4. 鉴权扫描（本报告所有入口表的来源）
+====================================================================================================
+A. 外部/公开入口（ABI 可见）
+====================================================================================================
+unit                    function                    vis       mut         modifiers                         line
+----------------------------------------------------------------------------------------------------
+ActionTarget            init                        external  nonpayable  -                                 ActionTarget.sol:51
+ActionTarget            registerJoinState           external  nonpayable  onlyBoundExecutor,tokenAddress,actionIdActionTarget.sol:113
+ActionTarget            clearJoinState              external  nonpayable  onlyBoundExecutor,tokenAddress,actionIdActionTarget.sol:144
+ActionTarget            forceClearJoinState         external  nonpayable  onlyMemberOwner,memberId          ActionTarget.sol:171
+ActionTarget            mintActionReward            external  nonpayable  onlyBoundExecutor,tokenAddress,actionIdActionTarget.sol:264
+ActionTarget            onProposalCreated           external  nonpayable  onlySubmit                        ActionTarget.sol:423
+ActionTarget            onProposalSubmitted         external  nonpayable  onlySubmit                        ActionTarget.sol:471
+ActionTarget            onProposalVoted             external  nonpayable  onlyVote                          ActionTarget.sol:500
+ExecutorBase            onProposalSubmitted         external  nonpayable  onlyActionTarget                  ExecutorBase.sol:43
+ExecutorBase            mintMemberReward            public    nonpayable  nonReentrant,onlyMemberOwner,memberIdExecutorBase.sol:51
+ExecutorBase            mintMemberRewards           external  nonpayable  nonReentrant,onlyMemberOwner,memberIdExecutorBase.sol:60
+GroupActionExecutor     onProposalCreated           external  nonpayable  onlyActionTarget                  GroupActionExecutor.sol:104
+GroupActionExecutor     onProposalVoted             external  nonpayable  onlyActionTarget                  GroupActionExecutor.sol:112
+GroupActionExecutor     join                        external  nonpayable  nonReentrant                      GroupActionExecutor.sol:128
+GroupActionExecutor     withdraw                    external  nonpayable  nonReentrant                      GroupActionExecutor.sol:143
+GroupActionExecutor     withdrawProviderQuota       external  nonpayable  nonReentrant                      GroupActionExecutor.sol:148
+GroupActionExecutor     exit                        external  nonpayable  nonReentrant                      GroupActionExecutor.sol:162
+GroupActionExecutor     addProviderQuota            external  nonpayable  nonReentrant                      GroupActionExecutor.sol:208
+GroupActionExecutor     removeProviderQuota         external  nonpayable  nonReentrant                      GroupActionExecutor.sol:222
+GroupActionExecutor     submitOriginScores          external  nonpayable  -                                 GroupActionExecutor.sol:320
+GroupActionExecutor     submitVerifierApplication   external  nonpayable  nonReentrant                      GroupActionExecutor.sol:380
+GroupActionExecutor     cancelVerifierApplication   external  nonpayable  nonReentrant                      GroupActionExecutor.sol:392
+GroupActionExecutor     activateGroup               external  nonpayable  nonReentrant                      GroupActionExecutor.sol:505
+GroupActionExecutor     deactivateGroup             external  nonpayable  nonReentrant                      GroupActionExecutor.sol:515
+GroupActionExecutor     setGroupConfig              external  nonpayable  -                                 GroupActionExecutor.sol:520
+GroupActionJoin         join                        external  nonpayable  onlyMemberOwner,self,protocol,memberIdGroupActionJoin.sol:41
+GroupActionJoin         withdraw                    external  nonpayable  onlyMemberOwner,self,protocol,memberIdGroupActionJoin.sol:118
+GroupActionJoin         withdrawProviderQuota       external  nonpayable  onlyMemberOwner,self,protocol,providerIdGroupActionJoin.sol:157
+GroupActionJoin         exit                        external  nonpayable  onlyMemberOwner,self,protocol,memberIdGroupActionJoin.sol:178
+GroupActionJoin         addProviderQuota            external  nonpayable  onlyMemberOwner,self,protocol,providerIdGroupActionJoin.sol:297
+GroupActionJoin         removeProviderQuota         external  nonpayable  onlyMemberOwner,self,protocol,providerIdGroupActionJoin.sol:366
+GroupActionManager      onProposalCreated           external  nonpayable  -                                 GroupActionManager.sol:50
+GroupActionManager      activateGroup               external  nonpayable  onlyGroupOwner,self,protocol,groupIdGroupActionManager.sol:129
+GroupActionManager      deactivateGroup             external  nonpayable  onlyGroupOwner,self,protocol,groupIdGroupActionManager.sol:174
+GroupActionManager      setGroupConfig              external  nonpayable  onlyGroupOwner,self,protocol,groupIdGroupActionManager.sol:221
+GroupActionVerify       submitOriginScores          external  nonpayable  onlyMemberOwner,self,protocol,verifierIdGroupActionVerify.sol:61
+GroupActionVerify       submitVerifierApplication   external  nonpayable  onlyMemberOwner,self,protocol,verifierIdGroupActionVerify.sol:150
+GroupActionVerify       cancelVerifierApplication   external  nonpayable  onlyMemberOwner,self,protocol,verifierIdGroupActionVerify.sol:176
+GroupActionVerify       onProposalVoted             external  nonpayable  -                                 GroupActionVerify.sol:372
+GroupRecipients         setRecipients               external  nonpayable  -                                 GroupRecipients.sol:48
+GroupRecipients         distribute                  external  nonpayable  -                                 GroupRecipients.sol:168
+GroupServiceExecutor    join                        external  nonpayable  nonReentrant,onlyMemberOwner,memberIdGroupServiceExecutor.sol:113
+GroupServiceExecutor    setRecipients               external  nonpayable  onlyGroupOwner,groupId            GroupServiceExecutor.sol:301
+GroupServiceExecutor    exit                        external  nonpayable  nonReentrant,onlyMemberOwner,memberIdGroupServiceExecutor.sol:372
+GroupServiceExecutor    onProposalCreated           external  nonpayable  onlyActionTarget                  GroupServiceExecutor.sol:393
+GroupServiceExecutor    onProposalVoted             external  nonpayable  onlyActionTarget                  GroupServiceExecutor.sol:439
+LpExecutor              onProposalCreated           external  nonpayable  onlyActionTarget                  LpExecutor.sol:89
+LpExecutor              onProposalVoted             external  nonpayable  onlyActionTarget                  LpExecutor.sol:132
+LpExecutor              join                        external  nonpayable  nonReentrant,onlyMemberOwner,memberIdLpExecutor.sol:144
+LpExecutor              withdraw                    external  nonpayable  nonReentrant,onlyMemberOwner,memberIdLpExecutor.sol:193
+LpExecutor              exit                        external  nonpayable  nonReentrant,onlyMemberOwner,memberIdLpExecutor.sol:238
+
+====================================================================================================
+B. 写入口统计（mutability 非 view/pure，且 ABI 可见）
+====================================================================================================
+ActionTarget             写入口  8  带 modifier  7  无 modifier  1
+    [NONE] init                       -
+    [AUTH] registerJoinState          onlyBoundExecutor,tokenAddress,actionId
+    [AUTH] clearJoinState             onlyBoundExecutor,tokenAddress,actionId
+    [AUTH] forceClearJoinState        onlyMemberOwner,memberId
+    [AUTH] mintActionReward           onlyBoundExecutor,tokenAddress,actionId
+    [AUTH] onProposalCreated          onlySubmit
+    [AUTH] onProposalSubmitted        onlySubmit
+    [AUTH] onProposalVoted            onlyVote
+ExecutorBase             写入口  3  带 modifier  3  无 modifier  0
+    [AUTH] onProposalSubmitted        onlyActionTarget
+    [AUTH] mintMemberReward           nonReentrant,onlyMemberOwner,memberId
+    [AUTH] mintMemberRewards          nonReentrant,onlyMemberOwner,memberId
+GroupActionExecutor      写入口 14  带 modifier 12  无 modifier  2
+    [AUTH] onProposalCreated          onlyActionTarget
+    [AUTH] onProposalVoted            onlyActionTarget
+    [AUTH] join                       nonReentrant
+    [AUTH] withdraw                   nonReentrant
+    [AUTH] withdrawProviderQuota      nonReentrant
+    [AUTH] exit                       nonReentrant
+    [AUTH] addProviderQuota           nonReentrant
+    [AUTH] removeProviderQuota        nonReentrant
+    [NONE] submitOriginScores         -
+    [AUTH] submitVerifierApplication  nonReentrant
+    [AUTH] cancelVerifierApplication  nonReentrant
+    [AUTH] activateGroup              nonReentrant
+    [AUTH] deactivateGroup            nonReentrant
+    [NONE] setGroupConfig             -
+GroupActionJoin          写入口  6  带 modifier  6  无 modifier  0
+    [AUTH] join                       onlyMemberOwner,self,protocol,memberId
+    [AUTH] withdraw                   onlyMemberOwner,self,protocol,memberId
+    [AUTH] withdrawProviderQuota      onlyMemberOwner,self,protocol,providerId
+    [AUTH] exit                       onlyMemberOwner,self,protocol,memberId
+    [AUTH] addProviderQuota           onlyMemberOwner,self,protocol,providerId
+    [AUTH] removeProviderQuota        onlyMemberOwner,self,protocol,providerId
+GroupActionManager       写入口  4  带 modifier  3  无 modifier  1
+    [NONE] onProposalCreated          -
+    [AUTH] activateGroup              onlyGroupOwner,self,protocol,groupId
+    [AUTH] deactivateGroup            onlyGroupOwner,self,protocol,groupId
+    [AUTH] setGroupConfig             onlyGroupOwner,self,protocol,groupId
+GroupActionVerify        写入口  4  带 modifier  3  无 modifier  1
+    [AUTH] submitOriginScores         onlyMemberOwner,self,protocol,verifierId
+    [AUTH] submitVerifierApplication  onlyMemberOwner,self,protocol,verifierId
+    [AUTH] cancelVerifierApplication  onlyMemberOwner,self,protocol,verifierId
+    [NONE] onProposalVoted            -
+GroupRecipients          写入口  2  带 modifier  0  无 modifier  2
+    [NONE] setRecipients              -
+    [NONE] distribute                 -
+GroupServiceExecutor     写入口  5  带 modifier  5  无 modifier  0
+    [AUTH] join                       nonReentrant,onlyMemberOwner,memberId
+    [AUTH] setRecipients              onlyGroupOwner,groupId
+    [AUTH] exit                       nonReentrant,onlyMemberOwner,memberId
+    [AUTH] onProposalCreated          onlyActionTarget
+    [AUTH] onProposalVoted            onlyActionTarget
+LpExecutor               写入口  5  带 modifier  5  无 modifier  0
+    [AUTH] onProposalCreated          onlyActionTarget
+    [AUTH] onProposalVoted            onlyActionTarget
+    [AUTH] join                       nonReentrant,onlyMemberOwner,memberId
+    [AUTH] withdraw                   nonReentrant,onlyMemberOwner,memberId
+    [AUTH] exit                       nonReentrant,onlyMemberOwner,memberId
+
+写入口合计: 51
+
+====================================================================================================
+C. modifier 定义与形状（dev-standards §5.5）
+====================================================================================================
+file                          modifier                  sender  revert  ends _;  line
+----------------------------------------------------------------------------------------------------
+ActionTarget.sol              onlyBoundExecutor         True    True    True     70
+ActionTarget.sol              onlyMemberOwner           True    True    True     91
+ActionTarget.sol              onlySubmit                True    True    True     77
+ActionTarget.sol              onlyVote                  True    True    True     84
+ExecutorBase.sol              onlyActionTarget          True    True    True     36
+ExecutorBase.sol              onlyMemberOwner           True    True    True     29
+GroupActionJoin.sol           onlyMemberOwner           True    True    True     29
+GroupActionManager.sol        onlyGroupOwner            True    True    True     27
+GroupActionVerify.sol         onlyMemberOwner           True    True    True     50
+GroupServiceExecutor.sol      onlyGroupOwner            True    True    True     56
+
+====================================================================================================
+D. 库的 external 函数（public library 直接调用面）
+====================================================================================================
+GroupActionJoin       join                        WRITE   onlyMemberOwner,self,protocol,memberId
+GroupActionJoin       withdraw                    WRITE   onlyMemberOwner,self,protocol,memberId
+GroupActionJoin       withdrawProviderQuota       WRITE   onlyMemberOwner,self,protocol,providerId
+GroupActionJoin       exit                        WRITE   onlyMemberOwner,self,protocol,memberId
+GroupActionJoin       joinInfo                    view    -
+GroupActionJoin       joinedAmountByGroupId       view    -
+GroupActionJoin       groupIdsByRound             view    -
+GroupActionJoin       memberIdsByGroupId          view    -
+GroupActionJoin       addProviderQuota            WRITE   onlyMemberOwner,self,protocol,providerId
+GroupActionJoin       removeProviderQuota         WRITE   onlyMemberOwner,self,protocol,providerId
+GroupActionJoin       providerQuotas              view    -
+GroupActionJoin       providerAmountsByMemberId   view    -
+GroupActionJoin       joinedGroupIds              view    -
+GroupActionJoin       joinedGroupIdsByMemberId    view    -
+GroupActionJoin       joinedTokenAddressesByGroupIdByMemberIdview    -
+GroupActionJoin       joinedMemberIds             view    -
+GroupActionJoin       joinedMemberIdsByGroupId    view    -
+GroupActionManager    onProposalCreated           WRITE   -
+GroupActionManager    activateGroup               WRITE   onlyGroupOwner,self,protocol,groupId
+GroupActionManager    deactivateGroup             WRITE   onlyGroupOwner,self,protocol,groupId
+GroupActionManager    setGroupConfig              WRITE   onlyGroupOwner,self,protocol,groupId
+GroupActionManager    groupState                  view    -
+GroupActionManager    descriptionByRound          view    -
+GroupActionManager    activeGroupIds              view    -
+GroupActionManager    isGroupActive               view    -
+GroupActionManager    maxJoinAmount               view    -
+GroupActionManager    staked                      view    -
+GroupActionManager    totalStaked                 view    -
+GroupActionManager    stakedByMemberId            view    -
+GroupActionManager    tokenAddressesByGroupId     view    -
+GroupActionManager    actionIdsByGroupId          view    -
+GroupActionManager    actionIdsWithActiveGroups   view    -
+GroupActionManager    hasActiveGroups             view    -
+GroupActionVerify     submitOriginScores          WRITE   onlyMemberOwner,self,protocol,verifierId
+GroupActionVerify     originScore                 view    -
+GroupActionVerify     finalScore                  view    -
+GroupActionVerify     totalFinalScore             view    -
+GroupActionVerify     verifiedMemberCount         view    -
+GroupActionVerify     isRoundVerified             view    -
+GroupActionVerify     lockedVerifierId            view    -
+GroupActionVerify     submitVerifierApplication   WRITE   onlyMemberOwner,self,protocol,verifierId
+GroupActionVerify     cancelVerifierApplication   WRITE   onlyMemberOwner,self,protocol,verifierId
+GroupActionVerify     verifierStake               view    -
+GroupActionVerify     verifierApplication         view    -
+GroupActionVerify     verifierApplications        view    -
+GroupActionVerify     voteAmountsByVerifierIds    view    -
+GroupActionVerify     topVerifiers                view    -
+GroupActionVerify     applicationVoters           view    -
+GroupActionVerify     applicationVotersByVerifierIdview    -
+GroupActionVerify     verificationSchema          view    -
+GroupActionVerify     verificationValue           view    -
+GroupActionVerify     verificationInfos           view    -
+GroupActionVerify     verificationInfosByRound    view    -
+GroupActionVerify     onProposalVoted             WRITE   -
+GroupRecipients       setRecipients               WRITE   -
+GroupRecipients       recipients                  view    -
+GroupRecipients       actionIdsWithRecipients     view    -
+GroupRecipients       distribution                view    -
+GroupRecipients       distribute                  WRITE   -
+GroupRecipients       projectedDistribution       view    -
