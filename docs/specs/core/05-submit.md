@@ -4,7 +4,7 @@ Submit 管理 Proposal 的创建与当前治理 Round 的推举：`submitNewProp
 
 ## Proposal
 
-Proposal 以 `tokenAddress + proposalId` 定位，ID 每社区单调分配、从 `1` 开始。`proposalId == 0` 无效，对未分配 ID 的访问回滚 `ProposalNotFound`。
+Proposal 以 `tokenAddress + proposalId` 定位，ID 每社区单调分配、从 `1` 开始。`proposalId == 0` 无效，对未分配 ID 的访问回滚 `ProposalNotFound(tokenAddress, proposalId)`。
 
 Submit 不校验 `tokenAddress` 是否登记为 LOVE20 代币；推举门槛由 Stake 票数自然兜底。
 
@@ -85,11 +85,11 @@ Proposal 由合约分配的头部与创建者提供的主体组成，对外以 `
 
 **入参数组不设上限**：它是只读、无状态写的批量查询，批量大小与由此产生的返回体量都由调用方自己选择，超限表现为调用方自己的 out-of-gas 回滚（减小批量即可重试），不会把代价转嫁给别人。这与 [复查清单](../../review-guide.md) 的「数组、批量参数和分页参数有最大边界」并不冲突——该条约束的是合约替调用者执行、且会写入状态的批量。
 
-未分配过的 ID 回滚 `ProposalNotFound(proposalId)`，不静默补空：位置对齐是批量查询的语义基础，补空会让调用方无法判断缺失的是哪一项。空数组入参返回空数组。单条读传单元素数组，不另设单条详情入口。
+未分配过的 ID 回滚 `ProposalNotFound(tokenAddress, proposalId)`，不静默补空：位置对齐是批量查询的语义基础，补空会让调用方无法判断缺失的是哪一项。空数组入参返回空数组。单条读传单元素数组，不另设单条详情入口。
 
 `submitInfos` 分页与两条方向单键（`proposalIdBySubmitterId`、`submitterIdByProposalId`）的分工：分页是集合的完整读取路径，两条单键是它在两把唯一键上的定点通道，三者读到的是同一份推举记录，不各自维护状态。
 
-`proposalTarget(tokenAddress, proposalId)` 回该 Proposal 的 `target` 与 `targetMode`，未分配过的 ID 同样回滚 `ProposalNotFound(proposalId)`。它是 `proposalInfosByProposalIds` 之外的轻量取值入口，供每笔投票都要判断回调目标的 Vote 使用：整条 `ProposalInfo` 含较大的 `title`/`details`/`targetData`（上限 1024B / 16 KiB / 16 项），随正文大小线性变贵（实测每笔 3 万～9 万 gas），而 Vote 只需要这两个字段。按 `migration-standards.md`「按键取单值」的第四种情况加入——先量后加，省下的开销与调用方自身的写入开销同量级。
+`proposalTarget(tokenAddress, proposalId)` 回该 Proposal 的 `target` 与 `targetMode`，未分配过的 ID 同样回滚 `ProposalNotFound(tokenAddress, proposalId)`。它是 `proposalInfosByProposalIds` 之外的轻量取值入口，供每笔投票都要判断回调目标的 Vote 使用：整条 `ProposalInfo` 含较大的 `title`/`details`/`targetData`（上限 1024B / 16 KiB / 16 项），随正文大小线性变贵（实测每笔 3 万～9 万 gas），而 Vote 只需要这两个字段。按 `migration-standards.md`「按键取单值」的第四种情况加入——先量后加，省下的开销与调用方自身的写入开销同量级。
 
 ## 推举
 
@@ -124,7 +124,7 @@ Proposal 由合约分配的头部与创建者提供的主体组成，对外以 `
 `submit` 校验顺序：
 
 1. **鉴权**：`memberId` 存在且 `ownerOf(memberId) == msg.sender`（鉴权 modifier）
-2. **存在性**：`proposalId` 存在（`ProposalNotFound(proposalId)`）
+2. **存在性**：`proposalId` 存在（`ProposalNotFound(tokenAddress, proposalId)`）
 3. **门槛**：社区票数为零回 `NoGovVotes(tokenAddress)`；否则 `canSubmit(tokenAddress, memberId)`（`InsufficientSubmitPower(tokenAddress, memberId, validVotes, requiredVotes)`）
 4. **去重与总数**：先判同一 Proposal 同轮是否已推举（`ProposalAlreadySubmitted(tokenAddress, round, proposalId)`）、再判同一成员同社区同轮是否已推举其他 Proposal（`MemberAlreadySubmitted(tokenAddress, round, memberId)`），最后检查社区本 Round 已推举数小于 1,000（`SubmitRoundFull(tokenAddress, round, 1000)`）
 5. 写入三处状态：推举记录列表、按 `proposalId` 的推举者、按 `submitterId` 的反查
@@ -157,7 +157,7 @@ Proposal 由合约分配的头部与创建者提供的主体组成，对外以 `
 | `ZeroTargetAddress()` | `submitNewProposal` 的 `target` 为零 |
 | `CallbackTargetNotContract(address target)` | `targetMode == Callback` 且 `target.code.length == 0` |
 | `NotMemberOwner(uint256 memberId)` | `ownerOf(memberId) != msg.sender`；`memberId` 不存在时由 MemberNFT 回滚 `ERC721NonexistentToken` |
-| `ProposalNotFound(uint256 proposalId)` | `proposalInfosByProposalIds` 传入未分配过的 ID；`submit` 的 `proposalId` 不存在 |
+| `ProposalNotFound(address tokenAddress, uint256 proposalId)` | `proposalInfosByProposalIds` 传入未分配过的 ID；`submit` 的 `proposalId` 不存在 |
 | `NoGovVotes(address tokenAddress)` | 社区治理票数为零，无法计算推举门槛；两个入口共用 |
 | `InsufficientSubmitPower(address tokenAddress, uint256 memberId, uint256 validVotes, uint256 requiredVotes)` | 社区票数非零但成员票权不足；`requiredVotes` 为 `ceil(totalValidGovVotes * SUBMIT_MIN_RATIO / 1e18)`；两个入口共用 |
 | `SubmitRoundFull(address tokenAddress, uint256 round, uint256 limit)` | 本社区本 Round 已推举数达到 `limit`（1,000）；两个入口共用 |

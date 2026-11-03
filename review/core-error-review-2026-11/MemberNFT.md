@@ -3,6 +3,7 @@
 > 基线：`core@6fdd0f1`（2026-11-03），行号按当前工作树。
 > 判据：`matt-gov/docs/error-standards.md`；行为口径：`matt-gov/docs/specs/core/02-member-nft.md`。
 > 范围：`src/MemberNFT.sol`（379 行）+ `src/interfaces/IMemberNFT.sol` 的 `IMemberNFTErrors`。
+> 处置：本报告为 `6fdd0f1` 快照；逐条决定、ABI 变更与撤回见 [DISPOSITION.md](DISPOSITION.md)。
 
 ## 1. 结论
 

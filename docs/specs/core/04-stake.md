@@ -39,7 +39,7 @@ parentTokenAmountOptimal = floor(tokenAmountDesired * reserveParent / reserveTok
 tokenAmountOptimal      = floor(parentTokenAmountDesired * reserveToken / reserveParent)
 ```
 
-先算父币方向；该值不超过期望值时入池 `(期望代币量, 折算父币量)`，否则改算代币方向并入池 `(折算代币量, 期望父币量)`。折算使任一方向的入池量低于期望值时，偏离量不得超过 `floor(期望量 * slippage / 1e18)`，否则回滚 `SlippageExceeded(actualDeviation, maxDeviation)`——两个参数同为代币最小单位，第一个是本次的实际偏离量、第二个是按容差算出的允许偏离量；`slippage` 按 `1e18` 精度表达允许的相对偏离，`0` 表示不允许任何偏离，不设除零以外的上界。Pair 任一侧储备为零时不做折算，直接采用期望数量。Pair 铸出的 LP 数量为零时回滚 `ZeroLiquidityMinted()`。添加 LP 成功后按 LP 数量计份额；提取时移除 LP 并返还双币。
+先算父币方向；该值不超过期望值时入池 `(期望代币量, 折算父币量)`，否则改算代币方向并入池 `(折算代币量, 期望父币量)`。折算使任一方向的入池量低于期望值时，偏离量不得超过 `floor(期望量 * slippage / 1e18)`，否则回滚 `SlippageExceeded(actualDeviation, maxDeviation)`——两个参数同为代币最小单位，第一个是本次的实际偏离量、第二个是按容差算出的允许偏离量；`slippage` 按 `1e18` 精度表达允许的相对偏离，`0` 表示不允许任何偏离，不设除零以外的上界。Pair 任一侧储备为零时不做折算，直接采用期望数量。Pair 铸出的 LP 数量为零时回滚 `ZeroLiquidityMinted()`；该分支保留给“返回 0 而不是回滚”的 V2 兼容 Pair，参考实现会先以 `INSUFFICIENT_LIQUIDITY_MINTED` 回滚。添加 LP 成功后按 LP 数量计份额；提取时移除 LP 并返还双币。
 
 份额铸造公式（必须在手续费重分类之后计算）：
 
@@ -107,7 +107,7 @@ FEE_SETTLEMENT_RATIO <= 池费率
 
 低于阈值时保留待结算；Pair、Router、销毁或统计更新任一步失败，整笔回滚。每次只处理一个代币社区。
 
-无质押的有效成员返回零状态；`canWithdraw` 对任意 `tokenAddress` 都返回布尔值、不回滚，未申请或未到期时为 false。历史查询读取不晚于目标 Round 的最近记录，含明确归零记录；尚未开始的未来轮按[时点值口径](00-protocol-model.md#实现约束)回滚 `RoundNotStarted(requiredRound, currentRound)`，不把最近记录当作未来轮的值。Vote 用同一入口按当前 Round 读取治理票上限与加速份额，并自行维护投票快照。
+无质押的有效成员返回零状态；`canWithdraw` 对任意 `tokenAddress` 都返回布尔值、不回滚，未申请或未到期时为 false。历史查询读取不晚于目标 Round 的最近记录，含明确归零记录；尚未开始的未来轮按[时点值口径](00-protocol-model.md#实现约束)回滚 `RoundNotStarted(requestedRound, currentRound)`，不把最近记录当作未来轮的值。Vote 用同一入口按当前 Round 读取治理票上限与加速份额，并自行维护投票快照。
 
 ## 治理票与加速质押
 
@@ -178,7 +178,7 @@ Factory 与 `Router.factory()` 一致、`promisedWaitingPhasesMin > 0`、`0 < fe
 | 4 | `promisedWaitingPhases` 不在 `[PROMISED_WAITING_PHASES_MIN, PROMISED_WAITING_PHASES_MAX]` 范围 | `InvalidPromisedWaitingPhases(promisedWaitingPhases, PROMISED_WAITING_PHASES_MIN, PROMISED_WAITING_PHASES_MAX)` |
 | 5 | `tokenAddress` 未由 Launch 登记 | `TokenNotRegistered(tokenAddress)` |
 | 6 | 首次质押时 Pair 为零地址 | `PairMissing(tokenAddress)` |
-| 7 | 当前 Phase 为 `0` | `NotAllowedToStakeAtRoundZero()` |
+| 7 | 当前 Phase 为 `0` | `StakeNotStarted()` |
 | 8 | 已申请解锁 | `UnstakeAlreadyRequested(tokenAddress, memberId)` |
 | 9 | `promisedWaitingPhases` 小于已有值 | `PromisedWaitingPhasesDecreased(promisedWaitingPhases, member.promisedWaitingPhases)` |
 | 10 | 折算使入池量低于期望量，且偏离超过 `slippage` | `SlippageExceeded(actualDeviation, maxDeviation)` |
@@ -194,7 +194,7 @@ Factory 与 `Router.factory()` 一致、`promisedWaitingPhasesMin > 0`、`0 < fe
 | 2 | `boostAmount` 为零 | `ZeroBoostAmount()` |
 | 3 | `promisedWaitingPhases` 不在 `[PROMISED_WAITING_PHASES_MIN, PROMISED_WAITING_PHASES_MAX]` 范围 | `InvalidPromisedWaitingPhases(promisedWaitingPhases, PROMISED_WAITING_PHASES_MIN, PROMISED_WAITING_PHASES_MAX)` |
 | 4 | `tokenAddress` 未由 Launch 登记 | `TokenNotRegistered(tokenAddress)` |
-| 5 | 当前 Phase 为 `0` | `NotAllowedToStakeAtRoundZero()` |
+| 5 | 当前 Phase 为 `0` | `StakeNotStarted()` |
 | 6 | 已申请解锁 | `UnstakeAlreadyRequested(tokenAddress, memberId)` |
 | 7 | 无流动性质押 | `NoStakedLiquidity(tokenAddress, memberId)` |
 | 8 | `promisedWaitingPhases` 小于已有值 | `PromisedWaitingPhasesDecreased(promisedWaitingPhases, member.promisedWaitingPhases)` |
@@ -218,14 +218,14 @@ Factory 与 `Router.factory()` 一致、`promisedWaitingPhasesMin > 0`、`0 < fe
 | 3 | Pair 为零地址 | `PairMissing(tokenAddress)` |
 | 4 | 未申请解锁 | `UnstakeNotRequested(tokenAddress, memberId)` |
 | 5 | 无流动性质押 | `NoStakedLiquidity(tokenAddress, memberId)` |
-| 6 | 当前 Phase 不大于 `unlockRequestPhase + promisedWaitingPhases` | `InsufficientWaitingPhases(currentRound, unlockRequestPhase + promisedWaitingPhases)` |
+| 6 | 当前 Phase 不大于 `unlockRequestPhase + promisedWaitingPhases` | `UnlockRoundNotReached(currentRound, unlockRequestPhase + promisedWaitingPhases)` |
 
 ### `mergeStake`
 
 | 顺序 | 条件 | 回滚错误 |
 | --- | --- | --- |
 | 1 | 调用者不持有源 `memberId` 的 NFT | `NotMemberOwner(sourceMemberId)` |
-| 2 | 源与目标相同 | `SourceAndTargetMemberIdsMustBeDifferent(sourceMemberId, targetMemberId)` |
+| 2 | 源与目标相同 | `SourceEqualsTarget(sourceMemberId)` |
 | 3 | `tokenAddress` 未由 Launch 登记 | `TokenNotRegistered(tokenAddress)` |
 | 4 | 目标 `memberId` 不存在（含 `0`） | MemberNFT 的标准错误（`ownerOf` 回滚 `ERC721NonexistentToken`） |
 | 5 | 源已申请解锁 | `UnstakeAlreadyRequested(tokenAddress, sourceMemberId)` |

@@ -1455,36 +1455,6 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Stake.sol:241"
-      ],
-      "selector": "0x84d77e73",
-      "signature": "InsufficientWaitingPhases(uint256,uint256)"
-    },
-    {
-      "declarations": 1,
-      "files": [
-        "core/src/interfaces/ILOVE20Token.sol"
-      ],
-      "interfaces": [
-        "ILOVE20TokenErrors"
-      ],
-      "repo": "core",
-      "revert_sites": [
-        "core/src/LOVE20Token.sol:22"
-      ],
-      "selector": "0x9906d24a",
-      "signature": "InvalidInitialSupply(uint256,uint256)"
-    },
-    {
-      "declarations": 1,
-      "files": [
-        "core/src/interfaces/IStake.sol"
-      ],
-      "interfaces": [
-        "IStakeErrors"
-      ],
-      "repo": "core",
-      "revert_sites": [
         "core/src/Stake.sol:479"
       ],
       "selector": "0x50a046ad",
@@ -1545,6 +1515,21 @@
       ],
       "repo": "core",
       "revert_sites": [
+        "core/src/LOVE20Token.sol:22"
+      ],
+      "selector": "0xdce94538",
+      "signature": "MaxSupplyBelowInitialSupply(uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/ILOVE20Token.sol"
+      ],
+      "interfaces": [
+        "ILOVE20TokenErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
         "core/src/LOVE20Token.sol:44"
       ],
       "selector": "0xea058246",
@@ -1575,7 +1560,22 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Mint.sol:515"
+        "core/src/Mint.sol:538"
+      ],
+      "selector": "0x8fde7ba3",
+      "signature": "MemberHasNoVote(address,uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/IMint.sol"
+      ],
+      "interfaces": [
+        "IMintErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Mint.sol:531"
       ],
       "selector": "0xc157061f",
       "signature": "MemberRewardAlreadyMinted(address,uint256,uint256)"
@@ -1590,10 +1590,25 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Mint.sol:521"
+        "core/src/Mint.sol:541"
       ],
-      "selector": "0x1392e03a",
-      "signature": "MemberRewardUnavailable(address,uint256,uint256)"
+      "selector": "0x86b94627",
+      "signature": "MemberRewardPoolEmpty(address,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/IMint.sol"
+      ],
+      "interfaces": [
+        "IMintErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Mint.sol:543"
+      ],
+      "selector": "0xd632d7c1",
+      "signature": "MemberRewardRoundedToZero(address,uint256,uint256)"
     },
     {
       "declarations": 1,
@@ -1695,25 +1710,10 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Vote.sol:79"
+        "core/src/Vote.sol:88"
       ],
       "selector": "0x8102b749",
       "signature": "NoVotingPower(address,uint256)"
-    },
-    {
-      "declarations": 1,
-      "files": [
-        "core/src/interfaces/IStake.sol"
-      ],
-      "interfaces": [
-        "IStakeErrors"
-      ],
-      "repo": "core",
-      "revert_sites": [
-        "core/src/Stake.sol:474"
-      ],
-      "selector": "0xbe9cd064",
-      "signature": "NotAllowedToStakeAtRoundZero()"
     },
     {
       "declarations": 5,
@@ -1734,7 +1734,7 @@
       "repo": "core",
       "revert_sites": [
         "core/src/Launch.sol:37",
-        "core/src/Mint.sol:229",
+        "core/src/Mint.sol:237",
         "core/src/Stake.sol:106",
         "core/src/Submit.sol:100",
         "core/src/Vote.sol:64"
@@ -1883,6 +1883,21 @@
     {
       "declarations": 1,
       "files": [
+        "core/src/interfaces/IMint.sol"
+      ],
+      "interfaces": [
+        "IMintErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Mint.sol:208"
+      ],
+      "selector": "0xbdf55b4f",
+      "signature": "ProposalBelowThreshold(address,uint256,uint256,uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
         "core/src/interfaces/IVote.sol"
       ],
       "interfaces": [
@@ -1890,7 +1905,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Vote.sol:82"
+        "core/src/Vote.sol:77"
       ],
       "selector": "0x46b9908e",
       "signature": "ProposalIdsEmpty()"
@@ -1907,8 +1922,8 @@
       "revert_sites": [
         "core/src/Submit.sol:273"
       ],
-      "selector": "0x428d06a9",
-      "signature": "ProposalNotFound(uint256)"
+      "selector": "0x8e1a32af",
+      "signature": "ProposalNotFound(address,uint256)"
     },
     {
       "declarations": 1,
@@ -1920,10 +1935,25 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Vote.sol:224"
+        "core/src/Vote.sol:229"
       ],
       "selector": "0x354f9b03",
       "signature": "ProposalNotSubmitted(address,uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/IMint.sol"
+      ],
+      "interfaces": [
+        "IMintErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Mint.sol:211"
+      ],
+      "selector": "0x11b384c6",
+      "signature": "ProposalPoolEmpty(address,uint256)"
     },
     {
       "declarations": 1,
@@ -1950,10 +1980,10 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Mint.sol:205"
+        "core/src/Mint.sol:213"
       ],
-      "selector": "0x6b95e12e",
-      "signature": "ProposalRewardUnavailable(address,uint256,uint256)"
+      "selector": "0xf6f9f8c8",
+      "signature": "ProposalRewardRoundedToZero(address,uint256,uint256)"
     },
     {
       "declarations": 1,
@@ -1965,7 +1995,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Vote.sol:85"
+        "core/src/Vote.sol:80"
       ],
       "selector": "0xc1eadb2b",
       "signature": "ProposalVoteAmountsLengthMismatch(uint256,uint256)"
@@ -2030,8 +2060,23 @@
         "core/src/Launch.sol:159",
         "core/src/Stake.sol:284"
       ],
-      "selector": "0x1049dc75",
-      "signature": "SourceAndTargetMemberIdsMustBeDifferent(uint256,uint256)"
+      "selector": "0xbbef66e9",
+      "signature": "SourceEqualsTarget(uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/IStake.sol"
+      ],
+      "interfaces": [
+        "IStakeErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Stake.sol:474"
+      ],
+      "selector": "0xcd329a46",
+      "signature": "StakeNotStarted()"
     },
     {
       "declarations": 1,
@@ -2074,7 +2119,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Vote.sol:88"
+        "core/src/Vote.sol:83"
       ],
       "selector": "0x232f36be",
       "signature": "TargetDataLengthMismatch(uint256,uint256)"
@@ -2258,6 +2303,21 @@
       ],
       "repo": "core",
       "revert_sites": [
+        "core/src/Stake.sol:241"
+      ],
+      "selector": "0x39cb81ec",
+      "signature": "UnlockRoundNotReached(uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/IStake.sol"
+      ],
+      "interfaces": [
+        "IStakeErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
         "core/src/Stake.sol:494"
       ],
       "selector": "0xe8e88f47",
@@ -2398,7 +2458,7 @@
       "repo": "core",
       "revert_sites": [
         "core/src/Mint.sol:194",
-        "core/src/Mint.sol:509"
+        "core/src/Mint.sol:525"
       ],
       "selector": "0xceef9857",
       "signature": "ZeroRecipientAddress()"
@@ -2443,10 +2503,10 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Vote.sol:229"
+        "core/src/Vote.sol:223"
       ],
-      "selector": "0x1ccf718a",
-      "signature": "ZeroVoteAmount(uint256)"
+      "selector": "0x0164ed89",
+      "signature": "ZeroVoteAmount(address,uint256,uint256)"
     },
     {
       "declarations": 1,
@@ -3061,14 +3121,14 @@
     }
   ],
   "summary": {
-    "declarations": 227,
+    "declarations": 231,
     "repos": {
       "action": 97,
-      "core": 84,
+      "core": 88,
       "group-chat": 46,
       "libs": 0
     },
-    "signatures": 189,
-    "unique_signatures": 179
+    "signatures": 193,
+    "unique_signatures": 183
   }
 }

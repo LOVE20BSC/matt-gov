@@ -3,6 +3,7 @@
 > 基线：`core@6fdd0f1`（2026-11-03），行号按当前工作树。
 > 判据：`matt-gov/docs/error-standards.md`；行为口径：`matt-gov/docs/specs/core/06-vote.md`。
 > 范围：`src/Vote.sol`（293 行）+ `src/interfaces/IVote.sol` 的 `IVoteErrors`。
+> 处置：本报告为 `6fdd0f1` 快照；修复与撤回见 [DISPOSITION.md](DISPOSITION.md)。
 
 ## 1. 结论
 

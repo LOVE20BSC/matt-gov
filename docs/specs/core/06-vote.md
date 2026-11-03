@@ -21,23 +21,24 @@ Vote 管理当前治理 Round 的 Proposal 投票和加速快照。Proposal 的�
 | 推举状态 | `ISubmit(SUBMIT_ADDRESS).isSubmitted(tokenAddress, round, proposalId)` |
 | 回调目标与模式 | `ISubmit(SUBMIT_ADDRESS).proposalTarget(tokenAddress, proposalId)` |
 
-票上限每笔投票只读一次，不随批量长度重复读取；快照与推举状态逐笔读取。快照只在当前 Round 读取，未来 Round 由 Stake 回滚 `RoundNotStarted(requiredRound, currentRound)`，而 Vote 本身只在当前 Round 投票。
+票上限每笔投票只读一次，不随批量长度重复读取；快照与推举状态逐笔读取。快照只在当前 Round 读取，未来 Round 由 Stake 回滚 `RoundNotStarted(requestedRound, currentRound)`，而 Vote 本身只在当前 Round 投票。
 
 ## 校验顺序
 
 `vote` 的校验与写入顺序，任一步回滚整笔：
 
 1. **持有权**：`IMemberNFT.ownerOf(memberId) == msg.sender`（`NotMemberOwner(memberId)`）；`memberId` 不存在时由 `ownerOf` 抛出 `ERC721NonexistentToken(memberId)`
-2. **资格**：`canVote(tokenAddress, memberId)`，即票上限大于零（`NoVotingPower(tokenAddress, memberId)`）
-3. **长度**：`proposalIds` 非空（`ProposalIdsEmpty()`）；`voteAmounts` 与 `proposalIds` 等长（`ProposalVoteAmountsLengthMismatch(proposalIdsLength, voteAmountsLength)`）；`targetData` 传入时必须与 `proposalIds` 等长（`TargetDataLengthMismatch(proposalIdsLength, targetDataLength)`），传空外层数组表示每笔回调都使用空 Target Data
-4. 取当前 Round 与票上限，随后逐 Proposal 处理：
-   1. **推举状态**：本轮已推举（`ProposalNotSubmitted(tokenAddress, round, proposalId)`）
-   2. **票数**：本次增量为正（`ZeroVoteAmount(proposalId)`）
-   3. 记录加速快照：首投记全量，后续只补正增量
-   4. **额度**：先算加上本笔后的成员累计票数，超过票上限回滚（`VoteLimitExceeded(tokenAddress, round, memberId, cumulativeVoteAmount, maxVoteAmount)`，`cumulativeVoteAmount` 为加上本笔后的成员累计票数）
-   5. 累加票数，维护本轮有票 Proposal 与投票者集合
-   6. 发出 `VoteCast` 事件（含本次 `voteAmount`、该成员本轮后置累计 `voteAmountTotal`、该轮后置总量 `totalVoteAmount`，以及成员加速快照 `voterBoost` 与全局 `totalVoterBoost`）
-   7. `Callback` 且 `target` 非零时回调 `IProposalTarget.onProposalVoted`，失败回滚整笔
+2. **形状**：`proposalIds` 非空（`ProposalIdsEmpty()`）；`voteAmounts` 与 `proposalIds` 等长（`ProposalVoteAmountsLengthMismatch(proposalIdsLength, voteAmountsLength)`）；`targetData` 传入时必须与 `proposalIds` 等长（`TargetDataLengthMismatch(proposalIdsLength, targetDataLength)`），传空外层数组表示每笔回调都使用空 Target Data
+3. **资格**：取当前 Round 与票上限，即 `maxVoteAmount(tokenAddress, memberId)`（`canVote` 同源）；票上限为零回 `NoVotingPower(tokenAddress, memberId)`。该读数供整批复用，不重复读取
+4. 逐 Proposal 处理（复用第 3 步的 Round 与票上限）：
+   1. **票数**：本次增量为正（`ZeroVoteAmount(tokenAddress, round, proposalId)`）
+   2. **存在性与回调目标**：读 `Submit.proposalTarget(tokenAddress, proposalId)`；未分配 ID 由 Submit 透传 `ProposalNotFound(tokenAddress, proposalId)`。返回的 `target` / `targetMode` 复用到本笔回调，不再二次读取
+   3. **推举状态**：本轮已推举（`ProposalNotSubmitted(tokenAddress, round, proposalId)`）
+   4. 记录加速快照：首投记全量，后续只补正增量
+   5. **额度**：先算加上本笔后的成员累计票数，超过票上限回滚（`VoteLimitExceeded(tokenAddress, round, memberId, cumulativeVoteAmount, maxVoteAmount)`，`cumulativeVoteAmount` 为加上本笔后的成员累计票数）
+   6. 累加票数，维护本轮有票 Proposal 与投票者集合
+   7. 发出 `VoteCast` 事件（含本次 `voteAmount`、该成员本轮后置累计 `voteAmountTotal`、该轮后置总量 `totalVoteAmount`，以及成员加速快照 `voterBoost` 与全局 `totalVoterBoost`）
+   8. `Callback` 且 `target` 非零时回调 `IProposalTarget.onProposalVoted`，失败回滚整笔
 
 额度按整批累计判定：同一批里先投的票数计入后投的判定基准，超过上限的那笔回滚整批。
 
@@ -67,11 +68,20 @@ Vote 管理当前治理 Round 的 Proposal 投票和加速快照。Proposal 的�
 | `ProposalIdsEmpty()` | `proposalIds` 为空 |
 | `ProposalVoteAmountsLengthMismatch(uint256 proposalIdsLength, uint256 voteAmountsLength)` | `voteAmounts` 与 `proposalIds` 不等长 |
 | `TargetDataLengthMismatch(uint256 proposalIdsLength, uint256 targetDataLength)` | 传入的 `targetData` 外层数组与 `proposalIds` 不等长 |
-| `ProposalNotSubmitted(address tokenAddress, uint256 round, uint256 proposalId)` | 该 Proposal 本轮未推举 |
-| `ZeroVoteAmount(uint256 proposalId)` | 该笔票数为零 |
+| `ProposalNotSubmitted(address tokenAddress, uint256 round, uint256 proposalId)` | 该 Proposal 已分配但本轮未推举 |
+| `ZeroVoteAmount(address tokenAddress, uint256 round, uint256 proposalId)` | 该笔票数为零 |
 | `VoteLimitExceeded(address tokenAddress, uint256 round, uint256 memberId, uint256 cumulativeVoteAmount, uint256 maxVoteAmount)` | 成员本轮累计票数超过票上限；`cumulativeVoteAmount` 为加上该笔后的累计值 |
 
 未提交 Proposal、票数超额、零票、批次长度不合法或回调失败时，整笔投票回滚。
+
+### 透传来源
+
+| 来源 | 可能出现的 selector | 说明 |
+| --- | --- | --- |
+| `ISubmit.proposalTarget` | `ProposalNotFound(address,uint256)` | 每笔投票的存在性读取；Vote 不重复声明 |
+| `IMemberNFT.ownerOf` | `ERC721NonexistentToken(uint256)` | `onlyMemberOwner`；`memberId` 不存在时先于 `NotMemberOwner` |
+| `IProposalTarget.onProposalVoted` | 任意 revert data | 第三方回调；失败整笔回滚 |
+| `IStake.validGovVotes`、`validBoostShares` | 依赖自身错误 | 传当前轮，正常路径不触发；异常读取按 [`error-standards.md`](../../error-standards.md) 的「七、外部调用」冒泡 |
 
 ## Target 回调
 

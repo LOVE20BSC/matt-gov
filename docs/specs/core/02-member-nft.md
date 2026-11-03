@@ -71,6 +71,29 @@ mintCost = byteLength >= bytesThreshold
 
 独有函数、事件和错误见 [`IMemberNFT.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/IMemberNFT.sol)；Core 接口继承 `IERC721Enumerable`，实现合约同时继承 `ERC721Enumerable` 和 `IMemberNFT`，由编译器核验接口实现。完整调用 ABI 使用目标合约编译产物，包含 OZ 提供的标准函数、事件和错误；扣费调用的 LOVE20Token 的 ERC20 标准错误由 LOVE20Token ABI 拥有，`SafeERC20FailedOperation` 通过库进入 MemberNFT ABI。
 
+### 失败契约
+
+`mint` 的校验顺序，任一步回滚整笔：
+
+| 顺序 | 条件 | 回滚错误 |
+| --- | --- | --- |
+| 1 | 名称（已加 `Test` 前缀）为空 | `NameEmpty()` |
+| 2 | 名称超过 `MAX_NAME_LENGTH` | `NameTooLong(length, maxLength)`，`length` 为前缀后字节数 |
+| 3 | 名称含禁止字符或非法 UTF-8 | `NameInvalidCharacters()` |
+| 4 | 规范化名称已存在 | `NameAlreadyExists(existingId)` |
+| 5 | 费用转账或销毁失败 | `SafeERC20FailedOperation(address)` / ERC20 标准错误 |
+| 6 | `_safeMint` 接收方拒绝 | OZ `ERC721InvalidReceiver(address)` |
+
+`init` 只判 `initialized`（`AlreadyInitialized()`）；未初始化时 `mint` 读零地址的 `symbol()`（名称前缀判定）、`calculateMintCost` 读零地址的 `MAX_SUPPLY()` 与 `totalSupply()`，均取回空数据、ABI 解码失败，以空 revert（0x）结束。
+
+### 透传来源
+
+| 来源 | 可能出现的 selector | 说明 |
+| --- | --- | --- |
+| `IERC20.transferFrom` | `SafeERC20FailedOperation(address)`、`ERC20InsufficientAllowance(address,uint256,uint256)`、`ERC20InsufficientBalance(address,uint256,uint256)` | 铸造费扣款 |
+| `ILOVE20Token.burn` | `ERC20InsufficientBalance(address,uint256,uint256)` | 先转入再销毁；正常路径余额充足 |
+| OZ ERC721 | `ERC721NonexistentToken(uint256)`、`ERC721IncorrectOwner(address,uint256,address)`、`ERC721InvalidReceiver(address)` | 用户转账与 `_safeMint`；标准错误由 OZ ABI 拥有 |
+
 ## 持有人枚举
 
 `holders(offset, limit, reverse)` 按页返回唯一持有人地址，并同时返回集合总数 `totalCount`。它与 `ERC721Enumerable` 枚举的对象不同：后者按代币枚举（`totalSupply`、`tokenByIndex`、`tokenOfOwnerByIndex`），持有人集合按地址去重，同一地址持有多枚也只出现一次。

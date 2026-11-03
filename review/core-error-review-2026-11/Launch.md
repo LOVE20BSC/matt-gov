@@ -3,6 +3,7 @@
 > 基线：`core@6fdd0f1`（2026-11-03），行号按当前工作树。
 > 判据：`matt-gov/docs/error-standards.md`；行为口径：`matt-gov/docs/specs/core/08-launch.md`。
 > 范围：`src/Launch.sol`（350 行）+ `src/interfaces/ILaunch.sol` 的 `ILaunchErrors`。
+> 处置：本报告为 `6fdd0f1` 快照；修复与撤回见 [DISPOSITION.md](DISPOSITION.md)。
 
 ## 1. 结论
 

@@ -55,10 +55,10 @@ MemberNFT 的首币地址由 `Launch.init` 在创建首币时同步调用 `Membe
 
 - Phase 使用构造参数创建；Core 其他合约先部署，再按依赖顺序调用一次 `init`，依赖后部署的地址通过后续 `init` 绑定。能由入参地址 getter 派生的依赖不重复入参，在 `init` 内读取一次并缓存；派生值非零由 `DeployCore`/`21_check.sh` 校验，被派生依赖须先完成 init（如 Mint 从 Vote 派生 `PHASE_ADDRESS`，Action 层从 Mint 派生各依赖）。
 - 各合约的 `init` 不设调用者限制、不保存部署者地址；只有 `init` 校验初始化状态，其他写入口不重复校验；部署成功与否由发布前检查脚本核对实际绑定结果判定，见 [通用规则](01-common-rules.md#初始化与安全)。
-- Mint 在准备时读取 Vote 的冻结结果，按 `proposalRewardMinVoteRatio` 一次性计算并缓存本轮达标 Proposal 总票数；后续 Proposal 激励结算只读取该缓存。
+- Mint 在准备时读取 Vote 的冻结结果，按 `proposalRewardMinVoteRatio` 一次性计算并缓存本轮达标 Proposal 总票数；后续 Proposal 激励结算以该缓存为分母，不再重算达标集合。单提案票数与门槛仍按该轮账本现读——该轮必须已结束，二者此后不再变化，现读值等于结算时点值。
 - 参数有效范围和组合限制以各模块规格为准；表中示例值不是默认部署配置。
 - **以 Round 为键的历史查询按载荷分两种口径**，分界是「取该轮的时点值」还是「取该轮的记录集合」，不按模块划分：
-  - 取时点值（单值历史，如 Stake 的 `validGovVotes`、`validBoostShares` 及其社区口径 `totalValidGovVotes`、`totalValidBoostShares`）：传入尚未开始的未来 Round 回滚 `RoundNotStarted(requiredRound, currentRound)`，不得把最近一条记录当作未来轮的值返回。
+  - 取时点值（单值历史，如 Stake 的 `validGovVotes`、`validBoostShares` 及其社区口径 `totalValidGovVotes`、`totalValidBoostShares`）：传入尚未开始的未来 Round 回滚 `RoundNotStarted(requestedRound, currentRound)`，不得把最近一条记录当作未来轮的值返回。
   - 取该轮记录集合（如 Submit 的 `submitInfos`）：未来 Round 与无记录的已开始 Round 一致，返回空集合与 `0`，不回滚。
   - 两种口径都只针对历史查询；写入口校验未来轮不属于本节，按各模块条件表执行。
   - **消费方一律读当前 Round**：协议内部的写路径与结算路径按 `IPhase.currentPhase()` 读这些时点账本——Submit 的推举门槛、Vote 的票上限与加速快照、LpExecutor 与 GroupServiceExecutor 的治理上限、GroupActionManager 的激活门槛、GroupActionVerify 的申请资格，以及 group-chat 四个 Manager 的 `voteWeight` / `totalVoteWeight`，都是「读当前」。参数里的 `round` 服务历史查询、事件对账与索引器重建，不改变结算口径；需要冻结结果的（如 LP 的 `_govRatioAtMint`）在写入时存下当前值，事后查询返回该记录。

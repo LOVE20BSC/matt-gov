@@ -69,7 +69,7 @@ if eligibleProposalVoteAmount == 0:
 
 入口为 `mintProposalReward(tokenAddress, round, proposalId, recipient)`：每个 token、Round、Proposal 只能结算一次，代币铸给被授权的 Target 指定的 `recipient`。**Mint 只支付，不销毁**。
 
-只允许该 Proposal 已记录的 Target 调用，每个 token、Round、Proposal 只能结算一次；未结束、Proposal 不达标或 `eligibleProposalVoteAmount == 0` 时拒绝。若该 Round 尚未准备，入口先自动准备。
+只允许该 Proposal 已记录的 Target 调用，每个 token、Round、Proposal 只能结算一次；未结束、Proposal 不达标或该轮 `proposalReward` 为零时拒绝。若该 Round 尚未准备，入口先自动准备。
 
 领取权只由「票数达标 + 是 target」两点决定，与提案是否被执行无关：`NoCallback` 的 target 可为 EOA，协议不校验它与提案主题相关，也不读取任何执行状态。投票者投的是内容，收款的是 target，两者之间没有链上约束。
 
@@ -81,8 +81,9 @@ if eligibleProposalVoteAmount == 0:
 | `recipient == address(0)` | `ZeroRecipientAddress()` |
 | `!IVote(VOTE_ADDRESS).isRoundEnded(round)` | `RoundNotEnded(round)` |
 | 已结算（独立状态位） | `ProposalRewardAlreadyMinted(tokenAddress, round, proposalId)` |
-| `_eligibleProposalVoteAmountByRound[tokenAddress][round] == 0` | `ProposalRewardUnavailable(tokenAddress, round, proposalId)` |
-| Proposal 不达标 | `ProposalRewardUnavailable(tokenAddress, round, proposalId)` |
+| 票数低于门槛：`voteAmount < minVoteAmount`（门槛大于 0 时含本提案零票） | `ProposalBelowThreshold(tokenAddress, round, proposalId, voteAmount, minVoteAmount)` |
+| 整轮池值为零：`proposalReward == 0`（整轮零票，或可用额度按比例取整为 0） | `ProposalPoolEmpty(tokenAddress, round)` |
+| 门槛通过且池值非零，但按比例取整为 0 | `ProposalRewardRoundedToZero(tokenAddress, round, proposalId)` |
 
 通过后写状态并铸造：
 
@@ -90,7 +91,13 @@ if eligibleProposalVoteAmount == 0:
 实际结算量 = floor(proposalReward * proposalVoteAmount / eligibleProposalVoteAmount)
 ```
 
-`eligibleProposalVoteAmount == 0` 在准备阶段已取消完整 Proposal 池（见上），该 Round 任何 Proposal 都不能结算；必须在除法前判零，否则会 panic。
+结算量为 0 时按「单提案 → 整轮 → 取整」逐层定位：
+
+1. **单提案**：`voteAmount < minVoteAmount` 回 `ProposalBelowThreshold`，两个条件值都写进载荷，调用方据此区分“有票但不够”与“一票没拿到”。零票只在门槛大于 0、且本轮另有提案拿到票时才落到这一层；整轮零票时 `minVoteAmount` 也是 `0`，`0 < 0` 不成立，进入下一层。
+2. **整轮**：`proposalReward == 0` 回 `ProposalPoolEmpty`——该轮没有任何可支付的 Proposal 激励，调用方对该轮全部 Proposal 一并无从结算、处置相同，因此“整轮零票”与“可用额度按比例取整为 0”共用同一个错误而不按来源拆分。判据只有池值一项：整轮零票时准备阶段直接跳过预留，池值必为 `0`；整轮有票但无提案达标时池值是非零值，而该轮任一提案都已被上一层拦下，走不到这里。
+3. **取整**：门槛通过、池值非零，但 `floor(proposalReward * proposalVoteAmount / eligibleProposalVoteAmount) == 0` 时回 `ProposalRewardRoundedToZero`。`PROPOSAL_REWARD_MIN_VOTE_RATIO` 配成 `0` 时门槛关闭，零票提案也落到这一层——此时“取整为 0”与“没有票”在算术上是同一件事，不为它另设错误。
+
+先具体后整轮：同一 Proposal 同时满足两组条件时报门槛，否则调用方会被轮级错误引去查整轮，而实际该提案本身就不够票。必须在除法前判零，否则会 panic。
 
 代币铸给 `recipient`，`totalRewardMinted` 按实际铸造量累计，并以 `ProposalRewardMinted` 留痕；此后该 Proposal 一律回滚 `ProposalRewardAlreadyMinted(tokenAddress, round, proposalId)`。`recipient` 由被授权的 Target 指定，因此行动类 Target 可以直接让 Mint 铸给绑定的 Executor，不必先铸给自己再转一次；行动侧见 [行动铸造链路](../action/07-minting.md#铸造链路)。某个行动的激励无法分配时不在这里作废：全链路没有销毁路径，该笔激励永久停留在未结算状态、预留不释放（详见下段）。无合格 Proposal 的完整池已在准备时取消，不能再次销毁。
 
@@ -106,8 +113,9 @@ if eligibleProposalVoteAmount == 0:
 | `recipient == address(0)` | `ZeroRecipientAddress()` |
 | `!IVote(VOTE_ADDRESS).isRoundEnded(round)` | `RoundNotEnded(round)` |
 | 已铸造（独立状态位） | `MemberRewardAlreadyMinted(tokenAddress, round, memberId)` |
-| `memberVoteAmount == 0` | `MemberRewardUnavailable(tokenAddress, round, memberId)` |
-| `voteReward + boostReward + burnReward == 0` | `MemberRewardUnavailable(tokenAddress, round, memberId)` |
+| `memberVoteAmount == 0` | `MemberHasNoVote(tokenAddress, round, memberId)` |
+| `govReward == 0` | `MemberRewardPoolEmpty(tokenAddress, round)` |
+| 三项和 == 0（已投票且池非零） | `MemberRewardRoundedToZero(tokenAddress, round, memberId)` |
 
 通过后写状态、铸造、销毁（若有溢出）、发射额度、发射事件。代币铸给 `recipient`（必须非零；鉴权不变，仍是 `ownerOf(memberId) == msg.sender`，由当前 NFT 持有人指定收款地址）。使用以下公式，金额除法向下取整：
 
@@ -144,7 +152,7 @@ else:
 
 未准备查询返回的金额是按**当前状态计算的投影值**，实际结算金额以准备时冻结的池值为准。查询与结算之间若有新铸造消耗供应量上限，查询投影可能高于最终准备结果；若有准备其他轮次预留池值，查询投影可能低于最终结果。
 
-`mintGovReward` 与 `mintProposalReward` 在结算量为 0 时拒绝，分别回滚 `MemberRewardUnavailable(tokenAddress, round, memberId)` 与 `ProposalRewardUnavailable(tokenAddress, round, proposalId)`，重复保护使用独立状态位，不能用金额是否大于零判断。
+`mintGovReward` 与 `mintProposalReward` 在结算量为 0 时拒绝，两侧都按“具体对象 → 整轮 → 取整为零”的顺序：治理侧「未投票 / 池为空 / 取整为零」分别回 `MemberHasNoVote`、`MemberRewardPoolEmpty`、`MemberRewardRoundedToZero`；Proposal 侧「低于门槛 / 池值为零 / 取整为零」分别回 `ProposalBelowThreshold`、`ProposalPoolEmpty`、`ProposalRewardRoundedToZero`。重复保护使用独立状态位，不能用金额是否大于零判断。
 
 `mintProposalReward` 没有销毁分支：Mint 只支付，也**不判断**某笔激励该不该作废——那个判断属于各 Executor 的业务账本，而 Executor 侧没有任何销毁入口。无法分配的行动激励因此永久停留在未结算状态：`totalRewardReserved` 不释放，后续轮次的 `rewardAvailable` 相应被压低，代币永不铸出。`RewardBurned` 只记录 Mint 自己会计意义上的取消（准备期整池取消与治理溢出）。
 
@@ -153,6 +161,15 @@ else:
 `rewardAvailable` 按 `MAX_SUPPLY - totalSupply - reservedAvailable` 计算当前可分配额度；`reservedAvailable` 返回 `totalRewardReserved - totalRewardMinted - totalRewardBurned`。
 
 批量接口 `mintGovRewards` 先鉴权，再按输入顺序执行，结果数组与输入等长；任一 Round 未结束、没有投票记录或已铸造，则整笔回滚。治理激励和发射额度/次数更新也必须原子完成。
+
+### 透传来源
+
+| 来源 | 可能出现的 selector | 说明 |
+| --- | --- | --- |
+| `ISubmit.proposalTarget` | `ProposalNotFound(address,uint256)` | `mintProposalReward` 的授权与存在性前置、`proposalRewardByProposalId` 的查询前置 |
+| `IMemberNFT.ownerOf` | `ERC721NonexistentToken(uint256)` | `onlyMemberOwner` 与 `govRewardByMemberId` 的查询前置 |
+| `ILOVE20Token.mint` | `MaxSupplyExceeded(uint256,uint256)`、`ERC20InvalidReceiver(address)` | `recipient` 已在入口判零；供应上限由代币合约兜底 |
+| `ILaunch.addLaunchCount` | `TokenNotRegistered(address)`、`LaunchCountLimitExceeded(address,uint256,uint256)` | 正常路径不可达：能投票的代币必已由 Stake 的 `_checkToken` 登记，`count` 也已按剩余 `MAX_LAUNCH_COUNT` 削平；登记二者是为了让本入口的失败集合完整 |
 
 ## 发射额度的生成
 
@@ -163,7 +180,7 @@ Mint 保存 `launchCredit[tokenAddress][memberId]`：尚未转换成整数发射
 1. 先判断 `Launch.issuedLaunchCount(tokenAddress) >= Launch.MAX_LAUNCH_COUNT()`；成立则停止，不累计新额度，已有额度保留。
 2. 否则用本次铸造前该社区代币的 `totalSupply` 计算 `threshold`；为 `0` 时停止，不累计、不转换，也不执行除法。当前账本不变式下该分支不可达（能进入此函数时必有 `mintAmount > 0`，从而 `MAX_SUPPLY - totalSupplyBeforeMint >= mintAmount > 0`），规格保留该检查作为防御。
 3. 加入本次实际治理激励，计算完整次数并受剩余社区次数约束，扣除已转换额度；剩余额度保留到下次。
-4. 正数新增次数由 Mint 调用 `Launch.addLaunchCount(tokenAddress, memberId, count)` 增加；Launch 只接受 Mint 调用并在越限时回滚。次数增加与治理激励铸造整体回滚。当 `tokenAddress` 是首币时，Launch 在同一调用内把同一 `count` 1:1 记入根父币维度（根级次数）并发第二条 `LaunchCountAdded`；伴生由 Launch 完成，Mint 不额外调用、不感知，也不为根级次数维护 `launchCredit`，见 [Launch 的根级次数与伴生规则](08-launch.md#根级次数与伴生规则)。
+4. 正数新增次数由 Mint 调用 `Launch.addLaunchCount(tokenAddress, memberId, count)` 增加；Launch 只接受 Mint 调用，`count` 已由本函数按 `MAX_LAUNCH_COUNT - issuedLaunchCount` 削平，正常路径不会越限。次数增加与治理激励铸造整体回滚。当 `tokenAddress` 是首币时，Launch 在同一调用内把同一 `count` 1:1 记入根父币维度（根级次数）并发第二条 `LaunchCountAdded`；伴生由 Launch 完成，Mint 不额外调用、不感知，也不为根级次数维护 `launchCredit`，见 [Launch 的根级次数与伴生规则](08-launch.md#根级次数与伴生规则)。
 
 ```text
 threshold = ceil((MAX_SUPPLY - totalSupplyBeforeMint) * Launch.LAUNCH_COUNT_THRESHOLD_RATIO() / 1e18)

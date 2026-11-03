@@ -24,13 +24,23 @@ Launch 负责首币部署、LOVE20Token 创建、基础发射与次数账本。T
 | --- | --- |
 | 重复初始化 | `AlreadyInitialized()` |
 | 首币名称或符号为空 | `TokenNameEmpty()` / `TokenSymbolEmpty()`，由首币创建路径校验 |
-| 首币建池时工厂返回零地址 | `PairCreationFailed(ROOT_PARENT_TOKEN_ADDRESS)`；正常 UniswapV2 工厂返回 pair 或回滚 |
+| 首币建池时工厂返回零地址 | `PairCreationFailed(ROOT_PARENT_TOKEN_ADDRESS)`；正常 UniswapV2 工厂返回 pair 或回滚，该错误保留给“返回零地址”的 V2 兼容工厂 |
+| 首币创建时代币构造函数拒绝 | `ZeroInitialSupply()` / `MaxSupplyBelowInitialSupply(initialSupply, maxSupply)` / `ZeroDistributorAddress()` / `DependencyNotContract(address)`（透传） |
 
 `0 < launchCountThresholdRatio <= 1e18`、`maxLaunchCount > 0`、`tokenSymbolLength > 0`、`0 < launchAmount <= maxSupply`、首币 `distributor != 0` 由 DeployCore 广播前校验；四个依赖地址有代码由 DeployCore 部署后校验；两者均由 21_check 独立复核；`init` 只防重复初始化并保存配置。首币创建仍经过 LOVE20Token 构造函数，零供应、供应上限和零 distributor 由该构造函数独立拒绝（权限开放发射路径不能依赖部署脚本）。
 
 首币符号不套用 `TOKEN_SYMBOL_LENGTH` 校验：旧实现的第一个代币走 `tokensCount() == 0` 分支，跳过符号校验与测试网 `Test` 前缀（名称仍按 `tokenSymbol + "@" + parentTokenSymbol` 拼接）；BSC 版由 `init` 参数直接给定首币名称和符号，因此首币符号长度可以与配置的子币符号长度不同。
 
 首币 `distributor` 为 Burn 活动结束后由旧 `LOVE20TKM/burn` 来源单独部署的 Airdrop；Burn 业务不迁移。旧仓库只读，来源提交、来源区块、Merkle Root、部署地址及公开源码证据见 [仓库清单](../../repositories.md)。不能把部署外部 Airdrop 误写为改造旧仓库。
+
+### 透传来源
+
+| 来源 | 可能出现的 selector | 说明 |
+| --- | --- | --- |
+| `LOVE20Token` 构造函数 | `ZeroInitialSupply()`、`MaxSupplyBelowInitialSupply(uint256,uint256)`、`ZeroDistributorAddress()`、`DependencyNotContract(address)` | `init` 创建首币与 `launchToken` 创建子币都会经过；Launch 不重复声明 |
+| `IMemberNFT.init` | `AlreadyInitialized()` | 与 Launch 同 selector，无法区分来源；属部署序列问题 |
+| `IMemberNFT.ownerOf` | `ERC721NonexistentToken(uint256)` | `onlyMemberOwner` 与 `mergeLaunchCount` 的目标存在性 |
+| `ILaunchDistributor.onTokenLaunched` | 任意 revert data | `Callback` 模式；失败整笔回滚 |
 
 ## 代币登记与查询
 
@@ -83,12 +93,12 @@ Launch 只保存“成员可用整数次数”和“社区累计已产生次数�
 
 | 条件 | 回滚错误 |
 | --- | --- |
-| `sourceMemberId == targetMemberId` | `SourceAndTargetMemberIdsMustBeDifferent(sourceMemberId, targetMemberId)` |
+| `sourceMemberId == targetMemberId` | `SourceEqualsTarget(sourceMemberId)` |
 | `count == 0` | `ZeroCount()` |
 | `tokenAddress` 不是已登记 LOVE20 代币且不是根父币 | `TokenNotRegistered(tokenAddress)` |
 | 源或目标 `memberId` 不存在（含 `0`） | MemberNFT 的标准错误（`ownerOf` 回滚） |
 | 调用者不持有源 MemberNFT | `NotMemberOwner(sourceMemberId)` |
-| 源可用次数小于 `count` | `InsufficientLaunchCount(sourceMemberId, available, count)` |
+| 源可用次数小于 `count` | `InsufficientLaunchCount(sourceMemberId, required, available)`，实参为 `(sourceMemberId, count, sourceCount)` |
 
 不存在的 `memberId` 由 MemberNFT 的标准错误经 `ownerOf` 回滚，Launch 不为其新增自有错误；`memberId` 不从 `0` 开始，`0` 永远无效。
 
@@ -131,9 +141,9 @@ distributor 自行实现领取与查询逻辑，`claim(tokenAddress)` 只是建�
 | `parentTokenAddress` 不是已登记 LOVE20 代币且不是根父币（含零地址） | `ParentTokenNotRegistered(parentTokenAddress)` |
 | `memberId` 不存在（含 `0`） | MemberNFT 的标准错误（`ownerOf` 回滚） |
 | 调用者不持有 `memberId` | `NotMemberOwner(memberId)` |
-| `remainingLaunchCount[parentTokenAddress][memberId] == 0` | `InsufficientLaunchCount(memberId, 0, 1)` |
+| `remainingLaunchCount[parentTokenAddress][memberId] == 0` | `InsufficientLaunchCount(memberId, 1, 0)` |
 | 施加 `Test` 前缀后的最终符号已登记 | `TokenSymbolAlreadyExists(keccak256(bytes(finalSymbol)))` |
-| 建池时工厂返回零地址 | `PairCreationFailed(parentTokenAddress)`；正常 UniswapV2 工厂返回 pair 或回滚 |
+| 建池时工厂返回零地址 | `PairCreationFailed(parentTokenAddress)`；正常 UniswapV2 工厂返回 pair 或回滚，该错误保留给“返回零地址”的 V2 兼容工厂 |
 
 名称只按 `tokenSymbol + "@" + parentTokenSymbol` 生成，不另存名称账本；根级发射的 `parentTokenSymbol` 取根父币的实际符号（按链读取，不写死）。
 
@@ -165,7 +175,7 @@ Launch 的事件和错误定义见 [`ILaunch.sol`](https://github.com/LOVE20BSC/
 
 LOVE20Token 使用构造函数接收 `name`、`symbol`、`initialSupply`、`maxSupply`、`distributor`、`minter` 和 `parentTokenAddress`；构造函数不属于 Solidity `interface` ABI。其运行时函数、事件和错误以 [`ILOVE20Token.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/ILOVE20Token.sol) 为准。
 
-LOVE20Token 的错误走本地具体错误：零 `initialSupply` 回 `ZeroInitialSupply()`；`initialSupply` 大于 `MAX_SUPPLY` 回 `InvalidInitialSupply(value, maxSupply)`；零 `distributor` 回 `ZeroDistributorAddress()`；`minter`、`parentTokenAddress` 构造参数零地址或无代码统一回 `DependencyNotContract(address)`；`mint` 超出剩余供应回 `MaxSupplyExceeded(amount, remaining)`；非 `minter` 回 `NotMinter(msg.sender)`。标准 ERC20 错误由 `IERC20Errors` 继承进入 ABI，不重复声明。
+LOVE20Token 的错误走本地具体错误：零 `initialSupply` 回 `ZeroInitialSupply()`；`initialSupply` 大于 `MAX_SUPPLY` 回 `MaxSupplyBelowInitialSupply(initialSupply, maxSupply)`；零 `distributor` 回 `ZeroDistributorAddress()`；`minter`、`parentTokenAddress` 构造参数零地址或无代码统一回 `DependencyNotContract(address)`；`mint` 超出剩余供应回 `MaxSupplyExceeded(amount, remaining)`；非 `minter` 回 `NotMinter(msg.sender)`。标准 ERC20 错误由 `IERC20Errors` 继承进入 ABI，不重复声明。
 
 - LOVE20Token 不提供 `init`；构造函数直接接收 `name`、`symbol`、`initialSupply`、`maxSupply`、`distributor`、`minter` 和 `parentTokenAddress`。
 - `MemberNFT.init(firstToken)` 由 `Launch.init` 在创建首币时同步调用完成；MemberNFT 不保存 Launch 地址，费用代币地址是唯一外部地址依赖。

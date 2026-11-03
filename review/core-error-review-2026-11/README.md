@@ -3,6 +3,7 @@
 > 基线：`core@6fdd0f1`（2026-11-03）。行号按当前工作树。
 > 判据：`matt-gov/docs/error-standards.md`；行为口径：`matt-gov/docs/specs/core/**`。
 > 范围：`core/src/` 的 8 个实现合约；接口文件作为错误声明侧一并核对。
+> 处置：报告基于 `6fdd0f1`；修复已落在 `f4f8d34` 工作树（未提交）。逐条决定与 ABI 变更见 [DISPOSITION.md](DISPOSITION.md)。
 
 ## 1. 任务与口径
 
@@ -10,7 +11,7 @@
 
 “赋值”指 revert 时写入 payload 的表达式；“发送”指 `revert <Error>(...)` 站点。纯 `assert`（Panic）不计入错误目录，另在对应合约的已核对项说明。
 
-## 2. 总览
+## 2. 总览（6fdd0f1 快照）
 
 | 合约 | 声明 | 站点 | Medium | Low | Info | 报告 |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -79,6 +80,7 @@ Stake 与 Submit/Vote 已登记 `ERC721NonexistentToken`；Mint 未登记 `Submi
 | 文件 | 内容 |
 | --- | --- |
 | `README.md` | 任务、总览、横切结论、方法 |
+| `DISPOSITION.md` | 逐条处置、ABI 变更、门禁结果、待办 |
 | `Stake.md` | Stake 的逐错误明细与 findings |
 | `Mint.md` | Mint 的逐错误明细与 findings |
 | `Launch.md` | Launch 的逐错误明细与 findings |
@@ -90,9 +92,9 @@ Stake 与 Submit/Vote 已登记 `ERC721NonexistentToken`；Mint 未登记 `Submi
 
 > 严重度口径：`Medium` = 在通过现有部署门禁的配置下可使一个入口永久不可用；`Low` = 与 error-standards 的强制条款冲突或错误在生产不可达/不可定位，需要改 ABI 或规格；`Info` = 口径、文档与一致性，无行为风险。
 
-## 附 A：错误 selector 索引
+## 附 A：错误 selector 索引（6fdd0f1 快照）
 
-> 共 84 条声明；按合约列出，selector 由 `cast sig` 生成（`matt-gov/registry/errors.json`）。同签名跨模块重复声明共用 selector。
+> 共 84 条声明；按合约列出，selector 由 `cast sig` 生成。修复后的 selector 与删除项见 [DISPOSITION.md](DISPOSITION.md)。同签名跨模块重复声明共用 selector。
 
 | 合约 | 错误 | 签名 | selector |
 | --- | --- | --- | --- |

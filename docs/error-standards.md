@@ -7,7 +7,7 @@
 - 每个合约/模块在自己的本地接口文件中声明 `I<Name>Errors`（通常是 `src/interfaces/I<Name>Errors.sol`，也可与主接口同文件）；实现文件不声明错误。
 - 禁止从其他仓/其他模块导入错误定义；禁止中心 `Field` 枚举、中心错误表或“协议级 Error 文件”。
 - 新增合约只新增 `I<Name>Errors.sol` + 实现 + 测试；不修改任何既有 `*Errors.sol`。协议固化后，新合约不能让老文件发生变化。
-- 相同条件允许在不同模块本地重复声明（selector 相同）；目录按签名归组，不要求抽到共享文件。
+- 相同条件允许在不同模块本地重复声明（selector 相同）；目录按签名归组，不要求抽到共享文件。载荷参数名按本模块语义命名即可，同一 selector 在不同仓 ABI 里可以不同（`RoundNotStarted(uint256,uint256)` 在 `core` 是 `requestedRound`、在 `action`/`group-chat` 是 `requiredRound`），链下按 selector 识别，不按参数名识别。
 - 标准错误由产生它的接口/合约拥有：`ILOVE20Token` 继承 `IERC20Errors`，`MemberNFT` 实现 ABI 自带 OZ ERC721 错误；`SafeERC20FailedOperation` 作为库错误通过 `SafeERC20` 使用进入调用方 ABI。
 - 调用方接口默认不继承透传的标准错误；每个模块用一张“透传来源”表登记“可能透传 `ERC721NonexistentToken` / `ERC20InsufficientAllowance` 等”并链接来源 ABI，测试直接导入 OZ 或来源接口断言 selector。只有顶层集成面确需“单 ABI 自包含全部可预期失败”时，才白名单继承一组错误并逐项审查。
 
@@ -22,7 +22,7 @@
 
 | 句式 | 示例 | 用途 |
 |---|---|---|
-| `<Subject><State>` | `GroupNotActive(groupId)`、`ProposalNotFound(proposalId)` | 身份/记录/生命周期 |
+| `<Subject><State>` | `GroupNotActive(groupId)`、`ProposalNotFound(tokenAddress, proposalId)` | 身份/记录/生命周期 |
 | `Zero<Field>` | `ZeroTokenAmount()`、`ZeroRecipientAddress()` | 非合约参数的零值（金额/计数/ID/recipient/target）；必填合约依赖用 `*NotContract` |
 | `Invalid<Field>` | `InvalidFeeSettlementRatio(value)`、`InvalidTokenSymbolLength(length, expected)` | 值/格式/范围非法 |
 | `<Subject>Exceeded` | `MaxSupplyExceeded(requested, remaining)`、`GroupCapacityExceeded(groupId, actual, limit)`、`LaunchCountLimitExceeded(tokenAddress, requested, remaining)` | 数值/额度/数量上限 |

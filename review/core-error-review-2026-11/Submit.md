@@ -3,6 +3,7 @@
 > 基线：`core@6fdd0f1`（2026-11-03），行号按当前工作树。
 > 判据：`matt-gov/docs/error-standards.md`；行为口径：`matt-gov/docs/specs/core/05-submit.md`。
 > 范围：`src/Submit.sol`（339 行）+ `src/interfaces/ISubmit.sol` 的 `ISubmitErrors`。
+> 处置：本报告为 `6fdd0f1` 快照；逐条决定、ABI 变更与撤回见 [DISPOSITION.md](DISPOSITION.md)。
 
 ## 1. 结论
 
