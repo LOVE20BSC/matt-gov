@@ -53,6 +53,8 @@ mintCost = byteLength >= bytesThreshold
 
 `unmintedSupply` 取首币的未铸造量，`byteLength` 是名称字节数，`^` 表示幂。铸造时从调用者转入 `mintCost` 并立即销毁，累计到 `totalBurnedForMint`，返回新 `id` 与本次 `mintCost`。名称无效或重复、余额或授权不足、费用溢出时回滚。
 
+`MemberMinted` 同时携带本次销毁量 `cost` 与销毁后的累计 `totalBurnedForMint`（后置值，`mintCost == 0` 时不变）：该聚合量只在铸造时改变，单条日志即可与 `totalBurnedForMint()` 对账，口径与 `Stake.FeesSettled.totalBurnedToken` 一致。`name` 与 `normalizedName` 均受 `maxNameLength` 约束，长度不变。
+
 首币符号前 4 个字节为 `Test` 时，若名称长度不足 4 字节或前 4 个字节不是 `Test`，铸造前自动加 `Test` 前缀；前缀计入 `byteLength`、参与名称校验与费用计算，并作为存储名称。
 
 沿用旧查询行为：`calculateMintCost` 只按传入名称的字节数计费，不补 `Test` 前缀，也不校验名称合法性或唯一性。测试币场景中，调用方应先按上述规则补前缀再询价；例如铸造 `abc` 的对应报价应查询 `Testabc`。`memberId(name)`、`isNameUsed` 仅做 ASCII 小写规范化，也需传入最终存储名称。

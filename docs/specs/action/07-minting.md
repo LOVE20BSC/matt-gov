@@ -12,7 +12,7 @@ executor -> ActionTarget -> Mint -> executor
 
 成员级结算支持批量：`mintMemberRewards(tokenAddress, actionIds[], rounds[], memberId)` 以平行数组按下标配对，逐元素执行与 `mintMemberReward` 相同的结算，返回按下标对齐的 `(mintAmounts[], burnAmounts[])`。两数组长度不一致回滚 `BatchLengthMismatch(actionIdsLength, roundsLength)`；任一元素失败整笔回滚（下标对齐、不补空）；空数组在鉴权通过后返回空结果、不改状态；不设长度上限——成本由调用方自付，区块 gas 为自然上界（与 core `mintGovRewards` 同型）。批量入口同样先鉴权，权限与单条入口一致，由各 Executor 规格固定。
 
-行动级整笔激励无法分配（判据由各 Executor 规格固定，如无可分配源行动、全部验证失败）时，**全链路没有销毁路径**：Mint 只支付、ActionTarget 只路由，两者都不判断「该不该作废」，各 Executor 也不提供销毁入口。该轮激励因此永久停留在未结算状态——`ActionTarget.actionReward` 一直返回 `(理论数量, false)`，Mint 的 `rewardReserved` 不释放，后续轮次的 `rewardAvailable` 相应被压低，代币永不铸出。这是有意的取舍：不可分配意味着「本轮没有任何有效分配路径」，属于罕见情形；少发比「误判并销毁本该发给成员的激励」安全，而销毁入口本身是一条 permissionless 的状态变更路径。成员归属的销毁并入 `MemberRewardMinted.burnAmount`，与此无关。
+行动级整笔激励无法分配（判据由各 Executor 规格固定，如无可分配源行动、全部验证失败）时，**全链路没有销毁路径**：Mint 只支付、ActionTarget 只路由，两者都不判断「该不该作废」，各 Executor 也不提供销毁入口。该轮激励因此永久停留在未结算状态——`ActionTarget.actionReward` 一直返回 `(理论数量, false)`，Mint 的 `totalRewardReserved` 不释放，后续轮次的 `rewardAvailable` 相应被压低，代币永不铸出。这是有意的取舍：不可分配意味着「本轮没有任何有效分配路径」，属于罕见情形；少发比「误判并销毁本该发给成员的激励」安全，而销毁入口本身是一条 permissionless 的状态变更路径。成员归属的销毁并入 `MemberRewardMinted.burnAmount`，与此无关。
 
 Core 的预留、铸造和取消额度账本见 [Mint](../core/07-mint.md)，不能把 Executor 内部转账再次计作 Core 铸造。
 

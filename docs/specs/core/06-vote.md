@@ -36,7 +36,7 @@ Vote 管理当前治理 Round 的 Proposal 投票和加速快照。Proposal 的�
    3. 记录加速快照：首投记全量，后续只补正增量
    4. **额度**：先算加上本笔后的成员累计票数，超过票上限回滚（`VoteLimitExceeded(tokenAddress, round, memberId, cumulativeVoteAmount, maxVoteAmount)`，`cumulativeVoteAmount` 为加上本笔后的成员累计票数）
    5. 累加票数，维护本轮有票 Proposal 与投票者集合
-   6. 发出 `VoteCast` 事件（含本次 `voteAmount`、成员加速快照 `voterBoost` 与全局 `totalVoterBoost`）
+   6. 发出 `VoteCast` 事件（含本次 `voteAmount`、该成员本轮后置累计 `voteAmountTotal`、该轮后置总量 `totalVoteAmount`，以及成员加速快照 `voterBoost` 与全局 `totalVoterBoost`）
    7. `Callback` 且 `target` 非零时回调 `IProposalTarget.onProposalVoted`，失败回滚整笔
 
 额度按整批累计判定：同一批里先投的票数计入后投的判定基准，超过上限的那笔回滚整批。
@@ -56,6 +56,8 @@ Vote 管理当前治理 Round 的 Proposal 投票和加速快照。Proposal 的�
 ## 事件与错误
 
 事件与错误定义见 [`IVote.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/IVote.sol)。
+
+`VoteCast` 的载荷分三组：本次增量 `voteAmount`；票数后置锚点 `voteAmountTotal`（该成员本轮累计，等于 `voteAmountByMemberId`）与 `totalVoteAmount`（该轮总量，等于 `totalVoteAmount`）；加速快照 `voterBoost`（成员本轮已记值）与 `totalVoterBoost`（本轮合计）。两个票数锚点让单条日志即可对账，无需重放整轮投票。
 
 | 错误 | 触发条件 |
 | --- | --- |

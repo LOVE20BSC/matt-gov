@@ -141,9 +141,9 @@ distributor 自行实现领取与查询逻辑，`claim(tokenAddress)` 只是建�
 
 | 事件 | 触发入口 | 字段取值 |
 | --- | --- | --- |
-| `GenesisTokenCreated(tokenAddress, parentTokenAddress, distributor, name, symbol)` | `init` 创建首币 | `tokenAddress` 为首币地址；`parentTokenAddress` 为 `ROOT_PARENT_TOKEN_ADDRESS`；`distributor` 为首批供应接收者；`name` 和 `symbol` 为 `init` 参数原值。无 launcher 字段 |
+| `GenesisTokenCreated(tokenAddress, parentTokenAddress, distributor, name, symbol)` | `init` 创建首币 | `tokenAddress` 为首币地址；`parentTokenAddress` 为 `ROOT_PARENT_TOKEN_ADDRESS`；`distributor` 为首批供应接收者；`name` 和 `symbol` 为 `init` 参数原值。无 launcher 字段。`init` 内固定三步：登记（`FIRST_TOKEN_ADDRESS` 与四个登记账本）→ 调用 `MemberNFT.init(firstToken)` → 发射本事件；本事件是 `init` 的最后一条日志，`MemberNFT.init` 不产生日志也不回调 |
 | `TokenLaunched(tokenAddress, parentTokenAddress, launcherMemberId, distributor, distributorMode, name, symbol)` | `launchToken` 每次成功发射 | `tokenAddress` 为新创建的代币地址；`parentTokenAddress` 根级发射为 `ROOT_PARENT_TOKEN_ADDRESS`、其余发射为本次 `parentTokenAddress`；`launcherMemberId` 为本次 `memberId`；`distributor` 为首批供应接收者；`distributorMode` 为本次分发模式；`name` 和 `symbol` 与最终部署的 LOVE20Token 完全一致（子币为加 `Test` 前缀后的最终值）。发出时机在代币创建、首批供应到账、代币登记与次数扣减之后，先于 distributor 回调 |
-| `LaunchCountAdded(tokenAddress, memberId, count, issuedCount, memberRemaining)` | `addLaunchCount`（首币次数附带根级伴生） | `tokenAddress` 为次数账本维度：社区代币，或首币伴生时的根父币；`count` 为本次新增次数；`issuedCount` 为该账本累计已产生次数（后置值）；`memberRemaining` 为该成员在本账本的可用余额（后置值） |
+| `LaunchCountAdded(tokenAddress, memberId, count, issuedCount, memberRemaining)` | `addLaunchCount`（首币次数附带根级伴生） | `tokenAddress` 为次数账本维度：社区代币，或首币伴生时的根父币；`count` 为本次新增次数；`issuedCount` 为该账本累计已产生次数（后置值）；`memberRemaining` 为该成员在本账本的可用余额（后置值）。首币伴生固定先发首币维度、后发根父币维度 |
 | `LaunchCountMerged(tokenAddress, sourceMemberId, targetMemberId, count, sourceRemaining, targetRemaining)` | `mergeLaunchCount` | `count` 为本次融合转移的次数；`sourceRemaining` / `targetRemaining` 为融合后源、目标成员的可用余额 |
 | `LaunchCountConsumed(tokenAddress, memberId, remaining)` | `launchToken` 扣减次数后 | `remaining` 为扣减后该成员在该账本维度的可用余额；一次发射固定消耗一次，消耗量由事件名承载，不再单列恒为 `1` 的 `count`。发出时机早于 `TokenLaunched` 与 distributor 回调 |
 

@@ -4,6 +4,42 @@
 
 本文档列出 BSC Core 相对于 LOVE20TKM 旧协议的所有变更。保留项直接引用旧代码位置，避免重复描述。
 
+## 事件累计锚点与 Mint 查询改名（2026-11-03）
+
+本批收口事件审计的 P2 项：五个事件追加后置累计字段，Mint 的三个查询入口统一为 `total*` 前缀。
+
+| 事件 | 追加字段 | 位置 | 语义 |
+| --- | --- | --- | --- |
+| `MemberMinted` | `totalBurnedForMint` | `cost` 之后 | 铸造后的累计销毁量；`mintCost == 0` 时不变 |
+| `VoteCast` | `voteAmountTotal`、`totalVoteAmount` | `voteAmount` 之后 | 成员本轮后置累计票数、本轮后置总量 |
+| `RewardBurned` | `totalRewardBurned` | `amount` 之后、`reason` 之前 | 销毁后的累计已取消额度；准备期两条取消池与治理溢出三个改变点都携带 |
+| `GovRewardMinted` | `totalRewardMinted` | 末位 | 铸造后的社区累计已铸激励 |
+| `ProposalRewardMinted` | `totalRewardMinted` | 末位 | 与 `GovRewardMinted.totalRewardMinted` 同一账本 |
+
+`RewardPrepared` 的两个累计字段同步改名：`rewardReserved` → `totalRewardReserved`、`rewardBurned` → `totalRewardBurned`。字段类型与顺序不变，topic0 不变，ABI JSON 的字段名变化。
+
+Mint 查询入口改名：
+
+| 旧入口 | 旧 selector | 新入口 | 新 selector |
+| --- | --- | --- | --- |
+| `rewardReserved(address)` | `0xa3eb87e8` | `totalRewardReserved(address)` | `0xed28bc4c` |
+| `rewardMinted(address)` | `0x6d597ba3` | `totalRewardMinted(address)` | `0x9b25fc03` |
+| `rewardBurned(address)` | `0x3b2b378d` | `totalRewardBurned(address)` | `0x022dbd72` |
+
+不保留旧别名。五个事件的 topic0 随之变化：
+
+| 事件 | 旧 topic0 | 新 topic0 |
+| --- | --- | --- |
+| `MemberMinted` | `0xf1c2b0648bc81ec0cd7263aad57287ebfb89ce752e86eb7bd9f325ca9060c28f` | `0x1b4ca7a604be4af27a4e36320f1dc9bfff8d37fcff5ccba38f7ad4ac975b028a` |
+| `VoteCast` | `0x03c0d9a45d0893f91f409b677bc413bf2ba2b48e215a50bc6c6b2217c1625445` | `0xb052cd89bddd5d0b3d5e8a97063ebbb671b3c8a587ed010267e5177ab013eaa7` |
+| `RewardBurned` | `0x1da45f982c0ed0aa43b0ca1fba28c9cdf0e2f7dd8c78c546a3f56f6351095a14` | `0x06ad56b4b5a15c8a828b342b5172c3308a03c399b1cc2ab6ca820dfd397e9070` |
+| `GovRewardMinted` | `0x9cb7d6e9b2665c14c616a3f9bb8ccf82d37e2f9aa14bebaf1faa4de60500f94b` | `0x696d07c676e6677254a96b9063b04f9d63a2df2b28040d3483c0e8d8e326dbd1` |
+| `ProposalRewardMinted` | `0x2c180f77c68f80bf597dd07fb542bc90e8570e426d44f2a8d156662e8b8ffb93` | `0x8fe36826da14e2de9557670f5a3512862687cf761863fe6f2dc3c94296c9944b` |
+
+同步范围：`core` 的 `src/interfaces/`、实现、事件基线 `script/events/events-baseline.txt` 与测试；`matt-gov` 的 `docs/specs/core/`、`docs/event-standards.md`、`docs/review-guide.md`；`action` 的两个集成测试改为 `totalRewardMinted`，并在同批把 `lib/core` bump 到本提交。
+
+Core 门禁：`forge build --deny warnings`、`forge lint`、`check-events.py --check` 通过；**495 tests 全绿**（不含 `test/audit/`）。`VoteCast` 的两个累计锚点由 `VoteTest.testVoteCastCumulativeAnchorsMatchTheFold` 按 `event-standards` §8.8 断言 `cumulative == fold`。
+
 ## 发射次数阈值参数改名（2026-11-03）
 
 `Launch` 的发射次数门槛参数由 `LAUNCH_RATIO` 改名为 `LAUNCH_COUNT_THRESHOLD_RATIO`：`LaunchInitParams.launchRatio` → `launchCountThresholdRatio`，公开 getter 与部署键同步改名；`Mint._updateLaunchCredit` 的读数改为 `launch.LAUNCH_COUNT_THRESHOLD_RATIO()`。旧名容易被理解为 `LAUNCH_AMOUNT` 的占比，新名明确它是对发射次数的门槛比例，公式不变：`threshold = ceil((MAX_SUPPLY - totalSupplyBeforeMint) × LAUNCH_COUNT_THRESHOLD_RATIO / 1e18)`。

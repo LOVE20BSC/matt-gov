@@ -42,7 +42,7 @@
 
 示例只在公式、时序或边界容易误读时添加，一组短数据解释一个问题。标明整数单位；需要展示舍入时使用最小单位，禁止把整数公式算成近似小数。
 
-例如：以代币最小单位计，`govReward = 5`、`proposalReward = 3`，且没有加速质押和达标 Proposal。本轮准备使 `rewardReserved` 增加 `8`，`rewardBurned` 增加 `3 + 3 = 6`，未结算额度增加 `2`；再次准备不改变账本。
+例如：以代币最小单位计，`govReward = 5`、`proposalReward = 3`，且没有加速质押和达标 Proposal。本轮准备使 `totalRewardReserved` 增加 `8`，`totalRewardBurned` 增加 `3 + 3 = 6`，未结算额度增加 `2`；再次准备不改变账本。
 
 不再用多个名字、钱包、轮次重复演示同一结果。不能用示例增加正文未定义的权限或经济规则。
 

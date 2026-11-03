@@ -76,7 +76,7 @@ ownerOverflow(m) = theoreticalOwnerReward(m) - actualOwnerReward(m)
 
 其中 `theoreticalOwnerReward(m)` 使用上节权重公式；治理票按**铸造时的当前 Round** 读取 `Stake.validGovVotes(actionTokenAddress, currentPhase, m)` 和 `Stake.totalValidGovVotes(actionTokenAddress, currentPhase)`，`currentPhase = IPhase.currentPhase()`，不是被结算的 `round`。上限启用且总治理票为零时只销毁 owner 理论激励；乘数为零直接关闭上限。已结算的查询返回记录结果，不重新套用后续票权。
 
-`govRatioMultiplier` 与 `publicVerifierRatio` 来自服务 Proposal 创建回调的 `targetData[2]`、`targetData[3]`；owner 超额按每个 owner 单独记入 `ownerBurned`。服务代币已经由 Mint 直接铸给 Executor 后，销毁直接调用该代币的 `burn(amount)`；不重复修改 Core Mint 的 `rewardBurned`。服务 Proposal 本轮没有激励时由 Mint 的内部 Round 准备逻辑处理，Executor 不重复判断。
+`govRatioMultiplier` 与 `publicVerifierRatio` 来自服务 Proposal 创建回调的 `targetData[2]`、`targetData[3]`；owner 超额按每个 owner 单独记入 `ownerBurned`。服务代币已经由 Mint 直接铸给 Executor 后，销毁直接调用该代币的 `burn(amount)`；不重复修改 Core Mint 的 `totalRewardBurned`。服务 Proposal 本轮没有激励时由 Mint 的内部 Round 准备逻辑处理，Executor 不重复判断。
 
 成员级结清每次结算发出两条事件：基座的 `MemberRewardMinted(tokenAddress, actionId, memberId, round, mintAmount, burnAmount)` 记公共口径，本接口的 `ServiceRewardsDistributed(...)` 追加角色细分。两者必须满足 `MemberRewardMinted.mintAmount == verifierReward + ownerReward` 且 `.burnAmount == ownerBurned`，因此基座的「可铸造」在本接口是**聚合值**（服务轮次的可铸造量不是标量，公共验证者与 owner 两部分独立计算），逐个角色的金额仍读 `serviceRewardByMemberId`。`ServiceRewardsDistributed` 与 `serviceRewardByMemberId` 同时给出 owner 份额的拆分：`ownerDistributed` 为实际转给二次分配接收者的总额（逐笔见 `RecipientPaid`），`ownerRemaining` 为留在 owner 手中的部分（含无配置行动的整份切片与逐项取整余数），恒有 `ownerReward == ownerDistributed + ownerRemaining`。
 

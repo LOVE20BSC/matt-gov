@@ -241,6 +241,8 @@ ERC-20 / ERC-721 标准事件保持不变，不进入本规范正文。`AddHolde
 
 「对象/actor id 链」槽只固定「在地址之前」，不固定两者的先后：`ProposalCreated` 是对象（`proposalId`）→ actor（`authorId`），`ProposalSubmitted` / `VoteCast` 是 actor（`submitterId` / `voterId`）→ 对象（`proposalId`）；前者对象优先、后者 actor 优先，都合规。
 
+成员级后置累计票数写 `voteAmountTotal`，轮级总量写 `totalVoteAmount`：`total*` 前缀按 `dev-standards.md` §5.2 保留给社区级聚合，成员级累计沿用 `action` 已冻结的 `ApplicationVoteRecorded.voteAmountTotal` 词形；两者是不同维度，不是同一字段的两种写法。
+
 ### 6.2 根键与链路
 
 - core / action：根键为 `tokenAddress`（发射者自身即根对象时省略，见 §6.1）；父链按域携带 `round`、`memberId`、`proposalId`、`actionId`、`groupId`。
@@ -422,7 +424,7 @@ v1 基线：
 5. 事件签名以各仓 `src/interfaces/` 为准；本文不复制签名。
 6. 共享事件类的全部发射者必须在本文 §4.2 与 ABI 基线中列明。
 7. 顺序测试必须覆盖依赖序（§3.4 第 5 条），至少：`RewardBurned → RewardPrepared`、`FeeReclassified → FeesSettled`、`FeeReclassified → StakeWithdrawn`/`LiquidityStaked`、`FeesSettled → StakeWithdrawn`、`TokenMinted`/`LaunchCountAdded` → 依赖它们的 `GovRewardMinted`。
-8. 累计值测试必须断言 `cumulative == fold`，至少覆盖 `RewardPrepared.rewardBurned`/`rewardReserved`、`OriginScoresSubmitted.totalFinalScore`、`LaunchCountAdded.issuedCount`、`ApplicationVoteRecorded.voteAmountTotal`、`FeesSettled.totalBurnedToken`/`totalParentTokenBurned`，以及按事件逐个枚举的聚合量：`totalValidGovVotes` 在 `LiquidityStaked`/`BoostStaked`/`Unstaked`/`StakesMerged`；`totalValidBoostShares` 在 `BoostStaked`/`Unstaked`；`totalBoostShares` 在 `BoostStaked`/`StakeWithdrawn`；`totalLiquidityShares` 在 `LiquidityStaked`/`StakeWithdrawn`；`totalWithdrawableLp` 在 `FeeReclassified`/`LiquidityStaked`/`StakeWithdrawn`；`totalFeeLp` 在 `FeeReclassified`/`FeesSettled`。两个 `valid*` 总量必须等于同轮 `Added - Removed`，两个余额/份额总量必须等于 `totalStake` 的同名字段——只断言其中一个锚点不算覆盖。
+8. 累计值测试必须断言 `cumulative == fold`，至少覆盖 `RewardPrepared.totalRewardBurned`/`totalRewardReserved`、`OriginScoresSubmitted.totalFinalScore`、`LaunchCountAdded.issuedCount`、`ApplicationVoteRecorded.voteAmountTotal`、`FeesSettled.totalBurnedToken`/`totalParentTokenBurned`、`MemberMinted.totalBurnedForMint`、`VoteCast.voteAmountTotal`/`totalVoteAmount`、`RewardBurned.totalRewardBurned`、`GovRewardMinted`/`ProposalRewardMinted` 的 `totalRewardMinted`，以及按事件逐个枚举的聚合量：`totalValidGovVotes` 在 `LiquidityStaked`/`BoostStaked`/`Unstaked`/`StakesMerged`；`totalValidBoostShares` 在 `BoostStaked`/`Unstaked`；`totalBoostShares` 在 `BoostStaked`/`StakeWithdrawn`；`totalLiquidityShares` 在 `LiquidityStaked`/`StakeWithdrawn`；`totalWithdrawableLp` 在 `FeeReclassified`/`LiquidityStaked`/`StakeWithdrawn`；`totalFeeLp` 在 `FeeReclassified`/`FeesSettled`。两个 `valid*` 总量必须等于同轮 `Added - Removed`，两个余额/份额总量必须等于 `totalStake` 的同名字段——只断言其中一个锚点不算覆盖。
 9. 例外路径测试必须逐条覆盖 E1–E4：
    - E1：`TokenMinted → GenesisTokenCreated`/`TokenLaunched`，事件中的地址与部署地址一致；
    - E2：mock 返回值与预计算不同，事件报告实际返回值；

@@ -182,8 +182,8 @@ rg -n 'core\.md|action\.md|group-chat\.md|launchFirstToken|initializeGenesis|TOD
 - [ ] 解锁申请、等待期、提取和融合的权限及资产变化闭合
 - [ ] `Phase` 的生成、观测、校准和历史不可回写
 - [ ] Submit/Vote 的主体、门槛、增量投票和回调一致
-- [ ] `rewardReserved` 每轮只增加一次
-- [ ] `rewardReserved >= rewardMinted + rewardBurned`
+- [ ] `totalRewardReserved` 每轮只增加一次
+- [ ] `totalRewardReserved >= totalRewardMinted + totalRewardBurned`
 - [ ] `eligibleProposalVoteAmount` 的维护、冻结和零值处理明确
 - [ ] Proposal 激励分母只包含达标 Proposal
 - [ ] Launch 上限优先于阈值判断，`threshold == 0` 不除零
