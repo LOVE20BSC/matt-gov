@@ -1,0 +1,31 @@
+== Stake vs IStake: iface=57 impl=58
+  implemented but NOT declared:
+    ('error', 'SafeERC20FailedOperation', ('address',), (), None)
+== Mint vs IMint: iface=40 impl=40
+  exact match
+== Launch vs ILaunch: iface=49 impl=49
+  exact match
+== MemberNFT vs IMemberNFT: iface=40 impl=52
+  implemented but NOT declared:
+    ('constructor', ('uint256', 'uint256', 'uint256', 'uint256'))
+    ('error', 'ERC721EnumerableForbiddenBatchMint', (), (), None)
+    ('error', 'ERC721IncorrectOwner', ('address', 'uint256', 'address'), (), None)
+    ('error', 'ERC721InsufficientApproval', ('address', 'uint256'), (), None)
+    ('error', 'ERC721InvalidApprover', ('address',), (), None)
+    ('error', 'ERC721InvalidOperator', ('address',), (), None)
+    ('error', 'ERC721InvalidOwner', ('address',), (), None)
+    ('error', 'ERC721InvalidReceiver', ('address',), (), None)
+    ('error', 'ERC721InvalidSender', ('address',), (), None)
+    ('error', 'ERC721NonexistentToken', ('uint256',), (), None)
+    ('error', 'ERC721OutOfBoundsIndex', ('address', 'uint256'), (), None)
+    ('error', 'SafeERC20FailedOperation', ('address',), (), None)
+== Submit vs ISubmit: iface=39 impl=39
+  exact match
+== Vote vs IVote: iface=32 impl=32
+  exact match
+== Phase vs IPhase: iface=14 impl=15
+  implemented but NOT declared:
+    ('constructor', ('uint256', 'uint256', 'uint256', 'uint256', 'uint256'))
+== LOVE20Token vs ILOVE20Token: iface=30 impl=31
+  implemented but NOT declared:
+    ('constructor', ('string', 'string', 'uint256', 'uint256', 'address', 'address', 'address'))

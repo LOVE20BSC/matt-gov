@@ -1,0 +1,870 @@
+'forge clean' running (wd: /Users/BigPolarBear/Documents/github/LOVE20BSC/core)
+'forge config --json' running
+'forge build --build-info --skip */test/** */script/** --force' running (wd: /Users/BigPolarBear/Documents/github/LOVE20BSC/core)
+INFO:Detectors:
+Math.mulDiv(uint256,uint256,uint256) (lib/openzeppelin-contracts/contracts/utils/math/Math.sol#206-277) has bitwise-xor operator ^ instead of the exponentiation operator **: 
+	 - inverse = (3 * denominator) ^ 2 (lib/openzeppelin-contracts/contracts/utils/math/Math.sol#259)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#incorrect-exponentiation
+INFO:Detectors:
+Math.mulDiv(uint256,uint256,uint256) (lib/openzeppelin-contracts/contracts/utils/math/Math.sol#206-277) performs a multiplication on the result of a division:
+	- denominator = denominator / twos (lib/openzeppelin-contracts/contracts/utils/math/Math.sol#244)
+	- inverse = (3 * denominator) ^ 2 (lib/openzeppelin-contracts/contracts/utils/math/Math.sol#259)
+Math.mulDiv(uint256,uint256,uint256) (lib/openzeppelin-contracts/contracts/utils/math/Math.sol#206-277) performs a multiplication on the result of a division:
+	- denominator = denominator / twos (lib/openzeppelin-contracts/contracts/utils/math/Math.sol#244)
+	- inverse *= 2 - denominator * inverse (lib/openzeppelin-contracts/contracts/utils/math/Math.sol#263)
+Math.mulDiv(uint256,uint256,uint256) (lib/openzeppelin-contracts/contracts/utils/math/Math.sol#206-277) performs a multiplication on the result of a division:
+	- denominator = denominator / twos (lib/openzeppelin-contracts/contracts/utils/math/Math.sol#244)
+	- inverse *= 2 - denominator * inverse (lib/openzeppelin-contracts/contracts/utils/math/Math.sol#264)
+Math.mulDiv(uint256,uint256,uint256) (lib/openzeppelin-contracts/contracts/utils/math/Math.sol#206-277) performs a multiplication on the result of a division:
+	- denominator = denominator / twos (lib/openzeppelin-contracts/contracts/utils/math/Math.sol#244)
+	- inverse *= 2 - denominator * inverse (lib/openzeppelin-contracts/contracts/utils/math/Math.sol#265)
+Math.mulDiv(uint256,uint256,uint256) (lib/openzeppelin-contracts/contracts/utils/math/Math.sol#206-277) performs a multiplication on the result of a division:
+	- denominator = denominator / twos (lib/openzeppelin-contracts/contracts/utils/math/Math.sol#244)
+	- inverse *= 2 - denominator * inverse (lib/openzeppelin-contracts/contracts/utils/math/Math.sol#266)
+Math.mulDiv(uint256,uint256,uint256) (lib/openzeppelin-contracts/contracts/utils/math/Math.sol#206-277) performs a multiplication on the result of a division:
+	- denominator = denominator / twos (lib/openzeppelin-contracts/contracts/utils/math/Math.sol#244)
+	- inverse *= 2 - denominator * inverse (lib/openzeppelin-contracts/contracts/utils/math/Math.sol#267)
+Math.mulDiv(uint256,uint256,uint256) (lib/openzeppelin-contracts/contracts/utils/math/Math.sol#206-277) performs a multiplication on the result of a division:
+	- denominator = denominator / twos (lib/openzeppelin-contracts/contracts/utils/math/Math.sol#244)
+	- inverse *= 2 - denominator * inverse (lib/openzeppelin-contracts/contracts/utils/math/Math.sol#268)
+Math.mulDiv(uint256,uint256,uint256) (lib/openzeppelin-contracts/contracts/utils/math/Math.sol#206-277) performs a multiplication on the result of a division:
+	- low = low / twos (lib/openzeppelin-contracts/contracts/utils/math/Math.sol#247)
+	- result = low * inverse (lib/openzeppelin-contracts/contracts/utils/math/Math.sol#274)
+Math.invMod(uint256,uint256) (lib/openzeppelin-contracts/contracts/utils/math/Math.sol#317-363) performs a multiplication on the result of a division:
+	- quotient = gcd / remainder (lib/openzeppelin-contracts/contracts/utils/math/Math.sol#339)
+	- (gcd,remainder) = (remainder,gcd - remainder * quotient) (lib/openzeppelin-contracts/contracts/utils/math/Math.sol#341-348)
+MemberNFT.calculateMintCost(string) (src/MemberNFT.sol#103-122) performs a multiplication on the result of a division:
+	- baseCost = unmintedSupply / BASE_DIVISOR (src/MemberNFT.sol#110)
+	- baseCost * (MULTIPLIER ** difference) (src/MemberNFT.sol#121)
+Mint._govRewardCalculation(address,uint256,uint256) (src/Mint.sol#357-411) performs a multiplication on the result of a division:
+	- votePoolAmount = govRewardAmount / 2 (src/Mint.sol#387)
+	- voteReward = (votePoolAmount * memberVoteAmount) / totalVoteAmount (src/Mint.sol#391)
+Mint._govRewardCalculation(address,uint256,uint256) (src/Mint.sol#357-411) performs a multiplication on the result of a division:
+	- voteReward = (votePoolAmount * memberVoteAmount) / totalVoteAmount (src/Mint.sol#391)
+	- maxBoostReward = voteReward * MAX_GOV_BOOST_REWARD_MULTIPLIER (src/Mint.sol#405)
+Mint._updateLaunchCredit(address,uint256,uint256) (src/Mint.sol#463-498) performs a multiplication on the result of a division:
+	- count = _launchCredit[tokenAddress][memberId] / threshold (src/Mint.sol#488)
+	- _launchCredit[tokenAddress][memberId] -= count * threshold (src/Mint.sol#495)
+Stake.memberStake(address,uint256) (src/Stake.sol#349-382) performs a multiplication on the result of a division:
+	- lpAmount = (liquidityShares * withdrawableLp) / totals.totalLiquidityShares (src/Stake.sol#372)
+	- tokenAmountForLiquidity = (lpAmount * reserveToken) / pairTotalSupply (src/Stake.sol#377)
+Stake.memberStake(address,uint256) (src/Stake.sol#349-382) performs a multiplication on the result of a division:
+	- lpAmount = (liquidityShares * withdrawableLp) / totals.totalLiquidityShares (src/Stake.sol#372)
+	- parentTokenAmountForLiquidity = (lpAmount * reserveParent) / pairTotalSupply (src/Stake.sol#379)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#divide-before-multiply
+INFO:Detectors:
+Phase.currentPhaseBlocks() (src/Phase.sol#48-52) uses a dangerous strict equality:
+	- phase == 0 (src/Phase.sol#50)
+Phase.sync() (src/Phase.sol#86-136) uses a dangerous strict equality:
+	- phase == 0 (src/Phase.sol#88)
+Phase.sync() (src/Phase.sol#86-136) uses a dangerous strict equality:
+	- _lastSyncPhase == phase (src/Phase.sol#90)
+Phase.sync() (src/Phase.sol#86-136) uses a dangerous strict equality:
+	- observed == 0 (src/Phase.sol#120)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#dangerous-strict-equalities
+INFO:Detectors:
+Reentrancy in Stake._realizeFees(address,address,uint256,uint256) (src/Stake.sol#812-851):
+	External calls:
+	- (tokenBurned,parentTokenBurned) = _burnLp(pairContract,tokenAddress,address(this)) (src/Stake.sol#821)
+		- (amount0,amount1) = pairContract.burn(to) (src/Stake.sol#768)
+	- totalTokenBurned += _swapParentTokenForToken(tokenAddress,parentTokenBurned) (src/Stake.sol#827)
+		- amounts = IUniswapV2Router02(ROUTER_ADDRESS).swapExactTokensForTokens(parentTokenAmount,amountOutMin,path,address(this),block.timestamp) (src/Stake.sol#868-870)
+	- ILOVE20Token(tokenAddress).burn(totalTokenBurned) (src/Stake.sol#831)
+	State variables written after the call(s):
+	- totals.lastFeeLp -= processedFeeLp (src/Stake.sol#835)
+	Stake._totalStake (src/Stake.sol#58) can be used in cross function reentrancies:
+	- Stake._addLiquidity(address,address,uint256,uint256,uint256) (src/Stake.sol#626-653)
+	- Stake._creditLiquidity(address,address,uint256,uint256,uint256,AddedLiquidity) (src/Stake.sol#578-624)
+	- Stake._realizeFees(address,address,uint256,uint256) (src/Stake.sol#812-851)
+	- Stake._settleFees(address,address) (src/Stake.sol#775-799)
+	- Stake._withdrawLiquidity(address,address,uint256) (src/Stake.sol#737-761)
+	- Stake.memberStake(address,uint256) (src/Stake.sol#349-382)
+	- Stake.stakeBoost(address,uint256,uint256,uint256) (src/Stake.sol#131-181)
+	- Stake.totalStake(address) (src/Stake.sol#384-411)
+	- Stake.withdraw(address,uint256) (src/Stake.sol#223-267)
+	- _updateSqrtKBaseline(totals,pair,tokenAddress) (src/Stake.sol#836)
+		- totals.lastSqrtKOfLp = 0 (src/Stake.sol#730)
+		- totals.lastSqrtKOfLp = (Math.sqrt(reserveToken * reserveParent) * totalLp) / pairTotalSupply (src/Stake.sol#734)
+	Stake._totalStake (src/Stake.sol#58) can be used in cross function reentrancies:
+	- Stake._addLiquidity(address,address,uint256,uint256,uint256) (src/Stake.sol#626-653)
+	- Stake._creditLiquidity(address,address,uint256,uint256,uint256,AddedLiquidity) (src/Stake.sol#578-624)
+	- Stake._realizeFees(address,address,uint256,uint256) (src/Stake.sol#812-851)
+	- Stake._settleFees(address,address) (src/Stake.sol#775-799)
+	- Stake._withdrawLiquidity(address,address,uint256) (src/Stake.sol#737-761)
+	- Stake.memberStake(address,uint256) (src/Stake.sol#349-382)
+	- Stake.stakeBoost(address,uint256,uint256,uint256) (src/Stake.sol#131-181)
+	- Stake.totalStake(address) (src/Stake.sol#384-411)
+	- Stake.withdraw(address,uint256) (src/Stake.sol#223-267)
+Reentrancy in Stake._withdrawLiquidity(address,address,uint256) (src/Stake.sol#737-761):
+	External calls:
+	- _settleFees(tokenAddress,pair) (src/Stake.sol#742)
+		- (amount0,amount1) = pairContract.burn(to) (src/Stake.sol#768)
+		- amounts = IUniswapV2Router02(ROUTER_ADDRESS).swapExactTokensForTokens(parentTokenAmount,amountOutMin,path,address(this),block.timestamp) (src/Stake.sol#868-870)
+		- ILOVE20Token(tokenAddress).burn(totalTokenBurned) (src/Stake.sol#831)
+	State variables written after the call(s):
+	- totals.lastWithdrawableLp -= lpAmount (src/Stake.sol#745)
+	Stake._totalStake (src/Stake.sol#58) can be used in cross function reentrancies:
+	- Stake._addLiquidity(address,address,uint256,uint256,uint256) (src/Stake.sol#626-653)
+	- Stake._creditLiquidity(address,address,uint256,uint256,uint256,AddedLiquidity) (src/Stake.sol#578-624)
+	- Stake._realizeFees(address,address,uint256,uint256) (src/Stake.sol#812-851)
+	- Stake._settleFees(address,address) (src/Stake.sol#775-799)
+	- Stake._withdrawLiquidity(address,address,uint256) (src/Stake.sol#737-761)
+	- Stake.memberStake(address,uint256) (src/Stake.sol#349-382)
+	- Stake.stakeBoost(address,uint256,uint256,uint256) (src/Stake.sol#131-181)
+	- Stake.totalStake(address) (src/Stake.sol#384-411)
+	- Stake.withdraw(address,uint256) (src/Stake.sol#223-267)
+	- totals.totalLiquidityShares -= liquidityShares (src/Stake.sol#746)
+	Stake._totalStake (src/Stake.sol#58) can be used in cross function reentrancies:
+	- Stake._addLiquidity(address,address,uint256,uint256,uint256) (src/Stake.sol#626-653)
+	- Stake._creditLiquidity(address,address,uint256,uint256,uint256,AddedLiquidity) (src/Stake.sol#578-624)
+	- Stake._realizeFees(address,address,uint256,uint256) (src/Stake.sol#812-851)
+	- Stake._settleFees(address,address) (src/Stake.sol#775-799)
+	- Stake._withdrawLiquidity(address,address,uint256) (src/Stake.sol#737-761)
+	- Stake.memberStake(address,uint256) (src/Stake.sol#349-382)
+	- Stake.stakeBoost(address,uint256,uint256,uint256) (src/Stake.sol#131-181)
+	- Stake.totalStake(address) (src/Stake.sol#384-411)
+	- Stake.withdraw(address,uint256) (src/Stake.sol#223-267)
+Reentrancy in Stake._withdrawLiquidity(address,address,uint256) (src/Stake.sol#737-761):
+	External calls:
+	- _settleFees(tokenAddress,pair) (src/Stake.sol#742)
+		- (amount0,amount1) = pairContract.burn(to) (src/Stake.sol#768)
+		- amounts = IUniswapV2Router02(ROUTER_ADDRESS).swapExactTokensForTokens(parentTokenAmount,amountOutMin,path,address(this),block.timestamp) (src/Stake.sol#868-870)
+		- ILOVE20Token(tokenAddress).burn(totalTokenBurned) (src/Stake.sol#831)
+	- (tokenAmount,parentTokenAmount) = _burnLp(IUniswapV2Pair(pair),tokenAddress,msg.sender) (src/Stake.sol#753)
+		- (amount0,amount1) = pairContract.burn(to) (src/Stake.sol#768)
+	State variables written after the call(s):
+	- _updateSqrtKBaseline(totals,pair,tokenAddress) (src/Stake.sol#760)
+		- totals.lastSqrtKOfLp = 0 (src/Stake.sol#730)
+		- totals.lastSqrtKOfLp = (Math.sqrt(reserveToken * reserveParent) * totalLp) / pairTotalSupply (src/Stake.sol#734)
+	Stake._totalStake (src/Stake.sol#58) can be used in cross function reentrancies:
+	- Stake._addLiquidity(address,address,uint256,uint256,uint256) (src/Stake.sol#626-653)
+	- Stake._creditLiquidity(address,address,uint256,uint256,uint256,AddedLiquidity) (src/Stake.sol#578-624)
+	- Stake._realizeFees(address,address,uint256,uint256) (src/Stake.sol#812-851)
+	- Stake._settleFees(address,address) (src/Stake.sol#775-799)
+	- Stake._withdrawLiquidity(address,address,uint256) (src/Stake.sol#737-761)
+	- Stake.memberStake(address,uint256) (src/Stake.sol#349-382)
+	- Stake.stakeBoost(address,uint256,uint256,uint256) (src/Stake.sol#131-181)
+	- Stake.totalStake(address) (src/Stake.sol#384-411)
+	- Stake.withdraw(address,uint256) (src/Stake.sol#223-267)
+Reentrancy in Launch.launchToken(string,address,uint256,address,DistributorMode,bytes[]) (src/Launch.sol#91-152):
+	External calls:
+	- tokenAddress = _createToken(parentTokenAddress,tokenName,subTokenSymbol,distributor) (src/Launch.sol#132)
+		- pair = factory.createPair(tokenAddress,parentTokenAddress) (src/Launch.sol#258)
+	State variables written after the call(s):
+	- _parentTokenByTokenAddress[tokenAddress] = parentTokenAddress (src/Launch.sol#134)
+	Launch._parentTokenByTokenAddress (src/Launch.sol#43) can be used in cross function reentrancies:
+	- Launch.init(LaunchInitParams) (src/Launch.sol#54-85)
+	- Launch.isLOVE20Token(address) (src/Launch.sol#87-89)
+	- Launch.launchToken(string,address,uint256,address,DistributorMode,bytes[]) (src/Launch.sol#91-152)
+	- Launch.parentToken(address) (src/Launch.sol#234-236)
+	- _tokenAddressBySymbol[subTokenSymbol] = tokenAddress (src/Launch.sol#135)
+	Launch._tokenAddressBySymbol (src/Launch.sol#45) can be used in cross function reentrancies:
+	- Launch.init(LaunchInitParams) (src/Launch.sol#54-85)
+	- Launch.launchToken(string,address,uint256,address,DistributorMode,bytes[]) (src/Launch.sol#91-152)
+	- Launch.tokenAddressBySymbol(string) (src/Launch.sol#230-232)
+Reentrancy in Stake.stakeLiquidity(address,uint256,uint256,uint256,uint256,uint256) (src/Stake.sol#106-129):
+	External calls:
+	- added = _addLiquidity(tokenAddress,pair,tokenAmount,parentTokenAmount,slippage) (src/Stake.sol#127)
+		- added.lpMinted = IUniswapV2Pair(pair).mint(address(this)) (src/Stake.sol#651)
+	State variables written after the call(s):
+	- _creditLiquidity(tokenAddress,pair,round,memberId,promisedWaitingPhases,added) (src/Stake.sol#128)
+		- member.liquidityShares += liquiditySharesAdded (src/Stake.sol#596)
+		- member.promisedWaitingPhases = promisedWaitingPhases (src/Stake.sol#597)
+	Stake._memberStake (src/Stake.sol#59) can be used in cross function reentrancies:
+	- Stake._creditLiquidity(address,address,uint256,uint256,uint256,AddedLiquidity) (src/Stake.sol#578-624)
+	- Stake._mergeIntoTarget(address,uint256,uint256,uint256) (src/Stake.sol#524-569)
+	- Stake.canWithdraw(address,uint256) (src/Stake.sol#413-417)
+	- Stake.memberStake(address,uint256) (src/Stake.sol#349-382)
+	- Stake.mergeStake(address,uint256,uint256) (src/Stake.sol#269-311)
+	- Stake.stakeBoost(address,uint256,uint256,uint256) (src/Stake.sol#131-181)
+	- Stake.stakeLiquidity(address,uint256,uint256,uint256,uint256,uint256) (src/Stake.sol#106-129)
+	- Stake.unstake(address,uint256) (src/Stake.sol#183-221)
+	- Stake.withdraw(address,uint256) (src/Stake.sol#223-267)
+	- _creditLiquidity(tokenAddress,pair,round,memberId,promisedWaitingPhases,added) (src/Stake.sol#128)
+		- totals.lastSqrtKOfLp = 0 (src/Stake.sol#730)
+		- totals.totalLiquidityShares += liquiditySharesAdded (src/Stake.sol#598)
+		- totals.lastWithdrawableLp += added.lpMinted (src/Stake.sol#599)
+		- totals.lastSqrtKOfLp = (Math.sqrt(reserveToken * reserveParent) * totalLp) / pairTotalSupply (src/Stake.sol#734)
+	Stake._totalStake (src/Stake.sol#58) can be used in cross function reentrancies:
+	- Stake._addLiquidity(address,address,uint256,uint256,uint256) (src/Stake.sol#626-653)
+	- Stake._creditLiquidity(address,address,uint256,uint256,uint256,AddedLiquidity) (src/Stake.sol#578-624)
+	- Stake._realizeFees(address,address,uint256,uint256) (src/Stake.sol#812-851)
+	- Stake._settleFees(address,address) (src/Stake.sol#775-799)
+	- Stake._withdrawLiquidity(address,address,uint256) (src/Stake.sol#737-761)
+	- Stake.memberStake(address,uint256) (src/Stake.sol#349-382)
+	- Stake.stakeBoost(address,uint256,uint256,uint256) (src/Stake.sol#131-181)
+	- Stake.totalStake(address) (src/Stake.sol#384-411)
+	- Stake.withdraw(address,uint256) (src/Stake.sol#223-267)
+Reentrancy in Stake.withdraw(address,uint256) (src/Stake.sol#223-267):
+	External calls:
+	- (tokenAmountForLiquidity,parentTokenAmountForLiquidity,lpBurned,lpToMember) = _withdrawLiquidity(tokenAddress,pair,liquidityShares) (src/Stake.sol#239-240)
+		- (amount0,amount1) = pairContract.burn(to) (src/Stake.sol#768)
+		- amounts = IUniswapV2Router02(ROUTER_ADDRESS).swapExactTokensForTokens(parentTokenAmount,amountOutMin,path,address(this),block.timestamp) (src/Stake.sol#868-870)
+		- ILOVE20Token(tokenAddress).burn(totalTokenBurned) (src/Stake.sol#831)
+	State variables written after the call(s):
+	- delete _memberStake[tokenAddress][memberId] (src/Stake.sol#249)
+	Stake._memberStake (src/Stake.sol#59) can be used in cross function reentrancies:
+	- Stake._creditLiquidity(address,address,uint256,uint256,uint256,AddedLiquidity) (src/Stake.sol#578-624)
+	- Stake._mergeIntoTarget(address,uint256,uint256,uint256) (src/Stake.sol#524-569)
+	- Stake.canWithdraw(address,uint256) (src/Stake.sol#413-417)
+	- Stake.memberStake(address,uint256) (src/Stake.sol#349-382)
+	- Stake.mergeStake(address,uint256,uint256) (src/Stake.sol#269-311)
+	- Stake.stakeBoost(address,uint256,uint256,uint256) (src/Stake.sol#131-181)
+	- Stake.stakeLiquidity(address,uint256,uint256,uint256,uint256,uint256) (src/Stake.sol#106-129)
+	- Stake.unstake(address,uint256) (src/Stake.sol#183-221)
+	- Stake.withdraw(address,uint256) (src/Stake.sol#223-267)
+	- _totalStake[tokenAddress].totalBoostShares -= boostShares (src/Stake.sol#246)
+	Stake._totalStake (src/Stake.sol#58) can be used in cross function reentrancies:
+	- Stake._addLiquidity(address,address,uint256,uint256,uint256) (src/Stake.sol#626-653)
+	- Stake._creditLiquidity(address,address,uint256,uint256,uint256,AddedLiquidity) (src/Stake.sol#578-624)
+	- Stake._realizeFees(address,address,uint256,uint256) (src/Stake.sol#812-851)
+	- Stake._settleFees(address,address) (src/Stake.sol#775-799)
+	- Stake._withdrawLiquidity(address,address,uint256) (src/Stake.sol#737-761)
+	- Stake.memberStake(address,uint256) (src/Stake.sol#349-382)
+	- Stake.stakeBoost(address,uint256,uint256,uint256) (src/Stake.sol#131-181)
+	- Stake.totalStake(address) (src/Stake.sol#384-411)
+	- Stake.withdraw(address,uint256) (src/Stake.sol#223-267)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#reentrancy-vulnerabilities-1
+INFO:Detectors:
+Launch.tokens(uint256,uint256,bool) (src/Launch.sol#214-220) ignores return value by _tokens.paginate(offset,limit,reverse) (src/Launch.sol#219)
+Launch.childTokens(address,uint256,uint256,bool) (src/Launch.sol#222-228) ignores return value by _childTokens[parentTokenAddress].paginate(offset,limit,reverse) (src/Launch.sol#227)
+MemberNFT.holders(uint256,uint256,bool) (src/MemberNFT.sol#148-152) ignores return value by _holders.paginate(offset,limit,reverse) (src/MemberNFT.sol#151)
+Mint.proposalRewardByProposalId(address,uint256,uint256) (src/Mint.sol#345-354) ignores return value by ISubmit(SUBMIT_ADDRESS).proposalTarget(tokenAddress,proposalId) (src/Mint.sol#351)
+Mint.govRewardByMemberId(address,uint256,uint256) (src/Mint.sol#413-427) ignores return value by IMemberNFT(MEMBER_NFT_ADDRESS).ownerOf(memberId) (src/Mint.sol#424)
+Mint.onlyProposalTarget(address,uint256) (src/Mint.sol#175-184) ignores return value by (target,None) = ISubmit(SUBMIT_ADDRESS).proposalTarget(tokenAddress,proposalId) (src/Mint.sol#179)
+Stake.mergeStake(address,uint256,uint256) (src/Stake.sol#269-311) ignores return value by IMemberNFT(MEMBER_NFT_ADDRESS).ownerOf(targetMemberId) (src/Stake.sol#277)
+Stake._reserves(address,address) (src/Stake.sol#655-669) ignores return value by (reserve0,reserve1,None) = pairContract.getReserves() (src/Stake.sol#662)
+Submit.proposalIdsByAuthor(address,uint256,uint256,uint256,bool) (src/Submit.sol#152-160) ignores return value by _proposalIdsByAuthor[tokenAddress][author].paginate(offset,limit,reverse) (src/Submit.sol#159)
+Submit._submitByProposalId(address,uint256,uint256) (src/Submit.sol#277-324) ignores return value by IPhase(PHASE_ADDRESS).sync() (src/Submit.sol#321)
+Vote.votedProposalIds(address,uint256,uint256,uint256,bool) (src/Vote.sol#153-159) ignores return value by _votedProposalIds[tokenAddress][round].paginate(offset,limit,reverse) (src/Vote.sol#158)
+Vote.voterIdsByProposalId(address,uint256,uint256,uint256,uint256,bool) (src/Vote.sol#161-170) ignores return value by _voterIdsByProposalId[tokenAddress][round][proposalId].paginate(offset,limit,reverse) (src/Vote.sol#169)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#unused-return
+INFO:Detectors:
+LOVE20Token.constructor(string,string,uint256,uint256,address,address,address).name (src/LOVE20Token.sol#13) shadows:
+	- ERC20.name() (lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol#52-54) (function)
+	- IERC20Metadata.name() (lib/openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol#15) (function)
+LOVE20Token.constructor(string,string,uint256,uint256,address,address,address).symbol (src/LOVE20Token.sol#14) shadows:
+	- ERC20.symbol() (lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol#60-62) (function)
+	- IERC20Metadata.symbol() (lib/openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol#20) (function)
+MemberNFT.mint(string).name (src/MemberNFT.sol#61) shadows:
+	- ERC721.name() (lib/openzeppelin-contracts/contracts/token/ERC721/ERC721.sol#66-68) (function)
+	- IERC721Metadata.name() (lib/openzeppelin-contracts/contracts/token/ERC721/extensions/IERC721Metadata.sol#16) (function)
+MemberNFT._mintMember(address,string,string,uint256).name (src/MemberNFT.sol#74) shadows:
+	- ERC721.name() (lib/openzeppelin-contracts/contracts/token/ERC721/ERC721.sol#66-68) (function)
+	- IERC721Metadata.name() (lib/openzeppelin-contracts/contracts/token/ERC721/extensions/IERC721Metadata.sol#16) (function)
+MemberNFT.calculateMintCost(string).name (src/MemberNFT.sol#104) shadows:
+	- ERC721.name() (lib/openzeppelin-contracts/contracts/token/ERC721/ERC721.sol#66-68) (function)
+	- IERC721Metadata.name() (lib/openzeppelin-contracts/contracts/token/ERC721/extensions/IERC721Metadata.sol#16) (function)
+MemberNFT.isNameUsed(string).name (src/MemberNFT.sol#131) shadows:
+	- ERC721.name() (lib/openzeppelin-contracts/contracts/token/ERC721/ERC721.sol#66-68) (function)
+	- IERC721Metadata.name() (lib/openzeppelin-contracts/contracts/token/ERC721/extensions/IERC721Metadata.sol#16) (function)
+MemberNFT.memberId(string).name (src/MemberNFT.sol#137) shadows:
+	- ERC721.name() (lib/openzeppelin-contracts/contracts/token/ERC721/ERC721.sol#66-68) (function)
+	- IERC721Metadata.name() (lib/openzeppelin-contracts/contracts/token/ERC721/extensions/IERC721Metadata.sol#16) (function)
+MemberNFT.normalizeName(string).name (src/MemberNFT.sol#143) shadows:
+	- ERC721.name() (lib/openzeppelin-contracts/contracts/token/ERC721/ERC721.sol#66-68) (function)
+	- IERC721Metadata.name() (lib/openzeppelin-contracts/contracts/token/ERC721/extensions/IERC721Metadata.sol#16) (function)
+MemberNFT._addTestPrefixIfNeeded(string).name (src/MemberNFT.sol#155) shadows:
+	- ERC721.name() (lib/openzeppelin-contracts/contracts/token/ERC721/ERC721.sol#66-68) (function)
+	- IERC721Metadata.name() (lib/openzeppelin-contracts/contracts/token/ERC721/extensions/IERC721Metadata.sol#16) (function)
+MemberNFT._checkName(string).name (src/MemberNFT.sol#215) shadows:
+	- ERC721.name() (lib/openzeppelin-contracts/contracts/token/ERC721/ERC721.sol#66-68) (function)
+	- IERC721Metadata.name() (lib/openzeppelin-contracts/contracts/token/ERC721/extensions/IERC721Metadata.sol#16) (function)
+IMemberNFT.mint(string).name (src/interfaces/IMemberNFT.sol#49) shadows:
+	- IERC721Metadata.name() (lib/openzeppelin-contracts/contracts/token/ERC721/extensions/IERC721Metadata.sol#16) (function)
+IMemberNFT.calculateMintCost(string).name (src/interfaces/IMemberNFT.sol#53) shadows:
+	- IERC721Metadata.name() (lib/openzeppelin-contracts/contracts/token/ERC721/extensions/IERC721Metadata.sol#16) (function)
+IMemberNFT.isNameUsed(string).name (src/interfaces/IMemberNFT.sol#59) shadows:
+	- IERC721Metadata.name() (lib/openzeppelin-contracts/contracts/token/ERC721/extensions/IERC721Metadata.sol#16) (function)
+IMemberNFT.memberId(string).name (src/interfaces/IMemberNFT.sol#63) shadows:
+	- IERC721Metadata.name() (lib/openzeppelin-contracts/contracts/token/ERC721/extensions/IERC721Metadata.sol#16) (function)
+IMemberNFT.normalizeName(string).name (src/interfaces/IMemberNFT.sol#67) shadows:
+	- IERC721Metadata.name() (lib/openzeppelin-contracts/contracts/token/ERC721/extensions/IERC721Metadata.sol#16) (function)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#local-variable-shadowing
+INFO:Detectors:
+MemberNFT.init(address).firstTokenAddress (src/MemberNFT.sol#54) lacks a zero-check on :
+		- LOVE20_TOKEN_ADDRESS = firstTokenAddress (src/MemberNFT.sol#56)
+Mint.init(address,address,address,address,uint256,uint256,uint256,uint256).voteAddress (src/Mint.sol#73) lacks a zero-check on :
+		- VOTE_ADDRESS = voteAddress (src/Mint.sol#89)
+Mint.init(address,address,address,address,uint256,uint256,uint256,uint256).submitAddress (src/Mint.sol#74) lacks a zero-check on :
+		- SUBMIT_ADDRESS = submitAddress (src/Mint.sol#90)
+Mint.init(address,address,address,address,uint256,uint256,uint256,uint256).launchAddress (src/Mint.sol#75) lacks a zero-check on :
+		- LAUNCH_ADDRESS = launchAddress (src/Mint.sol#91)
+Mint.init(address,address,address,address,uint256,uint256,uint256,uint256).memberNFTAddress (src/Mint.sol#76) lacks a zero-check on :
+		- MEMBER_NFT_ADDRESS = memberNFTAddress (src/Mint.sol#92)
+Mint.init(address,address,address,address,uint256,uint256,uint256,uint256).phaseAddress (src/Mint.sol#87) lacks a zero-check on :
+		- PHASE_ADDRESS = phaseAddress (src/Mint.sol#93)
+Stake.init(address,address,address,address,address,address,uint256,uint256,uint256).phaseAddress (src/Stake.sol#73) lacks a zero-check on :
+		- PHASE_ADDRESS = phaseAddress (src/Stake.sol#85)
+Stake.init(address,address,address,address,address,address,uint256,uint256,uint256).memberNFTAddress (src/Stake.sol#74) lacks a zero-check on :
+		- MEMBER_NFT_ADDRESS = memberNFTAddress (src/Stake.sol#86)
+Stake.init(address,address,address,address,address,address,uint256,uint256,uint256).voteAddress (src/Stake.sol#75) lacks a zero-check on :
+		- VOTE_ADDRESS = voteAddress (src/Stake.sol#87)
+Stake.init(address,address,address,address,address,address,uint256,uint256,uint256).launchAddress (src/Stake.sol#76) lacks a zero-check on :
+		- LAUNCH_ADDRESS = launchAddress (src/Stake.sol#88)
+Stake.init(address,address,address,address,address,address,uint256,uint256,uint256).routerAddress (src/Stake.sol#77) lacks a zero-check on :
+		- ROUTER_ADDRESS = routerAddress (src/Stake.sol#89)
+Stake.init(address,address,address,address,address,address,uint256,uint256,uint256).pairFactoryAddress (src/Stake.sol#78) lacks a zero-check on :
+		- PAIR_FACTORY_ADDRESS = pairFactoryAddress (src/Stake.sol#90)
+Submit.init(address,address,address,uint256).phaseAddress (src/Submit.sol#50) lacks a zero-check on :
+		- PHASE_ADDRESS = phaseAddress (src/Submit.sol#59)
+Submit.init(address,address,address,uint256).stakeAddress (src/Submit.sol#51) lacks a zero-check on :
+		- STAKE_ADDRESS = stakeAddress (src/Submit.sol#60)
+Submit.init(address,address,address,uint256).memberNFTAddress (src/Submit.sol#52) lacks a zero-check on :
+		- MEMBER_NFT_ADDRESS = memberNFTAddress (src/Submit.sol#61)
+Vote.init(address,address,address,address).stakeAddress (src/Vote.sol#48) lacks a zero-check on :
+		- STAKE_ADDRESS = stakeAddress (src/Vote.sol#56)
+Vote.init(address,address,address,address).submitAddress (src/Vote.sol#49) lacks a zero-check on :
+		- SUBMIT_ADDRESS = submitAddress (src/Vote.sol#57)
+Vote.init(address,address,address,address).phaseAddress (src/Vote.sol#47) lacks a zero-check on :
+		- PHASE_ADDRESS = phaseAddress (src/Vote.sol#58)
+Vote.init(address,address,address,address).memberNFTAddress (src/Vote.sol#50) lacks a zero-check on :
+		- MEMBER_NFT_ADDRESS = memberNFTAddress (src/Vote.sol#59)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#missing-zero-address-validation
+INFO:Detectors:
+Mint._calculateEligibleProposalVoteAmount(address,uint256,uint256) (src/Mint.sol#264-302) has external calls inside a loop: voteAmount = IVote(VOTE_ADDRESS).voteAmountByProposalId(tokenAddress,round,proposalIds[i]) (src/Mint.sol#290-294)
+	Calls stack containing the loop:
+		Mint.mintProposalReward(address,uint256,uint256,address)
+		Mint._prepareRewardIfNeeded(address,uint256)
+Mint._calculateEligibleProposalVoteAmount(address,uint256,uint256) (src/Mint.sol#264-302) has external calls inside a loop: voteAmount = IVote(VOTE_ADDRESS).voteAmountByProposalId(tokenAddress,round,proposalIds[i]) (src/Mint.sol#290-294)
+	Calls stack containing the loop:
+		Mint.mintGovReward(address,uint256,uint256,address)
+		Mint._mintGovReward(address,uint256,uint256,address)
+		Mint._prepareRewardIfNeeded(address,uint256)
+Mint._isRoundEnded(uint256) (src/Mint.sol#100-102) has external calls inside a loop: round != 0 && IPhase(PHASE_ADDRESS).currentPhase() > round (src/Mint.sol#101)
+	Calls stack containing the loop:
+		Mint.mintGovRewards(address,uint256[],uint256,address)
+		Mint._mintGovReward(address,uint256,uint256,address)
+		Mint._prepareRewardIfNeeded(address,uint256)
+Mint._prepareRewardIfNeeded(address,uint256) (src/Mint.sol#104-161) has external calls inside a loop: totalVoteAmount = IVote(VOTE_ADDRESS).totalVoteAmount(tokenAddress,round) (src/Mint.sol#116)
+	Calls stack containing the loop:
+		Mint.mintGovRewards(address,uint256[],uint256,address)
+		Mint._mintGovReward(address,uint256,uint256,address)
+Mint._calculateEligibleProposalVoteAmount(address,uint256,uint256) (src/Mint.sol#264-302) has external calls inside a loop: (proposalIds,None) = IVote(VOTE_ADDRESS).votedProposalIds(tokenAddress,round,0,totalProposalCount,false) (src/Mint.sol#280-286)
+	Calls stack containing the loop:
+		Mint.mintGovRewards(address,uint256[],uint256,address)
+		Mint._mintGovReward(address,uint256,uint256,address)
+		Mint._prepareRewardIfNeeded(address,uint256)
+Mint._calculateEligibleProposalVoteAmount(address,uint256,uint256) (src/Mint.sol#264-302) has external calls inside a loop: voteAmount = IVote(VOTE_ADDRESS).voteAmountByProposalId(tokenAddress,round,proposalIds[i]) (src/Mint.sol#290-294)
+	Calls stack containing the loop:
+		Mint.mintGovRewards(address,uint256[],uint256,address)
+		Mint._mintGovReward(address,uint256,uint256,address)
+		Mint._prepareRewardIfNeeded(address,uint256)
+Mint.rewardAvailable(address) (src/Mint.sol#452-456) has external calls inside a loop: (token.MAX_SUPPLY() - token.totalSupply()) - reservedAvailable(tokenAddress) (src/Mint.sol#455)
+	Calls stack containing the loop:
+		Mint.mintGovRewards(address,uint256[],uint256,address)
+		Mint._mintGovReward(address,uint256,uint256,address)
+		Mint._prepareRewardIfNeeded(address,uint256)
+Mint._prepareRewardIfNeeded(address,uint256) (src/Mint.sol#104-161) has external calls inside a loop: totalVoterBoost = IVote(VOTE_ADDRESS).totalVoterBoost(tokenAddress,round) (src/Mint.sol#133)
+	Calls stack containing the loop:
+		Mint.mintGovRewards(address,uint256[],uint256,address)
+		Mint._mintGovReward(address,uint256,uint256,address)
+Mint._govRewardCalculation(address,uint256,uint256) (src/Mint.sol#357-411) has external calls inside a loop: memberVoteAmount = IVote(VOTE_ADDRESS).voteAmountByMemberId(tokenAddress,round,memberId) (src/Mint.sol#369)
+	Calls stack containing the loop:
+		Mint.mintGovRewards(address,uint256[],uint256,address)
+		Mint._mintGovReward(address,uint256,uint256,address)
+Mint._govRewardCalculation(address,uint256,uint256) (src/Mint.sol#357-411) has external calls inside a loop: totalVoteAmount = IVote(VOTE_ADDRESS).totalVoteAmount(tokenAddress,round) (src/Mint.sol#374)
+	Calls stack containing the loop:
+		Mint.mintGovRewards(address,uint256[],uint256,address)
+		Mint._mintGovReward(address,uint256,uint256,address)
+Mint._govRewardCalculation(address,uint256,uint256) (src/Mint.sol#357-411) has external calls inside a loop: totalVoterBoost = IVote(VOTE_ADDRESS).totalVoterBoost(tokenAddress,round) (src/Mint.sol#393)
+	Calls stack containing the loop:
+		Mint.mintGovRewards(address,uint256[],uint256,address)
+		Mint._mintGovReward(address,uint256,uint256,address)
+Mint._govRewardCalculation(address,uint256,uint256) (src/Mint.sol#357-411) has external calls inside a loop: voterBoost = IVote(VOTE_ADDRESS).voterBoost(tokenAddress,round,memberId) (src/Mint.sol#398-402)
+	Calls stack containing the loop:
+		Mint.mintGovRewards(address,uint256[],uint256,address)
+		Mint._mintGovReward(address,uint256,uint256,address)
+Mint._mintGovReward(address,uint256,uint256,address) (src/Mint.sol#500-556) has external calls inside a loop: ILOVE20Token(tokenAddress).mint(recipient,mintAmount) (src/Mint.sol#531)
+	Calls stack containing the loop:
+		Mint.mintGovRewards(address,uint256[],uint256,address)
+Mint._updateLaunchCredit(address,uint256,uint256) (src/Mint.sol#463-498) has external calls inside a loop: issuedCount = launch.issuedLaunchCount(tokenAddress) (src/Mint.sol#469)
+	Calls stack containing the loop:
+		Mint.mintGovRewards(address,uint256[],uint256,address)
+		Mint._mintGovReward(address,uint256,uint256,address)
+Mint._updateLaunchCredit(address,uint256,uint256) (src/Mint.sol#463-498) has external calls inside a loop: maxCount = launch.MAX_LAUNCH_COUNT() (src/Mint.sol#470)
+	Calls stack containing the loop:
+		Mint.mintGovRewards(address,uint256[],uint256,address)
+		Mint._mintGovReward(address,uint256,uint256,address)
+Mint._updateLaunchCredit(address,uint256,uint256) (src/Mint.sol#463-498) has external calls inside a loop: totalSupplyBeforeMint = token.totalSupply() - mintedAmount (src/Mint.sol#476)
+	Calls stack containing the loop:
+		Mint.mintGovRewards(address,uint256[],uint256,address)
+		Mint._mintGovReward(address,uint256,uint256,address)
+Mint._updateLaunchCredit(address,uint256,uint256) (src/Mint.sol#463-498) has external calls inside a loop: threshold = Math.mulDiv(token.MAX_SUPPLY() - totalSupplyBeforeMint,launch.LAUNCH_RATIO(),1e18,Math.Rounding.Ceil) (src/Mint.sol#477-479)
+	Calls stack containing the loop:
+		Mint.mintGovRewards(address,uint256[],uint256,address)
+		Mint._mintGovReward(address,uint256,uint256,address)
+Mint._updateLaunchCredit(address,uint256,uint256) (src/Mint.sol#463-498) has external calls inside a loop: launch.addLaunchCount(tokenAddress,memberId,count) (src/Mint.sol#496)
+	Calls stack containing the loop:
+		Mint.mintGovRewards(address,uint256[],uint256,address)
+		Mint._mintGovReward(address,uint256,uint256,address)
+Mint._calculateEligibleProposalVoteAmount(address,uint256,uint256) (src/Mint.sol#264-302) has external calls inside a loop: voteAmount = IVote(VOTE_ADDRESS).voteAmountByProposalId(tokenAddress,round,proposalIds[i]) (src/Mint.sol#290-294)
+	Calls stack containing the loop:
+		Mint.proposalRewardByProposalId(address,uint256,uint256)
+		Mint._proposalRewardCalculation(address,uint256,uint256)
+Vote._vote(address,uint256,uint256,uint256,uint256,uint256,bytes[]) (src/Vote.sol#212-288) has external calls inside a loop: ! ISubmit(SUBMIT_ADDRESS).isSubmitted(tokenAddress,round,proposalId) (src/Vote.sol#222)
+	Calls stack containing the loop:
+		Vote.vote(address,uint256,uint256[],uint256[],bytes[][])
+Vote._vote(address,uint256,uint256,uint256,uint256,uint256,bytes[]) (src/Vote.sol#212-288) has external calls inside a loop: actualVoterBoost = IStake(STAKE_ADDRESS).validBoostShares(tokenAddress,round,memberId) (src/Vote.sol#235)
+	Calls stack containing the loop:
+		Vote.vote(address,uint256,uint256[],uint256[],bytes[][])
+Vote._vote(address,uint256,uint256,uint256,uint256,uint256,bytes[]) (src/Vote.sol#212-288) has external calls inside a loop: (target,targetMode) = ISubmit(SUBMIT_ADDRESS).proposalTarget(tokenAddress,proposalId) (src/Vote.sol#282)
+	Calls stack containing the loop:
+		Vote.vote(address,uint256,uint256[],uint256[],bytes[][])
+Vote._vote(address,uint256,uint256,uint256,uint256,uint256,bytes[]) (src/Vote.sol#212-288) has external calls inside a loop: IProposalTarget(target).onProposalVoted(tokenAddress,round,proposalId,memberId,voteAmount,targetData) (src/Vote.sol#286)
+	Calls stack containing the loop:
+		Vote.vote(address,uint256,uint256[],uint256[],bytes[][])
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation/#calls-inside-a-loop
+INFO:Detectors:
+Reentrancy in Stake._realizeFees(address,address,uint256,uint256) (src/Stake.sol#812-851):
+	External calls:
+	- (tokenBurned,parentTokenBurned) = _burnLp(pairContract,tokenAddress,address(this)) (src/Stake.sol#821)
+		- (amount0,amount1) = pairContract.burn(to) (src/Stake.sol#768)
+	State variables written after the call(s):
+	- _totalParentTokenBurned[tokenAddress] += parentTokenBurned (src/Stake.sol#823)
+Reentrancy in Stake._realizeFees(address,address,uint256,uint256) (src/Stake.sol#812-851):
+	External calls:
+	- (tokenBurned,parentTokenBurned) = _burnLp(pairContract,tokenAddress,address(this)) (src/Stake.sol#821)
+		- (amount0,amount1) = pairContract.burn(to) (src/Stake.sol#768)
+	- totalTokenBurned += _swapParentTokenForToken(tokenAddress,parentTokenBurned) (src/Stake.sol#827)
+		- amounts = IUniswapV2Router02(ROUTER_ADDRESS).swapExactTokensForTokens(parentTokenAmount,amountOutMin,path,address(this),block.timestamp) (src/Stake.sol#868-870)
+	- ILOVE20Token(tokenAddress).burn(totalTokenBurned) (src/Stake.sol#831)
+	State variables written after the call(s):
+	- _totalBurnedToken[tokenAddress] += totalTokenBurned (src/Stake.sol#833)
+Reentrancy in Launch.init(LaunchInitParams) (src/Launch.sol#54-85):
+	External calls:
+	- firstToken = _createToken(params.rootParentTokenAddress,params.name,params.symbol,params.distributor) (src/Launch.sol#68)
+		- pair = factory.createPair(tokenAddress,parentTokenAddress) (src/Launch.sol#258)
+	State variables written after the call(s):
+	- FIRST_TOKEN_ADDRESS = firstToken (src/Launch.sol#69)
+	- _childTokens[params.rootParentTokenAddress].push(firstToken) (src/Launch.sol#73)
+	- _parentTokenByTokenAddress[firstToken] = params.rootParentTokenAddress (src/Launch.sol#71)
+	- _tokenAddressBySymbol[params.symbol] = firstToken (src/Launch.sol#72)
+	- _tokens.push(firstToken) (src/Launch.sol#70)
+Reentrancy in Launch.launchToken(string,address,uint256,address,DistributorMode,bytes[]) (src/Launch.sol#91-152):
+	External calls:
+	- tokenAddress = _createToken(parentTokenAddress,tokenName,subTokenSymbol,distributor) (src/Launch.sol#132)
+		- pair = factory.createPair(tokenAddress,parentTokenAddress) (src/Launch.sol#258)
+	State variables written after the call(s):
+	- _childTokens[parentTokenAddress].push(tokenAddress) (src/Launch.sol#136)
+	- _tokens.push(tokenAddress) (src/Launch.sol#133)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#reentrancy-vulnerabilities-2
+INFO:Detectors:
+Reentrancy in Mint._mintGovReward(address,uint256,uint256,address) (src/Mint.sol#500-556):
+	External calls:
+	- ILOVE20Token(tokenAddress).mint(recipient,mintAmount) (src/Mint.sol#531)
+	- _updateLaunchCredit(tokenAddress,memberId,mintAmount) (src/Mint.sol#532)
+		- launch.addLaunchCount(tokenAddress,memberId,count) (src/Mint.sol#496)
+	Event emitted after the call(s):
+	- GovRewardMinted({tokenAddress:tokenAddress,round:round,memberId:memberId,voteReward:voteReward,boostReward:boostReward,burnReward:burnReward}) (src/Mint.sol#546-553)
+	- RewardBurned({tokenAddress:tokenAddress,round:round,amount:burnReward,reason:BurnReason.BoostOverflow}) (src/Mint.sol#537-542)
+Reentrancy in MemberNFT._mintMember(address,string,string,uint256) (src/MemberNFT.sol#72-101):
+	External calls:
+	- ILOVE20Token(LOVE20_TOKEN_ADDRESS).burn(mintCost) (src/MemberNFT.sol#86)
+	- _safeMint(memberOwner,tokenId) (src/MemberNFT.sol#89)
+		- ERC721Utils.checkOnERC721Received(_msgSender(),address(0),to,tokenId,data) (lib/openzeppelin-contracts/contracts/token/ERC721/ERC721.sol#289)
+		- retval = IERC721Receiver(to).onERC721Received(operator,from,tokenId,data) (lib/openzeppelin-contracts/contracts/token/ERC721/utils/ERC721Utils.sol#33-47)
+	Event emitted after the call(s):
+	- Approval(owner,to,tokenId) (lib/openzeppelin-contracts/contracts/token/ERC721/ERC721.sol#394)
+		- _safeMint(memberOwner,tokenId) (src/MemberNFT.sol#89)
+	- MemberMinted({memberId:tokenId,owner:memberOwner,cost:mintCost,name:name,normalizedName:normalizedName}) (src/MemberNFT.sol#92-98)
+	- Transfer(from,to,tokenId) (lib/openzeppelin-contracts/contracts/token/ERC721/ERC721.sol#242)
+		- _safeMint(memberOwner,tokenId) (src/MemberNFT.sol#89)
+Reentrancy in Stake._realizeFees(address,address,uint256,uint256) (src/Stake.sol#812-851):
+	External calls:
+	- (tokenBurned,parentTokenBurned) = _burnLp(pairContract,tokenAddress,address(this)) (src/Stake.sol#821)
+		- (amount0,amount1) = pairContract.burn(to) (src/Stake.sol#768)
+	- totalTokenBurned += _swapParentTokenForToken(tokenAddress,parentTokenBurned) (src/Stake.sol#827)
+		- amounts = IUniswapV2Router02(ROUTER_ADDRESS).swapExactTokensForTokens(parentTokenAmount,amountOutMin,path,address(this),block.timestamp) (src/Stake.sol#868-870)
+	- ILOVE20Token(tokenAddress).burn(totalTokenBurned) (src/Stake.sol#831)
+	Event emitted after the call(s):
+	- FeesSettled({tokenAddress:tokenAddress,round:round,feeLp:processedFeeLp,tokenBurned:totalTokenBurned,parentTokenBurned:parentTokenBurned,totalBurnedToken:burnedTokenTotal,totalParentTokenBurned:parentTokenBurnedTotal}) (src/Stake.sol#842-850)
+Reentrancy in Launch.init(LaunchInitParams) (src/Launch.sol#54-85):
+	External calls:
+	- firstToken = _createToken(params.rootParentTokenAddress,params.name,params.symbol,params.distributor) (src/Launch.sol#68)
+		- pair = factory.createPair(tokenAddress,parentTokenAddress) (src/Launch.sol#258)
+	- IMemberNFT(params.memberNFTAddress).init(firstToken) (src/Launch.sol#75)
+	Event emitted after the call(s):
+	- GenesisTokenCreated({tokenAddress:firstToken,parentTokenAddress:params.rootParentTokenAddress,distributor:params.distributor,name:params.name,symbol:params.symbol}) (src/Launch.sol#78-84)
+Reentrancy in Launch.launchToken(string,address,uint256,address,DistributorMode,bytes[]) (src/Launch.sol#91-152):
+	External calls:
+	- tokenAddress = _createToken(parentTokenAddress,tokenName,subTokenSymbol,distributor) (src/Launch.sol#132)
+		- pair = factory.createPair(tokenAddress,parentTokenAddress) (src/Launch.sol#258)
+	Event emitted after the call(s):
+	- TokenLaunched({tokenAddress:tokenAddress,parentTokenAddress:parentTokenAddress,launcherMemberId:memberId,distributor:distributor,distributorMode:distributorMode,name:tokenName,symbol:subTokenSymbol}) (src/Launch.sol#139-147)
+Reentrancy in Mint.mintProposalReward(address,uint256,uint256,address) (src/Mint.sol#186-222):
+	External calls:
+	- ILOVE20Token(tokenAddress).mint(recipient,amount) (src/Mint.sol#210)
+	Event emitted after the call(s):
+	- ProposalRewardMinted({tokenAddress:tokenAddress,round:round,proposalId:proposalId,recipient:recipient,amount:amount}) (src/Mint.sol#213-219)
+Reentrancy in Stake.stakeLiquidity(address,uint256,uint256,uint256,uint256,uint256) (src/Stake.sol#106-129):
+	External calls:
+	- added = _addLiquidity(tokenAddress,pair,tokenAmount,parentTokenAmount,slippage) (src/Stake.sol#127)
+		- added.lpMinted = IUniswapV2Pair(pair).mint(address(this)) (src/Stake.sol#651)
+	Event emitted after the call(s):
+	- LiquidityStaked({tokenAddress:tokenAddress,round:round,memberId:memberId,tokenAmountDesired:added.tokenAmountDesired,parentTokenAmountDesired:added.parentTokenAmountDesired,tokenAmount:added.tokenAmount,parentTokenAmount:added.parentTokenAmount,promisedWaitingPhases:promisedWaitingPhases,govVotesAdded:govVotesAdded,govVotes:_govVotesOf(member),liquiditySharesAdded:liquiditySharesAdded,liquidityShares:member.liquidityShares,totalLiquidityShares:totals.totalLiquidityShares,totalValidGovVotes:govVotesTotal}) (src/Stake.sol#608-623)
+		- _creditLiquidity(tokenAddress,pair,round,memberId,promisedWaitingPhases,added) (src/Stake.sol#128)
+Reentrancy in Stake.withdraw(address,uint256) (src/Stake.sol#223-267):
+	External calls:
+	- (tokenAmountForLiquidity,parentTokenAmountForLiquidity,lpBurned,lpToMember) = _withdrawLiquidity(tokenAddress,pair,liquidityShares) (src/Stake.sol#239-240)
+		- (amount0,amount1) = pairContract.burn(to) (src/Stake.sol#768)
+		- amounts = IUniswapV2Router02(ROUTER_ADDRESS).swapExactTokensForTokens(parentTokenAmount,amountOutMin,path,address(this),block.timestamp) (src/Stake.sol#868-870)
+		- ILOVE20Token(tokenAddress).burn(totalTokenBurned) (src/Stake.sol#831)
+	Event emitted after the call(s):
+	- StakeWithdrawn({tokenAddress:tokenAddress,round:round,memberId:memberId,promisedWaitingPhases:promisedWaitingPhases,liquidityShares:liquidityShares,tokenAmountForLiquidity:tokenAmountForLiquidity,parentTokenAmountForLiquidity:parentTokenAmountForLiquidity,boostShares:boostShares,lpBurned:lpBurned,lpToMember:lpToMember,totalLiquidityShares:totals.totalLiquidityShares,totalBoostShares:totals.totalBoostShares}) (src/Stake.sol#253-266)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#reentrancy-vulnerabilities-3
+INFO:Detectors:
+Phase.currentPhaseBlocks() (src/Phase.sol#48-52) uses timestamp for comparisons
+	Dangerous comparisons:
+	- phase == 0 (src/Phase.sol#50)
+Phase.sync() (src/Phase.sol#86-136) uses timestamp for comparisons
+	Dangerous comparisons:
+	- phase == 0 (src/Phase.sol#88)
+	- _lastSyncPhase == phase (src/Phase.sol#90)
+	- block.number - _observationBlocks[i] > phaseBlocks (src/Phase.sol#100)
+	- selected == type()(uint256).max && block.number > phaseBlocks (src/Phase.sol#102)
+	- elapsedBlocks > 0 && elapsedSeconds > 0 (src/Phase.sol#115)
+	- deviation > ADJUST_THRESHOLD (src/Phase.sol#119)
+	- observed > phaseBlocks (src/Phase.sol#117)
+	- observed == 0 (src/Phase.sol#120)
+Phase._phaseBlocks(uint256) (src/Phase.sol#138-142) uses timestamp for comparisons
+	Dangerous comparisons:
+	- assert(bool)(found) (src/Phase.sol#140)
+Stake._realizeFees(address,address,uint256,uint256) (src/Stake.sol#812-851) uses timestamp for comparisons
+	Dangerous comparisons:
+	- totalTokenBurned > 0 (src/Stake.sol#829)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#block-timestamp
+INFO:Detectors:
+SafeERC20._safeTransfer(IERC20,address,uint256,bool) (lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol#176-200) uses assembly
+	- INLINE ASM (lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol#179-199)
+SafeERC20._safeTransferFrom(IERC20,address,address,uint256,bool) (lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol#212-244) uses assembly
+	- INLINE ASM (lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol#221-243)
+SafeERC20._safeApprove(IERC20,address,uint256,bool) (lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol#255-279) uses assembly
+	- INLINE ASM (lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol#258-278)
+ERC721Utils.checkOnERC721Received(address,address,address,uint256,bytes) (lib/openzeppelin-contracts/contracts/token/ERC721/utils/ERC721Utils.sol#25-49) uses assembly
+	- INLINE ASM (lib/openzeppelin-contracts/contracts/token/ERC721/utils/ERC721Utils.sol#43-45)
+Bytes.slice(bytes,uint256,uint256) (lib/openzeppelin-contracts/contracts/utils/Bytes.sol#86-98) uses assembly
+	- INLINE ASM (lib/openzeppelin-contracts/contracts/utils/Bytes.sol#93-95)
+Bytes.splice(bytes,uint256,uint256) (lib/openzeppelin-contracts/contracts/utils/Bytes.sol#117-129) uses assembly
+	- INLINE ASM (lib/openzeppelin-contracts/contracts/utils/Bytes.sol#123-126)
+Bytes.replace(bytes,uint256,bytes,uint256,uint256) (lib/openzeppelin-contracts/contracts/utils/Bytes.sol#154-172) uses assembly
+	- INLINE ASM (lib/openzeppelin-contracts/contracts/utils/Bytes.sol#167-169)
+Bytes.concat(bytes[]) (lib/openzeppelin-contracts/contracts/utils/Bytes.sol#183-203) uses assembly
+	- INLINE ASM (lib/openzeppelin-contracts/contracts/utils/Bytes.sol#194-196)
+Bytes.toNibbles(bytes) (lib/openzeppelin-contracts/contracts/utils/Bytes.sol#210-245) uses assembly
+	- INLINE ASM (lib/openzeppelin-contracts/contracts/utils/Bytes.sol#211-244)
+Bytes._unsafeReadBytesOffset(bytes,uint256) (lib/openzeppelin-contracts/contracts/utils/Bytes.sol#326-331) uses assembly
+	- INLINE ASM (lib/openzeppelin-contracts/contracts/utils/Bytes.sol#328-330)
+Panic.panic(uint256) (lib/openzeppelin-contracts/contracts/utils/Panic.sol#50-56) uses assembly
+	- INLINE ASM (lib/openzeppelin-contracts/contracts/utils/Panic.sol#51-55)
+Strings.toString(uint256) (lib/openzeppelin-contracts/contracts/utils/Strings.sol#42-60) uses assembly
+	- INLINE ASM (lib/openzeppelin-contracts/contracts/utils/Strings.sol#47-49)
+	- INLINE ASM (lib/openzeppelin-contracts/contracts/utils/Strings.sol#52-54)
+Strings.toChecksumHexString(address) (lib/openzeppelin-contracts/contracts/utils/Strings.sol#108-126) uses assembly
+	- INLINE ASM (lib/openzeppelin-contracts/contracts/utils/Strings.sol#113-115)
+Strings.escapeJSON(string) (lib/openzeppelin-contracts/contracts/utils/Strings.sol#461-505) uses assembly
+	- INLINE ASM (lib/openzeppelin-contracts/contracts/utils/Strings.sol#468-470)
+	- INLINE ASM (lib/openzeppelin-contracts/contracts/utils/Strings.sol#499-502)
+Strings._unsafeReadBytesOffset(bytes,uint256) (lib/openzeppelin-contracts/contracts/utils/Strings.sol#513-518) uses assembly
+	- INLINE ASM (lib/openzeppelin-contracts/contracts/utils/Strings.sol#515-517)
+Strings._unsafeWriteBytesOffset(bytes,uint256,bytes1) (lib/openzeppelin-contracts/contracts/utils/Strings.sol#526-531) uses assembly
+	- INLINE ASM (lib/openzeppelin-contracts/contracts/utils/Strings.sol#528-530)
+Math.add512(uint256,uint256) (lib/openzeppelin-contracts/contracts/utils/math/Math.sol#25-30) uses assembly
+	- INLINE ASM (lib/openzeppelin-contracts/contracts/utils/math/Math.sol#26-29)
+Math.mul512(uint256,uint256) (lib/openzeppelin-contracts/contracts/utils/math/Math.sol#37-46) uses assembly
+	- INLINE ASM (lib/openzeppelin-contracts/contracts/utils/math/Math.sol#41-45)
+Math.tryMul(uint256,uint256) (lib/openzeppelin-contracts/contracts/utils/math/Math.sol#73-84) uses assembly
+	- INLINE ASM (lib/openzeppelin-contracts/contracts/utils/math/Math.sol#76-80)
+Math.tryDiv(uint256,uint256) (lib/openzeppelin-contracts/contracts/utils/math/Math.sol#89-97) uses assembly
+	- INLINE ASM (lib/openzeppelin-contracts/contracts/utils/math/Math.sol#92-95)
+Math.tryMod(uint256,uint256) (lib/openzeppelin-contracts/contracts/utils/math/Math.sol#102-110) uses assembly
+	- INLINE ASM (lib/openzeppelin-contracts/contracts/utils/math/Math.sol#105-108)
+Math.mulDiv(uint256,uint256,uint256) (lib/openzeppelin-contracts/contracts/utils/math/Math.sol#206-277) uses assembly
+	- INLINE ASM (lib/openzeppelin-contracts/contracts/utils/math/Math.sol#229-236)
+	- INLINE ASM (lib/openzeppelin-contracts/contracts/utils/math/Math.sol#242-251)
+Math.tryModExp(uint256,uint256,uint256) (lib/openzeppelin-contracts/contracts/utils/math/Math.sol#411-435) uses assembly
+	- INLINE ASM (lib/openzeppelin-contracts/contracts/utils/math/Math.sol#413-434)
+Math.tryModExp(bytes,bytes,bytes) (lib/openzeppelin-contracts/contracts/utils/math/Math.sol#451-473) uses assembly
+	- INLINE ASM (lib/openzeppelin-contracts/contracts/utils/math/Math.sol#463-472)
+Math._zeroBytes(bytes) (lib/openzeppelin-contracts/contracts/utils/math/Math.sol#478-490) uses assembly
+	- INLINE ASM (lib/openzeppelin-contracts/contracts/utils/math/Math.sol#482-484)
+Math.log2(uint256) (lib/openzeppelin-contracts/contracts/utils/math/Math.sol#619-658) uses assembly
+	- INLINE ASM (lib/openzeppelin-contracts/contracts/utils/math/Math.sol#655-657)
+SafeCast.toUint(bool) (lib/openzeppelin-contracts/contracts/utils/math/SafeCast.sol#1157-1161) uses assembly
+	- INLINE ASM (lib/openzeppelin-contracts/contracts/utils/math/SafeCast.sol#1158-1160)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#assembly-usage
+INFO:Detectors:
+7 different versions of Solidity are used:
+	- Version constraint =0.8.37 is used by:
+		-=0.8.37 (lib/libs/src/OrderedHistoryIndex.sol#2)
+		-=0.8.37 (lib/libs/src/Pagination.sol#2)
+		-=0.8.37 (lib/libs/src/RoundHistoryUint256.sol#2)
+		-=0.8.37 (src/LOVE20Token.sol#2)
+		-=0.8.37 (src/Launch.sol#2)
+		-=0.8.37 (src/MemberNFT.sol#2)
+		-=0.8.37 (src/Mint.sol#2)
+		-=0.8.37 (src/Phase.sol#2)
+		-=0.8.37 (src/Stake.sol#2)
+		-=0.8.37 (src/Submit.sol#2)
+		-=0.8.37 (src/Vote.sol#2)
+		-=0.8.37 (src/interfaces/ILOVE20Token.sol#2)
+		-=0.8.37 (src/interfaces/ILaunch.sol#2)
+		-=0.8.37 (src/interfaces/ILaunchDistributor.sol#2)
+		-=0.8.37 (src/interfaces/IMemberNFT.sol#2)
+		-=0.8.37 (src/interfaces/IMint.sol#2)
+		-=0.8.37 (src/interfaces/IPhase.sol#2)
+		-=0.8.37 (src/interfaces/IProposalTarget.sol#2)
+		-=0.8.37 (src/interfaces/IStake.sol#2)
+		-=0.8.37 (src/interfaces/ISubmit.sol#2)
+		-=0.8.37 (src/interfaces/IVote.sol#2)
+		-=0.8.37 (src/interfaces/UniswapV2/IUniswapV2Factory.sol#2)
+		-=0.8.37 (src/interfaces/UniswapV2/IUniswapV2Pair.sol#2)
+		-=0.8.37 (src/interfaces/UniswapV2/IUniswapV2Router02.sol#2)
+	- Version constraint >=0.6.2 is used by:
+		->=0.6.2 (lib/openzeppelin-contracts/contracts/interfaces/IERC1363.sol#4)
+		->=0.6.2 (lib/openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol#4)
+		->=0.6.2 (lib/openzeppelin-contracts/contracts/token/ERC721/IERC721.sol#4)
+		->=0.6.2 (lib/openzeppelin-contracts/contracts/token/ERC721/extensions/IERC721Enumerable.sol#4)
+		->=0.6.2 (lib/openzeppelin-contracts/contracts/token/ERC721/extensions/IERC721Metadata.sol#4)
+	- Version constraint >=0.4.16 is used by:
+		->=0.4.16 (lib/openzeppelin-contracts/contracts/interfaces/IERC165.sol#4)
+		->=0.4.16 (lib/openzeppelin-contracts/contracts/interfaces/IERC20.sol#4)
+		->=0.4.16 (lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol#4)
+		->=0.4.16 (lib/openzeppelin-contracts/contracts/utils/introspection/IERC165.sol#4)
+	- Version constraint >=0.8.4 is used by:
+		->=0.8.4 (lib/openzeppelin-contracts/contracts/interfaces/draft-IERC6093.sol#4)
+	- Version constraint ^0.8.20 is used by:
+		-^0.8.20 (lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol#4)
+		-^0.8.20 (lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol#4)
+		-^0.8.20 (lib/openzeppelin-contracts/contracts/token/ERC721/utils/ERC721Utils.sol#4)
+		-^0.8.20 (lib/openzeppelin-contracts/contracts/utils/Context.sol#4)
+		-^0.8.20 (lib/openzeppelin-contracts/contracts/utils/Panic.sol#4)
+		-^0.8.20 (lib/openzeppelin-contracts/contracts/utils/introspection/ERC165.sol#4)
+		-^0.8.20 (lib/openzeppelin-contracts/contracts/utils/math/Math.sol#4)
+		-^0.8.20 (lib/openzeppelin-contracts/contracts/utils/math/SafeCast.sol#5)
+		-^0.8.20 (lib/openzeppelin-contracts/contracts/utils/math/SignedMath.sol#4)
+	- Version constraint ^0.8.24 is used by:
+		-^0.8.24 (lib/openzeppelin-contracts/contracts/token/ERC721/ERC721.sol#4)
+		-^0.8.24 (lib/openzeppelin-contracts/contracts/token/ERC721/extensions/ERC721Enumerable.sol#4)
+		-^0.8.24 (lib/openzeppelin-contracts/contracts/utils/Bytes.sol#4)
+		-^0.8.24 (lib/openzeppelin-contracts/contracts/utils/Strings.sol#4)
+	- Version constraint >=0.5.0 is used by:
+		->=0.5.0 (lib/openzeppelin-contracts/contracts/token/ERC721/IERC721Receiver.sol#4)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#different-pragma-directives-are-used
+INFO:Detectors:
+MemberNFT._isValidNameChars(bytes) (src/MemberNFT.sol#230-363) has a high cyclomatic complexity (20).
+Phase.sync() (src/Phase.sol#86-136) has a high cyclomatic complexity (13).
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#cyclomatic-complexity
+INFO:Detectors:
+Version constraint >=0.6.2 contains known severe issues (https://solidity.readthedocs.io/en/latest/bugs.html)
+	- MissingSideEffectsOnSelectorAccess
+	- AbiReencodingHeadOverflowWithStaticArrayCleanup
+	- DirtyBytesArrayToStorage
+	- NestedCalldataArrayAbiReencodingSizeValidation
+	- ABIDecodeTwoDimensionalArrayMemory
+	- KeccakCaching
+	- EmptyByteArrayCopy
+	- DynamicArrayCleanup
+	- MissingEscapingInFormatting
+	- ArraySliceDynamicallyEncodedBaseType
+	- ImplicitConstructorCallvalueCheck
+	- TupleAssignmentMultiStackSlotComponents
+	- MemoryArrayCreationOverflow.
+It is used by:
+	- >=0.6.2 (lib/openzeppelin-contracts/contracts/interfaces/IERC1363.sol#4)
+	- >=0.6.2 (lib/openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol#4)
+	- >=0.6.2 (lib/openzeppelin-contracts/contracts/token/ERC721/IERC721.sol#4)
+	- >=0.6.2 (lib/openzeppelin-contracts/contracts/token/ERC721/extensions/IERC721Enumerable.sol#4)
+	- >=0.6.2 (lib/openzeppelin-contracts/contracts/token/ERC721/extensions/IERC721Metadata.sol#4)
+Version constraint >=0.4.16 contains known severe issues (https://solidity.readthedocs.io/en/latest/bugs.html)
+	- DirtyBytesArrayToStorage
+	- ABIDecodeTwoDimensionalArrayMemory
+	- KeccakCaching
+	- EmptyByteArrayCopy
+	- DynamicArrayCleanup
+	- ImplicitConstructorCallvalueCheck
+	- TupleAssignmentMultiStackSlotComponents
+	- MemoryArrayCreationOverflow
+	- privateCanBeOverridden
+	- SignedArrayStorageCopy
+	- ABIEncoderV2StorageArrayWithMultiSlotElement
+	- DynamicConstructorArgumentsClippedABIV2
+	- UninitializedFunctionPointerInConstructor_0.4.x
+	- IncorrectEventSignatureInLibraries_0.4.x
+	- ExpExponentCleanup
+	- NestedArrayFunctionCallDecoder
+	- ZeroFunctionSelector.
+It is used by:
+	- >=0.4.16 (lib/openzeppelin-contracts/contracts/interfaces/IERC165.sol#4)
+	- >=0.4.16 (lib/openzeppelin-contracts/contracts/interfaces/IERC20.sol#4)
+	- >=0.4.16 (lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol#4)
+	- >=0.4.16 (lib/openzeppelin-contracts/contracts/utils/introspection/IERC165.sol#4)
+Version constraint >=0.8.4 contains known severe issues (https://solidity.readthedocs.io/en/latest/bugs.html)
+	- FullInlinerNonExpressionSplitArgumentEvaluationOrder
+	- MissingSideEffectsOnSelectorAccess
+	- AbiReencodingHeadOverflowWithStaticArrayCleanup
+	- DirtyBytesArrayToStorage
+	- DataLocationChangeInInternalOverride
+	- NestedCalldataArrayAbiReencodingSizeValidation
+	- SignedImmutables.
+It is used by:
+	- >=0.8.4 (lib/openzeppelin-contracts/contracts/interfaces/draft-IERC6093.sol#4)
+Version constraint ^0.8.20 contains known severe issues (https://solidity.readthedocs.io/en/latest/bugs.html)
+	- VerbatimInvalidDeduplication
+	- FullInlinerNonExpressionSplitArgumentEvaluationOrder
+	- MissingSideEffectsOnSelectorAccess.
+It is used by:
+	- ^0.8.20 (lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol#4)
+	- ^0.8.20 (lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol#4)
+	- ^0.8.20 (lib/openzeppelin-contracts/contracts/token/ERC721/utils/ERC721Utils.sol#4)
+	- ^0.8.20 (lib/openzeppelin-contracts/contracts/utils/Context.sol#4)
+	- ^0.8.20 (lib/openzeppelin-contracts/contracts/utils/Panic.sol#4)
+	- ^0.8.20 (lib/openzeppelin-contracts/contracts/utils/introspection/ERC165.sol#4)
+	- ^0.8.20 (lib/openzeppelin-contracts/contracts/utils/math/Math.sol#4)
+	- ^0.8.20 (lib/openzeppelin-contracts/contracts/utils/math/SafeCast.sol#5)
+	- ^0.8.20 (lib/openzeppelin-contracts/contracts/utils/math/SignedMath.sol#4)
+Version constraint >=0.5.0 contains known severe issues (https://solidity.readthedocs.io/en/latest/bugs.html)
+	- DirtyBytesArrayToStorage
+	- ABIDecodeTwoDimensionalArrayMemory
+	- KeccakCaching
+	- EmptyByteArrayCopy
+	- DynamicArrayCleanup
+	- ImplicitConstructorCallvalueCheck
+	- TupleAssignmentMultiStackSlotComponents
+	- MemoryArrayCreationOverflow
+	- privateCanBeOverridden
+	- SignedArrayStorageCopy
+	- ABIEncoderV2StorageArrayWithMultiSlotElement
+	- DynamicConstructorArgumentsClippedABIV2
+	- UninitializedFunctionPointerInConstructor
+	- IncorrectEventSignatureInLibraries
+	- ABIEncoderV2PackedStorage.
+It is used by:
+	- >=0.5.0 (lib/openzeppelin-contracts/contracts/token/ERC721/IERC721Receiver.sol#4)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#incorrect-versions-of-solidity
+INFO:Detectors:
+Variable LOVE20Token.MAX_SUPPLY (src/LOVE20Token.sol#8) is not in mixedCase
+Variable LOVE20Token.MINTER (src/LOVE20Token.sol#9) is not in mixedCase
+Variable LOVE20Token.PARENT_TOKEN_ADDRESS (src/LOVE20Token.sol#10) is not in mixedCase
+Variable Launch.MINT_ADDRESS (src/Launch.sol#15) is not in mixedCase
+Variable Launch.MEMBER_NFT_ADDRESS (src/Launch.sol#16) is not in mixedCase
+Variable Launch.ROOT_PARENT_TOKEN_ADDRESS (src/Launch.sol#17) is not in mixedCase
+Variable Launch.FIRST_TOKEN_ADDRESS (src/Launch.sol#18) is not in mixedCase
+Variable Launch.PAIR_FACTORY_ADDRESS (src/Launch.sol#19) is not in mixedCase
+Variable Launch.TOKEN_SYMBOL_LENGTH (src/Launch.sol#21) is not in mixedCase
+Variable Launch.LAUNCH_RATIO (src/Launch.sol#22) is not in mixedCase
+Variable Launch.MAX_LAUNCH_COUNT (src/Launch.sol#23) is not in mixedCase
+Variable Launch.LAUNCH_AMOUNT (src/Launch.sol#24) is not in mixedCase
+Variable Launch.MAX_SUPPLY (src/Launch.sol#25) is not in mixedCase
+Variable MemberNFT.LOVE20_TOKEN_ADDRESS (src/MemberNFT.sol#18) is not in mixedCase
+Variable MemberNFT.BASE_DIVISOR (src/MemberNFT.sol#19) is not in mixedCase
+Variable MemberNFT.BYTES_THRESHOLD (src/MemberNFT.sol#20) is not in mixedCase
+Variable MemberNFT.MULTIPLIER (src/MemberNFT.sol#21) is not in mixedCase
+Variable MemberNFT.MAX_NAME_LENGTH (src/MemberNFT.sol#22) is not in mixedCase
+Variable Mint.VOTE_ADDRESS (src/Mint.sol#29) is not in mixedCase
+Variable Mint.SUBMIT_ADDRESS (src/Mint.sol#30) is not in mixedCase
+Variable Mint.LAUNCH_ADDRESS (src/Mint.sol#31) is not in mixedCase
+Variable Mint.MEMBER_NFT_ADDRESS (src/Mint.sol#32) is not in mixedCase
+Variable Mint.PHASE_ADDRESS (src/Mint.sol#33) is not in mixedCase
+Variable Mint.PROPOSAL_REWARD_MIN_VOTE_RATIO (src/Mint.sol#34) is not in mixedCase
+Variable Mint.ROUND_REWARD_GOV_RATIO (src/Mint.sol#35) is not in mixedCase
+Variable Mint.ROUND_REWARD_PROPOSAL_RATIO (src/Mint.sol#36) is not in mixedCase
+Variable Mint.MAX_GOV_BOOST_REWARD_MULTIPLIER (src/Mint.sol#37) is not in mixedCase
+Variable Phase.ORIGIN_BLOCKS (src/Phase.sol#18) is not in mixedCase
+Variable Phase.ORIGIN_PHASE_BLOCKS (src/Phase.sol#19) is not in mixedCase
+Variable Phase.TARGET_SECONDS (src/Phase.sol#20) is not in mixedCase
+Variable Phase.ADJUST_THRESHOLD (src/Phase.sol#21) is not in mixedCase
+Variable Phase.SYNC_OBSERVATION_LIMIT (src/Phase.sol#22) is not in mixedCase
+Variable Stake.PHASE_ADDRESS (src/Stake.sol#47) is not in mixedCase
+Variable Stake.MEMBER_NFT_ADDRESS (src/Stake.sol#48) is not in mixedCase
+Variable Stake.VOTE_ADDRESS (src/Stake.sol#49) is not in mixedCase
+Variable Stake.LAUNCH_ADDRESS (src/Stake.sol#50) is not in mixedCase
+Variable Stake.ROUTER_ADDRESS (src/Stake.sol#51) is not in mixedCase
+Variable Stake.PAIR_FACTORY_ADDRESS (src/Stake.sol#52) is not in mixedCase
+Variable Stake.PROMISED_WAITING_PHASES_MIN (src/Stake.sol#53) is not in mixedCase
+Variable Stake.PROMISED_WAITING_PHASES_MAX (src/Stake.sol#54) is not in mixedCase
+Variable Stake.FEE_SETTLEMENT_RATIO (src/Stake.sol#55) is not in mixedCase
+Variable Submit.PHASE_ADDRESS (src/Submit.sol#24) is not in mixedCase
+Variable Submit.STAKE_ADDRESS (src/Submit.sol#25) is not in mixedCase
+Variable Submit.MEMBER_NFT_ADDRESS (src/Submit.sol#26) is not in mixedCase
+Variable Submit.SUBMIT_MIN_RATIO (src/Submit.sol#27) is not in mixedCase
+Variable Vote.STAKE_ADDRESS (src/Vote.sol#16) is not in mixedCase
+Variable Vote.SUBMIT_ADDRESS (src/Vote.sol#17) is not in mixedCase
+Variable Vote.PHASE_ADDRESS (src/Vote.sol#18) is not in mixedCase
+Variable Vote.MEMBER_NFT_ADDRESS (src/Vote.sol#19) is not in mixedCase
+Function ILOVE20Token.MAX_SUPPLY() (src/interfaces/ILOVE20Token.sol#41) is not in mixedCase
+Function ILOVE20Token.MINTER() (src/interfaces/ILOVE20Token.sol#43) is not in mixedCase
+Function ILOVE20Token.PARENT_TOKEN_ADDRESS() (src/interfaces/ILOVE20Token.sol#45) is not in mixedCase
+Function ILaunch.MINT_ADDRESS() (src/interfaces/ILaunch.sol#106) is not in mixedCase
+Function ILaunch.MEMBER_NFT_ADDRESS() (src/interfaces/ILaunch.sol#107) is not in mixedCase
+Function ILaunch.ROOT_PARENT_TOKEN_ADDRESS() (src/interfaces/ILaunch.sol#108) is not in mixedCase
+Function ILaunch.FIRST_TOKEN_ADDRESS() (src/interfaces/ILaunch.sol#109) is not in mixedCase
+Function ILaunch.PAIR_FACTORY_ADDRESS() (src/interfaces/ILaunch.sol#110) is not in mixedCase
+Function ILaunch.TOKEN_SYMBOL_LENGTH() (src/interfaces/ILaunch.sol#111) is not in mixedCase
+Function ILaunch.MAX_TOKEN_SYMBOL_LENGTH() (src/interfaces/ILaunch.sol#112) is not in mixedCase
+Function ILaunch.MAX_TOKEN_NAME_LENGTH() (src/interfaces/ILaunch.sol#113) is not in mixedCase
+Function ILaunch.TEST_PREFIX_BYTES() (src/interfaces/ILaunch.sol#114) is not in mixedCase
+Function ILaunch.LAUNCH_RATIO() (src/interfaces/ILaunch.sol#115) is not in mixedCase
+Function ILaunch.MAX_LAUNCH_COUNT() (src/interfaces/ILaunch.sol#116) is not in mixedCase
+Function ILaunch.LAUNCH_AMOUNT() (src/interfaces/ILaunch.sol#117) is not in mixedCase
+Function ILaunch.MAX_SUPPLY() (src/interfaces/ILaunch.sol#118) is not in mixedCase
+Function IMemberNFT.LOVE20_TOKEN_ADDRESS() (src/interfaces/IMemberNFT.sol#34) is not in mixedCase
+Function IMemberNFT.BASE_DIVISOR() (src/interfaces/IMemberNFT.sol#36) is not in mixedCase
+Function IMemberNFT.BYTES_THRESHOLD() (src/interfaces/IMemberNFT.sol#38) is not in mixedCase
+Function IMemberNFT.MULTIPLIER() (src/interfaces/IMemberNFT.sol#40) is not in mixedCase
+Function IMemberNFT.MAX_NAME_LENGTH() (src/interfaces/IMemberNFT.sol#42) is not in mixedCase
+Function IMint.VOTE_ADDRESS() (src/interfaces/IMint.sol#75) is not in mixedCase
+Function IMint.SUBMIT_ADDRESS() (src/interfaces/IMint.sol#76) is not in mixedCase
+Function IMint.LAUNCH_ADDRESS() (src/interfaces/IMint.sol#77) is not in mixedCase
+Function IMint.MEMBER_NFT_ADDRESS() (src/interfaces/IMint.sol#78) is not in mixedCase
+Function IMint.PHASE_ADDRESS() (src/interfaces/IMint.sol#79) is not in mixedCase
+Function IMint.PROPOSAL_REWARD_MIN_VOTE_RATIO() (src/interfaces/IMint.sol#81) is not in mixedCase
+Function IMint.ROUND_REWARD_GOV_RATIO() (src/interfaces/IMint.sol#82) is not in mixedCase
+Function IMint.ROUND_REWARD_PROPOSAL_RATIO() (src/interfaces/IMint.sol#83) is not in mixedCase
+Function IMint.MAX_GOV_BOOST_REWARD_MULTIPLIER() (src/interfaces/IMint.sol#84) is not in mixedCase
+Function IPhase.ORIGIN_BLOCKS() (src/interfaces/IPhase.sol#21) is not in mixedCase
+Function IPhase.ORIGIN_PHASE_BLOCKS() (src/interfaces/IPhase.sol#22) is not in mixedCase
+Function IPhase.TARGET_SECONDS() (src/interfaces/IPhase.sol#23) is not in mixedCase
+Function IPhase.ADJUST_THRESHOLD() (src/interfaces/IPhase.sol#24) is not in mixedCase
+Function IPhase.SYNC_OBSERVATION_LIMIT() (src/interfaces/IPhase.sol#25) is not in mixedCase
+Function IStake.PHASE_ADDRESS() (src/interfaces/IStake.sol#160) is not in mixedCase
+Function IStake.MEMBER_NFT_ADDRESS() (src/interfaces/IStake.sol#161) is not in mixedCase
+Function IStake.VOTE_ADDRESS() (src/interfaces/IStake.sol#162) is not in mixedCase
+Function IStake.LAUNCH_ADDRESS() (src/interfaces/IStake.sol#163) is not in mixedCase
+Function IStake.ROUTER_ADDRESS() (src/interfaces/IStake.sol#164) is not in mixedCase
+Function IStake.PAIR_FACTORY_ADDRESS() (src/interfaces/IStake.sol#165) is not in mixedCase
+Function IStake.PROMISED_WAITING_PHASES_MIN() (src/interfaces/IStake.sol#196) is not in mixedCase
+Function IStake.PROMISED_WAITING_PHASES_MAX() (src/interfaces/IStake.sol#197) is not in mixedCase
+Function IStake.FEE_SETTLEMENT_RATIO() (src/interfaces/IStake.sol#198) is not in mixedCase
+Function ISubmit.STAKE_ADDRESS() (src/interfaces/ISubmit.sol#96) is not in mixedCase
+Function ISubmit.PHASE_ADDRESS() (src/interfaces/ISubmit.sol#97) is not in mixedCase
+Function ISubmit.MEMBER_NFT_ADDRESS() (src/interfaces/ISubmit.sol#98) is not in mixedCase
+Function ISubmit.SUBMIT_MIN_RATIO() (src/interfaces/ISubmit.sol#100) is not in mixedCase
+Function ISubmit.MAX_TITLE_LENGTH() (src/interfaces/ISubmit.sol#101) is not in mixedCase
+Function ISubmit.MAX_DETAILS_LENGTH() (src/interfaces/ISubmit.sol#102) is not in mixedCase
+Function ISubmit.MAX_TARGET_DATA_BYTES() (src/interfaces/ISubmit.sol#103) is not in mixedCase
+Function ISubmit.MAX_TARGET_DATA_COUNT() (src/interfaces/ISubmit.sol#104) is not in mixedCase
+Function IVote.PHASE_ADDRESS() (src/interfaces/IVote.sol#49) is not in mixedCase
+Function IVote.STAKE_ADDRESS() (src/interfaces/IVote.sol#50) is not in mixedCase
+Function IVote.SUBMIT_ADDRESS() (src/interfaces/IVote.sol#51) is not in mixedCase
+Function IVote.MEMBER_NFT_ADDRESS() (src/interfaces/IVote.sol#52) is not in mixedCase
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#conformance-to-solidity-naming-conventions
+INFO:Detectors:
+Bytes.toNibbles(bytes) (lib/openzeppelin-contracts/contracts/utils/Bytes.sol#210-245) uses literals with too many digits:
+	- chunk_toNibbles_asm_0 = 0x0000000000000000ffffffffffffffff0000000000000000ffffffffffffffff & chunk_toNibbles_asm_0 << 64 | chunk_toNibbles_asm_0 (lib/openzeppelin-contracts/contracts/utils/Bytes.sol#222-225)
+Bytes.toNibbles(bytes) (lib/openzeppelin-contracts/contracts/utils/Bytes.sol#210-245) uses literals with too many digits:
+	- chunk_toNibbles_asm_0 = 0x00000000ffffffff00000000ffffffff00000000ffffffff00000000ffffffff & chunk_toNibbles_asm_0 << 32 | chunk_toNibbles_asm_0 (lib/openzeppelin-contracts/contracts/utils/Bytes.sol#226-229)
+Bytes.reverseBytes32(bytes32) (lib/openzeppelin-contracts/contracts/utils/Bytes.sol#258-272) uses literals with too many digits:
+	- value = ((value >> 32) & 0x00000000FFFFFFFF00000000FFFFFFFF00000000FFFFFFFF00000000FFFFFFFF) | ((value & 0x00000000FFFFFFFF00000000FFFFFFFF00000000FFFFFFFF00000000FFFFFFFF) << 32) (lib/openzeppelin-contracts/contracts/utils/Bytes.sol#265-267)
+Bytes.reverseBytes32(bytes32) (lib/openzeppelin-contracts/contracts/utils/Bytes.sol#258-272) uses literals with too many digits:
+	- value = ((value >> 64) & 0x0000000000000000FFFFFFFFFFFFFFFF0000000000000000FFFFFFFFFFFFFFFF) | ((value & 0x0000000000000000FFFFFFFFFFFFFFFF0000000000000000FFFFFFFFFFFFFFFF) << 64) (lib/openzeppelin-contracts/contracts/utils/Bytes.sol#268-270)
+Bytes.reverseBytes16(bytes16) (lib/openzeppelin-contracts/contracts/utils/Bytes.sol#275-286) uses literals with too many digits:
+	- value = ((value & 0xFFFFFFFF00000000FFFFFFFF00000000) >> 32) | ((value & 0x00000000FFFFFFFF00000000FFFFFFFF) << 32) (lib/openzeppelin-contracts/contracts/utils/Bytes.sol#282-284)
+Math.log2(uint256) (lib/openzeppelin-contracts/contracts/utils/math/Math.sol#619-658) uses literals with too many digits:
+	- r = r | byte(uint256,uint256)(x >> r,0x0000010102020202030303030303030300000000000000000000000000000000) (lib/openzeppelin-contracts/contracts/utils/math/Math.sol#656)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#too-many-digits
+INFO:Detectors:
+LOVE20Token.MINTER (src/LOVE20Token.sol#9) should be immutable 
+LOVE20Token.PARENT_TOKEN_ADDRESS (src/LOVE20Token.sol#10) should be immutable 
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#state-variables-that-could-be-declared-immutable
+INFO:Slither:. analyzed (64 contracts with 100 detectors), 259 result(s) found

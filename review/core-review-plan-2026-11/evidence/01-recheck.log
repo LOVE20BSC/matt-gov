@@ -1,0 +1,64 @@
+# Re-verification — 2026-11-01T21:37:15Z
+# fixture: RealV2.sol + lock/skim (plan §4.2)
+
+## commit
+9297a330269ba74b1fca97a595322f8c449eed5b
+?? test/audit/
+
+## forge
+forge Version: 1.8.1
+Commit SHA: 982849d3140c01fd3b72905759581a132df7aa98
+Build Timestamp: 2026-08-28T17:50:40.383510000Z (1787939440)
+Build Profile: dist
+
+## build --force --deny warnings
+Compiling 89 files with Solc 0.8.37
+Solc 0.8.37 finished in 8.04s
+Compiler run successful!
+
+## lint
+lint rc=0
+
+## test
+Suite result: ok. 3 passed; 0 failed; 0 skipped; finished in 3.20s (3.80s CPU time)
+
+Ran 20 test suites in 3.21s (6.41s CPU time): 484 tests passed, 0 failed, 0 skipped (484 total tests)
+
+## audit PoC (-vv)
+[PASS] test_batchMintGasPerRound() (gas: 23639884)
+  mintGovRewards batch gas 3800897
+  per round 190044
+[PASS] test_donationIsReclassifiedAsFee() (gas: 1161935)
+[PASS] test_invisibleCharacterBypassesNameUniqueness() (gas: 742305)
+[PASS] test_launchReusesPrecreatedPair() (gas: 3271805)
+[PASS] test_mergeInsideProposalCreatedIsBlockedByWrittenState() (gas: 3706628)
+[PASS] test_mergeZeroesSourceVotesForAllLaterRounds() (gas: 2040603)
+[PASS] test_phaseBlocksHasNoUpperClamp() (gas: 1882127)
+[PASS] test_rewardPoolDependsOnMintOrder() (gas: 52009737)
+[PASS] test_settlementNeverTouchesBoostBacking() (gas: 2743594)
+[PASS] test_submitGateCapturedWithOneWeiOfBoost() (gas: 4240447)
+[PASS] test_zeroValueBurnFallsBackToLpTransfer() (gas: 2077174)
+Suite result: ok. 11 passed; 0 failed; 0 skipped; finished in 21.90ms (40.43ms CPU time)
+
+## sizes (protocol contracts)
+| LOVE20Token                                | 2,384            | 3,927             | 22,192             | 45,225              |
+| Launch                                     | 12,229           | 12,257            | 12,347             | 36,895              |
+| MemberNFT                                  | 11,500           | 12,175            | 13,076             | 36,977              |
+| Mint                                       | 10,021           | 10,049            | 14,555             | 39,103              |
+| Phase                                      | 4,000            | 4,620             | 20,576             | 44,532              |
+| Stake                                      | 14,585           | 14,613            | 9,991              | 34,539              |
+| Submit                                     | 10,861           | 10,889            | 13,715             | 38,263              |
+| Vote                                       | 6,476            | 6,504             | 18,100             | 42,648              |
+
+## slither (re-run after fixture change)
+analyzed (64 contracts with 100 detectors), 259 result(s) found — 0 High/Medium, identical to evidence/slither-raw.txt
+
+## check-events
+Solc 0.8.37 finished in 8.94s
+Compiler run successful!
+event manifest OK: 28 events; families OK; declaration style OK; emit style OK; emit keys OK
+rc=0
+
+## deploy_scripts_test
+Passed 41 isolated deployment checks (no network calls or broadcasts).
+rc=0

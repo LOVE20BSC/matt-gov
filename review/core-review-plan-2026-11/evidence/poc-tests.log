@@ -1,0 +1,21 @@
+No files changed, compilation skipped
+
+Ran 11 tests for test/audit/AuditPoC.t.sol:AuditPoC
+[PASS] test_batchMintGasPerRound() (gas: 23639884)
+Logs:
+  mintGovRewards batch gas 3800897
+  per round 190044
+
+[PASS] test_donationIsReclassifiedAsFee() (gas: 1161935)
+[PASS] test_invisibleCharacterBypassesNameUniqueness() (gas: 742305)
+[PASS] test_launchReusesPrecreatedPair() (gas: 3271805)
+[PASS] test_mergeInsideProposalCreatedIsBlockedByWrittenState() (gas: 3706628)
+[PASS] test_mergeZeroesSourceVotesForAllLaterRounds() (gas: 2040603)
+[PASS] test_phaseBlocksHasNoUpperClamp() (gas: 1882127)
+[PASS] test_rewardPoolDependsOnMintOrder() (gas: 52009737)
+[PASS] test_settlementNeverTouchesBoostBacking() (gas: 2743594)
+[PASS] test_submitGateCapturedWithOneWeiOfBoost() (gas: 4240447)
+[PASS] test_zeroValueBurnFallsBackToLpTransfer() (gas: 2077174)
+Suite result: ok. 11 passed; 0 failed; 0 skipped; finished in 45.21ms (80.87ms CPU time)
+
+Ran 1 test suite in 68.80ms (45.21ms CPU time): 11 tests passed, 0 failed, 0 skipped (11 total tests)

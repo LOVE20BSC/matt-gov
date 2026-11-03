@@ -1,0 +1,34 @@
+# B0 gate log — 2026-11-01T20:51:08Z
+
+## commit
+9297a330269ba74b1fca97a595322f8c449eed5b
+?? test/audit/
+
+## forge
+forge Version: 1.8.1
+Commit SHA: 982849d3140c01fd3b72905759581a132df7aa98
+
+## build --force --deny warnings
+Compiling 89 files with Solc 0.8.37
+Solc 0.8.37 finished in 8.15s
+Compiler run successful!
+
+## lint
+(output follows; empty means clean)
+
+## test --summary
+[PASS] testPrepare1000Proposals() (gas: 6937608)
+[PASS] testPrepare10Proposals() (gas: 624827)
+[PASS] testPrepare300Proposals() (gas: 2468265)
+Suite result: ok. 3 passed; 0 failed; 0 skipped; finished in 3.15s (3.71s CPU time)
+
+Ran 20 test suites in 3.17s (6.70s CPU time): 483 tests passed, 0 failed, 0 skipped (483 total tests)
+
+## check-events
+No files changed, compilation skipped
+event manifest OK: 28 events; families OK; declaration style OK; emit style OK; emit keys OK
+rc=0
+
+## deploy_scripts_test
+Passed 41 isolated deployment checks (no network calls or broadcasts).
+rc=0
