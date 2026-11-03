@@ -12,9 +12,10 @@
 | 协议事件 | 1 |
 | 发射点 | 1（`_vote`；批量投票按 `proposalIds` 入参顺序每项一条） |
 | P0 / P1 / P2 / P3 | 0 / 0 / 2 / 0 |
-| 放行 | 事件契约可放行；2 项 P2 分别为累计锚点缺口与断言判别力缺口 |
+| 修复状态 | VT-1 / VT-2 已全部关闭（见 §4） |
+| 放行 | 可放行；VT-1 / VT-2 已补齐 |
 
-`VoteCast` 的载荷全部是**逐笔**上下文：本次增量、成员加速快照、全局加速快照。它不携带成员累计票数，也不携带本轮累计票数——这是本报告的主要发现（VT-1）。
+`VoteCast` 的载荷以**逐笔**增量与加速快照为主。审查时它不携带成员累计票数与本轮累计票数（VT-1），修复后已追加 `voteAmountTotal` / `totalVoteAmount` 两个后置锚点。
 
 ## 1. 事件与发射点总览
 
@@ -33,6 +34,8 @@ event VoteCast(
     uint256 indexed voterId,
     uint256 indexed proposalId,
     uint256 voteAmount,
+    uint256 voteAmountTotal,
+    uint256 totalVoteAmount,
     uint256 voterBoost,
     uint256 totalVoterBoost
 );
@@ -85,7 +88,7 @@ if (currentVoterBoost == 0) {            // 首投：记全量
 | 根键首字段（§6.1） | 通过 | `tokenAddress` 首字段 |
 | 族槽位（根键 → round → 对象/actor id 链 → 数值） | 通过 | `round` 在 `voterId` 之前；`voterId` → `proposalId` 均属 id 链 |
 | indexed ≤ 3（§6.3） | 通过 | 3 个；`round` 主动降为非 indexed |
-| **累计值锚点（§3.1）** | **不通过** | 见 VT-1 |
+| **累计值锚点（§3.1）** | 通过（修复后） | `VoteCast.voteAmountTotal` / `totalVoteAmount` 携带后置值 |
 | 状态写入后 emit（§3.4.3） | 通过 | 四张票数表与三个索引均先写 |
 | 依赖序（§3.4.5） | 通过 | `VoteCast` 先于 Target 回调；回调内子事件晚于父事件 |
 | 批量逐条 emit（§3.4.4） | 通过 | 按入参顺序每 Proposal 一条；`Vote.t.sol:1392` 断言顺序 |
@@ -97,6 +100,7 @@ if (currentVoterBoost == 0) {            // 首投：记全量
 
 ### [P2] VT-1 `VoteCast` 缺本轮/成员累计票数锚点
 
+- 状态：已修复。`VoteCast` 在 `voteAmount` 之后追加 `voteAmountTotal`（成员本轮后置累计）与 `totalVoteAmount`（该轮后置总量），`06-vote.md` 与 ABI 基线同步。
 - 证据：`Vote.sol:256` 维护 `_totalVoteAmountByRound`、`:258` 维护 `_voteAmountByMemberId`，两者都只由 `VoteCast` 改变；事件载荷 `:271-279` 只有逐笔 `voteAmount`，没有后置总量。
 - 问题：§3.1 第 3 条要求「只由单个事件类改变的聚合量也在改变它的事件上携带后置总量」，并明确举了 `Stake.totalBurnedToken` 为例。本合约的两个票数聚合量正属此类，却只能靠全量折叠。同一规范下 `action` 的 `ApplicationVoteRecorded` 带了 `voteAmountTotal`，core 的 `VoteCast` 没有，跨仓口径不一致。
 - 影响：
@@ -106,6 +110,7 @@ if (currentVoterBoost == 0) {            // 首投：记全量
 
 ### [P2] VT-2 载荷用例中 `voterBoost` 与 `totalVoterBoost` 恒等，不可判别
 
+- 状态：已修复。夹具改为两名成员各带 boost（50 / 40）并先投一票，测得事件断言 `voterBoost == 40`、`totalVoterBoost == 90`；`40` 与 30 票的 `voteAmount` 也不同值。
 - 证据：`Vote.t.sol:1353-1375`——夹具只有一名有加速份额的投票人（`stake.setBoost(TOKEN, 1, memberId, 50)`），断言 `voterBoost == 50` 且 `totalVoterBoost == 50`；其他用例（`:1090-1157`）同样是单成员，两个查询值始终相同。
 - 问题：同一事件内两个相邻 `uint256` 在全部夹具中取值相同，互换实参后测试仍通过，按 §8.1 属「没断言」。二者语义不同（成员快照 vs 全局合计），在两名以上有 boost 的投票人场景下必然分离。
 - 影响：把 `voterBoost` 赋成 `_totalVoterBoostByRound`（或反之）不会被发现；`Mint` 的 `boostReward` 用 `voterBoost / totalVoterBoost`，两者互换会把单人份额当成全局份额，直接放大奖励。

@@ -12,7 +12,8 @@
 | 协议事件 | 2 |
 | 发射点 | 2 |
 | P0 / P1 / P2 / P3 | 0 / 0 / 0 / 1 |
-| 放行 | 可放行；1 项 P3 为跨合约顺序断言 |
+| 修复状态 | SB-1 已关闭（见 §4） |
+| 放行 | 可放行；SB-1 的跨合约顺序断言已补齐 |
 
 `submitNewProposal` = 创建 + 推举，两个事件在同一笔内按「`ProposalCreated` → `ProposalSubmitted` → `Phase.sync` → 创建回调 → 推举回调」固定顺序发出，与 `05-submit.md:106-119` 的步骤表逐条对应。
 
@@ -107,6 +108,7 @@ event ProposalSubmitted(
 
 ### [P3] SB-1 `ProposalSubmitted` 与同笔 `Phase` 事件的顺序未断言
 
+- 状态：已修复。新增 `testFirstSubmitPrecedesPhaseSync`，断言本轮首笔推举的 `ProposalSubmitted` 下标小于同笔 `PhaseSynchronized`。
 - 证据：`Submit.t.sol:409` 的推举用例发生在 round 2，`_submits` 非空（round 1 已推举过），因此 `isFirstSubmit == false`，`Phase.sync()` 不触发；全仓没有「本社区本轮首笔推举 → `ProposalSubmitted` 后紧跟 `PhaseSynchronized`」的顺序断言。
 - 问题：§3.4.4 要求跨合约可观察顺序确定并有测试。当前顺序由 `_submitByProposalId:312-321` 固定（先 emit 再 `sync`），但没有回归网。
 - 影响：若实现把 `sync()` 提前到 emit 之前，`PhaseSynchronized` 会插到 `ProposalSubmitted` 之前；依赖「推举事实先于 Phase 观测」的索引器会漏配对该笔推举。

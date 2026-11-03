@@ -12,7 +12,8 @@
 | 协议事件 | 1（+ 3 个 ERC-721 标准事件，按 §5.4 不属规范正文） |
 | 发射点 | 1 |
 | P0 / P1 / P2 / P3 | 0 / 0 / 1 / 0 |
-| 放行 | 可放行；1 项 P2 为累计锚点口径 |
+| 修复状态 | MN-1 已关闭（见 §4） |
+| 放行 | 可放行；MN-1 的锚点缺口已补齐 |
 
 `MemberMinted` 是「铸造事实」而非「持仓事实」：`owner` 是铸造接收人，当前持有人只从 ERC-721 `Transfer` 折叠。持有人集合按 §5.4 不进事件。
 
@@ -66,7 +67,7 @@ event MemberMinted(
 | 动态字段上限（§6.8） | 通过 | `MAX_NAME_LENGTH` 链上强制 |
 | 状态写入后 emit（§3.4.3） | 通过 | 名称、费用、`_safeMint` 均在 emit 前 |
 | E3 逆序许可（§3.4.7） | 通过 | `MemberNFT.t.sol:619` 断言内外层 id 交错但事实正确 |
-| 累计值锚点（§3.1） | **不通过** | 见 MN-1 |
+| 累计值锚点（§3.1） | 通过（修复后） | `MemberMinted.totalBurnedForMint` 携带后置总量 |
 | 失败不留日志（§3.5） | 通过 | 名称非法/重复、余额不足、费用溢出均整笔回滚 |
 | 声明与发射写法（§6.11） | 通过 | `check-events.py` 全绿 |
 | 测试断言（§8.1） | 通过 | `MemberNFT.t.sol:562` 断言 `memberId`/`owner`/`cost`/`name`/`normalizedName`；`Alice` vs `alice` 可判别 |
@@ -75,6 +76,7 @@ event MemberMinted(
 
 ### [P2] MN-1 `totalBurnedForMint` 未在 `MemberMinted` 中携带后置总量
 
+- 状态：已修复。`MemberMinted` 在 `cost` 之后追加 `totalBurnedForMint`（后置值），`02-member-nft.md` 与 ABI 基线同步。
 - 证据：`MemberNFT.sol:28` 声明 `totalBurnedForMint`，`:83` 在 `_mintMember` 内累加；`MemberMinted` 的载荷只有 `cost`（增量），没有累计值。
 - 问题：这是「只由一个事件类改变的单维聚合量」——与 §3.1 明确举例要求携带后置总量的 `Stake.totalBurnedToken` 同构。`Stake.FeesSettled` 携带了 `totalBurnedToken` / `totalParentTokenBurned`，`MemberNFT` 没携带，两个 core 合约在同一维度上口径不一致。
 - 影响：链下无法在不重放全部 `MemberMinted` 的前提下与 `totalBurnedForMint()` 对账；跨合约对账（首币 `totalSupply == LAUNCH_AMOUNT - totalBurnedForMint`，见 `Launch.t.sol:249`）必须做全量折叠。可折叠性本身成立（`MemberNFT.t.sol:661` 已断言 `Σcost == totalBurnedForMint`），缺的是逐点锚点。
@@ -86,6 +88,6 @@ event MemberMinted(
 | --- | --- | --- |
 | `_nextTokenId` | `:78` | `MemberMinted.memberId`（单调、不复用可直接判定） |
 | `_memberNameByTokenId` / `_tokenIdByNormalizedName` | `:79-80` | `MemberMinted.name` / `normalizedName` |
-| `totalBurnedForMint` | `:83` | 仅 `MemberMinted.cost` 可折叠，无后置总量 |
+| `totalBurnedForMint` | `:83` | `MemberMinted.cost` 折叠增量；`MemberMinted.totalBurnedForMint` 携带后置总量 |
 | 余额 / 持有人集合 | OZ `_update` | ERC-721 `Transfer`（§5.4；`AddHolder`/`RemoveHolder` 已删除，`MemberNFT.t.sol:562` 反向断言不出现） |
 | `LOVE20_TOKEN_ADDRESS` / `initialized` | `init:56-57` | 一次性初始化参数，§3.2 豁免；部署 check 核对 |

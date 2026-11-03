@@ -12,7 +12,8 @@
 | 协议事件 | 7（core 内最多） |
 | 发射点 | 7 个 emit 语句；一笔交易可发多条（`withdraw`：`FeeReclassified` → `FeesSettled` → `StakeWithdrawn`） |
 | P0 / P1 / P2 / P3 | 0 / 0 / 2 / 1 |
-| 放行 | 事件契约可放行；2 项 P2 为断言判别力缺口，不阻塞 |
+| 修复状态 | ST-1 / ST-2 / ST-3 已全部关闭（见 §4） |
+| 放行 | 可放行；ST-1 / ST-2 的断言缺口已补齐 |
 
 本合约的事件设计在 core 中最完整：三个聚合量（流动性份额、加速份额、治理票）在**改变它们的每个事件**上都带后置总量；两个 LP 账本（`lastFeeLp` / `lastWithdrawableLp`）同样逐点携带。`StakeWithdrawn` 不带 `totalValidGovVotes` 是**正确**的省略——票权已在 `unstake` 清零，提取不改变它（`04-stake.md:261`）。
 
@@ -166,6 +167,7 @@
 
 ### [P2] ST-1 `LiquidityStaked` 有 5 个字段未被断言，且两对同类型字段在夹具中不可判别
 
+- 状态：已修复。夹具改 2:1 储备（入池 2000e18 / 1000e18），`LiquidityStaked` 10 个字段全部精确断言并显式断言两笔入池量不等；`BoostStaked` 的 `govVotesAdded` / `govVotes` 改为精确值。
 - 证据：`Stake.t.sol:2102-2113` 的 `abi.decode` 只取 `promisedWaitingPhases`、`liquidityShares`、`totalLiquidityShares`、`totalValidGovVotes`、`totalWithdrawableLp`；`tokenAmount`、`parentTokenAmount`、`govVotesAdded`、`govVotes`、`liquiditySharesAdded` 全部被跳过。夹具为 1:1 入池（`1000e18/1000e18`），`tokenAmount == parentTokenAmount`。
 - 问题：§8.1 要求「同一事件内两个同类型字段必须由取值可区分的夹具断言」。`tokenAmount` 与 `parentTokenAmount` 是相邻的两个 `uint256`，互换实参后测试仍通过；`govVotesAdded` 与 `govVotes` 同样只被跳过。`BoostStaked` 的票权字段也只做了 `govVotes > govVotesAdded` 的范围断言（`Stake.t.sol:2211`），没有精确值。
 - 影响：把 `tokenAmount` 与 `parentTokenAmount` 对调、或把 `govVotes` 赋成 `govVotesAdded`，`LiquidityStaked` 的载荷会错，但全套测试仍绿。链下按事件重建「本次入池双币数量」会直接读到错值。
@@ -173,6 +175,7 @@
 
 ### [P2] ST-2 `FeesSettled.parentTokenBurned` 从未做取值断言
 
+- 状态：已修复。夹具改用非对称储备（150000e18 / 100000e18），断言 `parentTokenBurned` 等于按储备与 LP 供应量独立算出的父币侧数额，并断言与 `tokenBurned` 不等——父币侧与换币前子币侧因此也可区分。
 - 证据：`Stake.t.sol:2142-2143` 的 `abi.decode` 用空位跳过 `parentTokenBurned`（第 3 个字段），只断言 `feeLpBurned == settlementUnit`、`tokenBurned > 0`、两个累计值与 `totalFeeLp`；`StakeDonation.t.sol` 只断言事件存在。
 - 问题：`tokenBurned` 与 `parentTokenBurned` 是同一事件内两个相邻 `uint256`，前者只断 `> 0`、后者完全未断，等于该维度没有取值约束。`parentTokenBurned` 还是 `totalParentTokenBurned` 的唯一来源，二者一起失去锚点。
 - 影响：把 `parentTokenBurned` 误赋成 `tokenBurned`（或反之）不会被发现；父币销毁账本与「换币前数量」的语义会静默错位。
@@ -180,6 +183,7 @@
 
 ### [P3] ST-3 `BoostStaked` / `Unstaked` 的测试未断言 `topics[1]`（`tokenAddress`）
 
+- 状态：已修复。两处都补 `topics[1] == childToken` 断言。
 - 证据：`Stake.t.sol:2196-2198`（只查 `topics[2]`、`topics[3]`）、`Stake.t.sol:2263-2265`（同）。
 - 问题：§8.1 要求断言 indexed 布局的**取值**；根键 `tokenAddress` 是 topic1，未被校验。`LiquidityStaked` / `StakesMerged` / `StakeWithdrawn` 的用例都断言了 topic1，只有这两处漏。
 - 影响：根键写错（例如写成 Pair 地址或父币）时这两个事件的测试仍通过。

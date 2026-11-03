@@ -12,7 +12,8 @@
 | 协议事件 | 5 |
 | 发射点 | 5 个 emit 语句（`LaunchCountAdded` 每笔可发 2 次） |
 | P0 / P1 / P2 / P3 | 0 / 0 / 1 / 2 |
-| 放行 | 事件契约可放行；1 项 P2 为测试判别力缺口，不阻塞 |
+| 修复状态 | LA-1 / LA-2 / LA-3 已全部关闭（见 §4） |
+| 放行 | 可放行；LA-1 的判别力缺口已补齐 |
 
 本合约有两类事实：**登记类**（`GenesisTokenCreated` / `TokenLaunched`）与**次数账本类**（`LaunchCountAdded` / `LaunchCountMerged` / `LaunchCountConsumed`）。账本类事件的余额字段全部是后置值，登记类事件全部在登记写入之后发射，且 `TokenLaunched` 先于 distributor 回调。
 
@@ -177,6 +178,7 @@ event LaunchCountMerged(
 
 ### [P2] LA-1 `LaunchCountAdded` 的 `issuedCount` 与 `memberRemaining` 在夹具中恒等，未做可判别断言
 
+- 状态：已修复。夹具先给第二成员发 2 次，测得事件为 `issuedCount=6`、`memberRemaining=4`，并逐条断言二者不等。
 - 证据：`Launch.t.sol:1275-1281`（`count=4, issuedCount=4, memberRemaining=4`）；`Launch.t.sol:1324-1327`（`count=3, issuedCount=7`，`memberRemaining` 未断言，实际也是 7）。
 - 问题：`issuedCount`（账本累计）与 `memberRemaining`（成员余额）是同一事件内的两个同类型 `uint256`，两个夹具里取值始终相同，把两个实参互换后测试仍然通过——按 §8.1 属「没断言」。二者在语义上可以不同（多成员共用同一账本，或先消耗后新增）。
 - 影响：若实现误把 `memberRemaining` 赋成 `issuedCount`（或反之），现有测试无法发现；消费方以 `memberRemaining` 折叠成员余额时会拿到错误值。
@@ -184,6 +186,7 @@ event LaunchCountMerged(
 
 ### [P3] LA-2 首币伴生的两条 `LaunchCountAdded` 发射顺序未被断言
 
+- 状态：已修复。测试断言首币维度日志下标小于根父币维度，`08-launch.md` 事件表同步登记该顺序。
 - 证据：`Launch.t.sol:1293` 只断言条数为 2；`LaunchCountAdded` 的两条分别由 `addLaunchCount:199`（首币）与 `:202`（根父币）产生。
 - 问题：§3.4.4 要求批量/多条事件的发射顺序确定并由测试断言；当前顺序（首币 → 根父币）只体现在源码，没有契约级断言。
 - 影响：实现若调换两次 `_addLaunchCount` 的顺序，测试仍全绿，但依赖「首币维度先出现」的折叠逻辑会静默错位。
@@ -191,6 +194,7 @@ event LaunchCountMerged(
 
 ### [P3] LA-3 创建事件与登记之间夹有一次无事件的外部调用
 
+- 状态：已修复（文档 + 断言）。`08-launch.md` 把 `init` 固定为「登记 → `MemberNFT.init` → 创建事件」三步，测试断言 `GenesisTokenCreated` 是 `init` 的最后一条日志。
 - 证据：`Launch.sol:75` `IMemberNFT(...).init(firstToken)` 位于登记写入 `:70-73` 与 `emit GenesisTokenCreated:78` 之间。
 - 问题：E1 的措辞是「创建事件在登记完成后立即 emit」；此处登记完成后先调用外部合约再 emit。当前 `MemberNFT.init` 不发事件、不回调 Launch，因此没有可观察的交错；但顺序契约比规范描述松。
 - 影响：若 `MemberNFT.init` 未来引入回调或事件，`GenesisTokenCreated` 之前会出现其他合约的日志，破坏「创建事件紧随登记」的折叠假设。
