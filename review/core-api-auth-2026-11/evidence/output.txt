@@ -1,0 +1,132 @@
+# 生成时间 2026-11-03 04:22:40 CST
+# 基线 core@6fdd0f1
+
+## 1. 外部/公开函数与 modifier（evidence/auth_scan.py）
+
+LOVE20Token.mint	external	-	onlyMinter	L42
+LOVE20Token.burn	external	-	-	L52
+Launch.init	external	-	-	L54
+Launch.isLOVE20Token	public	view	-	L87
+Launch.launchToken	external	-	onlyMemberOwner(memberId)	L91
+Launch.mergeLaunchCount	external	-	onlyMemberOwner(sourceMemberId)	L154
+Launch.addLaunchCount	external	-	onlyMint	L187
+Launch.remainingLaunchCount	external	view	-	L206
+Launch.issuedLaunchCount	external	view	-	L210
+Launch.tokens	external	view	-	L214
+Launch.childTokens	external	view	-	L222
+Launch.tokenAddressBySymbol	external	view	-	L230
+Launch.parentToken	external	view	-	L234
+MemberNFT.init	external	-	-	L54
+MemberNFT.mint	external	-	-	L60
+MemberNFT.calculateMintCost	public	view	-	L103
+MemberNFT.memberName	external	view	-	L124
+MemberNFT.isNameUsed	external	view	-	L130
+MemberNFT.memberId	external	view	-	L136
+MemberNFT.normalizeName	external	pure	-	L142
+MemberNFT.holders	external	view	-	L148
+Phase.currentPhaseBlocks	public	view	-	L48
+Phase.currentPhase	public	view	-	L54
+Phase.phaseInfo	public	view	-	L56
+Phase.phaseAtBlock	public	view	-	L65
+Phase.observations	external	view	-	L73
+Phase.sync	external	-	-	L86
+Stake.init	external	-	-	L76
+Stake.settleFees	external	-	-	L100
+Stake.stakeLiquidity	external	-	onlyMemberOwner(memberId)	L110
+Stake.stakeBoost	external	-	onlyMemberOwner(memberId)	L136
+Stake.unstake	external	-	onlyMemberOwner(memberId)	L188
+Stake.withdraw	external	-	onlyMemberOwner(memberId)	L228
+Stake.mergeStake	external	-	onlyMemberOwner(sourceMemberId)	L279
+Stake.pairAddress	external	view	-	L323
+Stake.totalBurnedToken	external	view	-	L327
+Stake.totalParentTokenBurned	external	view	-	L331
+Stake.validGovVotes	external	view	-	L335
+Stake.totalValidGovVotes	external	view	-	L344
+Stake.totalValidGovVotesAdded	external	view	-	L349
+Stake.totalValidGovVotesRemoved	external	view	-	L354
+Stake.memberStake	external	view	-	L359
+Stake.totalStake	external	view	-	L394
+Stake.canWithdraw	external	view	-	L423
+Stake.validBoostShares	external	view	-	L429
+Stake.totalValidBoostShares	external	view	-	L438
+Stake.totalValidBoostSharesAdded	external	view	-	L443
+Stake.totalValidBoostSharesRemoved	external	view	-	L448
+Submit.currentRound	public	view	-	L44
+Submit.init	external	-	-	L49
+Submit.canSubmit	public	view	-	L65
+Submit.submitNewProposal	external	-	onlyMemberOwner(memberId)	L105
+Submit.submit	external	-	onlyMemberOwner(memberId)	L121
+Submit.isSubmitted	public	view	-	L132
+Submit.proposalIds	external	view	-	L142
+Submit.proposalIdsByAuthor	external	view	-	L152
+Submit.proposalTarget	external	view	-	L162
+Submit.proposalInfosByProposalIds	external	view	-	L172
+Submit.submitInfos	external	view	-	L184
+Submit.proposalIdBySubmitterId	external	view	-	L199
+Submit.submitterIdByProposalId	external	view	-	L207
+Vote.init	external	-	-	L46
+Vote.vote	external	-	onlyMemberOwner(memberId)	L69
+Vote.currentRound	public	view	-	L102
+Vote.isRoundEnded	public	view	-	L106
+Vote.canVote	public	view	-	L113
+Vote.maxVoteAmount	public	view	-	L117
+Vote.totalVoteAmount	external	view	-	L121
+Vote.voteAmountByProposalId	external	view	-	L125
+Vote.voteAmountByMemberId	external	view	-	L133
+Vote.voteAmountByMemberIdByProposalId	external	view	-	L141
+Vote.isProposalIdVoted	external	view	-	L149
+Vote.votedProposalIds	external	view	-	L153
+Vote.voterIdsByProposalId	external	view	-	L161
+Vote.votedProposalIdsByMemberId	external	view	-	L172
+Vote.voteAmountsByMemberIdByProposalIds	external	view	-	L188
+Vote.voterBoost	external	view	-	L200
+Vote.totalVoterBoost	external	view	-	L208
+Mint.rewardReserved	external	view	-	L39
+Mint.rewardMinted	external	view	-	L43
+Mint.rewardBurned	external	view	-	L47
+Mint.govReward	external	view	-	L51
+Mint.proposalReward	external	view	-	L55
+Mint.eligibleProposalVoteAmount	external	view	-	L59
+Mint.isRewardPrepared	external	view	-	L63
+Mint.launchCredit	external	view	-	L67
+Mint.init	external	-	-	L72
+Mint.mintProposalReward	external	-	onlyProposalTarget(tokenAddress, proposalId)	L186
+Mint.mintGovReward	public	-	onlyMemberOwner(memberId)	L232
+Mint.mintGovRewards	external	-	onlyMemberOwner(memberId)	L241
+Mint.proposalRewardByProposalId	external	view	-	L345
+Mint.govRewardByMemberId	external	view	-	L413
+Mint.isProposalIdWithReward	external	view	-	L429
+Mint.rewardAvailable	public	view	-	L452
+Mint.reservedAvailable	public	view	-	L458
+---ABI counts---
+LOVE20Token 14
+Launch 25
+MemberNFT 31
+Phase 11
+Stake 31
+Submit 22
+Vote 22
+Mint 27
+
+## 2. 实现 ABI vs 自有接口 ABI（evidence/abi_diff.py）
+
+### LOVE20Token vs ILOVE20Token: impl=14 iface=14
+  impl-only (0):
+### Launch vs ILaunch: impl=25 iface=25
+  impl-only (0):
+### MemberNFT vs IMemberNFT: impl=31 iface=31
+  impl-only (0):
+### Phase vs IPhase: impl=11 iface=11
+  impl-only (0):
+### Stake vs IStake: impl=31 iface=31
+  impl-only (0):
+### Submit vs ISubmit: impl=22 iface=22
+  impl-only (0):
+### Vote vs IVote: impl=22 iface=22
+  impl-only (0):
+### Mint vs IMint: impl=27 iface=27
+  impl-only (0):
+
+## 3. 鉴权位置检查（matt-gov/script/check_caller_auth.py）
+
+violations: 0
