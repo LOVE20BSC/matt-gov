@@ -42,6 +42,7 @@
 每个协议事件必须对应唯一的业务事实或状态迁移。
 
 - 必须使用事实增量模型：只携带该事实产生的字段，不重复未变化字段。
+- 快照型事件携带对象在该时点的整组取值，不适用上一条：`AdminChanged` 携带整组新快照（哪怕只改一项），`PhaseSynchronized` 同时给出 `phase` 与 `phase + 1` 的段长（未调整时两者相等）。「哪些字段变了」由消费方与前一快照逐字段比较得出，不靠字段缺席表达。
 - 涉及累计值时可以携带发射时点的累计值（总量、余额、累计奖励等）；该值必须等于按日志顺序折叠出的结果，且不得替代增量字段。
 - 一个聚合量被多个事件改变时（例如 `Stake` 的治理票总量、加速份额总量），**每个改变点都应当携带后置总量**；只在一部分改变点携带属于族内漂移，消费方无法判断字段缺失是「没变」还是「没记」。只在单个事件上变化的聚合量（如 `Stake.totalBurnedToken`）同样在改变它的事件上携带总量，使该维度有可直接对账的锚点。
 - 同一金额出现在两条事件中不构成重复表达，前提是两条事件描述的是不同事实、且各自需要该金额：`GovRewardMinted.burnReward` 与同笔 `RewardBurned(BoostOverflow).amount` 同值，前者给出成员归属（`RewardBurned` 不带 `memberId`），后者记全局销毁账本。此类跨事件冗余必须在模块规格中登记理由。
@@ -205,10 +206,10 @@ ERC-20 / ERC-721 标准事件保持不变，不进入本规范正文。`AddHolde
 
 强制要求：
 
-- 根键（该事件所属域的顶层标识）必须是第一个字段。根键由发射者自身代表时可以省略：`LOVE20Token` 的 `TokenMinted` / `TokenBurned`、`MemberNFT` 的 `MemberMinted`、`Phase` 的 `PhaseSynchronized` / `PhaseAdjusted` 都不带根键字段。
+- 根键（该事件所属域的顶层标识）必须是第一个字段。根键由发射者自身代表时可以省略：`LOVE20Token` 的 `TokenMinted` / `TokenBurned`、`MemberNFT` 的 `MemberMinted`、`Phase` 的 `PhaseSynchronized` 都不带根键字段。
 - 同一事件族内槽位固定，不得族内漂移；各族由 `script/events/check-events.py` 按 `script/events/event-families.txt` 校验（族覆盖、根键首字段、`round` 锚点），ABI 顺序由 `script/events/events-baseline.txt` 锁定。
 - actor 的 id 必须在其地址之前（`operatorId` → `operator`）；actor 地址与对象地址不共槽位。
-- 配置/状态事件默认先携带新值、后携带旧值（`prev*` / `old*`）；整组替换按新组→旧组；旧值组内部沿用新值组的槽位顺序；以迁移量本身为事实的 diff 事件（如 `PhaseAdjusted`）按旧→新。
+- 配置/状态事件默认先携带新值、后携带旧值（`prev*` / `old*`）；整组替换按新组→旧组；旧值组内部沿用新值组的槽位顺序。同一维度以「前后两个取值」本身为事实的字段对按时间顺序排列，不适用新值优先：`PhaseSynchronized` 的 `currentPhaseBlocks`（`phase` 的段长）先于 `nextPhaseBlocks`（`phase + 1` 起的段长）。
 
 | 族 | 槽位序列 | 事件 |
 |---|---|---|
@@ -216,7 +217,7 @@ ERC-20 / ERC-721 标准事件保持不变，不进入本规范正文。`AddHolde
 | core.registry | 根键 → 父根键 → 对象 id → 角色 → 数值 → 枚举 → 文本 | `GenesisTokenCreated`、`TokenLaunched`、`LaunchCountAdded`、`LaunchCountMerged`、`LaunchCountConsumed` |
 | core.member | 对象 id → 角色 → 数值 → 文本 | `MemberMinted` |
 | core.round | 根键 → round → 对象 id → 角色 → 数值 → 枚举 | `RewardPrepared`、`GovRewardMinted`、`ProposalRewardMinted`、`RewardBurned` |
-| core.phase | 对象 id → 数值（diff 事件旧→新） | `PhaseSynchronized`、`PhaseAdjusted` |
+| core.phase | 对象 id → 数值（当前段长 → 下一段长） | `PhaseSynchronized` |
 | core.stake | 根键 → round → memberId 链（0–2 个）→ 数值 | `LiquidityStaked`、`BoostStaked`、`Unstaked`、`StakeWithdrawn`、`FeesSettled`、`FeeReclassified`、`StakesMerged` |
 | core.proposal | 根键 → round → 对象/actor id 链（1–2 个）→ 地址 → 枚举 → bytes → 文本 | `ProposalCreated`、`ProposalSubmitted`、`VoteCast` |
 | action.registry | 根键 → actionId → round → executor | `ActionRegistered` |
@@ -361,7 +362,7 @@ v1 基线：
 | RootToken | 初始供给、增发、销毁 | `TokenMinted`、`TokenBurned`；标准 `Transfer` / `Approval` |
 | TokenRegistry | 创世、发起子币、额度发放/合并/消耗 | `GenesisTokenCreated`、`TokenLaunched`、`LaunchCountAdded`、`LaunchCountMerged`、`LaunchCountConsumed` |
 | MemberNFT | 铸造、转移、持有人集合 | `MemberMinted`；标准 `Transfer` / `Approval` / `ApprovalForAll` |
-| Phase | 同步观测、调整段长 | `PhaseSynchronized`、`PhaseAdjusted` |
+| Phase | 同步观测、段长快照 | `PhaseSynchronized` |
 | StakePosition | 加流动性、加 boost、解锁、提取、手续费结算、手续费重分类、合并 | `LiquidityStaked`、`BoostStaked`、`Unstaked`、`StakeWithdrawn`、`FeesSettled`、`FeeReclassified`、`StakesMerged` |
 | Proposal | 创建、提交 | `ProposalCreated`、`ProposalSubmitted` |
 | Vote | 投票 | `VoteCast` |

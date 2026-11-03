@@ -38,8 +38,8 @@
 | 10 | `GovRewardMinted` `IMint:20` | `GovRewardMinted` | 改形 | 保留 `voteReward`、`boostReward`、`burnReward`（2026-10-28 改判，见 O11） | `_launchCredit` 增量 = `voteReward+boostReward`，可由本事件推导 |
 | 11 | `ProposalRewardMinted` `IMint:28` | `ProposalRewardMinted` | 保留 | 不变：`tokenAddress` i、`round` i、`proposalId` i、`recipient`、`amount` | `recipient` 为地址 |
 | 12 | `RewardBurned` `IMint:35` | `RewardBurned` | 保留 | 不变：`tokenAddress` i、`round` i、`amount`、`reason` | `reason` 为有界 enum |
-| 13 | `PhaseSynchronized` `IPhase:9` | `PhaseSynchronized` | 改形 | 删 `blockNumber`、`timestamp`、`adjusted`；保留 `phase` i、`phaseBlocks` | 块高/时间为日志元数据；`adjusted` 由同 tx 的 `PhaseAdjusted` 推导 |
-| 14 | `PhaseAdjusted` `IPhase:16` | `PhaseAdjusted` | 保留 | 不变：`effectivePhase` i、`oldPhaseBlocks`、`newPhaseBlocks` | 新 segment `startBlock` 由日志块高推导 |
+| 13 | `PhaseSynchronized` `IPhase:9` | `PhaseSynchronized` | 改形 | 删 `blockNumber`、`timestamp`、`adjusted`；`phase` i、`currentPhaseBlocks`（`phase` 的段长）、`nextPhaseBlocks`（`phase + 1` 起的段长） | 段长快照：一条日志同时给出 P 与 P+1 的段长，折叠为 `schedule[phase] = current`、`schedule[phase + 1] = next`；块高/时间为日志元数据 |
+| 14 | `PhaseAdjusted` `IPhase:16` | — | 删除（并入 13） | `effectivePhase ≡ phase + 1`、`oldPhaseBlocks ≡ currentPhaseBlocks`，均可由 13 推导 | 同一事实不再由两条事件表达（§3.1）；`next` 是终值，后续轮次不回写 |
 | 15 | `StakeLiquidity` `IStake:44` | `LiquidityStaked` | 改名+改形 | 增 `totalLiquidityShares`、`totalValidGovVotes`、`totalWithdrawableLp`（全局后置）；删调用方期望量 | LP 基准（`lastFeeLp` 等）由后置总量直接折叠，见 §7 |
 | 16 | `StakeBoost` `IStake:58` | `BoostStaked` | 改名+改形 | 增 `totalBoostShares`、`totalValidBoostShares`、`totalValidGovVotes`；删与 `boostAmount` 恒等的 `boostSharesAdded` | 余额总量与当轮有效总量并存，见 O15 |
 | 17 | `Unstake` `IStake:69` | `Unstaked` | 改名+改形 | 增 `totalValidBoostShares`、`totalValidGovVotes` | `unlockRequestPhase = round`，文档化 |
@@ -170,7 +170,7 @@
 | `_launchCredit` | `Mint.sol:519,530` | `GovRewardMinted.voteReward+boostReward` − `LaunchCountAdded.count × threshold`；threshold 由 `TokenMinted` + 不可变 `LAUNCH_RATIO`/`maxSupply` 计算 |
 | Stake 全局/成员 LP 基准（`lastFeeLp`、`lastWithdrawableLp`、`lastSqrtKOfLp`、`totalLp`） | `Stake.sol` 的 `_applyReclassification` / `_creditLiquidity` / `_withdrawLiquidity` / `_realizeFees` / `_updateSqrtKBaseline` | `lastFeeLp`/`lastWithdrawableLp` 由 `FeeReclassified`/`LiquidityStaked`/`StakeWithdrawn`/`FeesSettled` 的后置总量直接折叠；`lastSqrtKOfLp` **不能**由 `FeeReclassified.sqrtKOfLp` 折叠——后者是重分类时点快照，`_updateSqrtKBaseline` 会在增/减流动性与结算后无事件刷新；唯一推导来源是 Pair `Sync` + `totalLp`。`FeeReclassified.pairTotalSupply` 的来源是 Pair ERC-20 `totalSupply()`，只用于解释结算单位 |
 | `_pairAddress` | `Stake.sol:475` | `factory.getPair(token,parent)`，可从不可变配置推导 |
-| `_lastSettlePhase`、Phase 观测历史 | `Stake.sol:774`、`Phase.sol:102-105` | 内部计时缓存；业务结果由 `FeesSettled`/`PhaseSynchronized`/`PhaseAdjusted` 覆盖 |
+| `_lastSettlePhase`、Phase 观测历史 | `Stake.sol:774`、`Phase.sol:102-105` | 内部计时缓存；业务结果由 `FeesSettled`/`PhaseSynchronized` 覆盖 |
 | MemberNFT 持有人集合 | `MemberNFT.sol:252-291` | ERC721 `Transfer` 折叠（若删除 `AddHolder`/`RemoveHolder`） |
 | `cacheDenominator` | `GroupServiceExecutor.sol:784` | `RecipientTableChanged` 的 ratios + 奖励金额 |
 | `_govRatioAtMint` | `LpExecutor.sol:518` | mint 时点的 Stake/Vote 状态 + 既有事件折叠；若需绝对自足，见 O10 |

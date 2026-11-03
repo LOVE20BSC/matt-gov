@@ -33,7 +33,7 @@
 
 ## 第二轮修复（2026-10-26）
 
-- `ApplicationVoteRecorded` 增加 `votesAdded`/`totalVotes`（增量+累计）；补 core `FeesSettled`/`PhaseAdjusted`/`ProposalSubmitted` 事件测试（core 463）。
+- `ApplicationVoteRecorded` 增加 `votesAdded`/`totalVotes`（增量+累计）；补 core `FeesSettled`/`PhaseSynchronized`/`ProposalSubmitted` 事件测试（core 463）。
 - 删除解释性 emit 注释（保留 forge-lint/slither 指令）；规范 §6.10 明确工具指令豁免。
 - 6 个 helper 移到各文件内部区；manager 事件移入 `I*Events`；Stake/Launch 剩余公式与字面量收敛；`GroupAdmin` 简化 `prevListed`；`_emitLpTerminal`→`_emitLpFullExit`。
 - Checker 落到三仓 `script/check-events.py`（每次 build、按源码过滤 library/abstract/interface）；基线 28/34/23；删除 matt-gov 脚本。
@@ -79,7 +79,7 @@
 - **族表可执行化**：三仓 `script/event-families.txt`（事件 → 族）+ `check-events.py` 校验族覆盖、根键首字段、`round` 锚点；基线重生成（core 28 / action 34 / group-chat 23，含 3 个标准 ERC 事件）。
 - **新增测试**：`RewardBurned → RewardPrepared`（依赖序 + 累计）、`LaunchCountAdded → GovRewardMinted`（跨合约依赖序）、`FeesSettled → StakeWithdrawn`、`LaunchCountAdded.issuedCount` 折叠、`OriginScoresSubmitted.totalFinalScore` 折叠、E1 `TokenMinted → GenesisTokenCreated`、E2 事件报告 `mintActionReward` 实际返回值、E3 重入、E4 `Withdrawn → JoinStateCleared → Exited`、边界成功值（96/32 名称符号、1024B title/details/description、16KiB×16 targetData、16 个 verification key 与 value、10 收款人 + 256B 备注）与对应 +1 拒绝（17 个 verification value）、部署配置 `tokenSymbolLength + 4 <= 32` 的 28 接受 / 29 拒绝。
 - **破坏性变更清单（core/action 改名与重排）**：
-  - core：`TokenMint`→`TokenMinted`、`TokenBurn`→`TokenBurned`、`Voted`→`VoteCast`、`StakeLiquidity`→`LiquidityStaked`、`StakeBoost`→`BoostStaked`、`Unstake`→`Unstaked`、`Withdraw`→`StakeWithdrawn`、`StakeMerged`→`StakesMerged`、`Mint`→`MemberMinted`（`id` 改名 `memberId`）；`TokenLaunched` 拆为 `GenesisTokenCreated` + `TokenLaunched`；删 `AddHolder`/`RemoveHolder`；`PhaseSynchronized` 删 `blockNumber`/`timestamp`/`adjusted`；`GovRewardMinted` 删 `burnReward`；`ProposalCreated` 增 `targetData`；`MemberMinted` 的 `cost` 前移。
+  - core：`TokenMint`→`TokenMinted`、`TokenBurn`→`TokenBurned`、`Voted`→`VoteCast`、`StakeLiquidity`→`LiquidityStaked`、`StakeBoost`→`BoostStaked`、`Unstake`→`Unstaked`、`Withdraw`→`StakeWithdrawn`、`StakeMerged`→`StakesMerged`、`Mint`→`MemberMinted`（`id` 改名 `memberId`）；`TokenLaunched` 拆为 `GenesisTokenCreated` + `TokenLaunched`；删 `AddHolder`/`RemoveHolder`；`PhaseSynchronized` 删 `blockNumber`/`timestamp`/`adjusted` 并携带 `currentPhaseBlocks`/`nextPhaseBlocks`（`PhaseAdjusted` 删除）；`GovRewardMinted` 删 `burnReward`；`ProposalCreated` 增 `targetData`；`MemberMinted` 的 `cost` 前移。
   - action：`ActionCreated`→`ActionRegistered`（`round` 前移）、`Joined`/`Withdrawn`/`Exited`→`GroupActionJoined`/`GroupActionWithdrawn`/`GroupActionExited`（`groupId`/`providerId` 前移、增 `verificationValues`）、`SetRecipients`→`RecipientTableChanged`、`DistributeRecipient`→`RecipientPaid`（增 `sourceTokenAddress`）、`GroupConfigUpdated`→`GroupConfigChanged`、新增 `*ActionCreated`/`ApplicationVoteRecorded`/`ProviderQuotaRefunded`。
   - 消费方需按新 topic 重建过滤器与解码器；`GroupActionWithdrawn`/`MemberMinted` 是「字段不变、顺序调整」，旧解码器会静默错位。
 

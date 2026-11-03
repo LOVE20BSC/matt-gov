@@ -31,14 +31,20 @@ Phase 维护连续的无语义时间片、同步观测和动态校准，不内�
 
 每轮首个成功推举仍自动调用 `sync`；如果已经有人同步，自动调用无操作返回，不能阻塞推举。没有推举时任何人仍可同步；投票和铸造本身不触发同步。无人调用也不停止 Phase 推进。
 
-首次有效同步只记录观测；每次有效同步发出 `PhaseSynchronized(phase, phaseBlocks)`（只含这两个字段，块高与时间由日志元数据承担），调整时另发 `PhaseAdjusted`。新参数不得改变当前或过去 Phase 的编号和边界，不能通过校准重获本轮同步机会。`adjusted = false` 时，`newPhaseBlocks` 返回当前值。
+首次有效同步只追加观测。每次有效同步发出且只发一条 `PhaseSynchronized(phase, currentPhaseBlocks, nextPhaseBlocks)`，它是本次同步时点的**段长快照**：`currentPhaseBlocks` 是 Phase `phase` 的段长，`nextPhaseBlocks` 是 Phase `phase + 1` 起的段长；块高与时间由日志元数据承担，不进入载荷。快照携带整组段长，未调整时两者相等——`AdminChanged` 携带整组新快照（哪怕只改一项）是同一先例，快照的完整性优先于「不重复未变化字段」（§3.1）。
+
+`nextPhaseBlocks` 是终值：在 Phase P 调整只写 P+1 段，之后在 P+1 再调整只写 P+2，永不回写 P+1，因此 `next(P)` 一旦发出不会被后续日志推翻。折叠规则是 `schedule[phase] = currentPhaseBlocks`、`schedule[phase + 1] = nextPhaseBlocks`，重放与乱序重组都幂等，不需要配对多条事件。`effectivePhase` 不是载荷字段，它恒等于 `phase + 1`，由消费方推导。
+
+相邻两次有效同步满足 `e2.currentPhaseBlocks == e1.nextPhaseBlocks`；中间跳过的空 Phase 不影响该式，因为生效段始终是 `p1 + 1`。`nextPhaseBlocks == currentPhaseBlocks` 只表示段长不变，不承诺区分「未调整」与「发生过一次同长度重写」：`currentPhaseBlocks == 1` 且估算为 0 时新长度被钳到 1，会写一段等长段，投影上与旧外推一致。`adjusted` 返回值只供调用方判断本次是否写入了新段，不进入事件。
+
+新参数不得改变当前或过去 Phase 的编号和边界，不能通过校准重获本轮同步机会。`adjusted = false` 时，`newPhaseBlocks` 返回当前值。
 
 ## 校准
 
 1. 先从最近观测向前检查最多 `SYNC_OBSERVATION_LIMIT` 条；仍未找到合格观测时，通过 `OrderedHistoryIndex` 二分查找最近的合格观测。
 2. 对满足条件的记录计算以下公式，除法向下取整。
 3. `deviation > ADJUST_THRESHOLD` 才调整，等于阈值时不调整。
-4. 新长度至少为 1，只用于尚未生成的 Phase，已生成阶段不回写。
+4. 新长度至少为 1，只写入 `phase + 1` 起的段，已生成阶段不回写。
 
 ```text
 observed = floor(elapsedBlocks * TARGET_SECONDS / elapsedSeconds)

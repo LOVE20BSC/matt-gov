@@ -30,8 +30,7 @@
 | MemberNFT | 转移/授权 | 标准 `Transfer` / `Approval` / `ApprovalForAll` | owner、余额 | 不借用标准事件表达协议语义；持有人集合由此折叠 |
 | MemberNFT | 持有人集合 | 删除 `HolderAdded/Removed`（已确认） | 集合、totalHolders | 由 `Transfer` 折叠；O1 |
 | LaunchCredit | 治理奖励转 launch credit | 派生 | credit 余额 | `GovRewardMinted` + `LaunchCountAdded` + 不变量推导（§01 §7） |
-| Phase | 同步观测 | `PhaseSynchronized` | phase、phaseBlocks | 观测数组为内部计时缓存；删除块高/时间戳/adjusted |
-| Phase | 调整段长 | `PhaseAdjusted` | old/new phaseBlocks、effectivePhase | 新段 startBlock 由日志块高推导 |
+| Phase | 同步观测与段长快照 | `PhaseSynchronized` | `phase`、`phase` 段长、`phase + 1` 起的段长 | 观测数组为内部计时缓存；删除块高/时间戳/adjusted；`effectivePhase ≡ phase + 1`、`oldPhaseBlocks ≡ currentPhaseBlocks` 由事件推导，折叠幂等 |
 | StakePosition | 加流动性 | `LiquidityStaked` | 金额、shares、govVotes、全局 total、可提取 LP 后置 | 增 `totalLiquidityShares`/`totalValidGovVotes`/`totalWithdrawableLp`；删调用方期望量；LP 基准由后置总量折叠，`lastSqrtKOfLp` 仍为派生缓存 |
 | StakePosition | 加 boost | `BoostStaked` | boostShares、govVotes、全局 total | 增 `totalBoostShares`/`totalValidBoostShares`/`totalValidGovVotes`；删恒等的 `boostSharesAdded` |
 | StakePosition | 发起解锁 | `Unstaked` | unlockRound、govVotes、两个全局 total | `unlockRequestPhase = round`，文档化；增 `totalValidBoostShares`/`totalValidGovVotes` |

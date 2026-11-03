@@ -236,7 +236,7 @@
 **测试方式**：
 - 单元测试：`core/test/Phase.t.sol` 的同步、校准场景
 - 单元测试：`action/test/GroupActionExecutor.t.sol` 的验证者排名、分割线场景
-- 验收证据：Phase 调整日志、验证者排名日志
+- 验收证据：Phase 段长快照日志、验证者排名日志
 
 **判定标准**：
 - 动态校准超过初始化的 `ADJUST_THRESHOLD` 才生效

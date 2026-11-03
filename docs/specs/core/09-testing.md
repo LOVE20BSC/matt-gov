@@ -16,6 +16,7 @@
 | MemberNFT | 持有人枚举分页：自转账、转出全部、再转入、`offset` 越界 | 自转账不移除，余额归零后移除，位置按 swap-and-pop 重排；`holders` 按页返回且越界返回空数组与真实总数 |
 | [Phase](03-phase.md) | 空阶段、首个推举同步、偏差在/超过 `ADJUST_THRESHOLD` | 时间继续推进，按初始化阈值校准，不改历史 |
 | Phase | 任意地址先同步、同轮跨社区重复、下轮再同步 | 每个投票轮只记录一次；重复无操作、不阻塞 Submit；下轮重新允许 |
+| Phase | `PhaseSynchronized` 段长快照：非调整轮、调整轮、跳过空 Phase 的相邻两次同步、段长钳到 `1` 的同长度重写 | 每次有效同步恰一条日志；`currentPhaseBlocks` 恒等于 `phaseInfo(phase)` 的段长；调整轮的 `nextPhaseBlocks` 等于 `phaseInfo(phase + 1)` 的段长且与本轮返回值一致；相邻两次同步满足 `e2.currentPhaseBlocks == e1.nextPhaseBlocks`，中间空 Phase 不影响；`nextPhaseBlocks == currentPhaseBlocks` 时仍可能写入过等长段，`adjusted` 只能取自返回值；对应 `PhaseTest.testPhaseSynchronizedCarriesSegmentSnapshot`、`testSyncRecordsOncePerPhaseAndAdjustsNextPhase`、`testAdjacentSyncsChainSegmentLengths` 与 `testClampedAdjustmentWritesAnEqualSegment` |
 | [Stake](04-stake.md) | 两类资产统一解锁；向非自有目标融合 | 只增目标状态；同一等待期后提取两类资产 |
 | Stake | LP 份额、手续费销毁统计、Uniswap V2 兼容 DEX、加速历史继承 | 份额/资产/历史与模块公式一致，不因无记录而错误复活 |
 | Stake | 入池最优量折算与滑点：储备任一侧为零、比例一致、偏离未超/超过 `slippage`、LP 铸出为零 | 储备为零时按期望量入池；比例一致时不折算；偏离未超阈值时只转入折算量并计入相应份额；超过阈值回滚 `SlippageExceeded(actualDeviation, maxDeviation)`；LP 为零回滚 `ZeroLiquidityMinted()` |
