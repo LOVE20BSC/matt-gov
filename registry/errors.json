@@ -1575,7 +1575,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Mint.sol:513"
+        "core/src/Mint.sol:515"
       ],
       "selector": "0xc157061f",
       "signature": "MemberRewardAlreadyMinted(address,uint256,uint256)"
@@ -1590,7 +1590,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Mint.sol:519"
+        "core/src/Mint.sol:521"
       ],
       "selector": "0x1392e03a",
       "signature": "MemberRewardUnavailable(address,uint256,uint256)"
@@ -1605,7 +1605,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/MemberNFT.sol:226"
+        "core/src/MemberNFT.sol:227"
       ],
       "selector": "0x2350ee53",
       "signature": "NameAlreadyExists(uint256)"
@@ -1620,7 +1620,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/MemberNFT.sol:219"
+        "core/src/MemberNFT.sol:220"
       ],
       "selector": "0x1ff3ed9d",
       "signature": "NameEmpty()"
@@ -1635,7 +1635,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/MemberNFT.sol:221"
+        "core/src/MemberNFT.sol:222"
       ],
       "selector": "0x9954195a",
       "signature": "NameInvalidCharacters()"
@@ -1650,7 +1650,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/MemberNFT.sol:220"
+        "core/src/MemberNFT.sol:221"
       ],
       "selector": "0x243cf1c9",
       "signature": "NameTooLong(uint256,uint256)"
@@ -1734,7 +1734,7 @@
       "repo": "core",
       "revert_sites": [
         "core/src/Launch.sol:37",
-        "core/src/Mint.sol:227",
+        "core/src/Mint.sol:229",
         "core/src/Stake.sol:106",
         "core/src/Submit.sol:100",
         "core/src/Vote.sol:64"
@@ -1782,7 +1782,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Mint.sol:181"
+        "core/src/Mint.sol:182"
       ],
       "selector": "0xc157502b",
       "signature": "NotProposalTarget(address,address)"
@@ -1935,7 +1935,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Mint.sol:199"
+        "core/src/Mint.sol:200"
       ],
       "selector": "0xece01b78",
       "signature": "ProposalRewardAlreadyMinted(address,uint256,uint256)"
@@ -1950,7 +1950,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Mint.sol:204"
+        "core/src/Mint.sol:205"
       ],
       "selector": "0x6b95e12e",
       "signature": "ProposalRewardUnavailable(address,uint256,uint256)"
@@ -2397,8 +2397,8 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Mint.sol:193",
-        "core/src/Mint.sol:507"
+        "core/src/Mint.sol:194",
+        "core/src/Mint.sol:509"
       ],
       "selector": "0xceef9857",
       "signature": "ZeroRecipientAddress()"
