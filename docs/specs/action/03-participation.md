@@ -38,11 +38,11 @@ Provider 提供的是额度：Provider 授予、追加或收回额度，成员�
 
 Provider 额度接口见 [`IGroupActionJoin.sol`](https://github.com/LOVE20BSC/action/blob/main/src/interfaces/IGroupActionJoin.sol)。
 
-额度按 `tokenAddress + actionId + groupId + providerId + memberId` 记录，只有 Provider 当前持有人可改；**`groupId` 与 `memberId` 只是记录定位键，权限主体只有 `providerId` 的当前持有人**——成员身份是业务对象，不是调用者判据。成员身份须存在且不同于 Provider（`memberId == providerId` 回 `QuotaMemberIsProvider(providerId)`，成员为 0 由 `ownerOf` 回 `ERC721NonexistentToken`），两个数组等长，额度为正；同一成员重复授予是追加额度，不再回滚。批量接口没有协议固定长度上限，调用方按区块 Gas 分批操作，单笔失败整笔回滚。
+额度按 `tokenAddress + actionId + groupId + providerId + memberId` 记录，只有 Provider 当前持有人可改；**`groupId` 与 `memberId` 只是记录定位键，权限主体只有 `providerId` 的当前持有人**——成员身份是业务对象，不是调用者判据。成员身份须存在且不同于 Provider（`memberId == providerId` 回 `QuotaMemberIsProvider(providerId)`，成员为 0 由 `ownerOf` 回 `ERC721NonexistentToken`），两个数组等长，额度为正；同一成员重复授予是追加额度，不再回滚。批量接口没有协议固定长度上限，调用方按区块 Gas 分批操作，单笔失败整笔回滚。`withdrawProviderQuota` 的 `amount == 0` 是显式错误（`ZeroQuotaAmount(memberId)`），不是「按 0 撤回」的空操作；批量入口保持严格模式：任一元素失败整笔回滚，不做跳过。
 
 额度授予即存入合约：`addProviderQuota` 把对应代币从 Provider 当前持有人转入合约托管并追加授权额度；`removeProviderQuota` 收回该成员的整笔授权——可用额度与已投入一并退回，已投入部分同额减少该成员的参与量（总参与量归零时自动退出），该笔参与量发 `GroupActionWithdrawn`、授权额度发 `ProviderQuotaRemoved`。各笔划转按成员逐条发出 `ProviderQuotaAdded` / `ProviderQuotaRemoved`（单成员单条日志，`amount` 为本笔金额、与账本变动一致，`quotaTotal` 为该成员变动后的授权额度，收回后为 0）。成员 `join` 使用额度时只消耗可用额度、不再转移代币；`withdrawProviderQuota` 按链群撤回尚未使用的额度（支持部分撤回），授权额度同额扣减并发 `ProviderQuotaRemoved`，成员参与量不变。托管资金不按来源隔离存放，额度和已投入部分都由 Executor 按来源账本核算。
 
-额度入口的 `groupId == 0` 或群身份不存在回 `GroupNotExist(groupId)`；`removeProviderQuota` 的空 `memberIds` 在群存在时是空操作。
+额度入口按三态分开：`groupId == 0` 报 `ZeroGroupId()`（参数缺省），群非零但身份不存在报 `GroupNotExist(groupId)`；两者不再归一，链下可据此区分「漏传参数」与「群已被删除」。`removeProviderQuota` 的空 `memberIds` 在群存在时是空操作。
 
 **错误落点（加入）**：行动尚未创建时，`join` 首先判定群身份/激活状态，对外回 `GroupNotActive(groupId)`，而不是 `ActionNotCreated(tokenAddress, actionId)`——群身份挂在行动上，行动未创建时群也不存在。这是有意的错误落点，链下按 `GroupNotActive` 处理即可；`ActionNotCreated` 只由成员结算、群激活与验证者申请路径报出。
 
@@ -55,3 +55,10 @@ Provider 额度接口见 [`IGroupActionJoin.sol`](https://github.com/LOVE20BSC/a
 - `providerQuotas` 的「已使用额度」取成员**当前所属链群**的已投入量：成员换群或退出后，旧群已用额度归零、可用额度回到全额；Provider 不得用「可用额度变小」推断资金仍被占用。
 - `removeProviderQuota` 是批量整笔收回，`memberIds` 重复时第二次命中 `QuotaNotGranted` 并整批回滚；链下批量脚本必须先按 `memberId` 去重。`withdrawProviderQuota` 按成员逐笔退，两种批量语义不对称。
 - 三个质押/额度计数器维度不同：`ownAmount` 是成员自身投入，`providerAmount` 是 Provider 授予额度，`stakedByMemberId` 是按 `groupId` 聚合的质押；`joinedAmount` 只由基座给出，不得互相换算。
+
+## 错误卷补记（2026-11，X-09）
+
+- `E-GAJ-02`：`ActionMaxJoinAmountExceeded(memberId, newTotal, 0)` 的上限 0 同时覆盖「本轮该行动无票」「`maxJoinAmountRatio` 配置为 0」「治理票总量为 0 且下限为 0」等情形；载荷不区分成因，需要区分时只能读 `maxJoinAmount` 与治理票视图。
+- `E-GAJ-03`：`_join` 的 `currentJoinRound()` 排在群约束之后，但 `phase < 2` 时不可能存在激活群，故 `RoundNotStarted` 与 `GroupNotActive` 的可观测先后不变；保留现状，不改顺序。
+- `E-GAJ-04`：`removeProviderQuota` 是严格模式（逐项回 `QuotaNotGranted` 并整批回滚），属于「批量删除默认 no-op」的规范例外；链下必须先按 `memberId` 去重并过滤未授予者。
+- `E-GAJ-05`：`ZeroQuotaAmount(memberId)` 在单条 `withdrawProviderQuota` 与批量 `removeProviderQuota` 两处使用，载荷都是主体键（金额恒为 0），信息量相同，无需第二个错误。

@@ -94,7 +94,7 @@
 
 ## 五、发现
 
-### GAV-01（Info，规格与规范冲突，待裁决）`submitVerifierApplication` 的错误优先级与 §5.2.2 相反
+### GAV-01（Info，已由错误卷重排）`submitVerifierApplication` 的错误优先级与 §5.2.2 相反
 
 - 证据（`_checkApplicationSubmission` `L822-834`）：先 `validGovVotes == 0 → ZeroVerifyVotes`（**资格**），再 `description > 1024 → DescriptionTooLong`（**参数**），最后 `createdRound == 0 → ActionNotCreated`（**存在性**）。
 - §5.2.2 规定的顺序是「鉴权 → 参数 → 存在性 → 状态/资格 → 账本/交互」。
@@ -169,4 +169,4 @@ GroupActionVerify  写入口 4  带 modifier 3  无 modifier 1
 
 ## 处置
 
-`GAV-01`～`GAV-04` 的落点见 `README.md` §十（`05-group-action-executor.md`）；`GAV-01` 只同步规格，重排交错误卷。
+`GAV-01`～`GAV-04` 的落点见 `README.md` §十（`05-group-action-executor.md`）；`GAV-01` 已由错误卷（`action-error-review-2026-11` 的 `E-GAV-02`）按默认序重排，本卷只保留登记。

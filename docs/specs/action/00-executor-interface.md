@@ -114,3 +114,8 @@ Executor 不使用加密调用 `ActionTarget` 上同名的 `join`/`exit`：Actio
 - `init` 必须先于任何 Executor 的部署与绑定完成：Executor 构造函数从 `ActionTarget` 读四个 immutable，绑定读取自身也依赖已初始化的地址；顺序颠倒只表现为构造期解码失败。部署脚本以「`!initialized()` → `init` → `initialized()`」断言收尾，并回读五个绑定。
 - 批量结算不设长度上限：gas 由调用方自付，区块 gas 是自然上界；逐元素可能触发外部铸币或转账，任一元素失败整笔回滚，不存在部分结算。
 - 铸币窗口未开始（`mintRound == 0`）时，成员结算统一回滚 `RoundNotStarted(1, 0)`；`RoundAfterMintWindow` 只用于「已开始但已过窗」。读面 `currentMintRound()` 与写面同口径。
+
+## 错误卷补记（2026-11，X-09）
+
+- `E-EB-02`：`nonReentrant` 排在 `onlyMemberOwner` 之前，重入路径先回 OZ 的 `ReentrancyGuardReentrantCall`，不会回 `NotMemberOwner`；这是 OZ 的惯例顺序，保留并按此登记，不视为鉴权漏洞。
+- `E-EB-01`：`currentVoteRound` 写作 `RoundNotStarted(1, phase)`，其余轴写 `(1, 0)`；因该分支只在 `phase < 1` 时可达、此时 phase 恒为 `0`，载荷完全等价，规格以 `(1, 0)` 为规范写法。

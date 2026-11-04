@@ -45,3 +45,8 @@
 - 哨兵有两种消费方式：守卫式（调用方先判 `== 0` 并报 `RoundNotStarted(1, 0)`）与透传式（原样返回 0 交给下游比较）。铸币面已统一为守卫式；加入面仍为透传式，但 `round == 0` 在加入入口不可达。
 - 同一 `round` 在各 Executor 的可结算时点相差一个 Phase（LP 三阶段、GroupAction/GroupService 四阶段），链下必须按 Executor 分窗口取数，不能按统一 `mintRound` 聚合。
 - `ActionTarget` 的加入轮同样走 `ActionRoundAxis.joinRound`（经自身 `_joinRound()`），`registerJoinState` 不再内联 `currentPhase() - 1`；与 `ExecutorBase` 的单一实现同一来源。
+
+## 错误卷补记（2026-11，X-09）
+
+- `E-LRA-01`：三条轴函数签名为裸 `uint256`，「未开始」只能靠 `0` 约定表达，类型上不可区分；所有消费方必须显式判 `== 0`，新增调用点漏判会静默得到 0。`LpRoundAxis.joinRound`（实为 `mintRound`，LP 无加入轴）已补注释说明该哨兵。
+- `E-GAA-01`：`joinRound` 的守卫有两条入口（库 `GroupActionManager.currentJoinRound` 与 `ExecutorBase._joinRound`），两处都读同一 `ActionRoundAxis`，载荷一致 `(1, 0)`，不存在分叉。

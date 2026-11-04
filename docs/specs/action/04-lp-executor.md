@@ -22,9 +22,10 @@ Target Data 是无键数组，按位置读取。第 `0` 项是 ActionTarget 保�
 
 | 条件 | 回滚错误 |
 | --- | --- |
-| `targetData` 项数不是 `4` | `TargetDataLengthMismatch(4, targetData.length)` |
+| `targetData` 项数少于 `4` | `InsufficientTargetDataItems(targetData.length, 4)` |
+| `targetData` 项数多于 `4` | `TooManyTargetDataItems(targetData.length, 4)` |
 | 第 `0`～`3` 项不是 32 字节 | `InvalidTargetDataShape(index, length)` |
-| 投票回调 Target Data 超过保留的 executor 一项（无投票业务项） | `TargetDataLengthMismatch(1, targetData.length)` |
+| 投票回调 Target Data 超过保留的 executor 一项（无投票业务项） | `TooManyTargetDataItems(targetData.length, 1)` |
 | `targetData[1]` 为零 | `ZeroJoinTokenAddress()` |
 | `targetData[1]` 不是 `pairFactoryAddress` 登记的交易对 | `InvalidJoinTokenFactory(joinTokenAddress, pairFactoryAddress)` |
 | `minGovRatio > 1e18` | `InvalidMinGovRatio(minGovRatio)` |
@@ -91,9 +92,9 @@ burnReward = theoreticalReward - mintReward
 
 `cap` 不生效时直接取 `theoreticalReward`；若改用截断后的 `effectiveLpRatio` 重算，可能少 1 个单位，把本应零销毁的结算变成 1 单位销毁。
 
-乘数为 0 时关闭上限并返回理论激励；上限启用且总治理票为 0 时该成员理论激励全部销毁。未参与的轮次查询返回零。结算量为零（`mintAmount` 与 `burnAmount` 均为 0，含无有效参与量、行动激励为零）时回滚 `MemberActionRewardUnavailable(tokenAddress, actionId, memberId, round)`，不置位已结算、不发事件，不拉取整笔激励，可待行动激励就绪后重试；有销毁量即允许结算。销毁调用 Token.burn，不修改 Core 的取消预留账本。销毁量带成员归属，因此并入该成员 `MemberRewardMinted.burnAmount`，不单独立事件；纯销毁情形下 `mintAmount = 0` 而 `burnAmount > 0`，`minted` 仍为 true。
+乘数为 0 时关闭上限并返回理论激励；上限启用且总治理票为 0 时该成员理论激励全部销毁。未参与的轮次查询返回零。结算量为零（`mintAmount` 与 `burnAmount` 均为 0）时按成因三分：有效参与总量或行动激励为零（轮级）回滚 `MemberRewardPoolEmpty(tokenAddress, round)`；成员自身有效额为 0 回滚 `MemberHasNoVote(tokenAddress, round, memberId)`；分子非零但取整为零回滚 `MemberRewardRoundedToZero(tokenAddress, round, memberId)`。三者都不置位已结算、不发事件，不拉取整笔激励，可待行动激励就绪后重试；有销毁量即允许结算。销毁调用 Token.burn，不修改 Core 的取消预留账本。销毁量带成员归属，因此并入该成员 `MemberRewardMinted.burnAmount`，不单独立事件；纯销毁情形下 `mintAmount = 0` 而 `burnAmount > 0`，`minted` 仍为 true。
 
-成员结算按 [统一铸造链路](07-minting.md#铸造链路) 进行：整笔预期数量读 `ActionTarget.actionReward`（未铸造时返回理论可铸造数量），大于零且未铸造时经 `ActionTarget.mintActionReward` 取得该整笔激励再内部分配；该轮有效参与总量（`joinedAmountByActionId - deductionByRound`）为零或预期数量为零时，成员结算无产出，回滚 `MemberActionRewardUnavailable(tokenAddress, actionId, memberId, round)`（不拉取整笔激励、不记已结算）。轮次已到铸币轮而有效参与总量仍为零时，该轮没有任何有效分配路径：结算一律回滚 `MemberActionRewardUnavailable(tokenAddress, actionId, memberId, round)`，整笔激励停留在未结算状态，预留不释放（没有销毁入口）。未到铸币轮的轮次结算回滚（见上表），查询返回零值。
+成员结算按 [统一铸造链路](07-minting.md#铸造链路) 进行：整笔预期数量读 `ActionTarget.actionReward`（未铸造时返回理论可铸造数量），大于零且未铸造时经 `ActionTarget.mintActionReward` 取得该整笔激励再内部分配；该轮有效参与总量（`joinedAmountByActionId - deductionByRound`）为零或预期数量为零时，成员结算无产出，回滚 `MemberRewardPoolEmpty(tokenAddress, round)`；成员自身有效额为 0 时回滚 `MemberHasNoVote(tokenAddress, round, memberId)`；分子非零但逐项取整为零时回滚 `MemberRewardRoundedToZero(tokenAddress, round, memberId)`（均不拉取整笔激励、不记已结算）。轮次已到铸币轮而有效参与总量仍为零时，该轮没有任何有效分配路径：结算一律回滚 `MemberRewardPoolEmpty(tokenAddress, round)`，整笔激励停留在未结算状态，预留不释放（没有销毁入口）。未到铸币轮的轮次结算回滚（见上表），查询返回零值。
 
 来源：旧 `LOVE20TKM/extension-lp/src/ExtensionLp.sol`、`LOVE20TKM/extension-lp/src/ExtensionLpFactoryV2.sol` 和 `LOVE20TKM/extension/src/ExtensionBaseRewardTokenJoin.sol`。部分撤回、全额撤回自动退出与取消退出等待是 BSC 新增/变更，不声称旧 V2 已具备。验收见 [Action 验收](08-testing.md)。
 
@@ -102,5 +103,11 @@ burnReward = theoreticalReward - mintReward
 - `joinBlocksByMemberId` / `joinAmountsByMemberId` 是**加入流水**，不是余额分解：部分撤回不缩放、全额撤回不删除，数组之和不再等于当前余额，`deduction()` 的累计扣减可以超过单轮加入量。
 - `deduction()` 的三个返回值不足以自校验（缺 `phaseStartBlock` / `phaseBlocks`），链下不得用它反推加入流水；需要逐笔核对时只能读两个日志数组。
 - `memberReward` 把「行动未创建 / 轮次早于创建 / 超过铸币窗口 / 无有效参与」四种情形压成同一个 `(0, 0, false)`；需要区分原因时只能试算 `mintMemberReward` 的 revert。
-- `totalEffectiveAmount == 0` 与「激励为零」共用 `MemberActionRewardUnavailable`，两者都不可通过重试解决；前者在铸币阶段到达后每次尝试都会重新枚举，成本可重复支付。
+- `totalEffectiveAmount == 0` 与「激励为零」都归 `MemberRewardPoolEmpty`，两者都不可通过重试解决；前者在铸币阶段到达后每次尝试都会重新枚举，成本可重复支付。
 - 成员结算没有销毁面：`MemberRewardMinted.burnAmount` 恒为 `0`，且没有对应状态槽。
+
+## 错误卷补记（2026-11，X-09）
+
+- `E-LP-02`：`govRatioMultiplier` 没有上界校验，安全性依赖 `Math.mulDiv` 不溢出：任意乘数只会放大分母、压低 `govRatio`，不会放大成员份额；链下不得假定乘数已被限制在某个范围。
+- `E-LP-03`：`registerJoinState`（可回 `JoinNotOpen`）排在全部账本写入之后，整笔回滚保证无残留；这是「账本先写、状态后写」的自定义顺序，按此登记。
+- `E-LP-04`：同一「无余额」状态在 `withdraw(amount > 0)` 报 `WithdrawAmountExceeded(amount, 0)`、在 `exit` 报 `NotJoined(...)`；两个入口语义不同（显式撤回 / 整体退出），保留双错误。

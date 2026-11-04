@@ -30,7 +30,7 @@
 | GAJ-01 | `03-participation.md` 额度接口：`groupId`/`memberId` 是记录定位键，权限主体只有 `providerId` |
 | GAJ-02 | `03-participation.md` 错误落点：`join` 在行动未创建时表现为 `GroupNotActive` |
 | GAJ-03 | `05-group-action-executor.md` 实现约束：`exit`/`withdraw` 清理被退款切开，但 `nonReentrant` 使顺序不承重，只登记 |
-| GAV-01 | `05-group-action-executor.md`：登记当前顺序为「资格 → 参数 → 存在性」，与 §5.2.2 的偏离交错误卷 `E-GAV-02` 重排；本卷不改 `_checkApplicationSubmission` |
+| GAV-01 | `05-group-action-executor.md`：已由错误卷 `E-GAV-02` 按默认序重排为「轮次 → 参数 → 存在性 → 资格」，本卷保留登记 |
 | GAV-02 | `05-group-action-executor.md` 库表：`onProposalVoted` 库内不判调用者，调用方必须判 |
 | GAV-03 | `05-group-action-executor.md`：同一库并存 `voteRound` / `verifyRound` 两个轮次空间 |
 | GAV-04 | `05-group-action-executor.md`：`verifierApplications` 一页最坏 `limit × 1024` 字节 |

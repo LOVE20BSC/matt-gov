@@ -275,7 +275,7 @@
 | Info | GAJ-01 | `withdrawProviderQuota` 只校验群存在，不要求调用者拥有该群 |
 | Info | GAJ-02 | 未创建行动的 `join` 报 `GroupNotActive` |
 | Info | GAJ-03 | `exit`/`withdraw` 的状态清理被退款切成两段，CEI 不完全成立（有锁） |
-| Info | GAV-01 | `submitVerifierApplication` 的错误优先级与 §5.2.2 相反（本卷只同步规格，重排交错误卷 `E-GAV-02`） |
+| Info | GAV-01 | `submitVerifierApplication` 的错误优先级与 §5.2.2 相反（已由错误卷 `E-GAV-02` 按默认序重排） |
 | Info | GAV-02 | `onProposalVoted` 库内无 modifier，鉴权完全外置 |
 | Info | GAV-03 | 同一个库里并存两个轮次口径（`currentPhase` / `currentVerifyRound`） |
 | Info | GAV-04 | `verifierApplications` 分页回含变长字段记录体（已登记例外） |
@@ -423,7 +423,7 @@ tasks.md                       本卷裁决与 35 条 B 项的逐条落点（执
 | `GAJ-01` | 补规格：定位键不是权限主体 | `03-participation.md` |
 | `GAJ-02` | 补错误契约：未创建行动回 `GroupNotActive` | `03-participation.md` |
 | `GAJ-03` | 登记：CEI 被退款切开但有锁 | `05-group-action-executor.md` |
-| `GAV-01` | 只同步规格；重排交错误卷 `E-GAV-02` | `05-group-action-executor.md` |
+| `GAV-01` | 已由错误卷 `E-GAV-02` 按默认序重排（轮次 → 参数 → 存在性 → 资格） | `05-group-action-executor.md` |
 | `GAV-02` | 登记：库内回调不判调用者 | `05-group-action-executor.md` |
 | `GAV-03` | 登记：两个轮次空间并存 | `05-group-action-executor.md` |
 | `GAV-04` | 登记：分页最坏 `limit × 1024` 字节 | `05-group-action-executor.md` |
