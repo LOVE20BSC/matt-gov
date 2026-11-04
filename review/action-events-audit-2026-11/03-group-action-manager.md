@@ -186,14 +186,18 @@ event GroupConfigChanged(
 
 ## 六、发现
 
-### GAM-EV-1（P3）三个质押聚合量只在改变点携带增量，没有后置总量锚点
+### GAM-EV-1（P3，已裁决：不新增事件字段）三个质押聚合量只在改变点携带增量，没有后置总量锚点
+
+> **处置（2026-11-04，已裁决）**：保持两个事件签名不变，在 `05-group-action-executor.md` 与 `event-standards.md` §7.2 书面登记「本族三个聚合量按增量折叠、不设后置锚点」，理由是激活质押属低频两点族（每群一次写入 + 低频停用/重启），与 core `Stake` 的高频每轮聚合不同。落点：`05-group-action-executor.md`「群配置事件」段、`event-standards.md` §7.2。
 
 - 证据：`GroupActivated.stakeAmount`（`:498`）与 `GroupDeactivated.stakeAmount`（`:217`）只给本次增减额；`stakedByActionId`（`:159`/`:197`）、`totalStaked`（`:160`/`:198`）、`stakedByMemberId`（`:161`/`:199`）三个聚合被这两个事件同时改变，但事件里没有它们的后置值。
 - 问题：§3.1 明确「一个聚合量被多个事件改变时，**每个改变点都应当携带后置总量**；只在一部分改变点携带属于族内漂移」。本族是「两个改变点、两处都不携带」，与 core `Stake` 的做法（`totalValidGovVotes` / `totalLiquidityShares` 在每个改变点都带后置值，§8.1 第 8 条逐项枚举）不一致。
 - 影响：`staked(token, actionId)`、`totalStaked(token)`、`stakedByMemberId(token, memberId)` 三个 view 只能靠消费方自己维护累加器；一旦漏掉一条事件（或把 `GroupActivated` 的重复激活当成首次激活），三个 view 全部漂移且链上无任何交叉校验点。`GroupServiceExecutor` 直接依赖 `totalStaked` 作为 `joinedAmountByActionId` 的返回值（`GroupServiceExecutor:190-192`），漂移会传导到服务层展示。
 - 建议：二选一——在 `GroupActivated` / `GroupDeactivated` 各加 `stakedTotal`（行动级）与 `stakedTotalByToken`（社区级）两个后置值；或在 `05-group-action-executor.md` 的「群配置事件」段落书面登记「本族的聚合量按增量折叠，不设后置锚点」，并说明与 core `Stake` 的差异理由（激活质押是低频、单点写入，`activationStakeAmount` 只写一次，因此增量折叠不会因配置变更而失配）。
 
-### GAM-EV-2（P3）`deactivatedRound` 的「归零」只能由 §7.2 的重置规则推导，事件里没有该字段
+### GAM-EV-2（P3，已裁决：不新增事件字段）`deactivatedRound` 的「归零」只能由 §7.2 的重置规则推导，事件里没有该字段
+
+> **处置（2026-11-04，已裁决）**：保持 `GroupActivated` 字段不变，在 `event-standards.md` §7.2 补折叠规则：「`deactivatedRound` 取最后一条 `GroupDeactivated.round`；其后出现 `GroupActivated` 即按清零语义取 0」。落点：`event-standards.md` §7.2、`05-group-action-executor.md`「群配置事件」段。
 
 - 证据：`activateGroup` 在 `:154` 把 `deactivatedRound` 置 0，但 `GroupActivated` 的 payload 只有 `round`（= `activatedRound`）。同一加入轮内「停用 → 重新激活」是可达的：`deactivateGroup` 只拦 `round == activatedRound`（`:187-189`），重新激活后 `activatedRound` 才被改成该轮，所以 `GroupActivated(2) → GroupDeactivated(3) → GroupActivated(3)` 是一条合法日志序列。
 - 问题：`groupState()` 返回 `(config, active, activatedRound, deactivatedRound)`，在最后一条 `GroupActivated(3)` 之后 `deactivatedRound == 0`，但事件流里 `GroupDeactivated(round=3)` 仍然存在。消费方若按「`deactivatedRound` = 最后一条 `GroupDeactivated.round`」折叠，会得到 3 而非 0。

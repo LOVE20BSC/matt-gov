@@ -195,7 +195,9 @@ exit          : _clearJoinState → safeTransfer → LpWithdrawn → clearJoinSt
 - 影响：这是 LP 独有的形态（GroupAction 没有扣减，Service 没有仓位），因此不能复用其他 Executor 的折叠逻辑。`04-lp-executor.md` 的「部分撤回与退出」段落给出了公式，但事件契约里没有任何字段锚定结果；`test/GroupActionEvents.t.sol` 那套「累计值 = fold」的断言在 LP 侧只有余额维度（`LpExecutorEvents.t.sol` 没有 `deduction` 的 fold 用例）。
 - 建议：补一条用例——「加入 100、扣减 30、撤回 40」后断言 `deduction() == 30 − floor(30×40/100) == 18` 且 `joinedAmountByMemberId == 60`，并在事件侧断言 `LpWithdrawn.amount == 40` 只表达余额变化、不表达扣减变化；若要在事件里锚定，可考虑给 `LpWithdrawn` 加 `deductionTotal`（后置扣减），代价是每次撤回多 32 字节。
 
-### LPE-EV-3（P3）共享事件的 `round` 在 LP 与 GroupAction 上对应不同的 Phase 偏移
+### LPE-EV-3（P3，已裁决：不改 LP 窗口）共享事件的 `round` 在 LP 与 GroupAction 上对应不同的 Phase 偏移
+
+> **处置（2026-11-04，已裁决）**：保持 `LpRoundAxis.mintRound = phase − 2` 不变，在 `event-standards.md` §4.2 与 `04-lp-executor.md` 写明 `MemberRewardMinted.round` 是被结算业务轮、可结算窗口按 emitter 取偏移（LP `phase−2`，Group/Service `phase−3`）。不改窗口的理由：字段语义三发射者一致，改窗口会改变 LP 的经济时序，收益为零。
 
 - 证据：`LpRoundAxis.mintRound = phase − 2`（`LpRoundAxis.sol:12-15`），`GroupActionRoundAxis.mintRound = phase − 3`（`GroupActionRoundAxis.sol:17-20`）；两个 Executor 都发 `MemberRewardMinted`，`round` 都是「被结算轮」。
 - 问题：字段语义一致（业务轮），但「哪一轮现在可结算」的判定不同。§4.2 已登记 `MemberRewardMinted` 是共享类，并说明「消费方必须先按发射者确定域」；本条是同一思路在**时间轴**上的延伸，规范里没有写。

@@ -100,6 +100,8 @@ amount[i] = mulDiv(slice(a, m), ratios[i], 1e18)
 
 逐笔付款由 `RecipientPaid(serviceTokenAddress, round, serviceActionId, groupId, sourceTokenAddress, sourceActionId, recipientId, amount)` 留痕（每个收款人一条）；事件流连同 `MemberRewardMinted` 与服务代币的 `TokenBurned` 可完整还原结算的全部资产变化。
 
+结算内的事件顺序固定为：写成员账本 → `TokenBurned`（若有销毁）→ 逐笔 `RecipientPaid` → 两笔 `safeTransfer`（owner 余量与验证者份额）→ `MemberRewardMinted` → `ServiceRewardsDistributed`。两条汇总事件都排在明细之后：`ServiceRewardsDistributed` 的 `ownerDistributed` / `ownerRemaining` 依赖分配循环结果，属[事件规范 §3.4 E5](../../event-standards.md#34-批量与顺序)的依赖序逆序；`MemberRewardMinted` 声明的是「已结算」，只有在 burn 与转账完成后才成立，属 §3.4 E6 的结算聚合例外，与 E5 构成同一结算尾部的两条相邻汇总。测试必须断言 `MemberRewardMinted` 晚于最后一条 `RecipientPaid`、且早于 `ServiceRewardsDistributed`。
+
 ## 实现约束
 
 - `DistributionOverflow` 在配置比例总和超过 `1e18` 时触发；正好 `1e18` 合法。

@@ -73,12 +73,14 @@
 3. 每个事件必须在自身状态写入完成后 emit，payload 必须反映 emit 时点已提交的状态；携带累计值时必须等于按日志顺序折叠的结果。
 4. 发射顺序必须确定，并由测试断言；批量入口有入参顺序时按入参顺序。
 5. 若事件 A 的 payload 依赖事实 B 造成的状态（累计值、余额、费率、份额、注册表状态等），B 必须先于 A。这是**依赖序**，不是父子序。
-6. 同一状态所有者、同一业务对象的生命周期事件，SHOULD 父事实先于子事实；跨合约、跨状态所有者的事实按依赖序，不按父子序。`Mint`、`Launch`、`ActionTarget`、`GroupActionJoin` 的跨所有者序列都属这一类。
+6. 同一状态所有者、同一业务对象的生命周期事件，默认父事实先于子事实；跨合约、跨状态所有者的事实按依赖序，不按父子序。结算类的两个汇总事件是例外，按 E5 / E6 在明细之后收尾。`Mint`、`Launch`、`ActionTarget`、`GroupActionJoin` 的跨所有者序列都属这一类。
 7. 允许的逆序（封闭清单；仅放宽事件顺序，不放宽状态写入、原子性和 payload 正确性）：
    - **E1** 创建事件的主对象地址由同一 tx 的 `CREATE`/`CREATE2` 产生：主对象构造/初始事件 → 创建事件；创建事件在登记完成后立即 emit。
    - **E2** 事件字段只能由外部调用返回或调用后状态确定：外部调用 → 其子事件 → 依赖事件；不得预测或重复计算。
    - **E3** 标准回调（ERC-721 / ERC-1155 / ERC-777）：状态写入与回调不可拆分时，业务事件可在回调后 emit；重入产生的事件可交错。若要严格顺序，必须另设重入锁并单独论证。
    - **E4** 无金额终态标记 `*Exited`：全部金额、退款、注册表清理事实之后 emit；带金额的 `*Withdrawn` 不是终态标记，按依赖序发射。
+   - **E5** 服务结算的聚合字段由逐笔分配循环的结果确定：逐笔 `RecipientPaid` → 聚合 `ServiceRewardsDistributed`（`ownerDistributed` / `ownerRemaining` 依赖循环返回值）。
+   - **E6** 结算类聚合事件排在明细之后：`MemberRewardMinted` 在 burn 与两笔转账完成后、`ServiceRewardsDistributed` 之前 emit，与 E5 构成同一结算尾部的两条相邻汇总。理由：(1) 原子交易内不存在状态不一致——整笔回滚，日志同生同灭；(2) 语义完整性——聚合事件声明的是「已结算」，只有在 burn 与转账完成后才成立，提前发射等于宣布一个当时不成立的事实；(3) 可用性——明细在前、汇总结尾，消费方可单遍累加明细并与汇总对账，无需跨交易缓冲，且 `ServiceRewardsDistributed` 本身依赖二次分配结果必须收尾，两个汇总相邻成段更整齐。
 8. 每个事件的顺序约定（含上述逆序）必须有测试；累计值必须断言 `cumulative == fold`。
 9. 数组型增量字段（如 `GroupActionJoined.verificationValues`）为空数组表示**本次事实没有新值**，不表示清空；折叠时不得用空数组覆盖既有值。只有语义本身是全量快照的字段才允许覆盖折叠。
 
@@ -130,6 +132,10 @@
 
 `MemberRewardMinted.burnAmount` 与 `ServiceRewardsDistributed.ownerBurned` 在 `GroupServiceExecutor` 场景下是同一数字：共享类要保持三发射者同 schema，无法删字段，属**有意冗余**；折叠时以 `MemberRewardMinted` 为准，`ownerBurned` 只用于服务结算的自洽核对。
 
+`MemberRewardMinted.round` 是**被结算的业务轮**，不是发射时点轮：`LpExecutor` 在 `currentPhase() − 2` 可结算，`GroupActionExecutor` / `GroupServiceExecutor` 在 `currentPhase() − 3` 可结算。字段语义（同一业务轮）三发射者一致，可结算窗口属于各模块的铸币规则；消费方必须按 emitter 选偏移，不得把任一偏移当通用规则。
+
+`GroupActionExecutor` 没有销毁路径，该发射者的 `burnAmount` 恒为 0；共享 schema 不因此改变，折叠时按 0 处理。
+
 ### 4.3 actor
 
 - actor 是业务语义上的发起人；接口有显式账户参数时取该参数。
@@ -150,6 +156,8 @@
 没有对应事实的步骤为空步，但相对顺序不变：`GroupServiceExecutor` 无自身仓位也无退款，只有第 3、4 步；`LpExecutor` 四步齐全。
 
 `*Exited` 是**终态标记，最后发、不带金额**。带金额的 `*Withdrawn` 是普通事实，位置由第 2 步固定，不是终态标记；`GroupDeactivated` 带 `stakeAmount` 且可逆，按普通状态迁移处理，不套 `*Exited` 规则。
+
+`addProviderQuota` / `removeProviderQuota` 不属于本条四步：`ProviderQuotaAdded` / `ProviderQuotaRemoved` 在配额状态写入后立即 emit，转账/退款紧随其后；同笔交易内任一失败整体回滚，事件不会与资金分离。
 
 兜底清理函数 `forceClearJoinState`（原 `forceExit`）只在 executor 故障时使用，**只清 ActionTarget 的注册表**：
 
@@ -260,6 +268,7 @@ ERC-20 / ERC-721 标准事件保持不变，不进入本规范正文。`AddHolde
 - `string` / `bytes` / 动态数组绝不 indexed；禁止 anonymous event。
 - actor 与主对象 id 应当 indexed；同组事件必须在迁移中对齐（`VerifierLocked`、`StakesMerged`）。
 - `gc.management` 族的 actor 在只剩一个槽时按「对象标识形态」择一：对象标识是 **id** 时第三个槽给 actor **地址**（`AdminChanged`、`MemberStatusChanged`、`SenderBanChanged`）；对象标识是**地址**时第三个槽给 actor **id**（`ScopeSourceChanged`、`BanSourceChanged`、`BeforePostPluginChanged`、`AfterPostPluginChanged`）；对象只有根键时 id 与地址都 indexed（`PostingAllowedChanged`、`GroupChatActivated`；后者的 `ownerId` 是 actor id 且恒等于 `groupId`）。这样每个事件至少提供一个对象键和一个 actor 的可过滤形式——钱包按地址订阅、协议按 id 对账各取所需。
+- **已登记的三槽取舍**：`ApplicationVoteRecorded` 的三个槽被 `tokenAddress` / `actionId` / `applicationId` 占满，`voterId` 与 `verifierId` 降为 payload；它不与同族前 6 条「actor indexed」对齐，是槽位优先级的结果，不是漂移。`RecipientsChanged` / `RecipientPaid` 的三个槽被 `sourceTokenAddress` / `sourceActionId` / `groupId` 占满，`recipientIds`（动态数组，禁止 indexed）与 `recipientId` 不能作为 topic；按收款人检索必须从 payload 建链下索引，不改为可过滤而牺牲对象键。
 
 ### 6.4 角色词表
 
@@ -316,6 +325,7 @@ v1 基线：
 | `GroupActivated.description` | 现有 1024 字节 |
 | `RecipientsChanged.remarks` | 每条 ≤256 字节，条数 ≤`DEFAULT_MAX_RECIPIENTS` |
 | `RecipientsChanged.recipientIds` / `ratios` | ≤`DEFAULT_MAX_RECIPIENTS`（10 项） |
+| `RecipientsChanged.prevRecipientIds` / `prevRatios` / `prevRemarks` | 与当次 `recipientIds` 同界，≤`DEFAULT_MAX_RECIPIENTS` |
 | `GroupActionCreated.verificationKeys` / `verificationDescriptions` | ≤16 项，每项 ≤1024 字节 |
 | `GroupActionJoined.verificationValues` | ≤16 项，每项 ≤1024 字节 |
 | `OriginScoresSubmitted.scores` | ≤`MAX_VERIFICATION_BATCH`（100） |
@@ -336,6 +346,8 @@ v1 基线：
 **唯一例外（LP 账本）**：`FeeReclassified.sqrtKOfLp` 可携带重分类后的基线。其推导来源是 Pair `Sync` + `totalLp`；同一交易内后续 `_updateSqrtKBaseline` 会再次刷新基线，事件值是重分类时点快照，不能作为最终值折叠；该字段不替代 `feeLpAdded`/`withdrawableLpRemoved`。`pairTotalSupply` 是 Pair ERC-20 `totalSupply()` 的外部标准值，不是派生缓存。其他派生缓存不得援引此例外。
 
 当前派生缓存清单与推导来源见 `.scratch/events-spec/01-gap-table.md` §7，包括 Launch credit、Stake LP 基准、pair 地址、Phase 观测、holder 集合、分红除数、`govRatioAtMint`、验证排名、provider 索引、join block/amount、mint nonce、ban operator 状态、admin 有效性与消息索引。
+
+以下字段**不承诺**由事件流重建，已登记为窄名单，不得视为遗漏：`JoinStateRegistered` 的持有人集合顺序（只保证集合相等）、`OriginScoresSubmitted.scores[]` 与 `memberId` 的逐项绑定（只保证同批同轮）、`ProviderQuotaRemoved` 的已用额度没有后置锚点（由 `ProviderQuotaAdded` 增量折叠）、`ServiceRewardsDistributed.ownerRemaining` 不能按来源行动拆分（只在服务级聚合）、`LpWithdrawn` 的部分提取扣减项、`LpExecutor` 时间权重的逐项扣减、`GroupActionVerify` 的 `hasPreviousApplication` 身份对（由申请事件全集推导）。
 
 ### 6.10 注释
 
@@ -392,7 +404,11 @@ v1 基线：
 
 `LpExecutor` 的清仓迁移必须统一：只要 `_clearJoinState` 执行（全额 `withdraw` 或 `exit`），必须同时产出 `LpWithdrawn`（金额事实）与 `LpExited`（生命周期事实），顺序按 §4.4。
 
-`GroupDeactivated` 是**可逆**的 active→inactive 状态迁移：`activateGroup` 允许对已停用的群重新激活并把 `deactivatedRound` 重置为 0。它不是终态，不适用 E4 的 `*Exited` 规则；索引器按最后一次 `GroupActivated` / `GroupDeactivated` 折叠 `active`，不得把停用当永久关闭。
+`GroupDeactivated` 是**可逆**的 active→inactive 状态迁移：`activateGroup` 允许对已停用的群重新激活并把 `deactivatedRound` 重置为 0。它不是终态，不适用 E4 的 `*Exited` 规则；索引器按最后一次 `GroupActivated` / `GroupDeactivated` 折叠 `active`，不得把停用当永久关闭。`deactivatedRound` 的折叠规则：取最后一条 `GroupDeactivated.round`；若其后还有 `GroupActivated`，按该事件隐含的清零语义取 0。
+
+`GroupActivated` / `GroupDeactivated` 只携带本次增减的 `stakeAmount`。因果链上的三个聚合量（`activationStakeAmountByActionId`、`totalActivationStakeAmount`、`activationStakeAmountByMemberId`）按增量折叠，不设后置锚点：这是「每群一次写入 + 低频停用/重启」的两点族，不是每轮高频聚合，增量不会因配置变更失配。`ServiceRewardsDistributed.joinedAmountByActionId` 沿用同一折叠规则。
+
+`GroupActionCreated` / `ServiceActionCreated` / `LpActionCreated` 的 `round` 取上游 `ActionTarget.ActionRegistered` 的创建轮，不在创建事件里另设锚点。
 
 ### 7.3 Group-chat
 

@@ -2,7 +2,7 @@
 
 > 对象 `action/src/GroupServiceExecutor.sol`（800 行，`contract`，含 `GroupRecipients` 库的宿主）
 > 声明 `action/src/interfaces/IGroupServiceExecutor.sol`（`IGroupServiceExecutorEvents`，L7-49）、`action/src/interfaces/IActionExecutor.sol`（`MemberRewardMinted`，L6-15）
-> 基线 `action@e849e36`；审查日期 2026-11-03
+> 基线 `action@a231afe`（`src/` 自 `e849e36` 无实质变化；本文件行号按该基线复核，最终代码与基线逐字一致）
 > 判据 `docs/event-standards.md` v1.1、`docs/specs/action/06-service-executor.md`
 
 ## 一、结论
@@ -12,10 +12,11 @@
 | 协议事件 | 5（含共享类 `MemberRewardMinted`）+ 经库委托的 `RecipientPaid` / `RecipientsChanged` |
 | 本合约地址的发射点 | 7（自身 5 + `GroupRecipients` 委托 2） |
 | 状态写入面（受事件覆盖） | 10 |
-| P0 / P1 / P2 / P3 | 0 / 0 / 1 / 2 |
-| 放行 | 有 1 项 P2：结算的「聚合事件」全部晚于其明细事件，且该顺序未被 §3.4.6 的例外清单覆盖 |
+| P0 / P1 / P2 / P3 | 0 / 0 / 0 / 2 |
+| 登记例外 | 2：`MemberRewardMinted` 排在明细之后（§3.4 E6）、`ServiceRewardsDistributed` 依赖分配结果收尾（§3.4 E5） |
+| 放行 | 已放行：`GSE-EV-1` 改判为「不是缺陷」，原顺序 + §3.4 E6 书面登记 |
 
-服务层是 action 仓里唯一同时产出「角色细分」与「二次分配明细」两层事件的模块：`ServiceRewardsDistributed` 给 owner/验证者两个角色的金额拆分，`RecipientPaid` 给二次分配的逐笔付款。两者之间夹着共享类 `MemberRewardMinted`（公共口径的聚合值）。三层事件的相对顺序是本报告的主要问题（`GSE-EV-1`）。
+服务层是 action 仓里唯一同时产出「角色细分」与「二次分配明细」两层事件的模块：`ServiceRewardsDistributed` 给 owner/验证者两个角色的金额拆分，`RecipientPaid` 给二次分配的逐笔付款。两者之间夹着共享类 `MemberRewardMinted`（公共口径的聚合值）。三层事件的相对顺序是本报告的主要议题（`GSE-EV-1`，已裁决登记为例外，不改代码）。
 
 ## 二、事件与发射点总览
 
@@ -24,8 +25,8 @@
 | `ServiceActionCreated` | `tokenAddress`, `actionId` | `onProposalCreated:430` | 四处配置 `:425-428` | 无 |
 | `ServiceJoined` | `serviceTokenAddress`, `serviceActionId`, `memberId` | `join:131` | `ActionTarget.registerJoinState:129`（本合约无自身状态） | 无 |
 | `ServiceExited` | 同上 | `exit:384` | `ActionTarget.clearJoinState:382` | 无 |
-| `MemberRewardMinted` | `tokenAddress`, `actionId`, `memberId` | `_mintMemberReward:779` | 三处结算记录 `:744-746`、burn `:748-751`、`RecipientPaid` ×N（`:756`）、两笔转账 `:772-777` | `ServiceRewardsDistributed:787` |
-| `ServiceRewardsDistributed` | `serviceTokenAddress`, `serviceActionId`, `actionTokenAddress` | `_mintMemberReward:787` | 同上 | 无 |
+| `MemberRewardMinted` | `tokenAddress`, `actionId`, `memberId` | `_mintMemberReward:779` | 三处结算记录 `:744-746` | `ServiceRewardsDistributed:787` |
+| `ServiceRewardsDistributed` | `serviceTokenAddress`, `serviceActionId`, `actionTokenAddress` | `_mintMemberReward:787` | 分配结果 `:769-770`、两笔转账 `:773/:776` | 无 |
 | `RecipientPaid`（库委托） | `serviceTokenAddress`, `serviceActionId`, `groupId` | `GroupRecipients:355` | `safeTransfer:241` | 循环下一个收款人 |
 | `RecipientsChanged`（库委托） | `sourceTokenAddress`, `sourceActionId`, `groupId` | `GroupRecipients:106` | 三处历史 + 枚举集合 `:96-104` | 无 |
 
@@ -87,7 +88,7 @@ exit :  clearJoinState  （→ JoinStateCleared(false)） →  ServiceExited
 | `mintAmount` | `settlement.verifierReward + settlement.ownerReward` `:718`，必要时经 `:728` 重算 | 聚合值：两个角色的可铸造之和（§4.2 明确本发射者上是聚合口径） |
 | `burnAmount` | `settlement.ownerBurned` `:719` / `:729` | 与同笔 `ServiceRewardsDistributed.ownerBurned` **恒等**（§4.2 登记的有意冗余） |
 
-前置写入 `:744-746`（`memberMinted`、`verifierRewardByMemberId`、`ownerBurnedByMemberId`）与 `:769-770`（`ownerDistributedByMemberId`、`ownerRemainingByMemberId`）全部早于 emit；burn（`:750`）与两笔 `safeTransfer`（`:773`、`:776`）也早于 emit。因此本事件是「状态与资金都已落定」之后才发的——这一点与 `GSE-EV-1` 有关：**它其实不需要等到二次分配结束**。
+前置写入 `:744-746` 全部早于 emit；burn（`:748-751`）、逐笔付款（`:756-766`）与两笔 `safeTransfer`（`:773`、`:776`）都在 `MemberRewardMinted` 之前。`MemberRewardMinted` 的 payload 虽在 `:744-746` 已定稿，但「已结算」语义要等 burn 与转账完成才成立，因此按其声明的事实收尾，与 `ServiceRewardsDistributed` 相邻（§3.4 E6；后者依赖分配循环返回值，属 §3.4 E5）。
 
 ### 3.4 `ServiceRewardsDistributed`
 
@@ -148,7 +149,7 @@ event ServiceRewardsDistributed(
 | 共享事件类（§4.2） | 通过 | `MemberRewardMinted` 三发射者同 schema；`burnAmount ≡ ownerBurned` 有意冗余已登记 |
 | 状态写入后 emit（§3.4.3） | 通过 | 5 个自身发射点全部在写入之后 |
 | 依赖序（§3.4.5） | 通过 | `ServiceRewardsDistributed.ownerDistributed` 依赖 `RecipientPaid` 的合计，故后者在先 |
-| 父子序（§3.4.6） | **不通过** | `MemberRewardMinted` 与 `ServiceRewardsDistributed` 均晚于其明细 `RecipientPaid`（`GSE-EV-1`） |
+| 父子序（§3.4.6） | 通过 | 默认父先于子；结算尾部的两条汇总按例外收尾：`MemberRewardMinted` 属 §3.4 E6，`ServiceRewardsDistributed` 属 §3.4 E5 |
 | 退出四步序（§4.4） | 通过 | 服务无仓位无退款，只有第 3、4 步：`JoinStateCleared` → `ServiceExited` |
 | 失败不留日志（§3.5） | 通过 | 零额回滚 `MemberActionRewardUnavailable:720-722`、`:730-732` 均早于任何 emit |
 | 动态字段上限（§6.8） | 通过 | 5 条事件无变长字段（`RecipientPaid`/`RecipientsChanged` 见 `GroupRecipients` 报告） |
@@ -157,14 +158,17 @@ event ServiceRewardsDistributed(
 
 ## 六、发现
 
-### GSE-EV-1（P2）结算的两条聚合事件都晚于其明细 `RecipientPaid`，且该顺序不在 §3.4.6 的例外清单内
+### GSE-EV-1（已裁决：登记例外，不阻塞放行）结算的两条聚合事件都晚于其明细 `RecipientPaid`
 
-- 证据：`_mintMemberReward` 的顺序是「写结算记录 `:744-746` → burn `:748-751` → `GroupRecipients.distribute`（内部逐笔 `RecipientPaid`，`:753-767`）→ 算余量并写 `:768-770` → 两笔转账 `:772-777` → `MemberRewardMinted:779` → `ServiceRewardsDistributed:787`」。`GroupServiceEvents.t.sol:16` 的注释直接写着「Two recipient transfers, then the paired settlement events」，说明这是已知形态。
-- 问题：§3.4.6 要求「同一状态所有者、同一业务对象的生命周期事件，SHOULD 父事实先于子事实」，且 §1 规定 SHOULD 违反「除非有书面理由并在评审中记录，否则必须遵守」。允许的逆序只有 E1–E4，四条都不覆盖「聚合事件晚于其明细」。其中：
-  - `ServiceRewardsDistributed.ownerDistributed` **确实依赖** `RecipientPaid` 的合计，属 §3.4.5 的依赖序，无法前移——这条应该被登记为例外而不是判为缺陷；
-  - `MemberRewardMinted` 的 `mintAmount = verifierReward + ownerReward`、`burnAmount = ownerBurned` 在 `:733` 就已定稿，**完全不依赖二次分配结果**，可以前移到 `:746` 之后、burn 之前，因此它晚于明细属于无理由的倒置。
-- 影响：一笔服务结算的日志形状是 `RecipientPaid × N → MemberRewardMinted → ServiceRewardsDistributed`。把 `MemberRewardMinted` 当作「成员结算完成」信号的索引器，会先收到该结算产生的付款明细、后收到结算本身，必须做乱序缓冲；而 `MemberRewardMinted` 是三个 Executor 共用的口径，只有 Service 这一发射者是倒序的——跨行动类型统一的折叠逻辑会在这里失效。
-- 建议：把 `:779` 的 `MemberRewardMinted` 前移到 `:746` 之后（payload 已定稿、状态已写入），使顺序变为 `MemberRewardMinted → RecipientPaid × N → ServiceRewardsDistributed`；同时在 `06-service-executor.md` 的「成员级结清」段落书面登记 `ServiceRewardsDistributed` 晚于 `RecipientPaid` 是依赖序例外（E2 的同类形态），并补一条断言 `MemberRewardMinted` 下标小于第一条 `RecipientPaid` 的用例。
+> **处置（2026-11-04，用户裁决：不是缺陷）**：`MemberRewardMinted` 保留在原位置（burn 与两笔转账之后、`ServiceRewardsDistributed` 之前），`ServiceRewardsDistributed` 保留在最后。两者作为同一结算尾部的两条相邻汇总，分别登记为 §3.4 E6（结算聚合在明细之后）与 §3.4 E5（依赖分配结果收尾）。落点：`event-standards.md` §3.4 E6、`06-service-executor.md`「成员级结清」顺序段、`GroupServiceEvents.t.sol:36` 的反向断言（晚于最后一条 `RecipientPaid`、早于 `ServiceRewardsDistributed`）。
+>
+> 过程记录：曾先按「父先于子」把 `MemberRewardMinted` 前移到 `:744-746` 之后，随后按用户裁决回退。该来回未保留在 action 的提交历史中（最终提交只含最终态），`src/GroupServiceExecutor.sol` 与基线 `a231afe` 逐字一致。
+
+- 证据：`_mintMemberReward` 的顺序是「写结算记录 `:744-746` → burn `:748-751` → `GroupRecipients.distribute`（内部逐笔 `RecipientPaid`，`:756-766`）→ 算余量并写 `:768-770` → 两笔转账 `:773`、`:776` → `MemberRewardMinted:779` → `ServiceRewardsDistributed:787`」。
+- 问题：§3.4.6（评审中改称父子序）默认「同一状态所有者、同一业务对象的生命周期事件，父事实先于子事实」，且 §1 规定 SHOULD 违反「除非有书面理由并在评审中记录，否则必须遵守」。原判定的分歧点在于：`MemberRewardMinted` 的 `mintAmount = verifierReward + ownerReward`、`burnAmount = ownerBurned` 在 `:718-719`（需重算时 `:728-729`）已定稿，**不依赖二次分配结果**，因此按纯依赖序视角可以前移；但它的语义是「本次结算已完成」，在 burn 与转账落地前并不成立。
+- 影响（保留原分析）：一笔服务结算的日志形状是 `RecipientPaid × N → MemberRewardMinted → ServiceRewardsDistributed`。把 `MemberRewardMinted` 当作「成员结算完成」信号的索引器会先收到付款明细、后收到结算本身；而 `MemberRewardMinted` 是三个 Executor 共用的口径，只有 Service 这一发射者把汇总放在明细之后——跨行动类型统一的折叠逻辑需要按 emitter 区分。
+- 裁决理由（登记为 E6）：(1) 原子交易内不存在状态不一致，整笔回滚、日志同生同灭；(2) 语义完整性——聚合事件声明「已结算」，只有 burn 与转账完成后才成立，提前发射等于宣布一个当时不成立的事实；(3) 可用性——明细在前、汇总结尾，消费方可单遍累加明细并与汇总对账，无需跨交易缓冲，且 `ServiceRewardsDistributed` 本身必须收尾，两个汇总相邻成段更整齐。
+- 遗留代价：跨 emitter 的折叠实现需按 emitter 选顺序（Service 先明细后汇总，LP/Group 先汇总）；该差异已在 `event-standards.md` §3.4 E6 明示，消费方不得假设单一全局顺序。
 
 ### GSE-EV-2（P3）`ownerRemaining` 是聚合余量，事件流无法按源行动拆分
 
@@ -195,9 +199,9 @@ event ServiceRewardsDistributed(
 | `ServiceJoined` | `test/GroupServiceJoin.t.sol`（整文件） | 资格、重复加入、跨轮加入 |
 | `ServiceExited` | `GroupServiceEvents.t.sol:165` | 4 字段；位置晚于 `JoinStateCleared` |
 | `MemberRewardMinted` | `:142` | 6 字段；`mintAmount` 与返回值一致 |
-| `MemberRewardMinted` | `:34` | 下标早于 `ServiceRewardsDistributed`（未断言早于 `RecipientPaid`） |
+| `MemberRewardMinted` | `:36-40` | emitter 为 Executor；下标晚于最后一条 `RecipientPaid`，且早于 `ServiceRewardsDistributed` |
 | `ServiceRewardsDistributed` | `:9` | 10 字段；`ownerReward` / `ownerBurned` / `ownerDistributed` / `ownerRemaining` 四个数全量 |
 | `RecipientPaid` | `:9` / `:101-120` | 逐收款人一条，字段全量区分 |
 | 全部 | `:61-68` | `Σ 转账 + 销毁 == serviceReward`，executor 余额归零 |
 
-缺两条：(a) `MemberRewardMinted` 与 `RecipientPaid` 的先后（`GSE-EV-1`，当前只断言了 `MemberRewardMinted < ServiceRewardsDistributed`）；(b) `ownerRemaining` 在有配置/无配置源行动混合时的取值（`GSE-EV-2`）。
+缺一条：`ownerRemaining` 在有配置/无配置源行动混合时的取值（`GSE-EV-2`）。(a) 顺序类断言已由 `GroupServiceEvents.t.sol:36-40` 覆盖（反向断言 + emitter）。
