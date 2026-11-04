@@ -70,6 +70,7 @@
 | `MNT-07` | Info | Mint | 三个参数越界会让激励系统永久不可用且无 setter；三者都已在 `DeployCore` 广播前校验，合约侧零守卫（记录这条单点依赖） | E2 |
 | `NFT-04` | Info | MemberNFT | 合约没有任何 burn 入口，`_update` 的 `to == 0` 分支不可达；名称与 `tokenId` 永久占用 | E1 |
 | `NFT-05` | Info | MemberNFT | 黑名单漏掉 U+115F / U+1160 / U+3164 / U+FFA0 / U+2800 等「渲染为空白」的码点，可铸造视觉空名 | E1/E2 |
+| `LCH-05` | Info | Launch | 符号唯一性落账晚于 `createPair`；仅恶意/可升级 factory 的重入成立，按部署期信任假设判不可达 | E1 |
 | `STK-07` | Info | Stake | `pair.burn(to)` 烧的是 **Pair 自身持有的全部 LP**，不是本次的 `lpAmount` / `settlementUnit`；有 LP 被转入 Pair 时，事件里的「烧了多少」与账本减量不一致 | E1 |
 | `STK-08` | Info | Stake | `pairAddress` 惰性缓存：首次质押/结算前对外返回 `0`，与「已登记代币必有 Pair」冲突 | E1 |
 | `STK-09` | Info | Stake | `_lastSettlePhase` 用 `0` 兼作「从未结算」，与 Round 0 同值；当前只因「Round 0 不可能有手续费 LP」而安全 | E1 |
@@ -82,7 +83,7 @@
 | `X-01` | Info | Stake / Mint | 两处地址不是 `init` 入参而是从 `Vote` 读：`Stake` 用 `Vote.SUBMIT_ADDRESS()` 判「本轮已推举」，`Mint` 用 `Vote.PHASE_ADDRESS()` 判轮次；接线错配时没有链上断言会失败 | E1 |
 | `TOK-03` | Info | LOVE20Token | `mint(to, 0)` / `burn(0)` 不设零额守卫，会发零额事件 | E1 |
 
-分布：新增 **16 条**，**Info 16**，无 Critical / High / Medium / Low（另有 2 条在复核期间修复，见 §4.1.1）。
+分布：新增 **17 条**，**Info 17**，无 Critical / High / Medium / Low（另有 2 条在复核期间修复，见 §4.1.1）。
 
 ### 4.1.1 复核期间已修复
 
@@ -130,7 +131,6 @@
 | `Vote._vote` 把加速快照写在票数上限判定**之前** | 同一笔交易内，超限整笔回滚，快照随同撤销；顺序不产生中间态 |
 | `Submit.submitNewProposal` 在名额校验前就写了 `_proposals` | 任何后续回滚都撤销该写入；`proposalId` 由 `length + 1` 现算，不会留空洞 |
 | `Phase.sync` 的观测点可由调用者挑选 | `observed = elapsedBlocks × TARGET / elapsedSeconds` 是**速率**量，调用者只能选区间终点，起点由规则决定；要拉偏必须让真实出块速率本身偏离目标（`04-phase.md` §4.3） |
-| `LCH-05` 符号唯一性可被 `createPair` 回调打断 | 唯一向量是**恶意/可升级 factory**；root 父币 `symbol()` 是 `view`（STATICCALL），生产 factory 是 UniswapV2Factory 且不回调。按部署期信任假设判为不可达，不计入新增分布；若未来换成可回调 factory 再考虑哨兵预留 |
 
 ## 5. 处置与后续
 
@@ -145,7 +145,7 @@
 
 | 缺口 | 说明 |
 | --- | --- |
-| 无 PoC | 本卷是静态审查。16 条新增中 13 条 E1、2 条 E2、1 条 E1/E2；`LCH-05` 已按部署期信任假设判为不可达，不构造恶意 factory PoC |
+| 无 PoC | 本卷是静态审查。17 条新增中 14 条 E1、2 条 E2、1 条 E1/E2；`LCH-05` 已按部署期信任假设判为不可达，不构造恶意 factory PoC |
 | 门禁 | 已在 `core@0466d67` 上跑过，五项全绿，结果见下表 |
 | 未审继承实现 | `ERC20` / `ERC721` / `ERC721Enumerable` 的行为按 OpenZeppelin 5.6.1 的公开语义认定，未逐行复核 |
 | 未审跨仓 | `action/`、`group-chat/` 对 core 账本的二次写入不在本卷范围 |
@@ -165,7 +165,7 @@
 | 文件 | 合约 | 存储变量 | 对应发现 |
 | --- | --- | --- | --- |
 | [`01-love20token.md`](01-love20token.md) | `LOVE20Token` | 3（+ 继承 5） | `TOK-03`；`TOK-04`（复核期间已修复） |
-| [`02-launch.md`](02-launch.md) | `Launch` | 11 + 6 账本 | `LCH-06` |
+| [`02-launch.md`](02-launch.md) | `Launch` | 11 + 6 账本 | `LCH-05`、`LCH-06` |
 | [`03-membernft.md`](03-membernft.md) | `MemberNFT` | 4 + 4 immutable + 4 账本（+ 继承 10） | `NFT-04`、`NFT-05` |
 | [`04-phase.md`](04-phase.md) | `Phase` | 5 immutable + 9 | `PHS-02`、`PHS-03` |
 | [`05-stake.md`](05-stake.md) | `Stake` | 10 + 12 | `STK-07`、`STK-08`、`STK-09`、`X-01`；`STK-03`（复核期间已修复）、`STK-01`（机制） |
