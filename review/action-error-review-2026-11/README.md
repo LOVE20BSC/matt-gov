@@ -66,9 +66,9 @@ W1 与量纲拆分落地后 106 条声明全部至少有一个站点、146 个�
 
 两处**规格让步**（`GroupNotExist(0)` 与 `TargetDataLengthMismatch`）已随 W1 改规格，冲突消除。action 侧成员级三个错误按量纲独立命名，与 core `MemberHasNoVote`（治理票）不再同名；`MemberRewardPoolEmpty` / `MemberRewardRoundedToZero` 两仓同名且签名一致，符合协议级「一名一签名」（同名同签名可在多处本地声明）。
 
-### X-04 校验顺序：多数按默认序重排，两处按实现口径登记
+### X-04 校验顺序：多数按默认序重排，一处按实现口径登记
 
-§5 固定为「鉴权 → 参数 → 存在性 → 状态/资格 → 账本/交互 → 不变量」，并允许模块自定义但**必须写明理由**。本轮四处按默认序重排（`activateGroup`、`setGroupConfig`、`_checkApplicationSubmission`、`join`/`exit`）并补了断言新顺序的测试；另外两处没有重排，按实现口径登记：`_setRecipients` 只把库内参数提到源行动存在性之前（外层修饰器不变），`_submitOriginScores` 的逐元素分数校验本来就在轮次/锁定者之前。
+§5 固定为「鉴权 → 参数 → 存在性 → 状态/资格 → 账本/交互 → 不变量」，并允许模块自定义但**必须写明理由**。本轮五处按默认序重排（`activateGroup`、`setGroupConfig`、`_checkApplicationSubmission`、`_submitOriginScores`、`join`/`exit`）并补了断言新顺序的测试：`_submitOriginScores` 的逐元素分数校验由 `ScoreCountExceeded` / `ScoreExceeded` 之后移到 `currentVerifyRound()` 之前，断言见 `GroupActionVerifyFlow.t.sol:179-183`。仅 `_setRecipients` 未整体重排，只把库内参数提到源行动存在性之前（外层修饰器不变）。
 
 | 入口 | 实现口径（重排后） | 新增/调整的断言 | 报告 |
 | --- | --- | --- | --- |
@@ -76,7 +76,7 @@ W1 与量纲拆分落地后 106 条声明全部至少有一个站点、146 个�
 | `GroupActionManager.setGroupConfig` | 鉴权 → **参数** → 状态 | `testUpdateGroupConfigAndReverts` 增「未激活群 + 零配置 → `ZeroMinJoinAmount`」 | E-GAM-03（Low） |
 | `GroupActionVerify._checkApplicationSubmission` | 轮次 → **参数** → 存在性 → 资格 | `testApplicationChecksDescriptionBeforeActionExistence`（未创建行动 + 1025 字节描述 → `DescriptionTooLong(1025, 1024)`） | E-GAV-02（Low） |
 | `GroupRecipients._setRecipients` | 群存在性/调用者 → 轮次 → **参数** → 源行动存在性（仅库内移到参数之后，外层未变） | `testSetRecipientsRejectsUnknownSourceAction` 追加「重复成员 + 未知源 → `DuplicateMemberId`」 | E-GR-02（Info） |
-| `GroupActionVerify._submitOriginScores` | 批级参数 → **逐元素参数** → 轮次/锁定者 → 状态（逐元素校验未改到状态之后） | 锁定后另一验证者提交超限分数 → `ScoreLimitExceeded(0, 101, 100)` | E-GAV-03（Info） |
+| `GroupActionVerify._submitOriginScores` | 批级参数 → **逐元素参数** → 轮次/锁定者 → 状态（已重排：逐元素参数先于轮次/锁定者） | 锁定后另一验证者提交超限分数 → `ScoreLimitExceeded(0, 101, 100)` | E-GAV-03（Info） |
 | `GroupServiceExecutor.join` / `exit` | join：轮次 → 存在性 → 已加入 → 资格；exit：**轮次** → 已加入 | `testJoinRejectsUncreatedActionBeforeQualification`（`ActionNotCreated`）；`testExitChecksTheRoundBeforeTheJoinState`（phase 1 未加入 → `RoundNotStarted(1, 0)`） | E-GSE-02 / E-GSE-03（Info） |
 
 **变更前后的可观测错误差异**（同输入下先看到哪个错误）：
@@ -87,7 +87,7 @@ W1 与量纲拆分落地后 106 条声明全部至少有一个站点、146 个�
 | 已激活群 + 非法配置 | `GroupAlreadyActivated` | 配置错误（`ZeroMinJoinAmount` 等） |
 | 未创建行动 + 超长说明 + 无票申请 | `ZeroVerifyVotes` | `DescriptionTooLong` →（通过后）`ActionNotCreated` |
 | 未知源行动 + 重复成员 | `UnknownSourceAction` | `DuplicateMemberId` |
-| 已锁定 + 越界分数 | `ScoreCountExceeded` / 逐元素 `ScoreLimitExceeded` | `ScoreLimitExceeded(0, 101, 100)`（逐元素先于锁定者，顺序未改） |
+| 已锁定 + 越界分数 | `ScoreCountExceeded` / 逐元素 `ScoreLimitExceeded` | `ScoreLimitExceeded(0, 101, 100)`（已重排：逐元素参数先于轮次/锁定者） |
 | phase 1 未加入即 `exit` | `NotJoined` | `RoundNotStarted(1, 0)` |
 | 未创建行动 + 不合格成员 `join` | `NotQualified` | `ActionNotCreated` |
 

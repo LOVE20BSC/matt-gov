@@ -1,6 +1,6 @@
 # action/ 状态变量变更审查 · 2026-11
 
-> 基线 `action@0c1d1e2`（`fix(deploy): pin ActionTarget init as the first post-deploy transaction`，工作树干净）。`src/` 自 `e849e36` 无实质变化，行号相对上一稿未位移；本卷所有 `:NNN` 引用在该提交上可原样定位。错误名按落地 `action@e7f253d` 对齐（量纲拆分后的 `ZeroEffectiveJoinAmount` / `ZeroFinalScore` / `ZeroRewardWeight` 及轮级两错），行号仍按基线。
+> 基线 `action@0c1d1e2`（`fix(deploy): pin ActionTarget init as the first post-deploy transaction`，工作树干净）。`src/` 自 `e849e36` 无实质变化，行号相对上一稿未位移；本卷所有 `:NNN` 引用在该提交上可原样定位。错误名按落地 `action@e7f253d` 对齐（量纲拆分后的 `ZeroEffectiveJoinAmount` / `ZeroFinalScore` / `ZeroRewardWeight` 及轮级两错），行号仍按基线；未涉及改名的行仍按基线 `0c1d1e2` 表述。
 > 范围：`action/src/` **全部 14 个源文件、5,662 行**（另有 `src/interfaces/` 11 个文件、1,564 行，无状态，不单独立卷）。
 > 判据：只判**代码自身的状态一致性** —— 某变量的一次写入是否有守卫、是否与联动变量同笔、是否排在外部调用之前、谁能触发、失败时是否整笔回滚、历史轮会不会被回写。规格文档仅用于核对口径，**不作判据**。
 > 与既有审查的关系：`action-api-auth-2026-11` 审「谁能调」，`action-events-audit-2026-11` 审「发了什么」，本卷审「写了什么」。三卷的编号互不重叠，重合项只在 §6 做复核标注，不重复论证。

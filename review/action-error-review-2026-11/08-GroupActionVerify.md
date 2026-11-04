@@ -285,6 +285,6 @@ forge test
 | --- | --- | --- |
 | E-GAV-01 | Low | 已裁决（W1 #4）：`VerifierAlreadyLocked` → `RoundVerifierLocked(tokenAddress, actionId, round, lockedVerifierId)`；1 站点 1 接口；测试与规格 07/05 同步。 |
 | E-GAV-02 | Low | 已裁决（X-04 重排）：`_checkApplicationSubmission` 改为轮次 → 参数 → 存在性 → 资格；新增 `testApplicationChecksDescriptionBeforeActionExistence`；05 叙述与权限卷 `GAV-01` 标「已由错误卷重排」。 |
-| E-GAV-03 | Info | 已裁决（实现口径，未改顺序）：`_submitOriginScores` 的逐元素分数检查本来就在批次参数之后、轮次/锁定者与完成态检查之前；锁定后提交越界分数的断言 `ScoreLimitExceeded(0, 101, 100)` 保留。 |
+| E-GAV-03 | Info | 已裁决（重排）：`_submitOriginScores` 的逐元素分数校验由 `ScoreCountExceeded` / `ScoreExceeded` 之后移到 `currentVerifyRound()` 之前，顺序为「批级参数 → 逐元素参数 → 轮次/锁定者 → 状态」；锁定后提交越界分数的断言 `ScoreLimitExceeded(0, 101, 100)` 保留（`GroupActionVerifyFlow.t.sol:179-183`）。 |
 | E-GAV-04 | Info | 已裁决（文档口径）：`ScoreCountExceeded` 第三字段 `memberCount` → `maxCount`，selector 不变；规格 07/05 同步。 |
 | E-GAV-05 | Info | 已裁决（X-09 文档）：05 登记零票仍须有申请、无申请回滚整个 `vote()`。 |

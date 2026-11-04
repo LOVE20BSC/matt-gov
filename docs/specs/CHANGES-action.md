@@ -8,7 +8,8 @@
 
 错误卷 `action-error-review-2026-11` 的 W1 窗口落地，**selector 变化，旧 ABI 不可复用**：
 
-- 新增 8 个 selector：`InsufficientTargetDataItems(uint256,uint256)` `0xa2e9b41f`、`TooManyTargetDataItems(uint256,uint256)` `0xa87702a7`、`ZeroMinJoinAmount()` `0x155083e4`、`ZeroGroupId()` `0x32002782`、`RoundVerifierLocked(address,uint256,uint256,uint256)` `0x08010030`、`ZeroEffectiveJoinAmount(address,uint256,uint256)` `0xcf075bed`、`ZeroFinalScore(address,uint256,uint256)` `0xd4553417`、`ZeroRewardWeight(address,uint256,uint256)` `0x7a448f07`。
+- 全协议新增 selector **值** 8 个：`InsufficientTargetDataItems(uint256,uint256)` `0xa2e9b41f`、`TooManyTargetDataItems(uint256,uint256)` `0xa87702a7`、`ZeroMinJoinAmount()` `0x155083e4`、`ZeroGroupId()` `0x32002782`、`RoundVerifierLocked(address,uint256,uint256,uint256)` `0x08010030`、`ZeroEffectiveJoinAmount(address,uint256,uint256)` `0xcf075bed`、`ZeroFinalScore(address,uint256,uint256)` `0xd4553417`、`ZeroRewardWeight(address,uint256,uint256)` `0x7a448f07`。
+- action 侧 ABI 净增 **10** 个（84 → 90）：上述 8 个，加上与 core 同签名的 `MemberRewardPoolEmpty(address,uint256)` `0x86b94627` 与 `MemberRewardRoundedToZero(address,uint256,uint256)` `0xd632d7c1`。
 - 删除 4 个 action 侧旧 selector：`TargetDataLengthMismatch(uint256,uint256)`、`InvalidMinJoinAmount(uint256)`、`VerifierAlreadyLocked(address,uint256,uint256)`、`MemberActionRewardUnavailable(address,uint256,uint256,uint256)`（`TargetDataLengthMismatch` 仍存在于 `group-chat/lib/action` 的 vendored 副本，随指针同步消失）。
 - 语义不变、只改声明字段名（selector 不变）：`ScoreCountExceeded` 第三参数 `memberCount` → `maxCount`，`DistributionOverflow` 第二参数 `available` → `limit`，`ProposalNotVoted` 第一参数 `proposalId` → `actionId`。
 - core 的 `MemberHasNoVote`（治理票）不变；`MemberRewardPoolEmpty` / `MemberRewardRoundedToZero` 继续与 core 同名同签名。
