@@ -8,7 +8,7 @@
 
 完整 ABI 见 [`ILpExecutor.sol`](https://github.com/LOVE20BSC/action/blob/main/src/interfaces/ILpExecutor.sol)。
 
-Target Data 是无键数组，按位置读取。第 `0` 项是 ActionTarget 保留的 executor，本 Executor 的项从第 `1` 项起固定为：`targetData[1] = abi.encode(address joinTokenAddress)`、`targetData[2] = abi.encode(uint256 govRatioMultiplier)`、`targetData[3] = abi.encode(uint256 minGovRatio)`，项数必须为 `4`。项数、位置与校验均由本 Executor 负责，ActionTarget 只原样透传。创建回调成功时，本 Executor 在同一笔内发出 `LpActionCreated(tokenAddress, actionId, joinTokenAddress, govRatioMultiplier, minGovRatio)`，携带三项初始配置的全量；注册表事实由 ActionTarget 的 `ActionRegistered` 承担。LP 必须是已配置 Pair Factory 登记的交易对，V2 不要求交易对包含激励代币。两个治理比例使用 `1e18` 精度，`minGovRatio <= 1e18`。LP 无验证阶段，验证信息不迁移。
+Target Data 是无键数组，按位置读取。第 `0` 项是 ActionTarget 保留的 executor，本 Executor 的项从第 `1` 项起固定为：`targetData[LP_TOKEN_SLOT_INDEX] = abi.encode(address joinTokenAddress)`、`targetData[GOV_RATIO_MULTIPLIER_SLOT_INDEX] = abi.encode(uint256 govRatioMultiplier)`、`targetData[MIN_GOV_RATIO_SLOT_INDEX] = abi.encode(uint256 minGovRatio)`，项数必须为 `4`。项数、位置与校验均由本 Executor 负责，ActionTarget 只原样透传。创建回调成功时，本 Executor 在同一笔内发出 `LpActionCreated(tokenAddress, actionId, joinTokenAddress, govRatioMultiplier, minGovRatio)`，携带三项初始配置的全量；注册表事实由 ActionTarget 的 `ActionRegistered` 承担。LP 必须是已配置 Pair Factory 登记的交易对，V2 不要求交易对包含激励代币。两个治理比例使用 `1e18` 精度，`minGovRatio <= 1e18`。LP 无验证阶段，验证信息不迁移。
 
 写操作要求调用者持有 memberId；加入/追加金额为正，首次加入满足 `minGovRatio`。LP 从调用者转入 Executor，撤回时转给当前持有人。首次加入时调用 `ActionTarget.registerJoinState`；全额撤回与 `exit` 都调用 `ActionTarget.clearJoinState`；失败全部回滚。激励接口见 [行动铸造](07-minting.md#铸造链路)。
 
@@ -26,8 +26,8 @@ Target Data 是无键数组，按位置读取。第 `0` 项是 ActionTarget 保�
 | `targetData` 项数多于 `TARGET_DATA_LENGTH`（`4`） | `TooManyTargetDataItems(targetData.length, TARGET_DATA_LENGTH)` |
 | 第 `0`～`3` 项不是 32 字节 | `InvalidTargetDataShape(index, length)` |
 | 投票回调 Target Data 超过保留的 executor 一项（无投票业务项） | `TooManyTargetDataItems(targetData.length, 1)` |
-| `targetData[1]` 为零 | `ZeroJoinTokenAddress()` |
-| `targetData[1]` 不是 `pairFactoryAddress` 登记的交易对 | `InvalidJoinTokenFactory(joinTokenAddress, pairFactoryAddress)` |
+| `targetData[LP_TOKEN_SLOT_INDEX]` 为零 | `ZeroJoinTokenAddress()` |
+| `targetData[LP_TOKEN_SLOT_INDEX]` 不是 `pairFactoryAddress` 登记的交易对 | `InvalidJoinTokenFactory(joinTokenAddress, pairFactoryAddress)` |
 | `minGovRatio > 1e18` | `InvalidMinGovRatio(minGovRatio)` |
 | 调用者不是 memberId 当前持有人 | `NotMemberOwner(memberId)` |
 | 加入金额为零，或撤回金额为零 | `ZeroParticipationAmount()` |

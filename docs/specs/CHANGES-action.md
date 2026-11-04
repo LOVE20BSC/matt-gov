@@ -160,7 +160,7 @@ Action 门禁：**406 tests 全绿**；`build --deny warnings`、`lint`、`check
 #### Executor 保留项
 - **保留项位置**：`targetData` 的第 `0` 项固定为 `executor`
 - **最小长度**：`targetData.length` 必须 >= 1，第 0 项为 executor，其余项由 Executor 解释
-- **格式**：`targetData[0] = abi.encode(executorAddress)`
+- **格式**：`targetData[EXECUTOR_SLOT_INDEX] = abi.encode(executorAddress)`
 - **校验**：第 1～3 步依次为「第 0 项存在」「第 0 项恰为 32 字节（`abi.encode(address)` 形态）、解码后非零且有代码」「`IActionExecutor(executor).actionTarget() == address(this)`」，任一失败回滚 `InvalidExecutor()`；第 4 步同一复合键重复创建回滚 `AlreadyCreated(tokenAddress, actionId)`
 
 #### Target Data 位置契约

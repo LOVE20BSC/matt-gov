@@ -333,7 +333,7 @@ v1 基线：
 
 无界字段不得进入事件。确实无法加上限的文本属于元数据，必须列入「不承诺重建」的窄名单，不得静默遗漏。
 
-`GroupActionCreated.verificationKeys` / `verificationDescriptions` 的「16 项 ×1024 字节」是**事件字段上界**；实际创建路径还要受 `ProposalCreated.targetData` 的 16 KiB 总量约束（schema 作为 `targetData[6]` 传输），链上可达的最坏值低于该上界。绕过 `Submit` 直调 `onProposalCreated` 的边界测试不覆盖这层约束。
+`GroupActionCreated.verificationKeys` / `verificationDescriptions` 的「16 项 ×1024 字节」是**事件字段上界**；实际创建路径还要受 `ProposalCreated.targetData` 的 16 KiB 总量约束（schema 作为 `targetData[VERIFICATION_INFO_SLOT_INDEX]` 传输），链上可达的最坏值低于该上界。绕过 `Submit` 直调 `onProposalCreated` 的边界测试不覆盖这层约束。
 
 ### 6.9 派生缓存
 
