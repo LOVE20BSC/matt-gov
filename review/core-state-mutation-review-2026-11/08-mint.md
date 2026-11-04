@@ -34,7 +34,7 @@
 
 ### 2.2 `prepareRewardIfNeeded`（`:104-106`）与 `_prepareRewardIfNeeded`（`:108-165`）
 
-`prepareRewardIfNeeded(address,uint256)` 是**无许可**的状态写入入口：任何地址都能对任意**已结束**轮触发准备，闭掉「无人主动准备就一直不切池」的时序空窗（`MNT-01`）。它与 `mintProposalReward` / `mintGovReward(s)` **共用同一个 internal 实现**，池值口径完全一致，不产生第二套计算。
+`prepareRewardIfNeeded(address,uint256)` 是**无许可**的状态写入入口：任何地址都能在轮次结束后立即准备，把「什么时候准备」从依赖特定领取者的偶然行为变成可立即执行的确定性动作。它与 `mintProposalReward` / `mintGovReward(s)` **共用同一个 internal 实现**，池值口径完全一致，不产生第二套计算。
 
 | 四问 | 答案 |
 | --- | --- |
