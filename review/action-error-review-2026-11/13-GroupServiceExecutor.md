@@ -105,7 +105,7 @@
 
 | # | 位置 | 函数 | 判据 | 实参赋值 |
 | --- | --- | --- | --- | --- |
-| 1 | `GroupServiceExecutor.sol:399` | `function onProposalCreated` | `targetData.length != 4` | `4, targetData.length` |
+| 1 | `GroupServiceExecutor.sol:403` | `function onProposalCreated` | `targetData.length != TARGET_DATA_LENGTH` | `TARGET_DATA_LENGTH, targetData.length` |
 | 2 | `GroupServiceExecutor.sol:448` | `function onProposalVoted` | `targetData.length > 1` | `1, targetData.length` |
 
 ### `InvalidTargetDataShape` · 1 站点 · 保留

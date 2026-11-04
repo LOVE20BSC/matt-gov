@@ -48,5 +48,5 @@
 
 ## 错误卷补记（2026-11，X-09）
 
-- `E-LRA-01`：三条轴函数签名为裸 `uint256`，「未开始」只能靠 `0` 约定表达，类型上不可区分；所有消费方必须显式判 `== 0`，新增调用点漏判会静默得到 0。`LpRoundAxis.joinRound`（实为 `mintRound`，LP 无加入轴）已补注释说明该哨兵。
+- `E-LRA-01`：三条轴函数签名为裸 `uint256`，「未开始」只能靠 `0` 约定表达，类型上不可区分；所有消费方必须显式判 `== 0`，新增调用点漏判会静默得到 0。`LpRoundAxis.mintRound`（LP 无加入轴）同受该约束，类型上同样不可区分。
 - `E-GAA-01`：`joinRound` 的守卫有两条入口（库 `GroupActionManager.currentJoinRound` 与 `ExecutorBase._joinRound`），两处都读同一 `ActionRoundAxis`，载荷一致 `(1, 0)`，不存在分叉。

@@ -82,8 +82,8 @@
 
 | # | 位置 | 函数 | 判据 | 实参赋值 |
 | --- | --- | --- | --- | --- |
-| 1 | `GroupActionManager.sol:58` | `function onProposalCreated` | `targetData.length < 6` | `6, targetData.length` |
-| 2 | `GroupActionManager.sol:61` | `function onProposalCreated` | `targetData.length > 7` | `7, targetData.length` |
+| 1 | `GroupActionManager.sol:60` | `function onProposalCreated` | `targetData.length < TARGET_DATA_MIN_LENGTH` | `TARGET_DATA_MIN_LENGTH, targetData.length` |
+| 2 | `GroupActionManager.sol:63` | `function onProposalCreated` | `targetData.length > TARGET_DATA_MAX_LENGTH` | `TARGET_DATA_MAX_LENGTH, targetData.length` |
 
 ### `InvalidTargetDataShape` · 1 站点 · 保留
 

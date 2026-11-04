@@ -22,8 +22,8 @@ Target Data 是无键数组，按位置读取。第 `0` 项是 ActionTarget 保�
 
 | 条件 | 回滚错误 |
 | --- | --- |
-| `targetData` 项数少于 `4` | `InsufficientTargetDataItems(targetData.length, 4)` |
-| `targetData` 项数多于 `4` | `TooManyTargetDataItems(targetData.length, 4)` |
+| `targetData` 项数少于 `TARGET_DATA_LENGTH`（`4`） | `InsufficientTargetDataItems(targetData.length, TARGET_DATA_LENGTH)` |
+| `targetData` 项数多于 `TARGET_DATA_LENGTH`（`4`） | `TooManyTargetDataItems(targetData.length, TARGET_DATA_LENGTH)` |
 | 第 `0`～`3` 项不是 32 字节 | `InvalidTargetDataShape(index, length)` |
 | 投票回调 Target Data 超过保留的 executor 一项（无投票业务项） | `TooManyTargetDataItems(targetData.length, 1)` |
 | `targetData[1]` 为零 | `ZeroJoinTokenAddress()` |

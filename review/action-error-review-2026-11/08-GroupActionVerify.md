@@ -80,7 +80,7 @@
 
 | # | 位置 | 函数 | 判据 | 实参赋值 |
 | --- | --- | --- | --- | --- |
-| 1 | `GroupActionVerify.sol:385` | `function onProposalVoted` | `targetData.length > 2` | `2, targetData.length` |
+| 1 | `GroupActionVerify.sol:386` | `function onProposalVoted` | `targetData.length > VOTE_TARGET_DATA_MAX_LENGTH` | `VOTE_TARGET_DATA_MAX_LENGTH, targetData.length` |
 
 ### `InvalidTargetDataShape` · 1 站点 · 保留
 
@@ -276,7 +276,7 @@ env -u PYTHONPATH python3 ../matt-gov/script/check_error_tests.py
 forge test
 ```
 
-> 扫描口径：同 01。`onProposalVoted` 的 `targetData.length == 0 || == 1` 提前返回不计站点（不改状态、不回滚）。
+> 扫描口径：同 01。`onProposalVoted` 的 `targetData.length < VOTE_TARGET_DATA_MAX_LENGTH` 提前返回不计站点（不改状态、不回滚）。
 
 
 ## 处置（W1 窗口，2026-11-05）

@@ -126,12 +126,12 @@
 - 声明：`interfaces/IActionTarget.sol:57`
 - 签名：`TargetDataLengthMismatch(uint256,uint256)` · selector `0x232f36be`
 - 载荷：`uint256 expected, uint256 actual`
-- 核对：两处 `actual` 硬编码为 `0`，见 E-AT-01；`expected = 1` 表示下界（至少 1 项），与 Executor 侧「恰为 N 项」的用法不同义，属 §4「边界参数用限定名」的擦边（`expected` 未表达「下界」）。
+- 核对：两处 `actual` 曾硬编码为 `0`（W1 已改写为 `targetData.length`），见 E-AT-01；`expected = TARGET_DATA_LENGTH` 表示下界（至少 1 项），与 Executor 侧「恰为 N 项」的用法不同义，属 §4「边界参数用限定名」的擦边（`expected` 未表达「下界」）。
 
 | # | 位置 | 函数 | 判据 | 实参赋值 |
 | --- | --- | --- | --- | --- |
-| 1 | `ActionTarget.sol:429` | `function onProposalCreated` | `targetData.length == 0` | `1, 0` |
-| 2 | `ActionTarget.sol:482` | `function onProposalSubmitted` | `targetData.length == 0` | `1, 0` |
+| 1 | `ActionTarget.sol:432` | `function onProposalCreated` | `targetData.length < TARGET_DATA_LENGTH` | `targetData.length, TARGET_DATA_LENGTH` |
+| 2 | `ActionTarget.sol:485` | `function onProposalSubmitted` | `targetData.length < TARGET_DATA_LENGTH` | `targetData.length, TARGET_DATA_LENGTH` |
 
 ### `InvalidTargetDataShape` · 3 站点 · 保留
 
