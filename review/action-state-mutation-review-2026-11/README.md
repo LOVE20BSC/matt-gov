@@ -1,6 +1,6 @@
 # action/ 状态变量变更审查 · 2026-11
 
-> 基线 `action@0c1d1e2`（`fix(deploy): pin ActionTarget init as the first post-deploy transaction`，工作树干净）。`src/` 自 `e849e36` 无实质变化，行号相对上一稿未位移；本卷所有 `:NNN` 引用在该提交上可原样定位。
+> 基线 `action@0c1d1e2`（`fix(deploy): pin ActionTarget init as the first post-deploy transaction`，工作树干净）。`src/` 自 `e849e36` 无实质变化，行号相对上一稿未位移；本卷所有 `:NNN` 引用在该提交上可原样定位。错误名按落地 `action@e7f253d` 对齐（量纲拆分后的 `ZeroEffectiveJoinAmount` / `ZeroFinalScore` / `ZeroRewardWeight` 及轮级两错），行号仍按基线。
 > 范围：`action/src/` **全部 14 个源文件、5,662 行**（另有 `src/interfaces/` 11 个文件、1,564 行，无状态，不单独立卷）。
 > 判据：只判**代码自身的状态一致性** —— 某变量的一次写入是否有守卫、是否与联动变量同笔、是否排在外部调用之前、谁能触发、失败时是否整笔回滚、历史轮会不会被回写。规格文档仅用于核对口径，**不作判据**。
 > 与既有审查的关系：`action-api-auth-2026-11` 审「谁能调」，`action-events-audit-2026-11` 审「发了什么」，本卷审「写了什么」。三卷的编号互不重叠，重合项只在 §6 做复核标注，不重复论证。
@@ -97,7 +97,7 @@
 | `M-EB-03` | Info | ExecutorBase | `mintMemberRewards` 无批量上限，循环内可能逐项触发外部铸币 | E1 |
 | `M-LP-01` | Info | LpExecutor | 两个加入日志数组只增不减、不随撤回缩放，`deduction()` 无界增长 | E1 |
 | `M-LP-02` | Info | LpExecutor | `memberReward` 把四种「不能结算」压成同一个 `(0,0,false)`，写面却有四个错误 | E1 |
-| `M-LP-03` | Info | LpExecutor | `totalEffectiveAmount == 0` 与「激励为零」共用 `MemberActionRewardUnavailable` | E1 |
+| `M-LP-03` | Info | LpExecutor | `totalEffectiveAmount == 0` 与「激励为零」共用 `MemberRewardPoolEmpty` | E1 |
 | `M-LP-04` | Info | LpExecutor | `deduction()` 的三个返回值不足以自校验（缺 `phaseStart` / `phaseBlocks`） | E2 |
 | `M-GAE-01` | Info | GroupActionExecutor | `memberBurnedReward` 是死槽，`burnAmount` 恒为 0，事件的 `burnAmount` 永远为 0（**已裁决：删除槽位**） | E1 |
 | `M-GAE-02` | Info | GroupActionExecutor | 同一个「创建轮」在 ActionTarget 与三个 Executor 里各存一份，无交叉断言 | E1 |
@@ -204,7 +204,7 @@
 | --- | --- | --- | --- |
 | 未铸未结算 | core `Mint.rewardReserved` | `actionReward` 返回 `(理论值, false)`，预留不释放 | ❌（ADR-004） |
 | 已铸未领取 | 三个 Executor 的代币余额 | `memberMinted == false`，余额在合约里 | ❌（无 sweep） |
-| 已结算但份额 < 1 wei | `memberMinted == false`（回滚） | 每次重试都回滚 `MemberActionRewardUnavailable` | ❌（M-GAE-03） |
+| 已结算但份额 < 1 wei | `memberMinted == false`（回滚） | 每次重试都回滚 `MemberRewardRoundedToZero` | ❌（M-GAE-03） |
 | 治理上限销毁 | `ownerBurnedByMemberId` / `_burnedRewardByMemberId` | 已 `burn` | ✅（已销毁） |
 
 ADR-004 只覆盖第一行。第二、三行是同一现象的另外两种形态，本卷在 `04-group-action-executor.md` 的 M-GAE-04 与 `03-lp-executor.md` 的 §2.5 各记了一处。

@@ -584,23 +584,6 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/GroupActionExecutor.sol:732",
-        "action/src/GroupServiceExecutor.sol:725",
-        "action/src/LpExecutor.sol:516"
-      ],
-      "selector": "0x8fde7ba3",
-      "signature": "MemberHasNoVote(address,uint256,uint256)"
-    },
-    {
-      "declarations": 1,
-      "files": [
-        "action/src/interfaces/IActionExecutor.sol"
-      ],
-      "interfaces": [
-        "IActionExecutorErrors"
-      ],
-      "repo": "action",
-      "revert_sites": [
         "action/src/GroupActionExecutor.sol:722",
         "action/src/GroupActionExecutor.sol:729",
         "action/src/GroupServiceExecutor.sol:728",
@@ -1296,6 +1279,36 @@
     {
       "declarations": 1,
       "files": [
+        "action/src/interfaces/IActionExecutor.sol"
+      ],
+      "interfaces": [
+        "IActionExecutorErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/LpExecutor.sol:516"
+      ],
+      "selector": "0xcf075bed",
+      "signature": "ZeroEffectiveJoinAmount(address,uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "action/src/interfaces/IActionExecutor.sol"
+      ],
+      "interfaces": [
+        "IActionExecutorErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/GroupActionExecutor.sol:732"
+      ],
+      "selector": "0xd4553417",
+      "signature": "ZeroFinalScore(address,uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
         "action/src/interfaces/IGroupActionJoin.sol"
       ],
       "interfaces": [
@@ -1394,6 +1407,21 @@
       ],
       "selector": "0x4a3b43a3",
       "signature": "ZeroRecipientRatio(uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "action/src/interfaces/IActionExecutor.sol"
+      ],
+      "interfaces": [
+        "IActionExecutorErrors"
+      ],
+      "repo": "action",
+      "revert_sites": [
+        "action/src/GroupServiceExecutor.sol:725"
+      ],
+      "selector": "0x7a448f07",
+      "signature": "ZeroRewardWeight(address,uint256,uint256)"
     },
     {
       "declarations": 1,
@@ -3174,13 +3202,6 @@
         "action:IActionExecutorErrors",
         "core:IMintErrors"
       ],
-      "signature": "MemberHasNoVote(address,uint256,uint256)"
-    },
-    {
-      "declarations": [
-        "action:IActionExecutorErrors",
-        "core:IMintErrors"
-      ],
       "signature": "MemberRewardPoolEmpty(address,uint256)"
     },
     {
@@ -3222,14 +3243,14 @@
     }
   ],
   "summary": {
-    "declarations": 238,
+    "declarations": 240,
     "repos": {
-      "action": 104,
+      "action": 106,
       "core": 88,
       "group-chat": 46,
       "libs": 0
     },
-    "signatures": 198,
-    "unique_signatures": 186
+    "signatures": 200,
+    "unique_signatures": 189
   }
 }

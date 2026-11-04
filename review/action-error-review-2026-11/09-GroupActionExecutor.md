@@ -83,5 +83,5 @@ forge test
 
 | 编号 | 级别 | 落点 |
 | --- | --- | --- |
-| E-GAE-01 | Info | 已裁决（W1 #5）：`_mintMemberReward` 重写为「验证未完成或总分为零 → `MemberRewardPoolEmpty`；成员分为零 → `MemberHasNoVote`；取整 → `MemberRewardRoundedToZero`」；`burnAmount` 恒 0 写进规格 04/05。 |
+| E-GAE-01 | Info | 已裁决（W1 #5 + 量纲拆分）：`_mintMemberReward` 重写为「未验证或总分为零 → `MemberRewardPoolEmpty`；已验证轮内成员分为零 → `ZeroFinalScore`；取整 → `MemberRewardRoundedToZero`」；`burnAmount` 恒 0 写进规格 04/05。 |
 | E-GAE-02 | Info | 已裁决（X-09 文档）：05 登记 `submitOriginScores` 不加 `nonReentrant` 的理由。 |

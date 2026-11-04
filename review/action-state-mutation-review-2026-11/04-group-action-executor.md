@@ -128,7 +128,7 @@
 | 级别 | Info |
 | 证据 | E2 |
 
-`mintAmount = floor(proposalReward * memberFinalScore / totalFinal)`。当 `memberFinalScore > 0` 但 `proposalReward * memberFinalScore < totalFinal` 时，`mintAmount == 0` → `:729` 回滚 `MemberActionRewardUnavailable`，且**不写 `memberMinted`**。
+`mintAmount = floor(proposalReward * memberFinalScore / totalFinal)`。当 `memberFinalScore > 0` 但 `proposalReward * memberFinalScore < totalFinal` 时，`mintAmount == 0` → `:734` 回滚 `MemberRewardRoundedToZero`，且**不写 `memberMinted`**。
 
 后果：该成员的份额（< 1 wei）永久留在合约里，每次重试都回滚同一个错误，`memberReward` 视图返回 `(0, 0, false)`——与「目标轮未完成验证」的返回值完全相同。链下无法区分「再等等」与「永远领不到」。
 

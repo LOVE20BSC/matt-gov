@@ -55,9 +55,9 @@
 
 ### `submitOriginScores` — 首个有效批次永久锁定验证者
 
-顺序（`_submitOriginScores` `L686-773`）：鉴权 → 批次非空 → 批次 ≤ 100 → `currentVerifyRound()` → 锁定者判定 → 群成员数/已验证数 → `startIndex` 连续性 → 分数上限 → 锁定（首次）→ 计分 → 事件。
+顺序（`_submitOriginScores` `L686-773`）：鉴权 → 批次非空 → 批次 ≤ 100 → 逐元素分数上限 → `currentVerifyRound()` → 锁定者判定 → 群成员数/已验证数 → `startIndex` 连续性 → 锁定（首次）→ 计分 → 事件。
 
-- **锁定者判定**（`L704-713`）：`lockedVerifierId != 0` 时必须是本人，否则 `VerifierAlreadyLocked`；未锁定时走 `_checkOpenVerifier`（排名内 + 分割窗口已开）。
+- **锁定者判定**（`L704-713`）：`lockedVerifierId != 0` 时必须是本人，否则 `RoundVerifierLocked(tokenAddress, actionId, round, lockedVerifierId)`；未锁定时走 `_checkOpenVerifier`（排名内 + 分割窗口已开）。
 - **`startIndex` 必须严格等于该群已验证数量**（`L722-724`）→ `StartIndexMismatch`。这使验证批次必须按历史成员顺序连续消费，不能跳、不能重、不能乱序——「同一成员只被评一次」由这条游标保证，而不是靠去重表。
 - **锁定写入在计分之前**（`L738-746`），因此「已锁定」与「已计入分数」在同一笔里同生共死；若计分回滚，锁定也回滚。
 - **无 `nonReentrant`**：本路径唯一的对外调用是 `IPhase.phaseInfo`（只读），没有状态变更外呼。见 `04-group-action-executor.md` GAE-03。
@@ -80,7 +80,7 @@
 
 ### `onProposalVoted` — 库内唯一无鉴权的写入口
 
-顺序（`L372-417`）：项数为 0 或 1 → 直接返回（不指定验证者）→ 项数 > 2 → `TargetDataLengthMismatch` → 第 1 项 32 字节 → 解出 `verifierId` → `currentApplicationId != 0` → `NoActiveApplication` → `voteAmount == 0` 则返回 → 累加票数 + 名册 + 排名 → 事件。
+顺序（`L372-417`）：项数为 0 或 1 → 直接返回（不指定验证者）→ 项数 > 2 → `TooManyTargetDataItems(count, maxCount)` → 第 1 项 32 字节 → 解出 `verifierId` → `currentApplicationId != 0` → `NoActiveApplication` → `voteAmount == 0` 则返回 → 累加票数 + 名册 + 排名 → 事件。
 
 - 鉴权完全由 Executor 的 `onlyActionTarget` 承担，本库不自判。这在结构上是对的：库函数是 `external`，由 Executor `delegatecall`，`msg.sender` 在库内仍是原始调用者——如果库内再加一道判定，会与 Executor 的判定重复。
 - **不校验 `round`**：`round` 由 Vote 传入（Vote 自己的 `currentRound()`）。规格已写明「回调不校验轮次——`Vote` 传的是它自己的 `currentRound()`，而提案只能在其创建轮或之后被投票，因此 `round` 恒不早于创建轮」。这条依赖的完整性由 Vote 保证，不在本库。

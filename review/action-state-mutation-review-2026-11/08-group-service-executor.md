@@ -59,7 +59,7 @@
 | 1 | `:708-715` | `_checkMintWindow(..., createdRound, memberMinted)` | 四段守卫 |
 | 2 | `:717` | `settlement = _settlement(...)` | 见 2.4 |
 | 3 | `:718-719` | `mintAmount = verifier + owner`；`burnAmount = ownerBurned` | — |
-| 4 | `:720-722` | 双零 → revert | `MemberActionRewardUnavailable` |
+| 4 | `:720-722` | 双零 → revert | 按 `cause`：`ZeroRewardWeight` / `MemberRewardPoolEmpty` / `MemberRewardRoundedToZero` |
 | 5 | `:724-733` | `!actionMinted` → `mintActionReward` 取整笔，再 `_applyFormulas` 重算 | 外部调用 |
 | 6 | `:737-742` | 缓存分母（条件见 2.5） | — |
 | 7 | `:744-746` | 写 `memberMinted` / `verifierReward` / `ownerBurned` | 三槽同段 |
@@ -166,7 +166,7 @@
 | 级别 | Info |
 | 证据 | E1 |
 
-`_settlement` 在 `denominator == 0` 时早退，`_mintMemberReward` 随后因双零回滚 `MemberActionRewardUnavailable`，**不写任何状态**（规格 `06:58` 明说「零分母的失败结算不写任何状态」）。
+`_settlement` 在 `denominator == 0` 时早退，`_mintMemberReward` 随后因双零回滚 `MemberRewardPoolEmpty`（`cause == 2`，轮级），**不写任何状态**（规格 `06:58` 明说「零分母的失败结算不写任何状态」）。
 
 于是该轮在账本产出激励之前，每次结算尝试都要付一次 `_roundActions` + 逐行动 `generatedActionReward` 的完整枚举成本，然后回滚。`_votedActions` 用 `votedActions(..., 0, type(uint256).max, ...)`（`:653`）取全量，成本与「该轮入榜行动数」成正比。
 

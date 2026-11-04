@@ -211,7 +211,7 @@ _scoreBatch  ──► finalScoreByGroupId[round][group] += Σ
 
 第 2 条由 `GroupVerificationAlreadyComplete` 保证。第 1 条**不在本库内**：它依赖 `GroupActionJoin._registerMembership` / `_finalizeExit` 只写 `currentJoinRound()`（= `phase − 1`），而验证轮是 `phase − 2`。这条时序由两个不同的库各自维护，没有任何断言把它们绑在一起。
 
-后果形态是**静默**的：如果将来有一条路径在验证轮写了 `groupIdsByRound`（例如新增「强制退出」直接清集合），该轮的 `roundVerified` 会永远不成立，所有成员的结算都返回 `MemberActionRewardUnavailable`，且没有任何 revert 提示。`GroupActionStorage:126-131` 已用 `Load-bearing` 注释登记了这条前提，但注释在 Layout 里、写入在 Join 里，跨文件。
+后果形态是**静默**的：如果将来有一条路径在验证轮写了 `groupIdsByRound`（例如新增「强制退出」直接清集合），该轮的 `roundVerified` 会永远不成立，所有成员的结算都返回 `MemberRewardPoolEmpty`（未验证轮在成员级判定之前先落此错），且没有任何 revert 提示。`GroupActionStorage:126-131` 已用 `Load-bearing` 注释登记了这条前提，但注释在 Layout 里、写入在 Join 里，跨文件。
 
 建议：在 `GroupActionJoin._registerMembership` / `_finalizeExit` 的写入点各加一句 `// Load-bearing: 只能写 currentJoinRound()`，或在 `GroupActionStorage` 里加一个 `assert(round == currentJoinRound())` 的调试入口。
 

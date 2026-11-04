@@ -4,6 +4,16 @@
 
 > 本文记录迁移当时的新旧对照。标识符回写口径（2026-11-01 定）：「旧 → 新」对照列和记录迁移当时状态的叙述保留旧名，不逐一回写；描述当前 ABI 或当前行为的句子随改名回写（如「轮次轴分层」段里守卫所覆盖的入口名）。当前 ABI 与命名以 `action/src/interfaces/`、[`docs/specs/action/`](action/) 与 [`naming-standards.md`](../naming-standards.md)（§14 进度）为准。
 
+## 错误 ABI 收敛（2026-11-05）
+
+错误卷 `action-error-review-2026-11` 的 W1 窗口落地，**selector 变化，旧 ABI 不可复用**：
+
+- 新增 8 个 selector：`InsufficientTargetDataItems(uint256,uint256)` `0xa2e9b41f`、`TooManyTargetDataItems(uint256,uint256)` `0xa87702a7`、`ZeroMinJoinAmount()` `0x155083e4`、`ZeroGroupId()` `0x32002782`、`RoundVerifierLocked(address,uint256,uint256,uint256)` `0x08010030`、`ZeroEffectiveJoinAmount(address,uint256,uint256)` `0xcf075bed`、`ZeroFinalScore(address,uint256,uint256)` `0xd4553417`、`ZeroRewardWeight(address,uint256,uint256)` `0x7a448f07`。
+- 删除 4 个 action 侧旧 selector：`TargetDataLengthMismatch(uint256,uint256)`、`InvalidMinJoinAmount(uint256)`、`VerifierAlreadyLocked(address,uint256,uint256)`、`MemberActionRewardUnavailable(address,uint256,uint256,uint256)`（`TargetDataLengthMismatch` 仍存在于 `group-chat/lib/action` 的 vendored 副本，随指针同步消失）。
+- 语义不变、只改声明字段名（selector 不变）：`ScoreCountExceeded` 第三参数 `memberCount` → `maxCount`，`DistributionOverflow` 第二参数 `available` → `limit`，`ProposalNotVoted` 第一参数 `proposalId` → `actionId`。
+- core 的 `MemberHasNoVote`（治理票）不变；`MemberRewardPoolEmpty` / `MemberRewardRoundedToZero` 继续与 core 同名同签名。
+- **链下 SDK / 索引器必须按 [`registry/errors.md`](../../registry/errors.md) 重新生成错误 ABI**，不要复用旧 selector。
+
 ## 群配置与收款表改名（2026-10-31）
 
 两处命名收口，均为破坏性 ABI 变更：

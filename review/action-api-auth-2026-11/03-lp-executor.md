@@ -83,7 +83,7 @@ Round 3：`currentVoteRound`、`currentJoinRound`、`currentMintRound`。
 
 ### `mintMemberReward` / `mintMemberRewards`
 
-实现在 `_mintMemberReward`（`L480-532`）：`_checkMintWindow` → 读有效参与总量 → 必要时 `ActionTarget.mintActionReward` → `_calculateReward` → 零额则 `MemberActionRewardUnavailable` → 置位 → `burn` + `transfer(msg.sender)` → 事件。
+实现在 `_mintMemberReward`（`L480-532`）：`_checkMintWindow` → 读有效参与总量 → 必要时 `ActionTarget.mintActionReward` → `_calculateReward` → 零额则按量纲回滚（`MemberRewardPoolEmpty` / `ZeroEffectiveJoinAmount` / `MemberRewardRoundedToZero`） → 置位 → `burn` + `transfer(msg.sender)` → 事件。
 
 - **收款方固定是 `msg.sender`**（`L521`），与鉴权主体一致。
 - 结算的 `round` 允许是历史轮（`1 <= round <= currentMintRound`），但必须 `>= createdRound`——两个边界都由 `_checkMintWindow` 给。

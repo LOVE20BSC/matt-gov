@@ -114,7 +114,7 @@ Round 4：`currentVoteRound`、`currentJoinRound`、`currentVerifyRound`、`curr
 4. `actionReward(...) == 0` → 返回全零；
 5. 否则套公式。
 
-- 任一「全零」出口都让 `_mintMemberReward` 回滚 `MemberActionRewardUnavailable`，不置位已结算、不发事件——符合规格「两个分子都为零时不读取分母，视图返回全零，结算入口按零额规则回滚」。
+- 任一「全零」出口都让 `_mintMemberReward` 按成因回滚（成员级 `ZeroRewardWeight`、轮级 `MemberRewardPoolEmpty`、取整 `MemberRewardRoundedToZero`），不置位已结算、不发事件——符合规格「两个分子都为零时不读取分母，视图返回全零，结算入口按零额规则回滚」。
 - **两个角色分别检查**：`verifierWeight` 与 `ownerWeight` 任一非零就继续，所以同一 `memberId` 既是群 owner 又是锁定验证者时拿两份。规格明文要求「每个角色先检查自己的分子，为零只跳过该角色」。
 - 收款方：`ownerRemaining` 与 `verifierReward` 都转给 `msg.sender`（`L772-777`）；二次分配部分转给各 `recipientId` 的**结算时**持有人（见 GSE-04）。
 
@@ -176,7 +176,7 @@ Round 4：`currentVoteRound`、`currentJoinRound`、`currentVerifyRound`、`curr
 ### GSE-06（Info）同一加入轮内退出，该轮的结算资格随之失效
 
 - 证据：`exit` 调 `ActionTarget.clearJoinState`，后者在**当前加入轮**写零值终止点（`ActionTarget.sol:155-160`）；而 `_settlement` 的第一道判定是 `isJoinedByRound(..., round, memberId)`（`L489`）。
-- 后果：成员在加入轮 N 退出后，`isJoinedByRound(N)` 返回假，因此第 N 轮的结算对该成员回滚 `MemberActionRewardUnavailable`。第 N−1 及更早轮次的快照不受影响。
+- 后果：成员在加入轮 N 退出后，`isJoinedByRound(N)` 返回假，因此第 N 轮的结算对该成员回滚 `ZeroRewardWeight`（成员级：该轮未按轮加入）。第 N−1 及更早轮次的快照不受影响。
 - 判定：符合「同一加入轮内多次写入只保留最后一次，该轮结束状态以最后写入为准」的语义，不是缺陷。但它是**成员唯一会因自己的操作损失已积累权益的路径**——退出前应先结算可结算轮次。
 - 建议：在 `06-service-executor.md` 的「加入与退出」段落写明这条，前端在退出确认时提示「本加入轮的结算资格将失效」。
 

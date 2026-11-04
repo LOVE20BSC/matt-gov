@@ -1,9 +1,9 @@
 # action/ 错误赋值与发送专项 Review
 
-> 基线：`action@916e146`（2026-11-05），行号按该提交。
+> 基线：`action@916e146`（2026-11-05）。**行号口径**：卷内分析与各分卷按该基线；`registry/errors.{json,md}` 的行号按落地提交（`action@e7f253d`，随量纲拆分重生成），两者不混用。
 > 判据：`matt-gov/docs/error-standards.md`；行为口径：`matt-gov/docs/specs/action/**`。
 > 范围：`action/src/` 的 14 个实现文件 + `src/interfaces/` 的 9 个 `I<Name>Errors`。
-> 处置：本轮是错误卷的落地窗口（W1）。五条裁决按「改 ABI」执行，四处校验顺序按默认序重排，其余 35 条按卷内方向落地（改 ABI / 改规格 / 登记）。改动范围限错误声明、载荷、错误表、`registry/errors.{json,md}` 与测试载荷；函数签名与事件不动。逐条落点见各分卷的「处置」节。
+> 处置：本轮是错误卷的落地窗口（W1）。五条裁决按「改 ABI」执行，四处校验顺序按默认序重排、另两处按实现口径登记，其余 35 条按卷内方向落地（改 ABI / 改规格 / 登记）。成员级零额错误再按量纲拆为 `ZeroEffectiveJoinAmount` / `ZeroFinalScore` / `ZeroRewardWeight`。改动范围限错误声明、载荷、错误表、`registry/errors.{json,md}` 与测试载荷；函数签名与事件不动。逐条落点见各分卷的「处置」节。
 
 ## 1. 任务与口径
 
@@ -18,7 +18,7 @@
 | 合约 | 声明 | 站点 | Medium | Low | Info | 报告 |
 | --- | --- | --- | --- | --- | --- | --- |
 | `ActionTarget.sol` | 15 | 20 | 0 | 0 | 3 | [01](01-ActionTarget.md) |
-| `ExecutorBase.sol` | 12 | 11 | 0 | 0 | 2 | [02](02-ExecutorBase.md) |
+| `ExecutorBase.sol` | 13 | 11 | 0 | 0 | 2 | [02](02-ExecutorBase.md) |
 | `LpExecutor.sol` | 10 | 16 | 0 | 0 | 4 | [03](03-LpExecutor.md) |
 | `LpRoundAxis.sol` | 0 | 0 | 0 | 0 | 1 | [04](04-LpRoundAxis.md) |
 | `GroupActionStorage.sol` | 0 | 0 | 0 | 0 | 1 | [05](05-GroupActionStorage.md) |
@@ -31,16 +31,16 @@
 | `GroupServiceStorage.sol` | 0 | 0 | 0 | 0 | 1 | [12](12-GroupServiceStorage.md) |
 | `GroupServiceExecutor.sol` | 11 | 16 | 0 | 1 | 4 | [13](13-GroupServiceExecutor.md) |
 | `MemberOwner.sol` | 0 | 0 | 0 | 0 | 2 | [14](14-MemberOwner.md) |
-| **合计** | **105** | **146** | **0** | **8** | **32** | 14 份 |
+| **合计** | **106** | **146** | **0** | **8** | **32** | 14 份 |
 
-> 「声明」按**本地接口**计数（`I<Name>Errors`），不含跨模块复用，跨接口同名同签名各计一次；「站点」按源码文件内的 `revert <Error>(` 计数。基线为 97 声明 / 83 唯一签名 / 133 站点；W1 后 105 声明、`registry/errors.md` 报 238 声明 / 198 签名记录 / 186 唯一签名（含 core 与 group-chat，口径见附 A.2）。
-> 严重度分布维持原口径 **0 Medium / 8 Low / 32 Info**：8 条 Low 中 5 条经 W1 改 ABI 消除（E-GAM-01/04、E-GAJ-01、E-GAV-01、E-LP-01+E-GSE-04），2 条按默认序重排消除（E-GAM-02/03 与 E-GAV-02），1 条删除不可达站点消除（E-GSE-01）。无升级/降级。
+> 「声明」按**本地接口**计数（`I<Name>Errors`），不含跨模块复用，跨接口同名同签名各计一次；「站点」按源码文件内的 `revert <Error>(` 计数。基线为 97 声明 / 83 唯一签名 / 133 站点；W1 与量纲拆分落地后 106 声明，`registry/errors.md` 报 240 声明 / 200 签名记录 / 189 唯一签名（含 core 与 group-chat 的 vendored 副本，口径见附 A.2）。
+> 严重度分布分两栏：**基线** 0 Medium / 8 Low / 32 Info；**W1 处置后** 0 Medium / **0 Low** / 32 Info。8 条 Low 全部消除：5 条改 ABI（E-GAM-01/04、E-GAJ-01、E-GAV-01、E-LP-01+E-GSE-04）、2 条按默认序重排（E-GAM-02/03 与 E-GAV-02）、1 条删除不可达站点（E-GSE-01）；无升级/降级。
 
 ## 3. 横切结论
 
 ### X-01 覆盖完整，无未声明错误、无死声明
 
-97 条声明全部至少有一个站点，133 个站点全部命中本地接口的声明；`check_errors.py --check` 0 violations，`check_error_tests.py` action 83 errors / 0 untested。无裸 `require`、无裸 `revert;`、无 `assert`。同名同签名跨模块重复声明 9 组（`InvalidTargetDataShape`×4、`TargetDataLengthMismatch`×4、`NotJoined`×3、`NotMemberOwner`×2、`NotGroupOwner`×2、`GroupNotExist`×2、`ZeroJoinTokenAddress`×2、`ZeroParticipationAmount`×2、`WithdrawAmountExceeded`×2），符合 §1「本地声明、selector 相同、不跨仓导入」。
+W1 与量纲拆分落地后 106 条声明全部至少有一个站点、146 个站点全部命中本地接口的声明（基线为 97 声明 / 133 站点）；`check_errors.py --check` 0 violations，`check_error_tests.py` action 90 errors / 0 untested（量纲拆分新增两个错误名后由 88 增至 90）。无裸 `require`、无裸 `revert;`、无 `assert`。同名同签名跨模块重复声明 10 组（`InvalidTargetDataShape`×4、`InsufficientTargetDataItems`×4、`TooManyTargetDataItems`×3、`NotJoined`×3、`NotMemberOwner`×2、`NotGroupOwner`×2、`GroupNotExist`×2、`ZeroJoinTokenAddress`×2、`ZeroParticipationAmount`×2、`WithdrawAmountExceeded`×2），符合 §1「本地声明、selector 相同、不跨仓导入」。
 
 ### X-02 没有 Medium：不存在入口砖化路径
 
@@ -62,21 +62,21 @@
 | `GroupNotExist(0)`（4 站点） | 「参数为零」与「群不存在」共用 selector | **已裁**：新增 `ZeroGroupId()`，4 个站点全换；规格 03 从「两者归一」改为分开，05 错误表同步（**规格让步**） | E-GAJ-01（Low） |
 | `TargetDataLengthMismatch(6\|7, actual)` | `expected` 同时承担下界与上界 | **已裁**：拆为 `InsufficientTargetDataItems(count, minCount)` / `TooManyTargetDataItems(count, maxCount)`；按实际站点同步 4 份接口（`IActionTarget` 只保留下界，因为它没有上界站点），全部站点改写；规格 07 让步 | E-GAM-01（Low） |
 | `ActionMaxJoinAmountExceeded(…, 0)` | 「额度用完」与「本轮不可加入」（无票 / 比例 0）同形 | **本非缺陷**：上限载荷固定为 `0`，成因差异可由 `maxJoinAmount` 与治理票视图推导；按 X-09 在 03 登记 | E-GAJ-02（Info） |
-| `MemberActionRewardUnavailable` | 结果条件，三种（LP/GroupAction）到五种（Service）成因 | **已裁**：按 core `E-MNT-02` 三分法拆为 `MemberHasNoVote` / `MemberRewardPoolEmpty` / `MemberRewardRoundedToZero`；命名与载荷和 core 一致；同时删除 `GroupServiceExecutor` 不可达站点 | E-LP-01 / E-GSE-04（Info） |
+| `MemberActionRewardUnavailable` | 结果条件，三种（LP/GroupAction）到五种（Service）成因 | **已裁**：按量纲拆为成员级 `ZeroEffectiveJoinAmount`（LP 有效加入量） / `ZeroFinalScore`（GroupAction 已验证轮最终得分） / `ZeroRewardWeight`（Service 未按轮加入或权重为零）；轮级 `MemberRewardPoolEmpty` 与取整 `MemberRewardRoundedToZero` 保持与 core 同名共用；同时删除 `GroupServiceExecutor` 不可达站点。core 的 `MemberHasNoVote` 判治理票，与三者不是同一量，不复用其名 | E-LP-01 / E-GSE-04（Info） |
 
-两处**规格让步**（`GroupNotExist(0)` 与 `TargetDataLengthMismatch`）已随 W1 改规格，冲突消除。action 侧三分的三个错误与 core `IMintErrors` 同名同签名（不含 `actionId`），受协议级「一名一签名」约束；执行器本身已按行动隔离，额外字段会在 `check_errors.py` 报「同名多签名」。
+两处**规格让步**（`GroupNotExist(0)` 与 `TargetDataLengthMismatch`）已随 W1 改规格，冲突消除。action 侧成员级三个错误按量纲独立命名，与 core `MemberHasNoVote`（治理票）不再同名；`MemberRewardPoolEmpty` / `MemberRewardRoundedToZero` 两仓同名且签名一致，符合协议级「一名一签名」（同名同签名可在多处本地声明）。
 
-### X-04 校验顺序：按默认序重排，非缺陷判定
+### X-04 校验顺序：多数按默认序重排，两处按实现口径登记
 
-§5 固定为「鉴权 → 参数 → 存在性 → 状态/资格 → 账本/交互 → 不变量」，并允许模块自定义但**必须写明理由**。本轮六处全部选择「按默认序重排」，并为每处补了断言新顺序的测试：
+§5 固定为「鉴权 → 参数 → 存在性 → 状态/资格 → 账本/交互 → 不变量」，并允许模块自定义但**必须写明理由**。本轮四处按默认序重排（`activateGroup`、`setGroupConfig`、`_checkApplicationSubmission`、`join`/`exit`）并补了断言新顺序的测试；另外两处没有重排，按实现口径登记：`_setRecipients` 只把库内参数提到源行动存在性之前（外层修饰器不变），`_submitOriginScores` 的逐元素分数校验本来就在轮次/锁定者之前。
 
-| 入口 | 重排后的顺序 | 新增/调整的断言 | 报告 |
+| 入口 | 实现口径（重排后） | 新增/调整的断言 | 报告 |
 | --- | --- | --- | --- |
 | `GroupActionManager.activateGroup` | 鉴权 → **参数** → 存在性 → 状态 → 轮次 → 资格 | `testActivateGroupChecksRoundBeforeEligibility`（phase 1 + 已创建行动 → `RoundNotStarted(1, 0)`）；`testActivateGroupReverts` 增「已激活 + 零 minJoinAmount → `ZeroMinJoinAmount`」 | E-GAM-02（Low） |
 | `GroupActionManager.setGroupConfig` | 鉴权 → **参数** → 状态 | `testUpdateGroupConfigAndReverts` 增「未激活群 + 零配置 → `ZeroMinJoinAmount`」 | E-GAM-03（Low） |
 | `GroupActionVerify._checkApplicationSubmission` | 轮次 → **参数** → 存在性 → 资格 | `testApplicationChecksDescriptionBeforeActionExistence`（未创建行动 + 1025 字节描述 → `DescriptionTooLong(1025, 1024)`） | E-GAV-02（Low） |
-| `GroupRecipients._setRecipients` | **参数** → 存在性 → 状态 | `testSetRecipientsRejectsUnknownSourceAction` 追加「重复成员 + 未知源 → `DuplicateMemberId`」 | E-GR-02（Info） |
-| `GroupActionVerify._submitOriginScores` | 批级参数 → 状态 → 逐元素参数 | 锁定后另一验证者提交超限分数 → `ScoreLimitExceeded(0, 101, 100)` | E-GAV-03（Info） |
+| `GroupRecipients._setRecipients` | 群存在性/调用者 → 轮次 → **参数** → 源行动存在性（仅库内移到参数之后，外层未变） | `testSetRecipientsRejectsUnknownSourceAction` 追加「重复成员 + 未知源 → `DuplicateMemberId`」 | E-GR-02（Info） |
+| `GroupActionVerify._submitOriginScores` | 批级参数 → **逐元素参数** → 轮次/锁定者 → 状态（逐元素校验未改到状态之后） | 锁定后另一验证者提交超限分数 → `ScoreLimitExceeded(0, 101, 100)` | E-GAV-03（Info） |
 | `GroupServiceExecutor.join` / `exit` | join：轮次 → 存在性 → 已加入 → 资格；exit：**轮次** → 已加入 | `testJoinRejectsUncreatedActionBeforeQualification`（`ActionNotCreated`）；`testExitChecksTheRoundBeforeTheJoinState`（phase 1 未加入 → `RoundNotStarted(1, 0)`） | E-GSE-02 / E-GSE-03（Info） |
 
 **变更前后的可观测错误差异**（同输入下先看到哪个错误）：
@@ -87,7 +87,7 @@
 | 已激活群 + 非法配置 | `GroupAlreadyActivated` | 配置错误（`ZeroMinJoinAmount` 等） |
 | 未创建行动 + 超长说明 + 无票申请 | `ZeroVerifyVotes` | `DescriptionTooLong` →（通过后）`ActionNotCreated` |
 | 未知源行动 + 重复成员 | `UnknownSourceAction` | `DuplicateMemberId` |
-| 已锁定 + 越界分数 | `ScoreCountExceeded` / 逐元素 `ScoreLimitExceeded` | `RoundVerifierLocked` → 批级 → `ScoreCountExceeded` |
+| 已锁定 + 越界分数 | `ScoreCountExceeded` / 逐元素 `ScoreLimitExceeded` | `ScoreLimitExceeded(0, 101, 100)`（逐元素先于锁定者，顺序未改） |
 | phase 1 未加入即 `exit` | `NotJoined` | `RoundNotStarted(1, 0)` |
 | 未创建行动 + 不合格成员 `join` | `NotQualified` | `ActionNotCreated` |
 
@@ -178,7 +178,7 @@
 
 ## 附 A：错误 selector 索引（b2b1a5a 基线快照）
 
-> 下表保留 `b2b1a5a` 基线，用于对照；W1 变更后的完整索引以 `matt-gov/registry/errors.{json,md}` 为准（238 声明 / 198 签名记录 / 186 唯一签名，含 core 与 group-chat）。本轮新增与替换的 selector 见附 A.2。
+> 下表保留 `b2b1a5a` 基线，用于对照；W1 变更后的完整索引以 `matt-gov/registry/errors.{json,md}` 为准（240 声明 / 200 签名记录 / 189 唯一签名，含 core 与 group-chat 的 vendored 副本）。本轮新增与替换的 selector 见附 A.2。
 
 | 声明接口 | 错误 | 签名 | selector |
 | --- | --- | --- | --- |
@@ -302,6 +302,10 @@
 | `ZeroMinJoinAmount()` | `0x155083e4` | `InvalidMinJoinAmount(uint256)` |
 | `ZeroGroupId()` | `0x32002782` | `GroupNotExist(0)` 的参数缺省分支（`GroupNotExist(uint256)` 保留） |
 | `RoundVerifierLocked(address,uint256,uint256,uint256)` | `0x08010030` | `VerifierAlreadyLocked(address,uint256,uint256)` |
-| `MemberHasNoVote(address,uint256,uint256)` | `0x8fde7ba3` | `MemberActionRewardUnavailable` 的成员级分支（与 core 同签名） |
+| `ZeroEffectiveJoinAmount(address,uint256,uint256)` | `0xcf075bed` | `MemberActionRewardUnavailable` 的 LP 成员级分支（该成员有效加入量为零） |
+| `ZeroFinalScore(address,uint256,uint256)` | `0xd4553417` | `MemberActionRewardUnavailable` 的 GroupAction 成员级分支（已验证轮最终得分为零） |
+| `ZeroRewardWeight(address,uint256,uint256)` | `0x7a448f07` | `MemberActionRewardUnavailable` 的 Service 成员级分支（未按轮加入或权重为零） |
 | `MemberRewardPoolEmpty(address,uint256)` | `0x86b94627` | `MemberActionRewardUnavailable` 的轮级分支（与 core 同签名） |
 | `MemberRewardRoundedToZero(address,uint256,uint256)` | `0xd632d7c1` | `MemberActionRewardUnavailable` 的取整分支（与 core 同签名） |
+
+> core 的 `MemberHasNoVote(address,uint256,uint256)`（`0x8fde7ba3`）判治理票（`Vote.voteAmountByMemberId`），与 action 侧三个成员级错误不是同一量，保留原名、不由 action 复用。

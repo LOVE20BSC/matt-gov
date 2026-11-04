@@ -53,7 +53,7 @@ event MemberRewardMinted(
 
 前置写入：`memberMinted:733`、`memberMintedReward:734`（原第三个写入 `memberBurnedReward:735` 已随 A-12 删除）；随后转账 `:737-739`；最后 emit `:741`。顺序是「状态 → 资金 → 事件」，符合 §3.4.3 与 §6.5（语义事件自带金额，不依赖 ERC-20 `Transfer` 回连）。
 
-`mintAmount == 0 && burnAmount == 0` 时回滚 `MemberActionRewardUnavailable:729-731`，不置位、不发事件——与 `07-minting.md` 的零额拒绝同口径。由于 `burnAmount` 恒 0，本发射者的零额条件退化为 `mintAmount == 0`。
+`mintAmount == 0 && burnAmount == 0` 时按成因三分回滚 `MemberRewardPoolEmpty`（未验证 / 总分为零）、`ZeroFinalScore`（已验证轮成员分为零）、`MemberRewardRoundedToZero`（取整），不置位、不发事件——与 `07-minting.md` 的零额拒绝同口径。由于 `burnAmount` 恒 0，本发射者的零额条件退化为 `mintAmount == 0`。
 
 ### 与行动级事件的关系
 

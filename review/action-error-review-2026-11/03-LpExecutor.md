@@ -197,7 +197,7 @@ forge test
 
 | 编号 | 级别 | 落点 |
 | --- | --- | --- |
-| E-LP-01 | Info | 已裁决（W1 #5）：拆为 `MemberHasNoVote` / `MemberRewardPoolEmpty` / `MemberRewardRoundedToZero`；`LpExecutor` 4 个出口、`IActionExecutor` 3 条声明、测试 5 处同步；规格 04/07/08 同步。 |
+| E-LP-01 | Info | 已裁决（W1 #5 + 量纲拆分）：成员级拆为 `ZeroEffectiveJoinAmount`（LP 有效加入量为零，原 `MemberHasNoVote` 槽位）、`MemberRewardPoolEmpty` / `MemberRewardRoundedToZero` 保持与 core 同名；`LpExecutor` 4 个出口、`IActionExecutor` 声明同步、测试 2 处同步；规格 04/07/08 同步。 |
 | E-LP-02 | Info | 已裁决（X-09 文档）：04 补 `govRatioMultiplier` 无上界、安全性依赖 `mulDiv` 不溢出。 |
 | E-LP-03 | Info | 已裁决（X-09 文档）：04 登记「账本先写、`registerJoinState` 后写」的自定义顺序。 |
 | E-LP-04 | Info | 已裁决（X-09 文档）：04 登记 `withdraw` 与 `exit` 两个「无余额」错误的语义差异，保留双错误。 |

@@ -91,7 +91,7 @@
 | 1 | `:486-493` | `_checkMintWindow(createdRound, _memberMinted[...])` | 四段守卫 |
 | 2 | `:495` | `totalEffectiveAmount = 总余额 - 总扣减` | 为 0 则跳过计算 |
 | 3 | `:497-504` | 读 `actionReward`；未铸则 `mintActionReward`（把整笔铸给本合约）；再算 `_calculateReward` | 外部调用 |
-| 4 | `:507-509` | `mintAmount == 0 && burnAmount == 0` → revert | `MemberActionRewardUnavailable` |
+| 4 | `:507-509` | `mintAmount == 0 && burnAmount == 0` → revert | 按分支：`MemberRewardPoolEmpty` / `ZeroEffectiveJoinAmount` / `MemberRewardRoundedToZero` |
 | 5 | `:511-515` | 写 `_memberMinted` / `_mintedReward` / `_burnedReward` / `_mintedGovRatio` | 四槽同笔 |
 | 6 | `:517-519` | `burnAmount != 0` → `ILOVE20Token.burn` | 烧本合约余额 |
 | 7 | `:520-522` | `mintAmount != 0` → `safeTransfer(msg.sender, mintAmount)` | — |
@@ -151,11 +151,11 @@
 | 级别 | Info |
 | 证据 | E1 |
 
-`memberReward` 对以下四种情形全部返回 `(0, 0, false)`：行动未创建（`createdRound == 0`）、`round < createdRound`、`round > _mintRound()`、轮次有效但无可分配量。而 `mintMemberReward` 分别回滚 `ActionNotCreated` / `RoundBeforeActionCreated` / `RoundAfterMintWindow` / `MemberActionRewardUnavailable`。
+`memberReward` 对以下四种情形全部返回 `(0, 0, false)`：行动未创建（`createdRound == 0`）、`round < createdRound`、`round > _mintRound()`、轮次有效但无可分配量。而 `mintMemberReward` 分别回滚 `ActionNotCreated` / `RoundBeforeActionCreated` / `RoundAfterMintWindow` / `MemberRewardPoolEmpty` / `MemberRewardRoundedToZero` / `ZeroEffectiveJoinAmount`（后三者按量纲分列）。
 
 链下无法用视图回答「为什么这笔领不了」，只能靠试算 revert。这本身是可接受的取舍（视图不抛错），但 `createdRound == 0` 与「轮次超窗」的返回完全相同，而前者是永久不可结算、后者只是时机未到——两者的运维处置完全相反。
 
-### M-LP-03 · `_totalEffectiveAmount == 0` 与「激励为零」共用 `MemberActionRewardUnavailable`
+### M-LP-03 · `_totalEffectiveAmount == 0` 与「激励为零」共用 `MemberRewardPoolEmpty`
 
 | 字段 | 值 |
 | --- | --- |
@@ -163,7 +163,7 @@
 | 级别 | Info |
 | 证据 | E1 |
 
-当 `totalEffectiveAmount == 0`（该轮无人有效参与，或全员扣减等于余额）时，`mintAmount`/`burnAmount` 保持 0，`:507` 回滚 `MemberActionRewardUnavailable`。此时行动激励可能充足、轮次也在窗口内，唯一的问题是分母为零。
+当 `totalEffectiveAmount == 0`（该轮无人有效参与，或全员扣减等于余额）时，`mintAmount`/`burnAmount` 保持 0，`:496` / `:506` 回滚 `MemberRewardPoolEmpty`。此时行动激励可能充足、轮次也在窗口内，唯一的问题是分母为零。
 
 规格 `04:90` 已把这个情形与「激励为零」合并为同一个错误（「该轮有效参与总量为零或预期数量为零时，成员结算无产出」），所以这是**规格授权的合并**，不是实现偏离。记录的原因：该错误名会让运维误判为「激励未就绪」，而实际是「这一轮没有有效参与」，两者都不可能通过重试解决。
 
@@ -204,5 +204,5 @@
 | --- | --- | --- |
 | `M-LP-01` | 规格补写 | [`04-lp-executor.md`](../../docs/specs/action/04-lp-executor.md) 的「状态口径」：两个加入数组是流水不是余额分解，撤回不缩放，累计扣减可无界增长 |
 | `M-LP-02` | 规格补写 | 同上：四种不可结算情形在读面压成 `(0, 0, false)`，需要原因只能试算写入口的 revert |
-| `M-LP-03` | 口径登记 | 零分母与「激励为零」共用 `MemberActionRewardUnavailable` 已由 04 规格授权，源码不改 |
+| `M-LP-03` | 口径登记 | 零分母与「激励为零」共用 `MemberRewardPoolEmpty` 已由 04 规格授权，源码不改 |
 | `M-LP-04` | 规格补写 | 同上：`deduction()` 不自校验（缺 `phaseStartBlock` / `phaseBlocks`），链下不得用它反推加入流水 |

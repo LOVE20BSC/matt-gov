@@ -216,5 +216,5 @@ forge test
 | E-GSE-01 | Low | 已裁决（W1 #5 附带）：删除 `mintMemberReward` 内不可达的第二处零值守卫；删除唯一覆盖它的 `testMintedZeroAfterARichProjectionReverts`；规格 07 不再描述该站点。 |
 | E-GSE-02 | Info | 已裁决（X-04 重排）：`exit` 的 `currentJoinRound()` 提到 `NotJoined` 之前；新增 `testExitChecksTheRoundBeforeTheJoinState`。 |
 | E-GSE-03 | Info | 已裁决（X-04 重排）：`join` 在轮次后补 `ActionNotCreated`；新增 `testJoinRejectsUncreatedActionBeforeQualification`。 |
-| E-GSE-04 | Info | 已裁决（W1 #5）：`Settlement.cause` 驱动三分；测试 6 处改期望；规格 06/07/08 同步。 |
+| E-GSE-04 | Info | 已裁决（W1 #5 + 量纲拆分）：`Settlement.cause` 驱动三分——成员级 `ZeroRewardWeight`（**有意合并**「未按轮加入」与「验证者/owner 两个权重都为零」两种子成因：`NotJoined` 表达的是 `exit` 的**当前**加入状态且载荷不带 `round`，复用到结算会与「该轮未加入」混淆，故不拆）、轮级 `MemberRewardPoolEmpty`、取整 `MemberRewardRoundedToZero`；测试 6 处改期望；规格 06/07/08 同步。 |
 | E-GSE-05 | Info | 已裁决（文档口径）：06 登记裸名 / 限定名引用同名同签名，不影响「一名一签名」。 |

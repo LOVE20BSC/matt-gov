@@ -151,7 +151,7 @@ event ServiceRewardsDistributed(
 | 依赖序（§3.4.5） | 通过 | `ServiceRewardsDistributed.ownerDistributed` 依赖 `RecipientPaid` 的合计，故后者在先 |
 | 父子序（§3.4.6） | 通过 | 默认父先于子；结算尾部的两条汇总按例外收尾：`MemberRewardMinted` 属 §3.4 E6，`ServiceRewardsDistributed` 属 §3.4 E5 |
 | 退出四步序（§4.4） | 通过 | 服务无仓位无退款，只有第 3、4 步：`JoinStateCleared` → `ServiceExited` |
-| 失败不留日志（§3.5） | 通过 | 零额回滚 `MemberActionRewardUnavailable:720-722`、`:730-732` 均早于任何 emit |
+| 失败不留日志（§3.5） | 通过 | 零额回滚 `MemberRewardPoolEmpty` / `ZeroRewardWeight` / `MemberRewardRoundedToZero` 均早于任何 emit（对应原先 `:720-722`、`:730-732` 两处，后者已随 E-GSE-01 删除） |
 | 动态字段上限（§6.8） | 通过 | 5 条事件无变长字段（`RecipientPaid`/`RecipientsChanged` 见 `GroupRecipients` 报告） |
 | 声明与发射写法（§6.11） | 通过 | `check-events.py` 全绿 |
 | 测试断言（§8.1） | 通过 | 见第七节 |
