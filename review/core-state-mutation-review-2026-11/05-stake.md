@@ -1,8 +1,8 @@
 # Stake · 状态变量变更审查
 
-> `core/src/Stake.sol`，911 行，`core@6fdd0f1`。
+> `core/src/Stake.sol`，911 行，`core@0466d67`。
 > 全仓唯一托管资产的合约：代币、父币、LP、加速代币都在这里。它同时是「治理票 / 加速份额」两本轮次账本的唯一写入者，而 Vote、Submit、Mint 三家都读它。
-> **基线说明**：`1266696 feat(stake)!: close the LP ledger and settle on pair supply` 重写了本合约的 LP 账本与结算单位（`settlementUnit` 从 `withdrawableLp × ratio` 改为 `pairTotalSupply × ratio`），因此上一卷（`9297a33`）的 Stake 结论不能直接沿用；本文全部从当前代码重推。
+> **基线说明**：`1266696 feat(stake)!: close the LP ledger and settle on pair supply` 重写了本合约的 LP 账本与结算单位（`settlementUnit` 从 `withdrawableLp × ratio` 改为 `pairTotalSupply × ratio`），因此上一卷（`9297a33`）的 Stake 结论不能直接沿用；本文全部从当前代码重推。此后 `1adaef3` 把 `withdraw` 的 `delete _memberStake` 前移到外部调用之前，`STK-03` 因此在复核期间修复。
 > **编号说明**：本文引用的 `STK-01` / `STK-02` … `STK-05` 均指 `core-review-plan-2026-11` 的编号（该卷按函数单元审）；本卷新增项从 `STK-07` 起，`STK-06` 在该卷是「已排除」记录，不复用。
 > 证据分级：E3 测试 / E2 算术 / E1 静态。
 
@@ -36,14 +36,14 @@
 | `stakeLiquidity` | `:606-607` | `liquidityShares += added`；`promisedWaitingPhases = P` | `onlyMemberOwner` → `tokenAmount != 0` → `parentAmount != 0` → `P ∈ [min,max]` → `token 已登记` → `pair 存在` → `round != 0` → 未申请解锁 → `P >= 旧P` → 滑点 → `lpMinted > 0` | `totalLiquidityShares +=`、`lastWithdrawableLp += lpMinted`、票账本两处 `increase` |
 | `stakeBoost` | `:156`、`:161` | `boostShares += boostAmount`；`promisedWaitingPhases = P`（仅提升时） | `onlyMemberOwner` → `boostAmount != 0` → `P ∈ [min,max]` → `token` → 未申请解锁 → **有流动性质押** → `P >= 旧P` | `totalBoostShares +=`；提升时补票 `L × (P−旧P)`；boost 账本两处 `increase` |
 | `unstake` | `:203` | `unlockRequestPhase = round` | `onlyMemberOwner` → `token` → 未申请解锁 → 有流动性 → **本轮未推举/未投票**（`:196-198`） | 票账本 `decrease(L×P)` + 社区 `Removed +=`；boost 账本 `decrease(B)` + 社区 `Removed +=`。**份额与 boost 余额都不清零** |
-| `withdraw` | `:258` | `delete _memberStake[token][memberId]` | `onlyMemberOwner` → `token` → `pair` → `unlockRequestPhase != 0` → 有流动性 → `round > unlock + P` | 先 `_withdrawLiquidity`（扣 W 与总份额）→ 归还 boost 并 `totalBoostShares -=`（`:253-256`）→ 再 delete |
+| `withdraw` | `:244` | `delete _memberStake[token][memberId]` | `onlyMemberOwner` → `token` → `pair` → `unlockRequestPhase != 0` → 有流动性 → `round > unlock + P` | **先 delete**，再 `_withdrawLiquidity`（扣 W 与总份额，`:251`）、归还 boost 并 `totalBoostShares -=`（`:256-257`）、最后发事件 |
 | `mergeStake` | `:556-559`、`:578` | 目标 `+= L`、`+= B`、空目标继承 P；源整体 `delete` | `onlyMemberOwner(source)` → `source != target` → `token` → 目标存在 → 双方均未申请解锁 → 源有流动性 → 源本轮未用质押权 → 非空目标 `P_target >= P_source` | 源票 `decrease(Ls×Ps)`、目标票 `increase(Ls×Pt)`；boost 在成员间搬移（`:584-585`） |
 
 三个关键点：
 
 1. **`unstake` 只写 `unlockRequestPhase`，不碰份额与 P**。因此「已申请解锁、未提取」的成员仍然满足 `_govVotesOf(member) = L × P`，但这个值不再被任何路径二次扣减：`stakeLiquidity` / `stakeBoost` / `mergeStake(源)` 都被 `_checkNoUnstakeRequest` 挡住，`withdraw` 不读它。这是「票已清零、份额仍在」的窗口能被安全表达的原因。
 2. **`mergeStake` 的票是「按目标 P 重算」而不是「搬移源票」**：目标增量 `Ls × Pt`，源减量 `Ls × Ps`。`Pt > Ps` 时社区票总量会增加 `Ls × (Pt − Ps)`，这是「承诺更长的等待期换更多票」的直接后果，不是凭空增发（目标的 P 在合并前就存在）。
-3. **`withdraw` 的 `delete` 排在两次外部交互之后**（`_push` 归还 boost、`_burnLp` 给双币）。既有审查 `STK-03` 已登记为 CEI 偏离，结论「三条转账路径都无钩子 → 不可达」；本卷复核该结论仍成立，理由见 §3 的 S12。
+3. **`withdraw` 的 `delete` 已排在所有外部交互之前**（`:244` 先删成员账，`:251` 才 `_withdrawLiquidity`，`:256` 才 `_push` 归还 boost）。`1adaef3` 的这次前移把既有审查 `STK-03` 的 CEI 偏离关闭；本卷复核确认 `delete` 之前不再有任何外部调用，见 §3 的 S12 与 §4.1.1。
 
 ### 2.3 `_totalStake`：五个字段
 
@@ -53,7 +53,7 @@
 | `lastWithdrawableLp` | `_creditLiquidity:609`（`+= lpMinted`） | `_withdrawLiquidity:786`（`-= lpAmount`） | `_applyReclassification:713`（重分类后的新值） |
 | `lastFeeLp` | `_applyReclassification:712` | `_realizeFees:868`（`-= processedFeeLp`） | 同上 |
 | `lastSqrtKOfLp` | `_applyReclassification:714`、`_updateSqrtKBaseline:770` | `_updateSqrtKBaseline:766`（置 0） | — |
-| `totalBoostShares` | `stakeBoost:157` | `withdraw:255` | — |
+| `totalBoostShares` | `stakeBoost:157` | `withdraw:257` | — |
 
 `mergeStake` 对五个字段**全部不动**：源的 L/B 加进目标、源的成员记录被删，社区总量守恒。
 
@@ -132,7 +132,7 @@ if (pair == 0) {
 | S9 | `round > unlockRequestPhase + promisedWaitingPhases` 才可提取 | ✅ | `:240-242` 与 `canWithdraw:426` 同口径 |
 | S10 | 已申请解锁的成员不再影响任何 `Added` | ✅ | 三个入口的 `_checkNoUnstakeRequest` 先于任何账本写入 |
 | S11 | 每 token 每 Phase 至多一次实际结算 | ✅ | `_lastSettlePhase` 在外部调用前写 |
-| S12 | `withdraw` 的「先付款后删除」不可被重入利用 | ⚠️ 附条件 | `_push` 走 `LOVE20Token`（无钩子）；`pair.burn` 只做转账（无回调）；boost 代币同为主币。三个依赖任一变成可回调资产，`delete` 之前的窗口即可重入 |
+| S12 | `withdraw` 先删成员账、后付款 | ✅ 已修复（1adaef3） | `delete` 在 `:244`，早于 `_withdrawLiquidity`（`:251`）与 `_push`（`:256`）；既有审查登记的「先付款后删除」窗口随此前移关闭 |
 
 S3/S4 的证明是**逐写点**的：每次写成员账本，必然在同一笔里写社区账本的对应侧，且增量表达式相同。这比「事后校验总额」更强：不存在中间态。
 
@@ -202,22 +202,30 @@ Uniswap V2 的 `burn(to)` 按 `balanceOf[address(this)]`（Pair 自身持有的 
 2. `Mint.SUBMIT_ADDRESS()` == `Vote.SUBMIT_ADDRESS()`；
 3. `Mint.PHASE_ADDRESS()` == `Phase` 地址 == `Vote.PHASE_ADDRESS()`。
 
-### STK-01 复核（High，仍未修复）
+### STK-01 · 提升承诺等待期放大票权 + 门槛乘活分母 = 兑现（机制设计）
 
-既有审查的核心结论在本基线仍成立，且**没有**被 `1266696` 的账本重写削弱：
+这是**定价机制**，不是缺陷：相同资产下，共识高者选择更长的解锁期，换取更高的票权与治理激励。拉满是**自愿选择**而非必经路径，低共识者可以选择更短的解锁期，因此 `MAX/MIN` 的倍差始终保留区分度；规格选择的是「按承诺期定价」，不是「承诺期一律拉满」。
 
-- `stakeBoost:159-164`：`govVotesAdded = liquidityShares × (P_new − P_old)`，`boostAmount` 只需 `> 0`（1 wei 即可），`P` 可一次拉到 `PROMISED_WAITING_PHASES_MAX`；
-- `Submit:79-86`：门槛每次重算 `ceil(totalValidGovVotes × SUBMIT_MIN_RATIO / 1e18)`，分母是**活的**；
-- 因此任何已达门槛的成员可以把分母抬到自己之外所有人都够不到的位置，且 `P` 只增不减（`PromisedWaitingPhasesDecreased`），效果**跨轮永久**。
+- 规格本身要求这套读数口径：`04-stake.md:118` 明确 `Vote` 读当前有效票、不冻结治理票上限，追加质押、改变承诺等待期、申请解锁都会影响票权；`04-stake.md:19` 明确 `stakeBoost` 在提升等待期时增加有效票；`05-submit.md:96` 的门槛是 `ceil(totalValidGovVotes(currentRound) × SUBMIT_MIN_RATIO / 1e18)`，分母就是当前轮的活值。
+- 代码对应：`Stake:159-164` 按 `liquidityShares × (P_new − P_old)` 补票，`Submit:79-86` 每次重读 `totalValidGovVotes`。两者都与规格口径一致。
+- 参数演算（生产示例 `MIN=1, MAX=100, SUBMIT_MIN_RATIO=0.3%`）：等份额且所有人都在 `MIN` 时，某成员把 P 从 `MIN` 拉到 `MAX` 后，其他成员被排除的区间约为 `235 ≤ N ≤ 33,234`（再大该成员自己也过不了）；份额不均时，一个大户就能做到，例如 51% 份额把门槛抬到约 15.4% 份额，所有更小的成员出局。
+- **失效边界**：上述「排除区」只在过渡态成立——当事人 1 wei 即可自补，故该假设不成立。1 wei 只是入场券，真实成本是接受 `MAX` 个 Phase 的锁定期；对手可以同样拉满反制，`P` 只增不减使效果跨轮持续，但不是不可逆的垄断。
+- 已申请解锁的成员**不在分母内**：`unstake` 在 `Stake:205-209` 把该成员的 `validGovVotes` 减到 0、把 `boostShares` 移出有效账本，因此不存在「已申请解锁者被稀释或排除」的问题。
+- PoC 参数说明：上一卷 PoC 用的是 `SUBMIT_MIN_RATIO=5%`（`core/test/audit/AuditPoC.t.sol:99`），生产示例是 `0.3%`；4 人等份额的 PoC 在生产值下不会复现。讨论必须绑定 `MAX/MIN`、`SUBMIT_MIN_RATIO` 与社区规模。
 
-状态视角的修法：`promisedWaitingPhases` 的提升目前立即写进当前轮的 `_validGovVotesByMember`。轮次账本本身支持「按轮记录」，所以可以改成「提升只写下一轮」，让本轮的票权分母在本轮内冻结。这会改变 `Submit` 的读数语义，需要与规格一起改。
+**处置**：不改代码。这是规格选定的定价机制；若要调整博弈，只动规格/参数旋钮（`MAX/MIN`、`SUBMIT_MIN_RATIO`），不是修 bug。
 
-### STK-02 / STK-03 / STK-04 / STK-05 复核
+### 复核期间已修复
+
+| ID | 原级别 | 位置 | 状态 | 一句话结论 | 证据 |
+| --- | --- | --- | --- | --- | --- |
+| `STK-03` | Info | `:244`、`:251`、`:256` | 已修复（1adaef3） | `1adaef3` 把 `delete _memberStake` 前移到 `_withdrawLiquidity` 与 `_push` 之前，`withdraw` 恢复 CEI；`delete` 之前不再有任何外部调用 | E1 |
+
+### STK-02 / STK-04 / STK-05 复核
 
 | ID | 状态 | 本卷复核点 |
 | --- | --- | --- |
 | `STK-02` | 仍成立 | `:785-799`：`lpAmount == 0` 时 `lastWithdrawableLp -= 0`、`totalLiquidityShares -= shares`、成员被删，份额对应的 LP 留在池中无人可提 |
-| `STK-03` | 附条件成立 | `delete`（`:258`）晚于 `_push`（`:254`）与 `pair.burn`（`:794`）；三条资产路径目前都无回调 |
 | `STK-04` | 仍成立（政策） | 「√k 的任何增长都归手续费」由 `_previewReclassification:688-697` 定义，与捐赠/交换无关 |
 | `STK-05` | 仍成立 | `W → 0` 时 `feeLp < settlementUnit` 恒成立，结算停摆；有新存入（`W > 0`）后恢复 |
 
@@ -235,4 +243,6 @@ Uniswap V2 的 `burn(to)` 按 `balanceOf[address(this)]`（Pair 自身持有的 
 
 - 未在真 V2 Pair 上复测 `STK-07`（LP 被转入 Pair 后的实际燃烧量）；需要 fork 或部署真 Pair。
 - 未构造「已申请解锁、未提取」窗口下的 `mergeStake` / `stakeBoost` 负例；结论来自 `_checkNoUnstakeRequest` 的调用点穷举（`:126`、`:146`、`:192`、`:291-292`）。
-- `S12` 的可达性依赖三个资产合约都不回调；未审 `LOVE20Token` 之外的 boost 代币（`stakeBoost` 的 `tokenAddress` 就是社区代币本身，不是任意 ERC20）。
+- `S12` 已由 `1adaef3` 关闭：本卷只复核「`delete` 之前没有任何外部调用」，并确认 `_withdrawLiquidity` / `_push` 都在 `:244` 之后。
+
+行号基准 `0466d67`。

@@ -1,6 +1,6 @@
 # Submit · 状态变量变更审查
 
-> `core/src/Submit.sol`，339 行，`core@6fdd0f1`。
+> `core/src/Submit.sol`，339 行，`core@0466d67`。
 > Proposal 一经创建即长期存在，可按轮重复推举；「每成员每轮一个、每提案每轮一个、每社区每轮 1000 个」三条约束全靠本合约的三本账表达。
 > 证据分级：E3 测试 / E2 算术 / E1 静态。
 
@@ -123,8 +123,11 @@
 - `submitInfos` 的分页下标来自 `Pagination.paginateIndices(totalCount, …)`，`offset >= total` 返回空数组而不回滚。
 - `_callProposalCreated` / `_callProposalSubmitted` 都在状态写完、事件发完之后执行；回调里再进 `submit` 会被 `ProposalAlreadySubmitted` / `MemberAlreadySubmitted` 挡住。
 - `sync()` 失败会整笔回滚，不会留下「推举成功但 Phase 没同步」的状态。
+- 推举门槛的活分母是规格口径，不是实现偏离：`_submitPower` 每次读 `currentRound` 的 `validGovVotes` / `totalValidGovVotes`，与规格 `05-submit.md:96`、`04-stake.md:118` 一致；该机制的经济影响（`promisedWaitingPhases` 拉满与门槛抬升）在 `05-stake.md` 的 `STK-01` 中被判为**兑现（机制设计）**，不计入本卷缺陷分布。
 
 ## 6. 覆盖缺口
 
 - 未复核 `ProposalBody` 在 `calldata → memory → storage` 三次拷贝中的 gas 上界（与状态正确性无关）。
 - 未测 `SubmitRoundFull` 在 1000 条边界上的 gas（既有审查 `MNT-02` 已记录单轮 1000 提案的扫描成本）。
+
+行号基准 `0466d67`。

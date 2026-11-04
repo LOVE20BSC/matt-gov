@@ -1,6 +1,6 @@
 # Mint · 状态变量变更审查
 
-> `core/src/Mint.sol`，557 行，`core@6fdd0f1`。
+> `core/src/Mint.sol`，597 行，`core@0466d67`。
 > Mint 不持资产，但它是**唯一能铸币的调用方**（`LOVE20Token.MINTER`），也是发射次数的唯一生产者。它的九个映射决定了「每轮切多少、谁拿多少、还剩多少」。
 > 证据分级：E3 测试 / E2 算术 / E1 静态。
 
@@ -8,17 +8,17 @@
 
 | # | 变量 | 类型 | 语义 | 写入点 |
 | --- | --- | --- | --- | --- |
-| 1 | `_rewardReserved` | `mapping(address => uint256)` | 每 token **累计预留**（含之后铸/烧的） | `_prepareRewardIfNeeded:130` |
-| 2 | `_rewardMinted` | `mapping(address => uint256)` | 每 token 累计已铸 | `mintProposalReward:208`、`_mintGovReward:526` |
-| 3 | `_rewardBurned` | `mapping(address => uint256)` | 每 token 累计已取消的预留 | `_burnCancelledPool:165`、`_mintGovReward:528` |
-| 4 | `_govReward` | `mapping(address => mapping(uint256 => uint256))` | 每轮治理池（准备时冻结） | `_prepareRewardIfNeeded:145` |
-| 5 | `_proposalReward` | 同上 | 每轮 Proposal 池 | `:146` |
-| 6 | `_eligibleProposalVoteAmountByRound` | 同上 | 每轮达标提案票数之和（分母） | `:147` |
-| 7 | `_isRewardPrepared` | `mapping(address => mapping(uint256 => bool))` | 每轮是否已准备 | `:149` |
-| 8 | `_proposalMinted` | `mapping(address => mapping(uint256 => mapping(uint256 => bool)))` | 每提案每次结算一次 | `mintProposalReward:207` |
-| 9 | `_govMinted` | 同上 | 每成员每轮一次 | `_mintGovReward:523` |
-| 10 | `_launchCredit` | `mapping(address => mapping(uint256 => uint256))` | 成员尚未换成发射次数的额度 | `_updateLaunchCredit:485`、`:495` |
-| 11 | `initialized` + 5 地址 + 4 参数 | — | 接线与参数 | `init:85-97` |
+| 1 | `_totalRewardReserved` | `mapping(address => uint256)` | 每 token **累计预留**（含之后铸/烧的） | `_prepareRewardIfNeeded:134` |
+| 2 | `_totalRewardMinted` | `mapping(address => uint256)` | 每 token 累计已铸 | `mintProposalReward:221`、`_mintGovReward:554` |
+| 3 | `_totalRewardBurned` | `mapping(address => uint256)` | 每 token 累计已取消或溢出的预留 | `_burnCancelledPool:169`、`_mintGovReward:556` |
+| 4 | `_govReward` | `mapping(address => mapping(uint256 => uint256))` | 每轮治理池（准备时冻结） | `_prepareRewardIfNeeded:149` |
+| 5 | `_proposalReward` | 同上 | 每轮 Proposal 池 | `:150` |
+| 6 | `_eligibleProposalVoteAmountByRound` | 同上 | 每轮达标提案票数之和（分母） | `:151` |
+| 7 | `_isRewardPrepared` | `mapping(address => mapping(uint256 => bool))` | 每轮是否已准备 | `:152` |
+| 8 | `_proposalMinted` | `mapping(address => mapping(uint256 => mapping(uint256 => bool)))` | 每提案每次结算一次 | `mintProposalReward:220` |
+| 9 | `_govMinted` | 同上 | 每成员每轮一次 | `_mintGovReward:551` |
+| 10 | `_launchCredit` | `mapping(address => mapping(uint256 => uint256))` | 成员尚未换成发射次数的额度 | `_updateLaunchCredit:507`、`:517` |
+| 11 | `initialized` + 5 地址 + 4 参数 | — | 接线与参数 | `init:81-97` |
 
 `PHASE_ADDRESS` 不是 `init` 入参，而是从 `IVote(voteAddress).PHASE_ADDRESS()` 读来的（`:87`、`:93`）——这是本合约唯一「不通过参数传入的依赖」（`X-01`）。
 
@@ -32,153 +32,131 @@
 | 2 | `:87` | `phaseAddress = IVote(voteAddress).PHASE_ADDRESS()` | **外部调用**，在置位之后；重入 `init` 会被挡 |
 | 3 | `:89-97` | 5 地址 + 4 参数 | 无校验；`PHASE_ADDRESS` 若为 0，`_isRoundEnded` 每次调用都会因对零地址 `staticcall` 解码失败而回滚 |
 
-### 2.2 `_prepareRewardIfNeeded`（`:104-161`）：五个映射 + 两个累计账本
+### 2.2 `prepareRewardIfNeeded`（`:104-106`）与 `_prepareRewardIfNeeded`（`:108-165`）
+
+`prepareRewardIfNeeded(address,uint256)` 是**无许可**的状态写入入口：任何地址都能对任意**已结束**轮触发准备，闭掉「无人主动准备就一直不切池」的时序空窗（`MNT-01`）。它与 `mintProposalReward` / `mintGovReward(s)` **共用同一个 internal 实现**，池值口径完全一致，不产生第二套计算。
+
+| 四问 | 答案 |
+| --- | --- |
+| **谁能写** | **任何人**。`external`、无修饰器，`msg.sender` 不参与任何判定 |
+| **校验什么** | `_isRewardPrepared[token][round]` 短路（幂等，直接返回）→ `_isRoundEnded(round)`（`round != 0 && currentPhase() > round`），未结束回滚 `RoundNotEnded(round)` |
+| **联动哪些账** | `_totalRewardReserved`（唯一增加点）、`_totalRewardBurned`（加速池/提案池整池取消时增加）、`_govReward`、`_proposalReward`、`_eligibleProposalVoteAmountByRound`、`_isRewardPrepared`（最后置位） |
+| **顺序** | 本函数**没有外部写调用、没有回调**；只读 `Vote.totalVoteAmount` / `Vote.totalVoterBoost` / 提案列表。全部写入集中在 `:149-153`，唯一事件 `RewardPrepared`（`:156-164`）；幂等调用不发事件 |
 
 | 步 | 位置 | 动作 | 说明 |
 | --- | --- | --- | --- |
-| 1 | `:105-107` | 已准备 → 直接返回 | **幂等闸门**；返回值不是 bool，靠 `_isRewardPrepared` |
-| 2 | `:110-113` | `!_isRoundEnded(round)` → `RoundNotEnded` | `round == 0` 也走这条（`_isRoundEnded` 对 0 返回 false） |
-| 3 | `:116` | 读 `totalVoteAmount` | 外部只读 |
-| 4 | `:122-124` | 若有票：算 `minVoteAmount` 与 `eligibleVoteAmount` | 遍历 Vote 的本轮提案列表（≤1000） |
-| 5 | `:126-128` | `available = rewardAvailable(token)`；`gov = available×GOV`；`prop = available×PROP` | 都是 floor |
-| 6 | `:130` | `_rewardReserved += gov + prop` | **全合约唯一增加点** |
-| 7 | `:133-138` | `totalVoterBoost == 0` → `_burnCancelledPool(gov − gov/2, BoostPoolCancelled)` | 加速池整池取消 |
-| 8 | `:140-142` | `eligibleVoteAmount == 0` → `_burnCancelledPool(prop, ProposalPoolCancelled)` | 提案池整池取消 |
-| 9 | `:145-149` | 写四个轮次值 + `_isRewardPrepared = true` | 四个写入在最后，与第 6-8 步同笔 |
-| 10 | `:152-160` | `RewardPrepared`（带后置 `rewardReserved`/`rewardBurned`） | — |
+| 1 | `:109-111` | 已准备 → 直接返回 | **幂等闸门**；靠 `_isRewardPrepared` 而不是返回值 |
+| 2 | `:114-117` | `!_isRoundEnded(round)` → `RoundNotEnded` | `round == 0` 也走这条（`_isRoundEnded` 对 0 返回 false） |
+| 3 | `:120` | 读 `totalVoteAmount` | 外部只读 |
+| 4 | `:127-128` | 算 `minVoteAmount` 与 `eligibleVoteAmount` | 遍历 Vote 的本轮提案列表（≤1000） |
+| 5 | `:130-132` | `available = rewardAvailable(token)`；`gov = available×GOV`；`prop = available×PROP` | 都是 floor；`available` 是准备时的**实时水位** |
+| 6 | `:134` | `_totalRewardReserved += gov + prop` | **全合约唯一增加点** |
+| 7 | `:137-142` | `totalVoterBoost == 0` → `_burnCancelledPool(gov − gov/2, BoostPoolCancelled)` | 加速池整池取消 |
+| 8 | `:144-146` | `eligibleVoteAmount == 0` → `_burnCancelledPool(prop, ProposalPoolCancelled)` | 提案池整池取消 |
+| 9 | `:149-152` | 写四个轮次值 + `_isRewardPrepared = true` | 四个写入在最后，与第 6-8 步同笔 |
+| 10 | `:156-164` | `RewardPrepared`（带后置 `totalRewardReserved` / `totalRewardBurned`） | — |
 
 `totalVoteAmount == 0` 时跳过第 4-8 步，只写四个「零值 + 已准备」。这是「本轮无票 → 两池为 0」的显式记录，不是「未准备」；之后再调用会直接返回。
 
-### 2.3 `_burnCancelledPool`（`:163-173`）
+### 2.3 `_burnCancelledPool`（`:167-178`）
 
-`amount == 0` 早退（不写、不发事件）；否则 `_rewardBurned += amount` 并发 `RewardBurned`。两个调用点（`:137`、`:141`）都在 `_rewardReserved +=` 之后，因此「先预留再取消」的顺序保证 `reservedAvailable` 不会出现负数。
+`amount == 0` 早退（不写、不发事件）；否则 `_totalRewardBurned += amount`（`:169`）并发 `RewardBurned`。两个调用点（`:141`、`:145`）都在 `_totalRewardReserved +=` 之后，因此「先预留再取消」的顺序保证 `reservedAvailable` 不会出现负数。
 
-### 2.4 `mintProposalReward`（`:186-222`）
+### 2.4 `mintProposalReward`（`:191-236`）
 
 | 顺序 | 位置 | 动作 | 守卫 |
 | --- | --- | --- | --- |
-| 1 | `:191` | `onlyProposalTarget(token, proposalId)` | `ISubmit.proposalTarget` 的 `target == msg.sender`；未分配 ID 由 Submit 回滚 |
-| 2 | `:192-194` | `recipient != 0` | — |
-| 3 | `:196` | `_prepareRewardIfNeeded` | 见 §2.2 |
-| 4 | `:198-200` | `_proposalMinted` → `ProposalRewardAlreadyMinted` | 一次 |
-| 5 | `:202-205` | 计算 `amount`；`== 0` → `ProposalRewardUnavailable` | **零额不写标记**，可重试 |
-| 6 | `:207` | `_proposalMinted = true` | 先置位 |
-| 7 | `:208` | `_rewardMinted += amount` | 与置位同笔 |
-| 8 | `:210` | `token.mint(recipient, amount)` | 外部调用，在置位之后 |
-| 9 | `:213-219` | `ProposalRewardMinted` | — |
+| 1 | `:196` | `onlyProposalTarget(token, proposalId)` | `ISubmit.proposalTarget` 的 `target == msg.sender`；未分配 ID 由 Submit 回滚 |
+| 2 | `:197-199` | `recipient != 0` | — |
+| 3 | `:201` | `_prepareRewardIfNeeded` | 见 §2.2 |
+| 4 | `:203-205` | `_proposalMinted` → `ProposalRewardAlreadyMinted` | 一次 |
+| 5 | `:207-218` | 计算 `amount`；`== 0` 按三种原因回滚（低于门槛 / 池空 / 取整为零） | **零额不写标记**，可重试 |
+| 6 | `:220-221` | `_proposalMinted = true`；`_totalRewardMinted += amount` | 先置位、同笔累计 |
+| 7 | `:223` | `token.mint(recipient, amount)` | 外部调用，在置位之后 |
+| 8 | `:226-233` | `ProposalRewardMinted` | — |
 
-### 2.5 `_mintGovReward`（`:500-556`）
-
-| 顺序 | 位置 | 动作 | 说明 |
-| --- | --- | --- | --- |
-| 1 | `:506-508` | `recipient != 0` | — |
-| 2 | `:510` | `_prepareRewardIfNeeded` | — |
-| 3 | `:512-514` | `_govMinted` → `MemberRewardAlreadyMinted` | — |
-| 4 | `:516` | `(vote, boost, burn) = _govRewardCalculation(...)` | 只读 |
-| 5 | `:518-520` | 三项和为 0 → `MemberRewardUnavailable` | **零额不写标记** |
-| 6 | `:523` | `_govMinted = true` | 先置位 |
-| 7 | `:525-528` | `_rewardMinted += vote+boost`；`_rewardBurned += burn` | 两个累计账本同笔 |
-| 8 | `:530-533` | `mintAmount > 0` → `token.mint` + `_updateLaunchCredit` | 外部调用 |
-| 9 | `:535-543` | `burnReward > 0` → `RewardBurned(BoostOverflow)` | 纯销毁也走这里 |
-| 10 | `:546-553` | `GovRewardMinted` | — |
-
-「纯销毁」路径（`vote + boost == 0`、`burn > 0`）会写 `_govMinted` 与 `_rewardBurned`，但不铸币；这与「三项全 0 回滚、不写标记」是两条不同的规则，代码区分正确（`:518` vs `:535`）。
-
-### 2.6 `_updateLaunchCredit`（`:462-498`）
+### 2.5 `_mintGovReward`（`:522-577`）
 
 | 顺序 | 位置 | 动作 | 说明 |
 | --- | --- | --- | --- |
-| 1 | `:469-473` | `issuedCount >= maxCount` → 返回 | 额度发满后不再累计 credit（避免无界增长） |
-| 2 | `:476-479` | `threshold = ceil((MAX_SUPPLY − totalSupplyBeforeMint) × RATIO)` | `totalSupplyBeforeMint = totalSupply() − mintedAmount`，即**本次铸造前**的未铸量 |
-| 3 | `:480-482` | `threshold == 0` → 返回 | `RATIO == 0` 或未铸量为 0 时 credit 被丢弃（见 `MNT-05`） |
-| 4 | `:485` | `_launchCredit += mintedAmount` | 只加 `vote+boost`，不含 `burnReward` |
-| 5 | `:487-491` | `maxNewCount = maxCount − issued`；`count = credit / threshold`；`count > maxNewCount` 则截断 | 截断后余数留在 credit 里 |
-| 6 | `:493-497` | `count > 0` → `credit −= count × threshold`；`launch.addLaunchCount(...)` | 外部调用（Launch 只写自己的账本） |
+| 1 | `:528-530` | `recipient != 0` | — |
+| 2 | `:532` | `_prepareRewardIfNeeded` | — |
+| 3 | `:534-536` | `_govMinted` → `MemberRewardAlreadyMinted` | — |
+| 4 | `:538` | `(vote, boost, burn) = _govRewardCalculation(...)` | 只读；未准备时按实时水位估（`:393-398`） |
+| 5 | `:540-548` | 三项和为 0 按三种原因回滚（未投票 / 池空 / 取整为零） | **零额不写标记** |
+| 6 | `:551` | `_govMinted = true` | 先置位 |
+| 7 | `:553-556` | `_totalRewardMinted += vote+boost`；`_totalRewardBurned += burn` | 两个累计账本同笔 |
+| 8 | `:558-561` | `mintAmount > 0` → `token.mint` + `_updateLaunchCredit` | 外部调用 |
+| 9 | `:563-572` | `burnReward > 0` → `RewardBurned(BoostOverflow)` | 纯销毁也走这里 |
+| 10 | `:574` | `_emitGovRewardMinted` | — |
+
+「纯销毁」路径（`vote + boost == 0`、`burn > 0`）会写 `_govMinted` 与 `_totalRewardBurned`，但 `_totalRewardMinted` 不动；对账时不能用「minted 增量」判断「本轮已有成员结算」。
+
+### 2.6 `_updateLaunchCredit`（`:485-520`）
+
+| 顺序 | 位置 | 动作 | 说明 |
+| --- | --- | --- | --- |
+| 1 | `:493-495` | `issuedCount >= maxCount` 早退 | 额度已满，不记 credit |
+| 2 | `:498-501` | `totalSupplyBeforeMint = totalSupply − mintedAmount`；`threshold = ceil((MAX_SUPPLY − before) × ratio)` | 用**铸前**总量，避免把自己的这次 mint 计入 |
+| 3 | `:502-504` | `threshold == 0` 早退 | 未铸造量为 0 时不发额度 |
+| 4 | `:507` | `_launchCredit[token][member] += mintedAmount` | 先记账 |
+| 5 | `:509-513` | `count = credit / threshold`，并按 `maxCount − issuedCount` 截断 | 不能越过代币上限 |
+| 6 | `:515-519` | `count > 0` → credit 扣减、`launch.addLaunchCount` | 外部调用在扣减之后 |
 
 ## 3. 不变式
 
 | # | 不变式 | 是否成立 | 依据 |
 | --- | --- | --- | --- |
-| M1 | `_rewardReserved >= _rewardMinted + _rewardBurned` | ✅ 逐轮成立 | 见下方证明 |
-| M2 | `reservedAvailable = R − M − B` 不会下溢 | ✅ | M1 |
-| M3 | `_isRewardPrepared[t][r]` 一旦为 true，`_govReward[t][r]` / `_proposalReward[t][r]` / `_eligible…` 不再变 | ✅ | 四者在同一笔写入，之后唯一入口在第 1 步早退 |
-| M4 | `_proposalMinted` / `_govMinted` 一旦为 true，对应额度不再铸 | ✅ | 写标记在 `token.mint` 之前 |
-| M5 | 每轮 `minted + burned <= gov + prop` | ✅ | 见下方证明 |
-| M6 | `_launchCredit[t][m]` 每次成功调用后 `< threshold`，或 `issued == MAX` | ✅ | `:495` 扣掉 `count × threshold`；只有当 `count` 被 `maxNewCount` 截断时才可能残留 ≥ threshold，此时 `issued` 已达上限 |
-| M7 | `issuedLaunchCount[t] <= MAX_LAUNCH_COUNT` | ✅ | `count` 先被 `maxNewCount` 截断，Launch 侧再兜底（`Launch:195`） |
-
-**M1/M5 的证明（按轮）**：
-
-```text
-准备：reserved += G + P
-
-治理侧（每成员）：
-  voteReward      = floor(votePool × m_i / T)          Σ_i voteReward <= votePool
-  theoreticalBoost= floor(boostPool × b_i / B)         Σ_i theoreticalBoost <= boostPool
-  boostReward     = min(theoreticalBoost, voteReward × MULT)
-  burnReward      = theoreticalBoost − boostReward     >= 0
-  => Σ_i (voteReward + boostReward) + Σ_i burnReward
-     = Σ_i voteReward + Σ_i theoreticalBoost <= votePool + boostPool = G
-
-提案侧（每提案）：
-  amount_p = floor(P × v_p / E)，只对 v_p >= minVote 的提案
-  Σ_p v_p = E  =>  Σ_p amount_p <= P
-```
-
-因此任意轮次的「已铸 + 已烧」不超过该轮预留；`_rewardReserved` 只增，两个消耗账本只增，M1 对全部轮次求和成立。
-
-**M5 的边界**：`totalVoterBoost == 0` 时加速池在**准备阶段**整池烧掉（`:136`），此时逐成员 `boostReward = burnReward = 0`（`Mint:394-396`），两条路径不重叠也不遗漏。
+| M1 | `_totalRewardReserved[t] == Σ_round(_govReward + _proposalReward)` | ✅ | `:134` 是唯一增加点，且与 `:149-150` 的四个轮次写入同笔 |
+| M2 | `_totalRewardReserved >= _totalRewardMinted + _totalRewardBurned` | ✅ | 每次 mint / burn 的额度都来自已预留；差值 = 未领取 + 取整余数 |
+| M3 | `rewardAvailable + reservedAvailable == MAX_SUPPLY − totalSupply` | ✅ 定义式 | `rewardAvailable = MAX_SUPPLY − totalSupply − reservedAvailable`（`:474-478`）；`reservedAvailable = reserved − minted − burned`（`:480-482`） |
+| M4 | 每 token 每轮至多一次实际准备 | ✅ | `_isRewardPrepared` 在 `:152` 置位；置位前没有任何外部写调用 |
+| M5 | 同一提案/成员至多结算一次 | ✅ | `_proposalMinted:220` / `_govMinted:551` 在 `token.mint` 之前置位 |
+| M6 | `_launchCredit` 不会让 `issuedLaunchCount` 越过 `MAX_LAUNCH_COUNT` | ✅ | `:509-513` 的截断 + `Launch._addLaunchCount` 自身的上限 |
+| M7 | 准备的池值不随后续水位变化 | ✅ | 四个轮次值只在 `:149-152` 写；`_govRewardCalculation` 的实时估算（`:393-398`）只对**未准备**轮生效 |
 
 ## 4. 发现
 
-### MNT-06 · 预留额度无到期、无回收；舍入余数是永久保留
+### MNT-06 · 预留额度无到期、无回收
 
 | 字段 | 值 |
 | --- | --- |
-| 位置 | `:130`（唯一增加）、`:145-149`（冻结） |
+| 位置 | `:134`（预留）、`:474-478`（`rewardAvailable`） |
 | 级别 | Info |
 | 证据 | E2 |
 
-三个口径需要分清：
+`_totalRewardReserved` 只增不减；已预留但无人领取的池子永久占用 `rewardAvailable`，直到有人领取。没有「过期回收」入口，取整余数按规格永久留在池中。效果是**可铸上限被永久锁定一部分**，不涉及任何人的余额；规格 `07-mint.md:99` 已明确接受。
 
-| 类别 | 是否回流 `rewardAvailable` | 说明 |
-| --- | --- | --- |
-| 准备阶段取消的池（`totalVoterBoost == 0` / `eligibleVoteAmount == 0`） | ✅ 回流 | `_rewardBurned` 增加 → `reservedAvailable` 减少 → `available` 增加 |
-| 已铸额度 | ➖ 净零 | `_rewardMinted` 增加使 `reservedAvailable` 减少，同时 `totalSupply` 增加同样的量，两项相抵，`available` 不变 |
-| **未领取的额度** | ❌ 不回流 | 仍留在 `reservedAvailable`，可**无限期**领取（`mintGovReward` 无截止时间） |
-| **逐项取整的余数** | ❌ 不回流 | 规格 `07-mint.md:38` 明确定为「永久保留量」 |
-
-因此 `rewardAvailable` 随轮次单调下降，最终趋近 0；这是「每轮切分」的政策结果，不是泄漏。真正需要关注的是可观测性：`reservedAvailable` 把「已预留未领取」「取整余数」「取消后已回流」三种状态混在一个数里，链下若要用它判断「还有多少可分配」，必须自己按轮重算 `_govReward + _proposalReward − _rewardMinted − _rewardBurned`。建议在文档里明确这条对账路径（不建议为此加存储字段）。
-
-### MNT-07 · 参数域只由部署脚本守（已闭合，记录单点依赖）
+### MNT-07 · 三个参数越界会让激励系统永久不可用
 
 | 字段 | 值 |
 | --- | --- |
-| 位置 | `:94-97`（写入）、`:127-128`（使用）、`:405`（倍数） |
+| 位置 | `:94-97`（`init` 写入）、`:131-132`（使用） |
 | 级别 | Info |
 | 证据 | E2 |
 
-三个参数一旦越界，后果从「治理奖励不可领」到「整池静默归零」不等，且都没有 setter 可修。三者都已在 `DeployCore` 广播前校验：
+`ROUND_REWARD_GOV_RATIO + ROUND_REWARD_PROPOSAL_RATIO != 1e18` 时，每轮只切一部分或切超（`Math.mulDiv` 各自 floor，切超会让 `reservedAvailable` 超过剩余额度并让 `rewardAvailable` 下溢）；`MAX_GOV_BOOST_REWARD_MULTIPLIER == 0` 时 boost 全被烧；`PROPOSAL_REWARD_MIN_VOTE_RATIO` 越界会让提案池恒空或恒全额。合约侧零守卫、无 setter。`DeployCore` 在广播前校验，因此这是**记录单点依赖**，不是要改合约。
 
-| 参数 | 越界后果 | 部署期校验 |
-| --- | --- | --- |
-| `ROUND_REWARD_GOV_RATIO + ROUND_REWARD_PROPOSAL_RATIO > 1e18` | `gov + prop > available` → `reservedAvailable` 超过 `MAX_SUPPLY − totalSupply` → `rewardAvailable` 下溢回滚 → 之后所有有票轮次的准备都失败 | ✅ `DeployCore.s.sol:160-163`（`prop <= 1e18 - gov`） |
-| `PROPOSAL_REWARD_MIN_VOTE_RATIO > 1e18` | `minVote > totalVote` → 所有提案都不达标 → 提案池每轮整池取消（静默归零，不回滚） | ✅ `DeployCore.s.sol:158` |
-| `MAX_GOV_BOOST_REWARD_MULTIPLIER` 过大 | `voteReward × MULT` 溢出 → `_govRewardCalculation` 回滚 → 治理奖励不可领 | ✅ `DeployCore.s.sol:164-167`（`!= 0 && <= 1000`，最大 1e31，远离 2^256） |
+### MNT-01 · 奖池由首个触发者定 = 机制设计，非缺陷
 
-所以这不是一个待修项，而是一条**单点依赖**：三个参数的正确性全部押在 `DeployCore` 的四个 `require` 上，合约侧零校验。任何绕开 `DeployCore` 的部署路径（自写脚本、fork、测试夹具）都会失去这层保护，而错误不可修。若要消除单点，可把「和 ≤ 1e18」与「倍数 ≤ 1000」搬进 `Mint.init`；代价是与仓库「参数域在广播前校验、`init` 只存」的约定冲突。
+`prepareRewardIfNeeded` 提供的是「**任何地址都能在轮次结束后立即准备**」的确定性，不是对某个攻击的缓解；正常运转下每轮都有人铸币，准备动作本就发生在轮次一开始，因此不存在「谁先动手谁压低池子」的对抗性窗口。
+
+- 池值口径：`:130-134` 的 `available × ratio` 是准备时的实时快照，`_totalRewardReserved` 只有这一处增加；三个入口（`prepareRewardIfNeeded` / `mintProposalReward` / `mintGovReward(s)`）共用同一 internal 实现，口径一致。
+- 边界备注 (a)：若某轮确实无人铸造、直到多轮之后才有人领取或准备，池值按**当时水位**落账。这是可观察的时序属性，不是缺陷。
+- 边界备注 (b)：若将来引入「轮内 `rewardAvailable` 会增长」的新资金来源路径，此条需重新评估。
 
 ## 5. 已核对为正确的点
 
-- `_rewardReserved` 只在 `_prepareRewardIfNeeded` 增加一次，且在任何 `_rewardBurned`/`_rewardMinted` 写入之前；不存在「先取消后预留」的负数窗口。
-- `_isRewardPrepared` 在四个轮次值写完之后才置位；即使外部调用（本函数只有只读 staticcall）出现重入，也没有「已准备但池值为 0」的中间态。
-- `mintProposalReward` / `_mintGovReward` 都是「先置标记、再铸币」，重入同一 `(token, round, id)` 会在标记处回滚。
-- 零额结算（`amount == 0` / 三项和为 0）**不写标记**，可以改天重试；这与「一次一份」的语义不冲突。
-- `_govRewardCalculation` 的 `boostReward = min(theoretical, voteReward × MULT)` 与 `burnReward = theoretical − boostReward` 恒非负，`boostReward + burnReward == theoretical`，不会出现「既铸又烧同一份」。
-- `_updateLaunchCredit` 的 `totalSupplyBeforeMint` 用「当前总量 − 本次铸造量」还原，等价于在 mint 之前读总量；不会把本次铸造算进未铸量。
-- 批量 `mintGovRewards` 任一轮失败整批回滚（`MNT-02` 已登记为设计），不会出现「前几轮已铸、后面失败」的半成品。
+- `_prepareRewardIfNeeded` 的四个轮次写入与 `_totalRewardReserved` 同笔，且都在 `_isRewardPrepared` 置位之前；不存在「已准备但池子未落账」的中间态。
+- 两个领取入口的「标记置位 → 累计 → `token.mint`」顺序一致，外部调用都在标记之后，重入无法二次领取。
+- `_burnCancelledPool` 的 `amount == 0` 早退避免了零额 `RewardBurned`，与 `TOK-03`（代币层无零额守卫）互补。
+- `_updateLaunchCredit` 用「铸前总量」算阈值，且先扣 credit 再调 `Launch`，外部调用失败时整笔回滚。
+- `mintGovRewards` 循环逐个调用 `_mintGovReward`，单个成员失败会整笔回滚；批量入口没有「部分成功」语义。
 
 ## 6. 覆盖缺口
 
-- 未构造 `MAX_GOV_BOOST_REWARD_MULTIPLIER` 溢出边界的测试；`MNT-07` 为 E2。
-- 未验证「同一轮先 `mintProposalReward` 再 `mintGovReward`」与反序的 `_rewardReserved` 一致性；两者都走同一个幂等准备，结论由 §2.2 的早退保证。
+- 未构造 `ROUND_REWARD_GOV_RATIO + ROUND_REWARD_PROPOSAL_RATIO > 1e18` 的越界负例（合约无守卫，部署脚本才是防线）。
+- `totalVoteAmount != 0` 且提案数接近 1000 的 gas 上界未实测。
+- `MNT-06` 的「永久占用」只做账本推导，未做多年期模拟。
+
+行号基准 `0466d67`。

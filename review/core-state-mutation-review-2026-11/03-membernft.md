@@ -1,6 +1,6 @@
 # MemberNFT · 状态变量变更审查
 
-> `core/src/MemberNFT.sol`，379 行，`core@6fdd0f1`。
+> `core/src/MemberNFT.sol`，380 行，`core@0466d67`。
 > 本合约是协议唯一的身份来源：`memberId` 由它单调分配，所有业务合约的 `onlyMemberOwner` 都回到 `ownerOf`。它的账本一旦写错，影响面是全部社区。
 > 证据分级：E3 测试 / E2 算术或字节推导 / E1 静态。
 
@@ -15,9 +15,9 @@
 | 8 | `totalBurnedForMint` | `uint256` | 累计销毁的身份费 | `_mintMember:83` | 只增 |
 | 9 | `_memberNameByTokenId` | `mapping(uint256 => string)` | ID → 铸造时的原始名称 | `_mintMember:79` | 只写一次/ID |
 | 10 | `_tokenIdByNormalizedName` | `mapping(string => uint256)` | 规范化名称 → ID（唯一性来源） | `_mintMember:80` | 只写一次/名称 |
-| 11 | `_holders` | `address[]` | 当前持有人集合（去重） | `_addHolder:181`、`_removeHolder:191/194` | 增删 |
-| 12 | `_holderIndex` | `mapping(address => uint256)` | 持有人在 `_holders` 中的下标 | `_addHolder:182`、`_removeHolder:192/195` | 与集合同步 |
-| 13 | ERC721 继承 | `_owners` / `_balances` / `_tokenApprovals` / `_operatorApprovals` | 标准状态 | `super._update`（`:203`）与 OZ 的 `_approve` | 随转移/授权 |
+| 11 | `_holders` | `address[]` | 当前持有人集合（去重） | `_addHolder:182`、`_removeHolder:192/195` | 增删 |
+| 12 | `_holderIndex` | `mapping(address => uint256)` | 持有人在 `_holders` 中的下标 | `_addHolder:183`、`_removeHolder:193/196` | 与集合同步 |
+| 13 | ERC721 继承 | `_owners` / `_balances` / `_tokenApprovals` / `_operatorApprovals` | 标准状态 | `super._update`（`:204`）与 OZ 的 `_approve` | 随转移/授权 |
 | 14 | ERC721Enumerable 继承 | `_ownedTokens` / `_ownedTokensIndex` / `_allTokens` / `_allTokensIndex` | 按地址/全局的枚举 | `super._update` | 随转移 |
 
 `_nextTokenId` 用**内联初值** `= 1`（`:26`）而不是构造器赋值。本合约不可升级，因此没有「实现合约的初值不生效」问题。
@@ -34,13 +34,13 @@
 
 `init` **无调用者限制**，且只能成功一次。被抢跑的后果不是「参数错」而是「`Launch.init` 整笔回滚」：`Launch:75` 直接调用 `IMemberNFT.init(firstToken)`，第二次必然 `AlreadyInitialized`。由于 `Launch.init` 是首币与全部依赖接线的唯一入口，这一笔回滚等于整次部署作废（与既有审查 `DEP-01` 同源，此处只补具体后果）。
 
-### 2.2 `mint` → `_mintMember`（`:60-101`）
+### 2.2 `mint` → `_mintMember`（`:60-102`）
 
 | 顺序 | 位置 | 语句 | 守卫 / 说明 |
 | --- | --- | --- | --- |
 | 1 | `:63` | `prefixedName = _addTestPrefixIfNeeded(name)` | 读首币 `symbol()`；**前缀在此加入**，后续长度、唯一性、计费都用加前缀后的名字 |
-| 2 | `:65` | `normalizedName = _checkName(prefixedName)` | 非空、`<= MAX_NAME_LENGTH`、字符集、`_tokenIdByNormalizedName == 0`（`:215-228`） |
-| 3 | `:67` | `mintCost = calculateMintCost(prefixedName)` | 只按字节数计价，不校验合法性/唯一性（`:103-122`） |
+| 2 | `:65` | `normalizedName = _checkName(prefixedName)` | 非空、`<= MAX_NAME_LENGTH`、字符集、`_tokenIdByNormalizedName == 0`（`:216-230`） |
+| 3 | `:67` | `mintCost = calculateMintCost(prefixedName)` | 只按字节数计价，不校验合法性/唯一性（`:104-123`） |
 | 4 | `:78` | `tokenId = _nextTokenId++` | 先取后增；ID 从 1 起，`0` 永远是「未设置」 |
 | 5 | `:79` | `_memberNameByTokenId[tokenId] = name` | 原始名称（含前缀） |
 | 6 | `:80` | `_tokenIdByNormalizedName[normalizedName] = tokenId` | **唯一性在此落账**，早于所有外部调用 |
@@ -52,7 +52,7 @@
 
 **顺序评价**：唯一性键（`:80`）在第一次外部调用（`:85`）之前落账，因此重入 `mint` 无法用同名再铸一枚（第二次会在 `_checkName` 被拒）。这是本合约最重要的一条 CEI，写法正确。
 
-### 2.3 `_update`：ERC721 状态与持有人集合（`:198-213`）
+### 2.3 `_update`：ERC721 状态与持有人集合（`:199-214`）
 
 ```solidity
 from = super._update(to, tokenId, auth);          // 先写 _owners/_balances/枚举
@@ -71,7 +71,7 @@ if (to   != 0 && balanceOf(to)   == 1) _addHolder(to);
 
 `balanceOf` 读的是 `super._update` **之后**的值，所以「减到 0」「加到 1」的判断都是后置状态，不会重复增删。
 
-### 2.4 `_addHolder` / `_removeHolder`（`:179-196`）
+### 2.4 `_addHolder` / `_removeHolder`（`:180-197`）
 
 | 函数 | 语句 | 前置 | 结果 |
 | --- | --- | --- | --- |
@@ -90,7 +90,7 @@ if (to   != 0 && balanceOf(to)   == 1) _addHolder(to);
 | N4 | `_holders` == `{a | balanceOf(a) > 0}`，无重复，`_holderIndex` 指向正确位置 | ✅ | 由 `_update` 的三个分支维护；自转账早退 |
 | N5 | `totalBurnedForMint` == Σ 已成功收取的身份费 | ✅ | `:83` 与 `:85-86` 同笔，失败整体回滚 |
 | N6 | `Σ balances == _allTokens.length` | ✅ | OZ `ERC721Enumerable` |
-| N7 | 名称映射的键只做 ASCII 小写折叠，不做 NFC/NFKC | ✅（按设计） | `:365-378`；后果见 `NFT-05` |
+| N7 | 名称映射的键只做 ASCII 小写折叠，不做 NFC/NFKC | ✅（按设计） | `:366-379`；后果见 `NFT-05` |
 
 ## 4. 发现
 
@@ -98,7 +98,7 @@ if (to   != 0 && balanceOf(to)   == 1) _addHolder(to);
 
 | 字段 | 值 |
 | --- | --- |
-| 位置 | `:198-213`（`to == 0` 分支）、`:79-80`（永不清理的映射） |
+| 位置 | `:199-214`（`to == 0` 分支）、`:79-80`（永不清理的映射） |
 | 级别 | Info |
 | 证据 | E1 |
 
@@ -114,7 +114,7 @@ if (to   != 0 && balanceOf(to)   == 1) _addHolder(to);
 
 | 字段 | 值 |
 | --- | --- |
-| 位置 | `:230-363`（`_isValidNameChars`）、`:223`（唯一性键） |
+| 位置 | `:231-365`（`_isValidNameChars`）、`:222`（唯一性键） |
 | 级别 | Info（与 `NFT-01` 同源，码点不同） |
 | 证据 | E1 / E2 |
 
@@ -133,7 +133,7 @@ if (to   != 0 && balanceOf(to)   == 1) _addHolder(to);
 
 ### 复核 `NFT-03`：尾部供应下身份费为 0
 
-`baseCost = unmintedSupply / BASE_DIVISOR`（`:110`）。当 `unmintedSupply < BASE_DIVISOR` 时 `baseCost == 0`，`mintCost == 0`，`_mintMember` 跳过转账与销毁但**照常分配 ID 与名称**（`:82-87`）。开发参数 `BASE_DIVISOR = 1e7`、`MAX_SUPPLY = 1e28`，即最后 1e7 wei 的未铸量（约 1e-11 枚代币）对应免费身份，实际影响可忽略；但这是「价格公式的连续段」，不是异常。既有审查 `NFT-03` 已登记，本卷仅从写入路径确认：免费铸造不会跳过 `_tokenIdByNormalizedName` 的占用。
+`baseCost = unmintedSupply / BASE_DIVISOR`（`:111`）。当 `unmintedSupply < BASE_DIVISOR` 时 `baseCost == 0`，`mintCost == 0`，`_mintMember` 跳过转账与销毁但**照常分配 ID 与名称**（`:82-87`）。开发参数 `BASE_DIVISOR = 1e7`、`MAX_SUPPLY = 1e28`，即最后 1e7 wei 的未铸量（约 1e-11 枚代币）对应免费身份，实际影响可忽略；但这是「价格公式的连续段」，不是异常。既有审查 `NFT-03` 已登记，本卷仅从写入路径确认：免费铸造不会跳过 `_tokenIdByNormalizedName` 的占用。
 
 ## 5. 已核对为正确的点
 
@@ -147,3 +147,5 @@ if (to   != 0 && balanceOf(to)   == 1) _addHolder(to);
 
 - 未跑 `holders()` 在大量增删后的下标一致性测试；结论来自 `_update` 的三个分支穷举。
 - 未复核 OZ `ERC721Enumerable._update` 的内部写入顺序，按其公开语义认定。
+
+行号基准 `0466d67`。

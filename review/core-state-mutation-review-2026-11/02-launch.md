@@ -1,6 +1,6 @@
 # Launch · 状态变量变更审查
 
-> `core/src/Launch.sol`，350 行，`core@6fdd0f1`。
+> `core/src/Launch.sol`，350 行，`core@0466d67`。
 > 本合约不持资产，但它是**代币登记、符号唯一性、发射次数**三本账的唯一写入者，也是 `MemberNFT` 的初始化者。
 > 证据分级：E3 测试 / E2 算术 / E1 静态。
 
@@ -44,10 +44,10 @@
 | 3 | `:103-105` | 父币存在性 | `parent == ROOT` 或 `isLOVE20Token(parent)`，否则 `ParentTokenNotRegistered` |
 | 4 | `:107-108` | 读 `_remainingLaunchCount[parent][memberId]` | `== 0` 回滚 `InsufficientLaunchCount(memberId, 0, 1)`（经 modifier 已确认调用者持有 `memberId`） |
 | 5 | **`:112`** | `_remainingLaunchCount[parent][memberId] = available - 1` | **扣减发生在所有外部调用之前**（CEI 正确），并发 `LaunchCountConsumed`（`:114-118`） |
-| 6 | `:121` | `ILOVE20Token(parent).symbol()` | **外部调用**；root 父币来自外部（WBNB），其余父币是本合约创建过的 `LOVE20Token` |
+| 6 | `:121` | `ILOVE20Token(parent).symbol()` | **外部调用（`view` → `STATICCALL`）**；root 父币来自外部（WBNB），其余父币是本合约创建过的 `LOVE20Token`；不构成状态重入向量 |
 | 7 | `:125-128` | 计算最终符号并查重 | `_tokenAddressBySymbol[final] != 0` → `TokenSymbolAlreadyExists` |
-| 8 | `:132` | `_createToken(...)` | 内部：`new LOVE20Token`（`:250-252`）→ `factory.getPair` / `createPair`（`:254-260`） |
-| 9 | `:133-136` | `_tokens` / `_parentTokenByTokenAddress` / `_tokenAddressBySymbol` / `_childTokens` | **四本账在外部调用之后才落** |
+| 8 | `:132` | `_createToken(...)` | 内部：`new LOVE20Token`（`:250-252`）→ `getPair`（`view`）→ 若为 0 则 `createPair`（**非 view，唯一重入向量**，`:254-260`） |
+| 9 | `:133-136` | `_tokens` / `_parentTokenByTokenAddress` / `_tokenAddressBySymbol` / `_childTokens` | **四本账在外部调用之后才落**；可信 factory 下无影响，恶意 factory 的重入窗口见 `LCH-05` |
 | 10 | `:139-147` | `TokenLaunched` | — |
 | 11 | `:149-151` | distributor 回调 | 状态已完整，重入安全 |
 
@@ -78,7 +78,7 @@
 | --- | --- | --- | --- |
 | L1 | `_tokens[0] == FIRST_TOKEN_ADDRESS`，且每枚代币恰出现一次 | ✅ | `init` 先 push 首币；`launchToken` 每笔 push 一次新部署地址 |
 | L2 | `isLOVE20Token(t)` ⟺ `_parentTokenByTokenAddress[t] != 0` | ✅ | 只有两处写入，且都同时写 `_tokens` |
-| L3 | 对每个成功发射的代币 `t`，`_tokenAddressBySymbol[symbol(t)] == t` | ⚠️ 仅在「无重入」前提下成立 | 写入在 `:135`，晚于 `:121` 与 `:132` 的外部调用（`LCH-05`） |
+| L3 | 对每个成功发射的代币 `t`，`_tokenAddressBySymbol[symbol(t)] == t` | ✅（生产依赖下） | 写入在 `:135`；`createPair` 只对恶意 factory 存在重入窗口（`LCH-05`，按信任假设判为不可达） |
 | L4 | `_childTokens[p]` 恰为「父币为 `p` 的代币」按创建序 | ✅ | `init` 与 `launchToken` 各 push 一次；`p` 不存在的条目为空 |
 | L5 | `Σ_m _remainingLaunchCount[t][m] == _issuedLaunchCount[t] − 已消耗[t]` | ✅ | 只有 `_addLaunchCount` 增、`launchToken` 减一、`merge` 在成员间搬移 |
 | L6 | `_issuedLaunchCount[ROOT] == _issuedLaunchCount[FIRST]` | ✅ | `FIRST` 分支的伴生写入是唯一写 root 的路径（`:201-203`） |
@@ -89,26 +89,30 @@ L6/L7 是「根级账本有界」的完整证明：root 维度的 `issued` 不�
 
 ## 4. 发现
 
-### LCH-05 · 最终符号的唯一性落账晚于两次外部调用
+### LCH-05 · 符号唯一性对恶意 factory 的重入假设（不可达，Info）
 
 | 字段 | 值 |
 | --- | --- |
-| 位置 | `Launch:121`（父币 `symbol()`）、`Launch:132`（`_createToken` → `factory.createPair`）、`Launch:135`（符号落账） |
-| 类别 | 写入顺序 / 外部依赖 |
-| 级别 | **Low** |
-| 前置条件 | `ROOT_PARENT_TOKEN_ADDRESS` 的 `symbol()` 可回调，或 `PAIR_FACTORY_ADDRESS` 是可回调的合约（两者都是部署期参数） |
+| 位置 | `Launch:126`（查重）、`Launch:132`（`_createToken` → `factory.createPair`）、`Launch:135`（符号落账） |
+| 类别 | 写入顺序 / 部署期信任假设 |
+| 级别 | **Info** |
+| 前置条件 | `PAIR_FACTORY_ADDRESS` 是恶意或可升级、且会在 `createPair` 中回调的合约（部署期参数） |
 | 证据 | E1 |
 
-**机制**：唯一性判据是 `_tokenAddressBySymbol[final] != 0`（`:126`），而该键要到 `:135` 才写入。`:121` 与 `:132` 都在写之前发起外部调用。若被调方在回调里再次进入 `launchToken`（同一 `parent`、同一 `tokenSymbol`、且该成员还有余量），第二次调用看到的仍是空键，于是：
+**机制**：唯一性判据是 `_tokenAddressBySymbol[final] != 0`（`:126`），而该键要到 `:135` 才写入。`:132` 的 `_createToken` 里会在 `getPair` 返回 0 时调用非 view 的 `factory.createPair`（`:258`）。若 factory 在 `createPair` 里再次进入 `launchToken`（同一 `parent`、同一 `tokenSymbol`、且该成员还有余量），第二次调用看到的仍是空键，于是：
 
-1. 两枚代币用同一个最终符号被创建（`L3` 破）；
+1. 两枚代币用同一个最终符号被创建（`L3` 在恶意 factory 下不成立）；
 2. `_tokens` 与 `_childTokens` 各多一条（`L1`/`L4` 仍成立，但集合里出现同符号两项）；
 3. `_tokenAddressBySymbol[final]` 只保留后写入的那一枚，前一枚**再也无法通过符号查到**；
 4. 两笔各扣一次次数（`L5` 不受影响）。
 
-**为什么是 Low**：正常部署下 root 父币是 WBNB、factory 是 UniswapV2Factory，二者都不回调；能触发的前提是部署期就选错了依赖，而那种情况下协议还有更大的问题。但它是一个**真实存在的写入顺序缺陷**：唯一性键应当在任何外部调用之前预留。
+**为什么是 Info 而不是 Low**：
 
-**建议**：最终符号在 `:125` 才算出来，所以预留在 `:126` 查重通过后、`:132` 的外部调用之前：写 `_tokenAddressBySymbol[final] = address(this)` 作哨兵，`_createToken` 返回后再覆盖为真实地址。改动只涉及 2-3 行，不改变 ABI。
+- `:121` 的 `ILOVE20Token(parent).symbol()` 继承自 `IERC20Metadata`，是 `view`，编译成 `STATICCALL`；回调里做 `launchToken` 这种状态写入会直接 revert。root 父币（WBNB）和已登记的 `LOVE20Token` 都不构成这个向量。
+- `factory.getPair` 也是 `view`（STATICCALL），只有 `createPair` 是非 view。也就是说，唯一的重入向量是**恶意或可升级的 factory**。
+- factory 是部署期可信依赖。生产部署用 UniswapV2Factory，不会回调；如果 factory 本身不可信，它能做的远不止重入造同符号币（例如返回假 pair、跳过 `createPair`、给出错误的 Pair 地址），同符号只是其中一个表征，不构成独立风险。
+
+**建议**：按当前信任模型**不需要改代码**。如果未来换成可升级/可回调的 factory，再考虑把最终符号的预留写提到 `_createToken` 之前（`:126` 查重通过后写 `_tokenAddressBySymbol[final] = address(this)` 作哨兵，`_createToken` 返回后再覆盖真实地址），作为可选硬化，2-3 行，不改变 ABI。
 
 ### LCH-06 · 首币路径不受符号长度与字符集校验
 
@@ -131,5 +135,7 @@ L6/L7 是「根级账本有界」的完整证明：root 维度的 `issued` 不�
 
 ## 6. 覆盖缺口
 
-- 未构造可回调 factory 的 PoC 把 `LCH-05` 升到 E3；需要 mock 一个在 `createPair` 内回调 `launchToken` 的工厂。
+- 未构造恶意 factory 的 PoC；`LCH-05` 已按部署期信任假设判为不可达，不再升级。
 - 未审 `LOVE20Token` 构造函数在 `_createToken` 内的 gas 与 `distributor` 为合约时的行为（ERC20 无回调，风险为零）。
+
+行号基准 `0466d67`。

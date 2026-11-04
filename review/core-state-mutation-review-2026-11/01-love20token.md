@@ -1,6 +1,6 @@
 # LOVE20Token · 状态变量变更审查
 
-> `core/src/LOVE20Token.sol`，59 行，`core@6fdd0f1`。
+> `core/src/LOVE20Token.sol`，59 行，`core@0466d67`。
 > 本合约是唯一有「铸造上限」语义的 ERC20；`Launch` 为每枚社区代币部署一份，`Mint` 是唯一的 `MINTER`。
 > 证据分级：E3 测试 / E2 算术 / E1 静态。
 
@@ -9,12 +9,12 @@
 | # | 变量 | 类型 | 语义 | 写入点 | 生命周期 |
 | --- | --- | --- | --- | --- | --- |
 | 1 | `MAX_SUPPLY` | `uint256 immutable` | 终生上限，含构造时的 `initialSupply` | 构造器 `:32` | 不可变 |
-| 2 | `MINTER` | `address`（storage） | 唯一铸造者，`Launch` 传入 `MINT_ADDRESS` | 构造器 `:33` | **只写一次** |
-| 3 | `PARENT_TOKEN_ADDRESS` | `address`（storage） | 父币；`Stake` 用它找 Pair | 构造器 `:34` | **只写一次** |
+| 2 | `MINTER` | `address immutable` | 唯一铸造者，`Launch` 传入 `MINT_ADDRESS` | 构造器 `:33` | 不可变 |
+| 3 | `PARENT_TOKEN_ADDRESS` | `address immutable` | 父币；`Stake` 用它找 Pair | 构造器 `:34` | 不可变 |
 | 4 | `_balances` / `_allowances` / `_totalSupply` | OZ `ERC20` 私有 | 标准余额、授权、总量 | `_mint` / `_burn` / `_transfer` / `_approve` / `_spendAllowance` | 随转账与铸造销毁变化 |
 | 5 | `_name` / `_symbol` | OZ `ERC20` 私有 | 元数据 | 构造器 | 不可变（无 setter） |
 
-`MINTER` 与 `PARENT_TOKEN_ADDRESS` 都是**构造后不再写**的普通 storage 变量，不是 `immutable`。这与 `MAX_SUPPLY` 的处理不一致（见 `TOK-04`）。
+`MINTER` 与 `PARENT_TOKEN_ADDRESS` 已在 `5c0afc7` 改为 `immutable`（`:9-10`），与 `MAX_SUPPLY` 的处理一致（见 §5 的「复核期间已修复」）。
 
 ## 2. 逐变量变更逻辑
 
@@ -45,7 +45,7 @@
 | 不变式 | 是否成立 | 依据 |
 | --- | --- | --- |
 | `totalSupply() <= MAX_SUPPLY` | ✅ 结构成立 | 构造时 `initialSupply <= maxSupply`（`:22`）；`mint` 用 `remaining` 兜底（`:43-44`）；`burn` 只减。因此 `MAX_SUPPLY - totalSupply()` **不会下溢** |
-| `MINTER` / `PARENT_TOKEN_ADDRESS` 终生不变 | ✅ 成立 | 无写入点 |
+| `MINTER` / `PARENT_TOKEN_ADDRESS` 终生不变 | ✅ 编译器保证 | 二者是 `immutable`（`:9-10`），赋值只发生在构造器（`:33-34`） |
 | `Σ balances == totalSupply` | ✅ 成立 | 全部经由 OZ 的 `_mint`/`_burn`/`_transfer` |
 | `mint` 只由 `Mint` 合约触发 | ✅ 成立 | `Mint` 是 `MINTER`；`onlyMinter` 是函数体第一道判定，先于参数读取 |
 | `burn` 只能烧自己的 | ✅ 成立 | `_burn(msg.sender, amount)` |
@@ -54,8 +54,8 @@
 
 | 下游读取 | 用途 | 写入侧影响 |
 | --- | --- | --- |
-| `Mint.rewardAvailable`（`Mint:452-456`） | `MAX_SUPPLY - totalSupply - reservedAvailable` | **任何持有人 `burn` 都会抬高 `rewardAvailable`**，即把「已发行的币」重新变成「未来可铸额度」。这是「燃烧→再铸」的设计，不是漏洞：燃烧者损失自己的余额，收益归后续轮次的参与者 |
-| `MemberNFT.calculateMintCost`（`MemberNFT:103-122`） | `MAX_SUPPLY - totalSupply` 作为身份费基数 | 身份铸造会 `burn`，因此**每铸一个身份，下一个身份更贵**（正反馈）。该行为由「未铸造量」定义，属设计 |
+| `Mint.rewardAvailable`（`Mint:474-478`） | `MAX_SUPPLY - totalSupply - reservedAvailable` | **任何持有人 `burn` 都会抬高 `rewardAvailable`**，即把「已发行的币」重新变成「未来可铸额度」。这是「燃烧→再铸」的设计，不是漏洞：燃烧者损失自己的余额，收益归后续轮次的参与者 |
+| `MemberNFT.calculateMintCost`（`MemberNFT:104-123`） | `MAX_SUPPLY - totalSupply` 作为身份费基数 | 身份铸造会 `burn`，因此**每铸一个身份，下一个身份更贵**（正反馈）。该行为由「未铸造量」定义，属设计 |
 | `Stake._pairSnapshot` / `_swapParentTokenForToken` | `PARENT_TOKEN_ADDRESS` 决定 Pair 与兑换路径 | 构造后不可改，路径稳定 |
 
 ## 5. 发现
@@ -63,7 +63,12 @@
 | ID | 级别 | 位置 | 结论 | 建议 |
 | --- | --- | --- | --- | --- |
 | `TOK-03` | Info | `:42-50`、`:52-58` | 零额 `mint` / `burn` 无守卫，会发 `TokenMinted(0)` / `TokenBurned(0)`。账本无影响，但索引器与「每笔 mint 都代表增发」的假设会被打破 | 加 `if (amount == 0) return;`，或在 `Mint` 侧保证（当前 `Mint` 已保证 `mintAmount > 0`，所以只有外部直接调用 `burn(0)` 可达） |
-| `TOK-04` | Info | `:9-10`、`:33-34` | `MINTER` 与 `PARENT_TOKEN_ADDRESS` 是构造后不再写的 storage，却未声明 `immutable`：`mint` 每笔多一次 `MINTER` 冷 SLOAD（约 2.1k gas），`PARENT_TOKEN_ADDRESS` 被 `Stake` 每次读取也走 storage 而非立即数；且「不可变」只是人工约定而非编译器保证 | 改为 `address public immutable MINTER;`。与 `MAX_SUPPLY` 一致，也与既有审查 `TOK-01` 的同一结论合并 |
+
+### 复核期间已修复
+
+| ID | 原级别 | 位置 | 状态 | 一句话结论 | 证据 |
+| --- | --- | --- | --- | --- | --- |
+| `TOK-04` | Info | `:9-10`、`:33-34` | 已修复（5c0afc7） | `MINTER` 与 `PARENT_TOKEN_ADDRESS` 是构造后不再写的值，`5c0afc7` 已把二者声明为 `immutable`：`mint` 的 `MINTER` 读取走立即数，`Stake` 读父币也不再走 storage；「不可变」由编译器保证而非人工约定 | E1 |
 
 > `TOK-01`（`burn` 对任何人开放、全仓无 rescue）已在 `core-review-plan-2026-11` 登记为 Info；本卷复核其状态面结论不变：`burn` 只能动 `msg.sender` 的余额，唯一外部效应是通过 `rewardAvailable` 影响未来轮次。
 
@@ -78,3 +83,5 @@
 
 - 未复核 OZ 5.6.1 的 `_mint`/`_burn` 实现细节，按其公开语义认定。
 - `MAX_SUPPLY` 的取值域（`launchAmount <= maxSupply`）由部署脚本保证，合约只保证 `initialSupply <= maxSupply`。
+
+行号基准 `0466d67`。
