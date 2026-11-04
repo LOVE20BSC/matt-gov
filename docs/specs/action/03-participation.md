@@ -49,3 +49,9 @@ Provider 额度接口见 [`IGroupActionJoin.sol`](https://github.com/LOVE20BSC/a
 `withdrawProviderQuota` 金额须满足 `0 < amount <= 该链群内该 Provider 的可用额度（授权 − 已用）`，不影响任何参与量、自有或其他 Provider 账本。Provider 身份不授予成员 `exit` 权限，也不授予成员管理 Provider 额度的权限。历史零值按 RoundHistory 记录；无历史额度返回 0，空名单返回等长空数组。`providerQuotas` 按标准分页返回某 Provider 在某个链群的授权表（成员、授权额度、已使用额度与真实总数）：授权额度只由 Provider 动作变动——授予追加、`removeProviderQuota` 清零、`withdrawProviderQuota` 减去撤回的未使用额度；已使用额度取该成员在当前所属链群的已投入量（成员已不在该链群时为 0），可用额度 = 授权额度 − 已使用额度；名单保留到授权额度归零。`providerAmountsByMemberId` 按标准分页返回某成员在 `round` 轮有余额的来源及其金额（RoundHistory 懒继承：无记录继承最近历史）；成员在某轮的参与记录由 `joinInfo` 返回（`JoinInfo`：`joinedRound`、`groupId`、`ownAmount`、`providerAmount`）；聚合总量 `joinedAmount` 只由基座 `joinedAmountByMemberId` 给出，`joinInfo` 不重复计算。
 
 验收见 [Action 验收](08-testing.md)。
+
+## 状态口径
+
+- `providerQuotas` 的「已使用额度」取成员**当前所属链群**的已投入量：成员换群或退出后，旧群已用额度归零、可用额度回到全额；Provider 不得用「可用额度变小」推断资金仍被占用。
+- `removeProviderQuota` 是批量整笔收回，`memberIds` 重复时第二次命中 `QuotaNotGranted` 并整批回滚；链下批量脚本必须先按 `memberId` 去重。`withdrawProviderQuota` 按成员逐笔退，两种批量语义不对称。
+- 三个质押/额度计数器维度不同：`ownAmount` 是成员自身投入，`providerAmount` 是 Provider 授予额度，`stakedByMemberId` 是按 `groupId` 聚合的质押；`joinedAmount` 只由基座给出，不得互相换算。

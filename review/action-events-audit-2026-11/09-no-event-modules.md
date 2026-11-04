@@ -1,11 +1,12 @@
-# 无事件模块核查（ExecutorBase / 两个 Storage / 两条 RoundAxis / MemberOwner）
+# 无事件模块核查（ExecutorBase / 两个 Storage / 三条 RoundAxis / MemberOwner）
 
 > 对象
-> - `action/src/ExecutorBase.sol`（140 行，`abstract contract`）
-> - `action/src/GroupActionStorage.sol`（190 行，`library`，纯 `struct` + 常量 + 1 个 `internal view`）
+> - `action/src/ExecutorBase.sol`（基线 140 行 / 修复后 146 行，`abstract contract`）
+> - `action/src/GroupActionStorage.sol`（基线 190 行 / 修复后 188 行，`library`，纯 `struct` + 常量 + 1 个 `internal view`）
 > - `action/src/GroupServiceStorage.sol`（80 行，`library`，纯 `struct` + 常量 + 3 个 `internal`）
-> - `action/src/GroupActionRoundAxis.sol`（21 行，`library`，纯换算）
-> - `action/src/LpRoundAxis.sol`（16 行，`library`，纯换算）
+> - `action/src/GroupActionRoundAxis.sol`（修复后 16 行，`library`，verify/mint）
+> - `action/src/GroupServiceRoundAxis.sol`（11 行，`library`，mint）
+> - `action/src/LpRoundAxis.sol`（修复后 11 行，`library`，mint）
 > - `action/src/MemberOwner.sol`（26 行，`library`，`try/catch` 包装）
 > 基线 `action@e849e36`；审查日期 2026-11-03
 
@@ -17,10 +18,11 @@
 | `GroupActionStorage` | 0 | 0 | 0（只有 `Layout` 定义与常量） | 正确：状态由 `GroupActionExecutor` 声明，事件由状态所有者发射（§4.1） |
 | `GroupServiceStorage` | 0 | 0 | 0（同上） | 正确 |
 | `GroupActionRoundAxis` | 0 | 0 | 0 | 正确：`02-phase-model.md` 明确「轴库只做 `phase → round` 纯换算，不 import 错误接口」 |
+| `GroupServiceRoundAxis` | 0 | 0 | 0 | 正确（服务铸币轴，`phase − 3`；不再跨类型引用 `GroupActionRoundAxis`） |
 | `LpRoundAxis` | 0 | 0 | 0 | 正确 |
 | `MemberOwner` | 0 | 0 | 0 | 正确：只把 `ERC721NonexistentToken` 归一为 `address(0)`，不产生业务事实 |
 
-**6 个模块全部「零事件」是正确的**，不是遗漏。本报告记录的是每个模块「为什么可以没有事件」以及「没有事件会带来什么隐含约束」——这些约束在各自的消费方报告里被引用。
+**7 个模块全部「零事件」是正确的**，不是遗漏。本报告记录的是每个模块「为什么可以没有事件」以及「没有事件会带来什么隐含约束」——这些约束在各自的消费方报告里被引用。
 
 ## 二、`ExecutorBase`
 
@@ -62,18 +64,20 @@
 
 `GroupServiceStorage.groupReward`（`:69-77`）带 `// Load-bearing:` 注释（`:65-68`），说明「缓存的分母只能与同一账本的权重配对」——这条约束直接决定 `ServiceRewardsDistributed` 的金额正确性，但它是状态读取规则，不产生事件。
 
-## 四、`GroupActionRoundAxis` / `LpRoundAxis`
+## 四、`ActionRoundAxis` / `GroupActionRoundAxis` / `GroupServiceRoundAxis` / `LpRoundAxis`
 
-两条轴都是「`phase → round` 纯换算」，无 `import` 错误接口、无状态、无事件：
+轴换算是「`phase → round` 纯换算」，无 `import` 错误接口、无状态、无事件；`joinRound` 只在 `ActionRoundAxis` 定义一次，类型轴库不含 join：
 
 | 轴 | `joinRound` | `verifyRound` | `mintRound` |
 | --- | --- | --- | --- |
-| `GroupActionRoundAxis` | `phase < 2 ? 0 : phase − 1` | `phase < 3 ? 0 : phase − 2` | `phase < 4 ? 0 : phase − 3` |
-| `LpRoundAxis` | `phase < 2 ? 0 : phase − 1` | —（LP 无验证阶段） | `phase < 3 ? 0 : phase − 2` |
+| `ActionRoundAxis` | `phase < 2 ? 0 : phase − 1`（唯一定义） | — | — |
+| `GroupActionRoundAxis` | —（已删除） | `phase < 3 ? 0 : phase − 2` | `phase < 4 ? 0 : phase − 3` |
+| `GroupServiceRoundAxis` | — | — | `phase < 4 ? 0 : phase − 3` |
+| `LpRoundAxis` | —（已删除） | —（LP 无验证阶段） | `phase < 3 ? 0 : phase − 2` |
 
 `< 1` 的守卫不在这里，而在消费方：`ExecutorBase.currentJoinRound` / `currentMintRound`、`GroupActionManager.currentJoinRound`（`:477-483`）、`GroupActionVerify.currentVerifyRound`（`:521-527`）。两条路径回滚同一载荷 `RoundNotStarted(1, 0)`。
 
-**对事件的影响**：所有事件的 `round` 字段都直接或间接来自这两条轴，因此「同一笔交易里所有事件的 `round` 必须落在同一个 phase 快照上」这条不变式由「轴是纯函数 + 同 tx 内 `block.number` 不变」共同保证。`GroupActionExecutor` 与 `GroupServiceExecutor` 的 `mintRound` 不同（`phase − 3` vs 同值）而 `LpExecutor` 是 `phase − 2`，这是 `LPE-EV-3` 讨论的共享类相位偏移问题。
+**对事件的影响**：所有事件的 `round` 字段都直接或间接来自这些轴，因此「同一笔交易里所有事件的 `round` 必须落在同一个 phase 快照上」这条不变式由「轴是纯函数 + 同 tx 内 `block.number` 不变」共同保证。GroupAction 与 GroupService 的 `mintRound` 都是 `phase − 3`（但已是两条类型轴，不再跨类型引用），`LpExecutor` 是 `phase − 2`，这是 `LPE-EV-3` 讨论的共享类相位偏移问题。
 
 ## 五、`MemberOwner`
 

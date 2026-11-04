@@ -67,7 +67,7 @@ event LpJoined(
 | 字段 | 赋值来源（源码行） | 说明 |
 | --- | --- | --- |
 | `tokenAddress` / `actionId` / `memberId` | 入参 `:184-186` | 根键 → 父 id → actor |
-| `round` | `currentJoinRound()` `:154`（= `LpRoundAxis.joinRound`，`phase - 1`） | 加入轮 |
+| `round` | `currentJoinRound()` `:154`（= `ActionRoundAxis.joinRound`，`phase - 1`，经 `ExecutorBase._joinRound():134`） | 加入轮 |
 | `amount` | 入参 `:188` | 已过 `amount == 0` 回滚 `ZeroParticipationAmount:150-152`、首次加入的 `minGovRatio` 判定 `:157-163` |
 
 前置写入六处（`:170-175`）：`_deductionByMemberId +=`、`_deductionByRound +=`、`_joinBlocksByMemberId.push`、`_joinAmountsByMemberId.push`、`_joinedAmountByMemberId.increase`、`_joinedAmountByActionId.increase`。随后 `registerJoinState`（`:178`，仅首次）、`safeTransferFrom`（`:181`）、emit（`:183`）。

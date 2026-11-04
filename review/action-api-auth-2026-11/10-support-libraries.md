@@ -94,9 +94,10 @@ function ownerOrZero(address memberNFTAddress, uint256 memberId) internal view r
 ### SUP-02（Info）`GroupActionRoundAxis.joinRound` 与 `LpRoundAxis.joinRound` 是逐字节相同的两份
 
 - 证据：两个函数体完全一致（`phase < 2 ? 0 : phase - 1`）。
-- 规格口径：`02-phase-model.md` 明确要求「`phase → round` 换算只留在 `GroupActionRoundAxis`（join/verify/mint）与 `LpRoundAxis`（join/mint）两个纯换算库」。所以这是规格要求的分裂，不是重复代码事故——LP 是三阶段（无 verify），GroupAction 是四阶段，两条轴的语义不同，只是 `join` 恰好同式。
-- 风险：若将来修改加入轮的偏移（例如把加入从 `phase - 1` 改为 `phase - 2`），必须同时改两处，而两处没有编译期关联。`GroupServiceExecutor._joinRound` 的注释已经点出这条风险：「this must stay equal to ActionTarget's own join round (phase - 1)… if the two drift, the reported round and the recorded snapshot disagree without any revert」——而 `ActionTarget._joinRound()` 是**第三处**同样的算式（`ActionTarget.sol:382-385`）。
-- 建议：加一条测试断言「`ActionTarget._joinRound() == LpRoundAxis.joinRound(phase) == GroupActionRoundAxis.joinRound(phase)`」对若干 phase 成立，把这条隐式等式变成可执行的约束。
+- 规格口径（修复后）：`02-phase-model.md` 明确「`joinRound` 由中立库 `ActionRoundAxis` 唯一定义，`ExecutorBase._joinRound()` 是它的单一实现点（非 `virtual`）；类型轴只保留各自的 `verifyRound` / `mintRound`」。所以 `join` 不再属于类型轴；LP 与 GroupAction 的差异只体现在 verify/mint。
+- 风险（修复前）：若将来修改加入轮的偏移，必须同时改两处且没有编译期关联。`GroupServiceExecutor._joinRound` 的注释曾点出这条风险（「this must stay equal to ActionTarget's own join round (phase - 1)… if the two drift, the reported round and the recorded snapshot disagree without any revert」）——而 `ActionTarget.registerJoinState` 是**第三处**同样的算式（基线 `ActionTarget.sol:127`）。
+- 建议（修复前）：加一条断言「`ActionTarget._joinRound() == LpRoundAxis.joinRound(phase) == GroupActionRoundAxis.joinRound(phase)`」对若干 phase 成立，把这条隐式等式变成可执行的约束。
+- **处置（2026-11）**：`joinRound` 只在 `ActionRoundAxis:9` 定义一次；`ExecutorBase._joinRound():134` 去掉 `virtual`、成为单一实现，三个 Executor 的 override 全部删除；`ActionTarget.registerJoinState:128` 的内联副本改为 `_joinRound()`，`GroupActionManager:378/485` 直接调 `ActionRoundAxis`；`GroupActionRoundAxis` / `LpRoundAxis` 删除 `joinRound`，只保留 verify/mint。上述「多份同改」风险消失，`GroupServiceExecutor` 也不再跨类型引用 `GroupActionRoundAxis`（服务铸币偏移落到 `GroupServiceRoundAxis`）。状态卷 `M-AXS-01` / `M-AXS-04` 记录该收敛。
 
 ### SUP-03（正面结论）两个 Layout 库不含任何鉴权与 ABI 入口
 

@@ -49,9 +49,9 @@ event MemberRewardMinted(
 | `memberId` | 入参 `:744` | 结算主体，indexed |
 | `round` | 入参 `:745` | 被结算轮，非 indexed（3 个槽已满） |
 | `mintAmount` | `Math.mulDiv(proposalReward, memberFinalScore, totalFinal)` `:725`，或 `mintActionReward` 返回值重算后同值 | 转给 `msg.sender` 的金额；`mintAmount != 0` 时才转账 `:737-739` |
-| `burnAmount` | 声明于 `:705`，**全函数无赋值**，恒为 `0` | GroupAction 无销毁路径（ADR-004），共享事件的该字段在本发射者上结构性为 0 |
+| `burnAmount` | 声明于 `:705`，**全函数无赋值**，恒为 `0` | GroupAction 无销毁路径（ADR-004）；死槽 `memberBurnedReward` 已删除（A-12），该字段恒 0 且无对应状态槽 |
 
-前置写入：`memberMinted:733`、`memberMintedReward:734`、`memberBurnedReward:735`；随后转账 `:737-739`；最后 emit `:741`。顺序是「状态 → 资金 → 事件」，符合 §3.4.3 与 §6.5（语义事件自带金额，不依赖 ERC-20 `Transfer` 回连）。
+前置写入：`memberMinted:733`、`memberMintedReward:734`（原第三个写入 `memberBurnedReward:735` 已随 A-12 删除）；随后转账 `:737-739`；最后 emit `:741`。顺序是「状态 → 资金 → 事件」，符合 §3.4.3 与 §6.5（语义事件自带金额，不依赖 ERC-20 `Transfer` 回连）。
 
 `mintAmount == 0 && burnAmount == 0` 时回滚 `MemberActionRewardUnavailable:729-731`，不置位、不发事件——与 `07-minting.md` 的零额拒绝同口径。由于 `burnAmount` 恒 0，本发射者的零额条件退化为 `mintAmount == 0`。
 
@@ -129,7 +129,7 @@ ActionRewardMinted(tokenAddress, actionId, round, amount)   ← ActionTarget 发
 | --- | --- | --- |
 | `_layout.memberMinted` | `:733` | `MemberRewardMinted`（`round` + `memberId` 定位） |
 | `_layout.memberMintedReward` | `:734` | `MemberRewardMinted.mintAmount` |
-| `_layout.memberBurnedReward` | `:735` | `MemberRewardMinted.burnAmount`（恒 0） |
+| ~~`_layout.memberBurnedReward`~~ | ~~`:735`~~ | 已删除（A-12）；`MemberRewardMinted.burnAmount` 恒 0 且无状态槽 |
 | 三个 `immutable` + `_layout.SPLITS` | 构造函数 `:31-34` | 无（§3.2 豁免，`21_check.sh` 复核） |
 
 ## 六、规范对照
@@ -139,8 +139,8 @@ ActionRewardMinted(tokenAddress, actionId, round, amount)   ← ActionTarget 发
 | 根键首字段（§6.1） | 通过 | `MemberRewardMinted` 以 `tokenAddress` 开头 |
 | 族槽位 `action.participation` | 通过 | 根键 → `actionId` → `memberId` → `round` → 数值 |
 | indexed ≤ 3（§6.3） | 通过 | 3 个；`round` 主动降级 |
-| 共享事件类（§4.2） | 通过 | `MemberRewardMinted` 三个发射者同 schema；`burnAmount` 在本发射者恒 0、在 `LpExecutor` / `GroupServiceExecutor` 可非零 |
-| 状态写入后 emit（§3.4.3） | 通过 | `:733-735` 先于 `:741` |
+| 共享事件类（§4.2） | 通过 | `MemberRewardMinted` 三个发射者同 schema；`burnAmount` 在本发射者恒 0 且无状态槽，在 `GroupServiceExecutor` 可非零 |
+| 状态写入后 emit（§3.4.3） | 通过 | `:733-734` 先于 `:741` |
 | 依赖序（§3.4.5） | 通过 | `ActionRewardMinted` → `MemberRewardMinted` |
 | 批量逐条（§3.4.1） | 通过 | `mintMemberRewards` 循环内逐条 emit |
 | 失败不留日志（§3.5） | 通过 | 零额回滚、`RewardAlreadyMinted` 均在 emit 之前 |
@@ -150,12 +150,12 @@ ActionRewardMinted(tokenAddress, actionId, round, amount)   ← ActionTarget 发
 
 ## 七、发现
 
-### GAE-EV-1（P3）`MemberRewardMinted.burnAmount` 在本发射者上恒为 0，事件契约与实现存在结构性空字段
+### GAE-EV-1（P3，已裁决：删除槽位）`MemberRewardMinted.burnAmount` 在本发射者上恒为 0，事件契约与实现存在结构性空字段
 
 - 证据：`_mintMemberReward`（`:700-749`）中 `burnAmount` 只在签名 `:705` 声明，函数体内无任何赋值；`:729` 与 `:741` 都以它参与判定与 payload。
 - 问题：`MemberRewardMinted` 是 §4.2 的共享事件类，三个发射者同 schema。GroupAction 侧无销毁路径（ADR-004「全链路无销毁路径」），所以该字段永远为 0。这在 schema 上是必要的（共享类不能删字段），但**在 GroupAction 这一发射者上它是常量**，消费方不能据此判断「本发射者是否支持销毁」。
 - 影响：`GroupActionEvents.t.sol:713` 断言 `burnAmount == 0`；若将来 GroupAction 引入销毁，同一字段会从常量变为变量，事件契约不变但折叠规则要改，属冻结后不可逆的语义扩张。
-- 建议：在 `05-group-action-executor.md` 的「行动激励」段落显式写一句「GroupAction 的 `MemberRewardMinted.burnAmount` 恒为 0，销毁只存在于 LP 与 Service」；这与 §4.2 已登记的「`burnAmount` 与 `ownerBurned` 有意冗余」是同一条记录习惯。
+- **处置（已裁决：删除槽位，A-12）**：状态卷 `action-state-mutation-review-2026-11` 的 `M-GAE-01` / `M-STG-04` 与本条是同一事实。修复提交删除了 `GroupActionStorage.memberBurnedReward` 与唯一写入点（原 `:735`），`memberReward` 的 `burnAmount` 改为固定返回 `0`、签名不变。因此本条按删槽后的实际形态表述：**GroupAction 发射者不再暴露销毁面——该字段恒 0 且没有对应状态槽**；`event-standards §4.2` 已同步该措辞。事件 schema 不变，`GroupActionEvents.t.sol:713` 的断言继续成立。
 
 ### GAE-EV-2（P3）`mintMemberRewards` 批量结算的事件序列未规定「行动级铸造只出现一次」的锚点
 

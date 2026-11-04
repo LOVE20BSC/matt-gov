@@ -170,7 +170,7 @@ Executor 是单例，全部逻辑落在一个地址上会超过 EIP-170 的 24,5
 
 **库不能继承接口**（Solidity 不允许），所以「接口文件 ↔ 库」是**声明归属的映射**，编译期唯一强制的契约是 Executor 继承全部接口、其包装函数再调用对应库：接口签名漂移在 Executor 编译不过，库侧签名漂移则在该调用点编译不过。
 
-**共享状态与共享规则都只留一份，运行时依赖图保持星型**：跨模块共享的状态通过同一个根 Layout 直接读写（创建回调写验证信息模板、验证写分数、分配读分数），库之间不产生 DELEGATECALL、没有循环依赖——判据是各业务库的 `linkReferences` 不含其他业务库；源级依赖只允许指向规则属主模块、单向、不成环。跨模块的**规则**按属主落位——有单一属主的（`maxJoinAmount`、`currentJoinRound` 属 `GroupActionManager`；`currentVerifyRound` 属 `GroupActionVerify`）实现留在属主模块，其他模块以 `internal` 函数**编译期内联**复用，规则复用产生的源级依赖只有 `GroupActionJoin` → `GroupActionManager`、`GroupActionExecutor` / `GroupServiceExecutor` → `GroupActionVerify` 与 `GroupActionManager` / `GroupServiceExecutor` → `MemberOwner`；无属主且被两个以上模块消费的留在 `GroupActionStorage`，即 `memberAmountAt`（`GroupActionVerify`、Executor 本地）。`phase → round` 换算只留在 `GroupActionRoundAxis`（join/verify/mint）与 `LpRoundAxis`（join/mint）两个**纯换算库**，未开始守卫不在轴库里：Executor 基座的 Round getter 与上述属主模块各自守卫。`requireMemberOwner` 已按 §5.5 改为各库本地的 `onlyMemberOwner` modifier。属主模块持有的规则不进 `GroupActionStorage`。
+**共享状态与共享规则都只留一份，运行时依赖图保持星型**：跨模块共享的状态通过同一个根 Layout 直接读写（创建回调写验证信息模板、验证写分数、分配读分数），库之间不产生 DELEGATECALL、没有循环依赖——判据是各业务库的 `linkReferences` 不含其他业务库；源级依赖只允许指向规则属主模块、单向、不成环。跨模块的**规则**按属主落位——有单一属主的（`maxJoinAmount`、`currentJoinRound` 属 `GroupActionManager`；`currentVerifyRound` 属 `GroupActionVerify`）实现留在属主模块，其他模块以 `internal` 函数**编译期内联**复用，规则复用产生的源级依赖只有 `GroupActionJoin` → `GroupActionManager`、`GroupActionExecutor` / `GroupServiceExecutor` → `GroupActionVerify` 与 `GroupActionManager` / `GroupServiceExecutor` → `MemberOwner`；无属主且被两个以上模块消费的留在 `GroupActionStorage`，即 `memberAmountAt`（`GroupActionVerify`、Executor 本地）。`phase → round` 换算只留在三个**纯换算库**：`ActionRoundAxis` 唯一定义 `joinRound`，`GroupActionRoundAxis`（verify/mint）与 `LpRoundAxis`（mint）保留类型专属偏移并委托 `joinRound`；未开始守卫不在轴库里：Executor 基座的 Round getter 与上述属主模块各自守卫。`requireMemberOwner` 已按 §5.5 改为各库本地的 `onlyMemberOwner` modifier。属主模块持有的规则不进 `GroupActionStorage`。
 
 **除业务库之外留在 Executor 的两类**：一是**会被其他合约链上调用的接口**——`IGroupActionIndexes` 的查询（Group Chat 链上读 `isGroupMember`；五条 `joined*` 分页查询随业务库走）、行动层激励查询两件（Group Service 读取：一件取行动总额做分母，一件取群切片做权重）与基座 `IActionExecutor` 的 Round、参与量查询：这类函数本身很便宜，跨库会让一次读取的固定开销（约 2,600 gas 冷访问）翻倍；只被钱包与前端读取的查询走 `eth_call`、不计 gas，随业务库走。二是**成员级激励铸造**（见上表下方说明）。
 
@@ -183,3 +183,25 @@ Executor 是单例，全部逻辑落在一个地址上会超过 EIP-170 的 24,5
 部署脚本按「先部署各库、再链接部署 Executor」执行，库地址与链接关系记入 `script/network/<net>/`；`forge build --sizes` 的 24,576 上限纳入实现门禁。实现对账时按库分别核对 runtime 上限，任一库超限则继续按业务边界细分。
 
 验收见 [Action 验收](08-testing.md)。
+
+## 状态口径
+
+**承重字段**（破坏后不报错，只让账本失去自证能力；按 `dev-standards §5.3` 以规格承载，不在源码加注释）：
+
+- `roundVerified`：`OriginScoresSubmitted` 的重复提交判定与「本轮已验证」的唯一来源；置位后不可回退。
+- `groupIdsByRound` / `verifiedMemberCountByGroupId`：群层与行动层计数的对照表；一侧漏写会让 `hasActiveGroups` 与结算名册不一致。
+- `slotHistory` / `indexPlusOneHistory`：懒继承的锚点；`indexPlusOne` 用 `0` 表示「该槽未被写过」，写 `0` 与未写不可区分。
+
+**创建回调的四个副本**：`createdRound` 在 `ActionTarget`、`GroupActionManager`、`GroupActionJoin`、`GroupActionVerify` 各存一份，由 `onProposalCreated` 一次写入，运行期没有交叉断言；同一笔里四份恒等，读面按本合约自己的副本。漂移后加入窗口与结算窗口错位一格，两处都不报错。
+
+**`joinTokenAddress` 校验**：创建回调要求 `joinTokenAddress` 是合约且实现 `totalSupply()`，否则回滚 `InvalidJoinTokenAddress(address)`；`maxJoinAmount` 因此不会读到无法解码的代币。错误声明在 `IGroupActionExecutorErrors`。
+
+**错误契约**：成员身份严格查表（`ownerOf` 失败即回滚，`ERC721NonexistentToken` 被翻译直言）；群身份容错（`ownerOrZero` 把「非本群成员」折成 `0`，不区分「不存在」与「不属于我」）。
+
+**验证面**：验证值按 schema 位置绑定，链下必须保序；`joinedRound` 是当前段起点，退出后重新加入会覆写；归属计数是裸计数，成对性只由三个写点的组合保证；`removeProviderQuota` 与 `withdrawProviderQuota` 批量语义不对称，重复 `memberId` 整批回滚；`_restoreProviders` 先物化 `values()` 快照再删元素，遍历安全。
+
+**申请面**：申请 id 只增，旧申请的票与名册永久保留，该轮各申请票数之和可大于实际投票数；「已验证」只能读 `roundVerified` 集合，不能读扣分槽（满分不占存储位）；`lockedVerifierId` 无超时、无接管，锁定者失联则整轮零激励；榜外申请不可枚举；`onProposalVoted` 对空 `targetData` 静默返回。
+
+**配置面**：`setGroupConfig` 即时生效，不按轮历史；`activatedRound` / `deactivatedRound` 只用于一处相等判定；三个质押计数器维度不同（自身投入 / Provider 额度 / 可用额度），不可互相换算；`SPLITS` 的合法性由部署脚本校验、`21_check.sh` 复核，合约侧零校验。
+
+**销毁面**：`memberBurnedReward` 已删除；GroupAction 的 `memberReward` 的 `burnAmount` 固定返回 `0`，`MemberRewardMinted.burnAmount` 恒为 `0`。

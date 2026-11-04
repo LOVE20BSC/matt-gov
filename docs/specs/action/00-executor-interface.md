@@ -13,7 +13,7 @@
 - `joinedAmountByActionId(...)` / `joinedAmountByMemberId(...)` / `joinTokenAddress(...)` — 截止加入轮 `round` 结束的累计参与量、按成员累计量与参与计价代币（`round` 大于当前加入轮时按未开始返回 0；计价代币与轮次无关，不带 `round`；口径由各 Executor 规格固定）。计价代币是 `joinedAmountByActionId` 的计价单位：LP 为 LP 对币、GroupAction 为 join token、GroupService 为行动代币（按激活质押代理计量）。前端展示行动列表与派生指标时只需读基座三者，无需按 Executor 分支。GroupAction 另有成员记录快照 `joinInfo(tokenAddress, actionId, round, memberId) returns (JoinInfo)`（`joinedRound` / `groupId` / `ownAmount` / `providerAmount`）：它**不重复给出聚合总量**，总量只有基座 `joinedAmountByMemberId` 一个来源
 - 基座 `joinTokenAddress` 是唯一的通用计价代币 getter；LP 与 GroupAction 直接使用该名（不再重复声明）。GroupService 的计价代币语义是行动代币，保留 `actionTokenAddress` 作为领域别名，与基座 `joinTokenAddress` 同键同值——这是登记在案的单点例外，改其一必须同批改另一个
 - `currentVoteRound()` / `currentJoinRound()` / `currentMintRound()` — 从 `Phase.currentPhase()` 推导的三阶段 Round；未开始回滚 `RoundNotStarted(1, 0)`（`requiredRound` 为 1，`currentRound` 为推导出的 0；0 是派生轮未开始的哨兵，需要当前 phase 时读 `Phase.currentPhase()`）
-  推导与守卫分层见 [阶段模型](02-phase-model.md)：轴库只做 `phase → round` 纯换算，不 import 错误接口。
+  推导与守卫分层见 [阶段模型](02-phase-model.md)：轴库只做 `phase → round` 纯换算，不 import 错误接口；`joinRound` 由中立库 `ActionRoundAxis` 唯一定义，`ExecutorBase._joinRound()` 是它的单一实现点（非 `virtual`），类型轴只保留各自的 `verifyRound` / `mintRound`。
 
 **非通用部分**（各 Executor 自行定义）：
 - 构造函数与配置项 — LpExecutor / GroupActionExecutor 只收 ActionTarget（后者另收 splits），GroupServiceExecutor 只收 GroupActionExecutor（ActionTarget 从它反查）；行动配置来自行动创建时的 Target Data
@@ -108,3 +108,9 @@ Executor 不使用加密调用 `ActionTarget` 上同名的 `join`/`exit`：Actio
 - [ActionTarget 规格](01-action-target.md)
 - [ADR-003: ActionTarget 接口简化设计](../../adr/003-action-target-interface-simplification.md)
 - [`IActionExecutor.sol`](https://github.com/LOVE20BSC/action/blob/main/src/interfaces/IActionExecutor.sol)
+
+## 状态口径
+
+- `init` 必须先于任何 Executor 的部署与绑定完成：Executor 构造函数从 `ActionTarget` 读四个 immutable，绑定读取自身也依赖已初始化的地址；顺序颠倒只表现为构造期解码失败。部署脚本以「`!initialized()` → `init` → `initialized()`」断言收尾，并回读五个绑定。
+- 批量结算不设长度上限：gas 由调用方自付，区块 gas 是自然上界；逐元素可能触发外部铸币或转账，任一元素失败整笔回滚，不存在部分结算。
+- 铸币窗口未开始（`mintRound == 0`）时，成员结算统一回滚 `RoundNotStarted(1, 0)`；`RoundAfterMintWindow` 只用于「已开始但已过窗」。读面 `currentMintRound()` 与写面同口径。

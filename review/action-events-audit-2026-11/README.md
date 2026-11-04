@@ -112,7 +112,7 @@
 | AT-1     | 注册表事件早于 Executor 仓位账本，两种行动类型插入点不同                                                                 | `01` §六 | 跨合约顺序      |
 | AT-2     | `JoinState*` 的成员集合顺序只能靠重放库实现还原                                                                    | `01` §六 | 折叠路径       |
 | AT-3     | `createdRound` 在四处各写一份，同值是隐式不变式                                                                   | `01` §六 | 隐式不变式      |
-| GAE-EV-1 | `MemberRewardMinted.burnAmount` 在本发射者上恒为 0                                                        | `02` §七 | 共享类空字段     |
+| GAE-EV-1 | `MemberRewardMinted.burnAmount` 在本发射者上恒为 0；已裁决删槽（A-12），字段恒 0 且无状态槽 | `02` §七 | 共享类空字段 / 已处置 |
 | GAE-EV-2 | 批量结算未规定「行动级铸造只出现一次」的锚点                                                                            | `02` §七 | 批量顺序       |
 | GAM-EV-1 | 三个质押聚合量只在改变点携带增量，无后置总量                                                                            | `03` §六 | §3.1 聚合量   |
 | GAM-EV-2 | `deactivatedRound` 的归零只能由 §7.2 规则推导                                                               | `03` §六 | 快照字段       |
@@ -206,7 +206,7 @@ forge test --match-test 'Event|Events'
 | --- | --- |
 | `matt-gov/review/action-api-auth-2026-11/`（9 份，同日） | 接口调用权限视角。本次是事件视角，两者互补：该审查的 GAJ-03（CEI 不完全）从重入角度讨论 `exit`/`withdraw` 的「状态清理被退款切开」，本次的 `GAJ-EV-2`/`GAJ-EV-3` 从事件顺序角度讨论同一批代码（前者判 Info 因有 `nonReentrant`，后者判 P3 因 §4.4 是事件契约）。**已同步更正**：该审查的 GAM-01「附带一条」、GRC-01 与 README G-03 原先写着「库可被直接调用并 emit 伪造事件」，该结论已被字节码实测否定；现已改为「已撤回」记录并保留机制说明，其登记项从 39 调整为 38（Info 37 → 36）、09 号报告从 4 条 Info 调整为 3 条。本报告初版的 `GAM-EV-3`/`GR-EV-3` 即由此误判，已撤除 |
 | `matt-gov/review/core-events-audit-2026-11/` | core 侧同型审查（8 份逐合约 + README）。本次沿用其报告结构（结论表 → 事件总览 → 逐事件赋值链 → 状态覆盖 → 规范对照 → 发现 → 测试对照），便于跨仓比对同一事件在两侧的口径（如 `ActionRewardMinted` 与 `ProposalRewardMinted`） |
-| `matt-gov/docs/event-standards.md` v1.1 | 判据。本次提出的登记类建议已落到 §4.2（共享类相位偏移与 `burnAmount ≡ 0`）、§3.4 E5/E6（服务结算尾部的两条相邻汇总）、§4.4（Provider 额度事件）、§6.3（三槽取舍）、§6.8（`prev*` 上界）、§6.9（窄名单）、§7.2（群激活/停用折叠）、§4.1（emitter 断言门禁） |
+| `matt-gov/docs/event-standards.md` v1.1 | 判据。本次提出的登记类建议已落到 §4.2（共享类相位偏移与 GroupAction `burnAmount` 恒 0 且无状态槽）、§3.4 E5/E6（服务结算尾部的两条相邻汇总）、§4.4（Provider 额度事件）、§6.3（三槽取舍）、§6.8（`prev*` 上界）、§6.9（窄名单）、§7.2（群激活/停用折叠）、§4.1（emitter 断言门禁） |
 
 ## 十、处置（2026-11-04）
 

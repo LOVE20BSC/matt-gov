@@ -128,3 +128,14 @@ amount[i] = mulDiv(slice(a, m), ratios[i], 1e18)
 - 来源为旧 `LOVE20TKM/extension-group/src/ExtensionGroupService.sol`、`LOVE20TKM/extension-group/src/GroupRecipients.sol` 与 `LOVE20TKM/extension/src/ExtensionBaseReward.sol`。公共验证者份额及全社区分母以本文件 BSC 规则为准。
 
 铸造见 [统一链路](07-minting.md#铸造链路)，验收见 [Action 验收](08-testing.md)。
+
+## 状态口径
+
+- 结算金额依赖领取时点的治理票读面，不是 `(actionToken, round, memberId)` 的纯函数；同一键在不同区块可能算出不同数量，索引方不得把首次观察值当唯一真值。
+- 分母缓存的时序前提：`_mintMemberReward` 在 `mintActionReward` 之前算出分母、之后写入 `cacheDenominator`；等值成立依赖「准备后 `A[a]` 冻结」与「同一 `(actionToken, round)` 只准备一次」。该前提由本规格承载（按 `dev-standards §5.3`，不在源码加注释）：读 `generatedActionReward` 前必须先调用一次 `mintMemberReward` 触发写入。
+- 零分母不写缓存（`0` 兼作「未缓存」），因此该轮每次尝试都重新枚举全部入榜行动；与 `GroupServiceStorage` 的哨兵二义同源。
+- 服务代币必须实现 `burn(uint256)`；合约不校验，上限绑定时才暴露，由部署期代币选择保证。
+- `joinedAmountByActionId` / `joinedAmountByMemberId` 的 `round` 只作上界，返回值始终是当前累计，与 `LpExecutor`/`GroupActionExecutor` 的按轮历史不同。
+- `RecipientsChanged` 的 `prev*` 是懒继承解析后的**有效值**，不是本轮原值；配置懒继承意味着「配一次永久生效」，集合无法区分「本轮配过」与「继承来的」。
+- `distribute` 循环无界，成本随接收人数线性增长且由份额承担；`setRecipients` 不校验群激活状态，任意群主可在停用群上配比例。
+- `cacheDenominator` 自身无幂等守卫，唯一性由唯一调用方（`_mintMemberReward`）保证；`joinTokenAddress` / `actionTokenAddress` / `sourceTokenByServiceActionId` 三名同概念，链下不得按 getter 名做统一适配。

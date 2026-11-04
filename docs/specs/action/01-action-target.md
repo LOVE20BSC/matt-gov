@@ -96,3 +96,10 @@ Executor 失效时的兜底清理：成员 NFT 当前持有人可清除加入态
 分页查询的 `offset` 越界返回空数组与真实总数，不回滚；`limit` 超剩余按剩余返回。`forceClearJoinState` 重复清理无操作，不发重复事件；它不回调 Executor、不阻塞也不参与 Executor 的资金结算，因此 Executor 故障不会把注册表清理拖死。ActionTarget 不校验业务 Round，也不校验 Proposal 的投票门槛。
 
 激励转发见 [铸造链路](07-minting.md#铸造链路)，验收见 [Action 验收](08-testing.md)。
+
+## 状态口径
+
+- `joinedRounds` 只表示**当前加入轮**：成员退出后归零，与「从未加入」不可区分；「是否在某轮参与过」只能由 `isJoinedByRound` 回答，链下不得用 `joinedRounds` 判定历史参与。
+- `forceClearJoinState` 与 `clearJoinState` 在状态上完全等价，差别只在事件 `JoinStateCleared.forced`；「被强制清理」这一事实只能由事件还原，链下索引必须落库该字段。
+- 三本注册表（`executorByActionId`、`actionIds`、`actionIdsByExecutor`）只增不删，没有行动注销或重新绑定的路径；`AlreadyCreated` 是永久守卫，链下不得假设存在治理兜底。
+- 加入轮派生统一走 `ActionRoundAxis.joinRound`（中立轴库，`ExecutorBase._joinRound()` 是唯一实现）：`registerJoinState` 经自身 `_joinRound()` 取值，与 `clearJoinState` / `forceClearJoinState` 及三个 Executor 使用同一来源；`registerJoinState` 内不再内联 `currentPhase() - 1`。`phase` 为 0/1 时轴库返回 0，但 `currentRound <= createdRound` 的守卫先命中 `JoinNotOpen`，回滚语义不变（`testRegisterJoinStateRejectsBeforeJoinOpens` 覆盖 phase 0 与 1）。

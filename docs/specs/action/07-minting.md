@@ -77,10 +77,14 @@ Core 的预留、铸造和取消额度账本见 [Mint](../core/07-mint.md)，不
 | `ActionNotCreated(tokenAddress, actionId)` | 行动尚未创建（`createdRound == 0`）：群激活、验证者申请与三个 Executor 的成员结算（含批量）都拒绝 |
 | `RoundNotStarted(uint256 requiredRound, uint256 currentRound)` | 对应阶段的 Round 小于 1：`requiredRound` 恒为 1，`currentRound` 为推导出的 0 |
 | `RoundBeforeActionCreated(uint256 round, uint256 createdRound)` | 成员结算的 `round` 早于行动创建轮（行动已存在），三个 Executor 一致 |
-| `RoundAfterMintWindow(uint256 round, uint256 mintRound)` | 成员结算的 `round` 超过当前铸币轮（含铸币阶段未开始时的 `mintRound = 0`） |
+| `RoundAfterMintWindow(uint256 round, uint256 mintRound)` | 成员结算的 `round` 超过当前铸币轮（仅当铸币阶段已开始且 `mintRound != 0`） |
 | `NotQualified(address actionTokenAddress, uint256 round, uint256 memberId)` | 服务加入者既非社区激活群 owner，也没有该轮有效验证者申请 |
 | `ActionTokenParentMismatch(address actionTokenAddress, address serviceTokenAddress, address actualParentTokenAddress)` | 服务代币不是行动代币，且行动代币的实际父币不是服务代币；载荷同时给出行动代币、服务代币与实际父币 |
 
-Target Data 的项数、每项位置与编码由各 Executor 在自己的规格中固定，并在对应回调内自行校验，错误也声明在各自的 `Errors` 子接口；ActionTarget 只解析创建回调的第 `0` 项 executor。错误名自带字段，不复用「一个 `InvalidAddress` 覆盖多个字段」的写法：零地址按字段分别报 `Zero<Field>Address()`，比例按字段分别报 `Invalid<Field>(value)`，参与量按条件分别报 `ZeroParticipationAmount`/`BelowMinJoinAmount`/`WithdrawAmountExceeded`；结算轮次按轴分别报 `RoundBeforeActionCreated` 与 `RoundAfterMintWindow`，阶段未开始统一报 `RoundNotStarted(requiredRound, currentRound)`。以上错误均在对应外层交易中回滚。
+Target Data 的项数、每项位置与编码由各 Executor 在自己的规格中固定，并在对应回调内自行校验，错误也声明在各自的 `Errors` 子接口；ActionTarget 只解析创建回调的第 `0` 项 executor。错误名自带字段，不复用「一个 `InvalidAddress` 覆盖多个字段」的写法：零地址按字段分别报 `Zero<Field>Address()`，比例按字段分别报 `Invalid<Field>(value)`，参与量按条件分别报 `ZeroParticipationAmount`/`BelowMinJoinAmount`/`WithdrawAmountExceeded`；结算轮次按轴分别报 `RoundBeforeActionCreated` 与 `RoundAfterMintWindow`（后者只用于「铸币阶段已开始但已过窗」）；阶段未开始（`mintRound == 0`）时统一报 `RoundNotStarted(requiredRound, currentRound)`，读面 `currentMintRound()` 与写面同口径。以上错误均在对应外层交易中回滚。
 
 验收见 [Action 验收](08-testing.md)。
+
+## 销毁面
+
+三个 Executor 共用 `MemberRewardMinted` 事件，但只有 `GroupServiceExecutor` 有真实销毁：治理上限触发时 `burnAmount = ownerBurned`，并把数量写入 `ownerBurnedByMemberId`。`GroupActionExecutor` 与 `LpExecutor` 没有销毁路径，`burnAmount` 恒为 `0`；`GroupActionStorage` 不再有对应状态槽（`memberBurnedReward` 已删除），因此 GroupAction 的 `memberReward` 直接返回字面量 `0`，不读任何存储。共享 schema 不因此改变，索引方按字段取 0 处理即可。

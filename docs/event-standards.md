@@ -134,7 +134,7 @@
 
 `MemberRewardMinted.round` 是**被结算的业务轮**，不是发射时点轮：`LpExecutor` 在 `currentPhase() − 2` 可结算，`GroupActionExecutor` / `GroupServiceExecutor` 在 `currentPhase() − 3` 可结算。字段语义（同一业务轮）三发射者一致，可结算窗口属于各模块的铸币规则；消费方必须按 emitter 选偏移，不得把任一偏移当通用规则。
 
-`GroupActionExecutor` 没有销毁路径，该发射者的 `burnAmount` 恒为 0；共享 schema 不因此改变，折叠时按 0 处理。
+`GroupActionExecutor` 没有销毁路径：该发射者的 `burnAmount` 恒为 0，且 `GroupActionStorage` 没有对应状态槽（死槽 `memberBurnedReward` 已删除，`memberReward` 直接返回字面量 0）。共享 schema 不因此改变，折叠时按 0 处理；索引方不得按 `LpExecutor`/`GroupServiceExecutor` 的形状去读 GroupAction 的销毁字段。
 
 ### 4.3 actor
 

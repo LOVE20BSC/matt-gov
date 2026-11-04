@@ -81,7 +81,7 @@ function onProposalSubmitted(...) external virtual override onlyActionTarget {}
 
 `currentJoinRound` 是 `public`（子类内部也会调），另两个是 `external`。这是可见性差异而非权限差异：三者都无调用者限制。
 
-注意 `currentVoteRound` 直接返回 `phase` 而 `currentJoinRound` 走 `_joinRound()`（虚函数，子类实现）。LpExecutor 与 GroupAction 系列的 `_joinRound()` 都调 `GroupActionRoundAxis.joinRound` / `LpRoundAxis.joinRound`，两者是逐字节相同的两份实现（见 `10-support-libraries.md` SUP-02）。
+注意 `currentVoteRound` 直接返回 `phase` 而 `currentJoinRound` 走 `_joinRound()`。`_joinRound()` 在 `:134` 是**单一实现（非 `virtual`）**，直接返回 `ActionRoundAxis.joinRound(PHASE_ADDRESS)`；三个 Executor 的 override 已删除，加入轮不再按业务类型分叉（见 `10-support-libraries.md` SUP-02）。
 
 ## 五、发现
 

@@ -18,7 +18,7 @@
 
 实现分层：`GroupActionRoundAxis`（join/verify/mint）与 `LpRoundAxis`（join/mint）只做 `phase → round` 纯换算，入参是 Phase 地址、不 import 错误接口。未开始守卫由消费方承担：Executor 基座的 `currentVoteRound`/`currentJoinRound`/`currentMintRound` 是 ABI 查询入口；业务模块内部用到时，`GroupActionManager.currentJoinRound` 与 `GroupActionVerify.currentVerifyRound` 是共享实现，其他模块以 `internal` 内联复用。两条路径回滚同一载荷 `RoundNotStarted(1, 0)`。
 
-**已登记的重复实现**：`GroupActionRoundAxis.joinRound`、`LpRoundAxis.joinRound` 与 `ActionTarget._joinRound` 是三份同式实现（`p - 1`；`p == 0` 时取 0）。轴库之间不复用是它们不共享类型依赖，ActionTarget 不 import 轴库是为保持写入路径不引入外部依赖；三份同改的概率低，登记为已接受重复，不强行合并。
+**轴库分层**：加入轮（`phase < 2 ? 0 : phase − 1`）只在中立库 `ActionRoundAxis` 定义一次。`GroupActionRoundAxis` 与 `LpRoundAxis` 的 `joinRound` 都委托它，`ActionTarget` 也直接调用它，不存在内联副本或第三份同式。类型轴只保留各自类型专属的偏移：`GroupActionRoundAxis` 的 `verifyRound`（`phase − 2`）与 `mintRound`（`phase − 3`）、`LpRoundAxis` 的 `mintRound`（`phase − 2`）；这些偏移按业务类型本就不同，不合并。底座共用合约不依赖带业务类型名字的库。
 
 冷启动示例：
 
@@ -38,3 +38,10 @@
 每个 GroupAction 的激励查询已包含源行动的验证和激励条件，GroupService 不重复筛选。行动层激励查询按轮次读取，目标轮未完成验证时返回 0，不返回部分结果；服务与链群行动阶段划分相同，Round N 的验证在 Phase `N + 2`、结算在 Phase `N + 3`，服务读取的轮次此时已经完成验证，正常不会命中该分支。不要求 GroupAction 先完成铸币，也不在 GroupService 内执行验证。聚合与分配公式见 [服务 Executor](06-service-executor.md)。
 
 实现与组织上下文一致：LP 为三阶段，GroupAction 和 GroupService 为四阶段。
+
+## 轴库与哨兵
+
+- 加入轮由 `ActionRoundAxis.joinRound` 唯一定义（`phase < 2` 时为 `0`）；`ExecutorBase._joinRound()` 是它的单一实现点（非 `virtual`，三个 Executor 不再 override），`ActionTarget._joinRound()` 与 `GroupActionManager` 两处直接调用也走同一函数。`GroupActionRoundAxis` / `LpRoundAxis` **不含** `joinRound`。铸币轮由三个类型轴派生（GroupAction `phase < 4`、GroupService `phase < 4`、LP `phase < 3` 时为 `0`）。`0` 是「阶段未开始」的唯一哨兵，真实轮次从 `1` 起。
+- 哨兵有两种消费方式：守卫式（调用方先判 `== 0` 并报 `RoundNotStarted(1, 0)`）与透传式（原样返回 0 交给下游比较）。铸币面已统一为守卫式；加入面仍为透传式，但 `round == 0` 在加入入口不可达。
+- 同一 `round` 在各 Executor 的可结算时点相差一个 Phase（LP 三阶段、GroupAction/GroupService 四阶段），链下必须按 Executor 分窗口取数，不能按统一 `mintRound` 聚合。
+- `ActionTarget` 的加入轮同样走 `ActionRoundAxis.joinRound`（经自身 `_joinRound()`），`registerJoinState` 不再内联 `currentPhase() - 1`；与 `ExecutorBase` 的单一实现同一来源。
