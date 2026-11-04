@@ -10,6 +10,10 @@ GroupAction 使用 MemberNFT 身份，`groupId` 是群主体的 `memberId`，不
 
 参与、群配置和历史查询接口见 [`IGroupActionExecutor.sol`](https://github.com/LOVE20BSC/action/blob/main/src/interfaces/IGroupActionExecutor.sol)。
 
+### 行动建立（`GroupActionManager`）
+
+`GroupActionManager` 的职责是**群与行动的建立及配置变更**：`onProposalCreated` 负责行动建立，`activateGroup` / `deactivateGroup` / `setGroupConfig` 负责群生命周期与配置变更，`groupState` 与群集合/质押/描述快照查询族也归它。`onProposalCreated` 一次写入 6 个行动级字段——`joinTokenAddress`、`activationStakeAmount`、`maxJoinAmountRatio`、`activationMinGovRatio`、`verifierStakeAmount`、`createdRound`——此后只读：`joinTokenAddress` 与 `createdRound` 由 Join、Verify 与 Manager 的参与、申请、结算与群配置路径共读，`verifierStakeAmount` 由 Verify 的申请与押金路径读，`activationStakeAmount` 与两个比例由 Manager 的群激活/配置路径读。它不归属任何业务子功能，写的是「行动从无到有」的初始事实，因此留在创建/配置模块，不搬进 Join 或 Verify。
+
 创建 Target Data 沿用旧行动参数，从第 `1` 项起（第 `0` 项是 ActionTarget 保留的 executor）固定为 `targetData[1] = abi.encode(address joinTokenAddress)`、`targetData[2] = abi.encode(uint256 activationStakeAmount)`、`targetData[3] = abi.encode(uint256 maxJoinAmountRatio)`、`targetData[4] = abi.encode(uint256 activationMinGovRatio)`、`targetData[5] = abi.encode(uint256 verifierStakeAmount)`；`joinTokenAddress` 为零回滚 `ZeroJoinTokenAddress()`，两个比例均以 `1e18` 为满值，超出按字段回滚 `InvalidMaxJoinAmountRatio(value)` / `InvalidActivationMinGovRatio(value)`；`verifierStakeAmount = 0` 表示验证者申请不要求押金。配置和激活资格、质押退还及容量计算沿用旧 GroupManager；`maxCapacity = 0` 使用理论容量，`maxJoinAmount/maxAccounts = 0` 不另设群级上限，非零最大加入量不得低于最小加入量；群描述 `GroupConfig.description` 与验证者申请说明同受 1024 字节上限约束，超出回滚 `DescriptionTooLong(length, 1024)`。群描述的按轮快照用 `descriptionByRound(tokenAddress, actionId, round, groupId)` 读取（RoundHistory 懒继承：无记录继承最近历史，从未设置返回空串）。项数少于 `6`（缺少必需配置）回滚 `InsufficientTargetDataItems(targetData.length, 6)`，多于 `7`（超出可选验证信息）回滚 `TooManyTargetDataItems(targetData.length, 7)`；第 `1`～`5` 项不是 32 字节回滚 `InvalidTargetDataShape(index, length)`。创建回调成功的同一笔内由本 Executor 发出 `GroupActionCreated`，携带初始配置与验证 schema 全量：`joinTokenAddress`、`activationStakeAmount`、`maxJoinAmountRatio`、`activationMinGovRatio`、`verifierStakeAmount`、`verificationKeys`、`verificationDescriptions`；注册表事实由 ActionTarget 的 `ActionRegistered` 承担。
 
 **验证信息**：由 [`IGroupActionVerify.sol`](https://github.com/LOVE20BSC/action/blob/main/src/interfaces/IGroupActionVerify.sol) 继承 [`IVerificationInfo`](https://github.com/LOVE20BSC/action/blob/main/src/interfaces/IVerificationInfo.sol)，`IGroupActionExecutor` 再继承 `IGroupActionVerify`。验证信息分为两层：
@@ -153,6 +157,8 @@ Executor 先按 [统一铸造链路](07-minting.md#铸造链路) 取得整笔激
 Executor 是单例，全部逻辑落在一个地址上会超过 EIP-170 的 24,576 字节上限（旧实现实测 39,241 字节），因此把实现体拆进 `action/src/` 的 `public` 库、按业务模块各成一个库，经 delegatecall 执行；部署地址、ABI 与状态都不变。
 
 **状态只有一份，由一个根 Layout 承载。** 全部状态收进 `GroupActionStorage.Layout` 一个 struct，Executor 只声明 `GroupActionStorage.Layout internal _layout`；库函数一律只收一个 `GroupActionStorage.Layout storage self` 加业务参数。状态变量增减只改 Layout，不改任何库的函数签名；多个库共享同一个 Layout，天然读写同一份存储，不出现「这个库要传哪几个变量」的问题。
+
+**布局库保持纯声明**：`GroupActionStorage` 只定义 `Layout`、`Protocol`、常量与槽位切分（外加 `memberAmountAt` 这一无属主的 `internal` 读辅助，见下文「共享状态与共享规则」），不承载业务逻辑、不声明状态变量、不引入错误库，也无需链接部署（由 Executor `internal` 引用）；与接口的唯一耦合是 `GroupConfig` 结构体类型。行动初始化（`onProposalCreated` 写入上述 6 个行动级字段）属创建/配置模块 `GroupActionManager`，不搬进布局库。
 
 **Layout 变更即重新部署**：字段的插入、删除或重排都会移动后续槽位。本仓无生产部署，Layout 变更后必须整体重新部署；若已有部署，只能把新字段追加到结构体末尾，不能把「本仓这次只是追加」当成通用规则。
 

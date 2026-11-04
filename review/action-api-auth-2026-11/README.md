@@ -167,6 +167,15 @@
 - `action/script/check_caller_auth.py`（实际路径 `matt-gov/script/check_caller_auth.py`）显式覆盖库文件，并新增「库内每个 `modifier only*` 至少被本文件一个入口使用」规则；改动前后 `action/src` 与 `core/src` 的 `violations` 均为 0（未放宽既有规则）。
 - `05-group-action-executor.md` 与 `06-service-executor.md` 补「入口 → 鉴权主体」表；本目录各报告第三节的表即规格外的审计副本。
 
+### A-3 补记（Info）回调函数体留在库内、入口留在合约：**维持现状**
+
+- 事实：`GroupActionManager.onProposalCreated` 与 `GroupActionVerify.onProposalVoted` 的**函数体在库内**，合约层只保留 `external onlyActionTarget` 转发；`LpExecutor` 与 `GroupServiceExecutor` 的回调体在合约内。两种风格并存，不是单一约定。
+- 为什么不能整体搬回（`action@1e516d6`，`forge build --sizes`）：`GroupActionExecutor` runtime **22,122 字节**，距 24,576 上限余量 **2,454**。实测把两个回调体内联：**26,529**（超 1,953）；只搬 `onProposalCreated`：**24,993**（超 417）；只搬 `onProposalVoted`：**23,901**（余 675）。另两个 Executor 宽裕：`LpExecutor` **14,041**（余 10,535）、`GroupServiceExecutor` **18,659**（余 5,917）。
+- 结论：维持「合约层入口 + 库内函数体」。只搬 vote 会让同一合约出现两种风格，且把余量压到 675 字节，不采纳。
+- 影响：**不改变** `dev-standards §5.5` 的库内 modifier 例外，也不改变 `check_caller_auth.py` 扫库规则——搬走的回调本身不含 modifier；`GroupActionManager.onlyGroupOwner` 与 `GroupActionJoin` 的 `join` / `exit` / 额度入口仍是库内 modifier，例外条款必须保留。
+- 触发重评的条件：若将来对 `GroupActionExecutor` 先削掉 ≥1,953 字节（或改用等效压缩手段），再重评能否整体内联。
+- 规格落点：`05-group-action-executor.md` 的「行动建立（`GroupActionManager`）」（6 个行动级字段归创建/配置模块）与「部署体积与拆分」（布局库纯声明边界）。
+
 ### G-03（已撤回，原判 Info）四个业务库的 `external` 函数不可被直接调用；16 个库级写入口的守卫分层仅作纵深防御记录
 
 初版把「`public` 库的 `external` 函数可被任何地址直接调用，因此 `GroupActionManager.onProposalCreated` 与 `GroupRecipients.setRecipients` 能发出内容自选的 `GroupActionCreated` / `RecipientsChanged`」列为 Info。**该结论被字节码与运行实测否定，已撤回。** 记录在此以便审计链完整。

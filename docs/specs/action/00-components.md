@@ -20,6 +20,8 @@
 | Mint | Proposal 激励铸造 |
 | Phase | 当前时间片和业务轮次映射 |
 
+`GroupActionStorage` / `GroupServiceStorage` 是纯声明的布局库：只定义 `Layout`、常量与槽位切分，不承载业务逻辑、不参与链接部署；边界与例外见 [GroupAction Executor 的部署体积与拆分](05-group-action-executor.md#部署体积与拆分)。
+
 Core 只传递 Proposal 上下文与不透明的 Target Data，不解释验证者申请、链群、LP、托管或服务分配。上述业务由对应 Executor 处理；ActionTarget 不持有参与资产。主体与术语见 [组织上下文](../../../CONTEXT.md)。
 
 加入态与「成员 → 行动」跨类型索引的唯一所有者是 ActionTarget，Executor 不得自建「是否加入」副本。与行动类型无关的参与判定走 ActionTarget，某一行动类型的专属关系（如链群归属）走该 Executor。

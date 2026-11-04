@@ -255,6 +255,8 @@ ADR-004 只覆盖第一行。第二、三行是同一现象的另外两种形态
 5. **`M-EB-01`（统一错误）— 已修复**：`_checkMintWindow` 在 `mintRound == 0` 时回滚 `RoundNotStarted(1, 0)`；`LpExecutor.t.sol` 的窗口断言同步更新。
 6. **文档性修正（零风险）— 已写入规格**：`M-AT-01`（`joinedRounds` 语义）、`M-GAV-02`（扣分槽零值二义）、`M-GRC-01`（`prev*` 是有效值）、`M-GSS-03`（`joinTokenAddress` 在服务侧的误导）、`M-GAM-05`（`stakedByMemberId` 的维度），以及 05/06 规格的「状态口径」附录。
 
+> 本轮不动的结构项：`GroupActionManager.onProposalCreated` 与 `GroupActionVerify.onProposalVoted` 的函数体留在库内（`GroupActionExecutor` 余量仅 2,454 字节，实测两个回调全内联超限 1,953 字节），评估与结论见 [`action-api-auth-2026-11/README.md`](../action-api-auth-2026-11/README.md) 的「A-3 补记」。
+
 ## 9. 覆盖缺口
 
 | 缺口 | 说明 |

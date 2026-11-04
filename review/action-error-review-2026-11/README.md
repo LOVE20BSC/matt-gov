@@ -151,6 +151,7 @@
 - **门禁**：`forge build --deny warnings` / `forge lint` 通过；`forge test --summary` **473 passed / 0 failed / 0 skipped**（35 个 suite）；`check_errors.py --check` 0 violations；`check_error_tests.py action` 全覆盖；`check_events.py`、`check_caller_auth.py action/src`、`check_doc_payloads.py`、`check_naming.py --check` 通过。
 - **行为核对**：01/03/06/07/08/11/13 的校验顺序表逐条对照实现；02 的轮次映射对照 02-phase-model 的表格。
 - **边界**：W1 只改错误 ABI、载荷、错误表、registry 与测试载荷，不改函数签名与事件；行号以 `916e146` 为基线、按本轮 HEAD 复核。`test/audit/` 与 `test/integration/` 计入测试总数。
+- **不在本轮范围**：`onProposalCreated`（`GroupActionManager`）与 `onProposalVoted`（`GroupActionVerify`）的函数体留在库内、入口在合约，这是 `GroupActionExecutor` 体积约束下的取舍（余量 2,454 字节，两个回调全内联超限 1,953）；主条目与实测数字见 [`action-api-auth-2026-11/README.md`](../action-api-auth-2026-11/README.md) 的「A-3 补记」，本轮不改代码。
 - finding ID 统一 `E-<合约缩写>-NN`（`AT` / `EB` / `LP` / `LRA` / `GAS` / `GAM` / `GAJ` / `GAV` / `GAE` / `GAA` / `GR` / `GSS` / `GSE` / `MO`），与同目录其他专项（`action-api-auth-2026-11/` 的 `AT-01`、`action-events-audit-2026-11/` 的 `EV-xx`）区分。
 
 ## 5. 文件
