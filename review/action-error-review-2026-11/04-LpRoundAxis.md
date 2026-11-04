@@ -1,6 +1,6 @@
 # `action/LpRoundAxis.sol` 错误赋值与发送专项 Review
 
-> 基线：`action@916e146`（2026-11-05），行号按该提交。
+> 基线：`action@2014788`（2026-11-05），行号按该提交。
 > 判据：`matt-gov/docs/error-standards.md`；行为口径：`matt-gov/docs/specs/action/02-phase-model.md`。
 > 范围：`src/LpRoundAxis.sol`（16 行）。本文件不声明错误、不 import 错误接口、不含 `revert`。
 

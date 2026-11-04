@@ -1,6 +1,6 @@
 # `action/ExecutorBase.sol` 错误赋值与发送专项 Review
 
-> 基线：`action@916e146`（2026-11-05），行号按该提交。
+> 基线：`action@2014788`（2026-11-05），行号按该提交。
 > 判据：`matt-gov/docs/error-standards.md`；行为口径：`matt-gov/docs/specs/action/00-executor-interface.md、02-phase-model.md、07-minting.md`。
 > 范围：`src/ExecutorBase.sol`（140 行）+ `src/interfaces/IActionExecutor.sol` 的 `IActionExecutorErrors`。
 > 口径：「赋值」= revert 时写入 payload 的表达式；「发送」= `revert <Error>(...)` 站点。纯 `assert` / 裸 `require` 另行核对。

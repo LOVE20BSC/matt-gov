@@ -1,6 +1,6 @@
 # `action/MemberOwner.sol` 错误赋值与发送专项 Review
 
-> 基线：`action@916e146`（2026-11-05），行号按该提交。
+> 基线：`action@2014788`（2026-11-05），行号按该提交。
 > 判据：`matt-gov/docs/error-standards.md` §1 / §7；行为口径：`matt-gov/docs/specs/action/05-group-action-executor.md`（群身份解析）。
 > 范围：`src/MemberOwner.sol`（26 行）。本文件只含 `ownerOrZero(address, uint256)` 一个 `internal view` 函数。
 

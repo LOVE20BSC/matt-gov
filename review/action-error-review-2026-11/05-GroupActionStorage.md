@@ -1,6 +1,6 @@
 # `action/GroupActionStorage.sol` 错误赋值与发送专项 Review
 
-> 基线：`action@916e146`（2026-11-05），行号按该提交。
+> 基线：`action@2014788`（2026-11-05），行号按该提交。
 > 判据：`matt-gov/docs/error-standards.md`；行为口径：`matt-gov/docs/specs/action/05-group-action-executor.md`。
 > 范围：`src/GroupActionStorage.sol`（190 行）。本文件只承载 `GroupActionStorage.Layout` 一个根 struct、`GroupState` / `Protocol` 两个子 struct、6 个编译期常量与一个 `internal` 读取函数。
 

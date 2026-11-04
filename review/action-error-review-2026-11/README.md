@@ -1,6 +1,6 @@
 # action/ 错误赋值与发送专项 Review
 
-> 基线：`action@916e146`（2026-11-05）。**行号口径**：卷内分析与各分卷按该基线；`registry/errors.{json,md}` 的行号按落地提交（`action@e7f253d`，随量纲拆分重生成），两者不混用。
+> 基线：`action@2014788`（2026-11-05）。**行号口径**：卷内分析与各分卷按该基线；`registry/errors.{json,md}` 的行号按落地提交（`action@4866cb8`，随量纲拆分重生成），两者不混用。
 > 判据：`matt-gov/docs/error-standards.md`；行为口径：`matt-gov/docs/specs/action/**`。
 > 范围：`action/src/` 的 14 个实现文件 + `src/interfaces/` 的 9 个 `I<Name>Errors`。
 > 处置：本轮是错误卷的落地窗口（W1）。五条裁决按「改 ABI」执行，四处校验顺序按默认序重排、另两处按实现口径登记，其余 35 条按卷内方向落地（改 ABI / 改规格 / 登记）。成员级零额错误再按量纲拆为 `ZeroEffectiveJoinAmount` / `ZeroFinalScore` / `ZeroRewardWeight`。改动范围限错误声明、载荷、错误表、`registry/errors.{json,md}` 与测试载荷；函数签名与事件不动。逐条落点见各分卷的「处置」节。
@@ -13,7 +13,7 @@
 
 库函数经 `delegatecall` 执行，`msg.sender` 与 storage 与 Executor 一致；站点按**源码文件**归属，不按调用链归属（例如 `GroupActionJoin` 的站点记在 `07`，不记在 `09`）。
 
-## 2. 总览（916e146 基线 → W1 落地后）
+## 2. 总览（2014788 基线 → W1 落地后）
 
 | 合约 | 声明 | 站点 | Medium | Low | Info | 报告 |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -150,7 +150,7 @@ W1 与量纲拆分落地后 106 条声明全部至少有一个站点、146 个�
 - **语义实测**：`try/catch` 中 success 块 revert 是否被同一 `catch` 捕获、`abi.decode` 失败的 revert 数据形态，各用一个最小 foundry 工程（`/tmp/tctest`，solc 0.8.37）实测，结论写在 01 §4.2 与 X-05。
 - **门禁**：`forge build --deny warnings` / `forge lint` 通过；`forge test --summary` **473 passed / 0 failed / 0 skipped**（35 个 suite）；`check_errors.py --check` 0 violations；`check_error_tests.py action` 全覆盖；`check_events.py`、`check_caller_auth.py action/src`、`check_doc_payloads.py`、`check_naming.py --check` 通过。
 - **行为核对**：01/03/06/07/08/11/13 的校验顺序表逐条对照实现；02 的轮次映射对照 02-phase-model 的表格。
-- **边界**：W1 只改错误 ABI、载荷、错误表、registry 与测试载荷，不改函数签名与事件；行号以 `916e146` 为基线、按本轮 HEAD 复核。`test/audit/` 与 `test/integration/` 计入测试总数。
+- **边界**：W1 只改错误 ABI、载荷、错误表、registry 与测试载荷，不改函数签名与事件；行号以 `2014788` 为基线、按本轮 HEAD 复核。`test/audit/` 与 `test/integration/` 计入测试总数。
 - **不在本轮范围**：`onProposalCreated`（`GroupActionManager`）与 `onProposalVoted`（`GroupActionVerify`）的函数体留在库内、入口在合约，这是 `GroupActionExecutor` 体积约束下的取舍（余量 2,454 字节，两个回调全内联超限 1,953）；主条目与实测数字见 [`action-api-auth-2026-11/README.md`](../action-api-auth-2026-11/README.md) 的「A-3 补记」，本轮不改代码。
 - finding ID 统一 `E-<合约缩写>-NN`（`AT` / `EB` / `LP` / `LRA` / `GAS` / `GAM` / `GAJ` / `GAV` / `GAE` / `GAA` / `GR` / `GSS` / `GSE` / `MO`），与同目录其他专项（`action-api-auth-2026-11/` 的 `AT-01`、`action-events-audit-2026-11/` 的 `EV-xx`）区分。
 

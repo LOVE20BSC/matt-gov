@@ -15,6 +15,12 @@
 - core 的 `MemberHasNoVote`（治理票）不变；`MemberRewardPoolEmpty` / `MemberRewardRoundedToZero` 继续与 core 同名同签名。
 - **链下 SDK / 索引器必须按 [`registry/errors.md`](../../registry/errors.md) 重新生成错误 ABI**，不要复用旧 selector。
 
+## Target Data 长度常量不派生（2026-11-05）
+
+`targetData` 的字段下标与长度改为私有常量（`TARGET_DATA_PAYLOAD_START_INDEX`、`JOIN_TOKEN_SLOT_INDEX` … `VERIFICATION_INFO_SLOT_INDEX`），但**长度常量保持字面量，不用派生式 `LEN = LAST_SLOT + 1`**：实测 solc 0.8.37 不把该派生式折叠成常量，`LpExecutor` 增加 58 字节、`GroupServiceExecutor` 增加 59 字节，因此放弃派生。
+
+代价是长度常量与字段下标之间为**人工保持一致的耦合**——`GroupActionManager` 的 `TARGET_DATA_MIN_LENGTH = 6` / `TARGET_DATA_MAX_LENGTH = 7`（对应第 `1`～`5` 项必需、第 `6` 项可选验证信息）、`LpExecutor` 与 `GroupServiceExecutor` 的 `TARGET_DATA_LENGTH = 4`、`ActionTarget` 的 `TARGET_DATA_LENGTH = 1`（仅 executor 槽位）。增删任一 `targetData` 字段时必须同步修改对应长度常量，评审逐处核对取值与字段区间。长度常量按执行器各自持有、不跨执行器共享，因为四个入口的项数边界本就不同（`ActionTarget` 1、LP / GSE 4、GAE 6~7）。数值本身是 ABI 契约，改动即改变回滚载荷，见 [04](action/04-lp-executor.md)、[05](action/05-group-action-executor.md)、[06](action/06-service-executor.md)。
+
 ## 群配置与收款表改名（2026-10-31）
 
 两处命名收口，均为破坏性 ABI 变更：

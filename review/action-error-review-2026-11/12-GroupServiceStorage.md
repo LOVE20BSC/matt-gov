@@ -1,6 +1,6 @@
 # `action/GroupServiceStorage.sol` 错误赋值与发送专项 Review
 
-> 基线：`action@916e146`（2026-11-05），行号按该提交。
+> 基线：`action@2014788`（2026-11-05），行号按该提交。
 > 判据：`matt-gov/docs/error-standards.md`；行为口径：`matt-gov/docs/specs/action/06-service-executor.md`。
 > 范围：`src/GroupServiceStorage.sol`（80 行）。本文件承载 `GroupServiceStorage.Layout`、`Protocol`、3 个常量、分母缓存的两个读写函数与 `groupReward` 一个外呼包装。
 

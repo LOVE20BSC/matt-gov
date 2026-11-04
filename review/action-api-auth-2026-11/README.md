@@ -170,7 +170,7 @@
 ### A-3 补记（Info）回调函数体留在库内、入口留在合约：**维持现状**
 
 - 事实：`GroupActionManager.onProposalCreated` 与 `GroupActionVerify.onProposalVoted` 的**函数体在库内**，合约层只保留 `external onlyActionTarget` 转发；`LpExecutor` 与 `GroupServiceExecutor` 的回调体在合约内。两种风格并存，不是单一约定。
-- 为什么不能整体搬回（`action@1e516d6`，`forge build --sizes`）：`GroupActionExecutor` runtime **22,122 字节**，距 24,576 上限余量 **2,454**。实测把两个回调体内联：**26,529**（超 1,953）；只搬 `onProposalCreated`：**24,993**（超 417）；只搬 `onProposalVoted`：**23,901**（余 675）。另两个 Executor 宽裕：`LpExecutor` **14,041**（余 10,535）、`GroupServiceExecutor` **18,659**（余 5,917）。
+- 为什么不能整体搬回（`action@b72ebf0`，`forge build --sizes`）：`GroupActionExecutor` runtime **22,122 字节**，距 24,576 上限余量 **2,454**。实测把两个回调体内联：**26,529**（超 1,953）；只搬 `onProposalCreated`：**24,993**（超 417）；只搬 `onProposalVoted`：**23,901**（余 675）。另两个 Executor 宽裕：`LpExecutor` **14,041**（余 10,535）、`GroupServiceExecutor` **18,659**（余 5,917）。
 - 结论：维持「合约层入口 + 库内函数体」。只搬 vote 会让同一合约出现两种风格，且把余量压到 675 字节，不采纳。
 - 影响：**不改变** `dev-standards §5.5` 的库内 modifier 例外，也不改变 `check_caller_auth.py` 扫库规则——搬走的回调本身不含 modifier；`GroupActionManager.onlyGroupOwner` 与 `GroupActionJoin` 的 `join` / `exit` / 额度入口仍是库内 modifier，例外条款必须保留。
 - 触发重评的条件：若将来对 `GroupActionExecutor` 先削掉 ≥1,953 字节（或改用等效压缩手段），再重评能否整体内联。

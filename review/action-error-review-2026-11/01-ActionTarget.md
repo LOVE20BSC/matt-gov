@@ -1,6 +1,6 @@
 # `action/ActionTarget.sol` 错误赋值与发送专项 Review
 
-> 基线：`action@916e146`（2026-11-05），行号按该提交。
+> 基线：`action@2014788`（2026-11-05），行号按该提交。
 > 判据：`matt-gov/docs/error-standards.md`；行为口径：`matt-gov/docs/specs/action/01-action-target.md`。
 > 范围：`src/ActionTarget.sol`（531 行）+ `src/interfaces/IActionTarget.sol` 的 `IActionTargetErrors`。
 > 口径：「赋值」= revert 时写入 payload 的表达式；「发送」= `revert <Error>(...)` 站点。纯 `assert` / 裸 `require` 另行核对。
