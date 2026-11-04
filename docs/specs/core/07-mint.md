@@ -41,9 +41,9 @@ available = MAX_SUPPLY - totalSupply - reservedAvailable
 
 完整 ABI 见 [`IMint.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/IMint.sol)。
 
-首次调用治理或 Proposal 铸造入口时，Mint 在内部准备该 Round；准备逻辑不再作为公开 ABI 暴露。
+准备由两种方式触发：调用无许可入口 `prepareRewardIfNeeded(tokenAddress, round)`，或首次调用治理 / Proposal 铸造入口时由 Mint 内部自动准备。两个路径复用同一实现，池子算法只有一份。`tokenAddress` 与 `round` 是唯一的定位参数，调用者不能指定收款地址、成员或金额，因此该入口符合 [通用规则](01-common-rules.md#无许可入口) 的无许可判据：它只把一个已经成立的轮次状态（轮次结束）推进为「池子已冻结」。此前定池只能由领取者触发；补上该入口后，任何地址都可以在第一个领取者之前中立地定池。池值仍按准备时点的 `rewardAvailable` 计算，首次准备的时点仍决定池子大小，但已不再只由领取权持有人掌握。同一 `(tokenAddress, round)` 幂等，重复调用直接返回；未结束的 Round 拒绝准备。
 
-1. 本轮已准备则直接返回，不更新状态；未结束的 Round 拒绝准备（通过 `IVote(VOTE_ADDRESS).isRoundEnded(round)` 判定，`isRoundEnded(0) == false`）。
+1. 本轮已准备则直接返回，不更新状态，也不发事件；未结束的 Round 拒绝准备（`round != 0 && Phase.currentPhase() > round`，回滚 `RoundNotEnded(round)`；与 `Vote.isRoundEnded` 语义一致，`round == 0` 一律拒绝）。
 2. 读取 Vote 的冻结结果。若 `totalVoteAmount == 0`，两池和 `eligibleProposalVoteAmount` 记为 0 并标记已准备，累计账本不变。
 3. 否则遍历 Vote 本轮有票 Proposal，按冻结 `totalVoteAmount` 判断每个 Proposal 是否达到阈值，并把达标 Proposal 的票数总和写入 `_eligibleProposalVoteAmountByRound[tokenAddress][round]`。
 4. 用准备前的 `available` 计算两池，并在本步骤唯一一次增加 `totalRewardReserved`。
@@ -198,6 +198,8 @@ launchCredit -= count * threshold
 
 - **`RewardPrepared(address indexed tokenAddress, uint256 indexed round, uint256 govReward, uint256 proposalReward, uint256 eligibleProposalVoteAmount, uint256 totalRewardReserved, uint256 totalRewardBurned)`**  
   准备完成后发射。`govReward` 与 `proposalReward` 为本轮冻结池值；`eligibleProposalVoteAmount` 为缓存的达标票数之和（`eligibleProposalVoteAmount == 0` 时该字段为 0）；`totalRewardReserved` 与 `totalRewardBurned` 为准备完成后的**累计值**（不是增量）。`totalVoteAmount == 0` 时两池与 `eligibleProposalVoteAmount` 均为 0，`totalRewardReserved` 与 `totalRewardBurned` 不变。
+
+  `prepareRewardIfNeeded` 只在真正完成准备时发射本条（以及准备期取消池的 `RewardBurned`）；已准备时的重复调用是无操作，不发射任何事件。无操作不是业务事实，按 [事件规范](../../event-standards.md) §3.5 不引入「尝试 / 未变更」类事件，也不新增事件族。
 
 - **`GovRewardMinted(address indexed tokenAddress, uint256 indexed round, uint256 indexed memberId, uint256 voteReward, uint256 boostReward, uint256 burnReward, uint256 totalRewardMinted)`**  
   治理结算成功后发射。`memberId` 为被结算成员；三项金额按公式计算（`totalVoterBoost == 0` 时 `boostReward` 与 `burnReward` 均为 0），实际铸造量为 `voteReward + boostReward`。`totalRewardMinted` 为铸造后的社区累计已铸激励（后置值，等于此前全部 `GovRewardMinted` 的铸造量与 `ProposalRewardMinted.amount` 之和，不含 `burnReward`）。`burnReward` 与同笔的 `RewardBurned(BoostOverflow)` 是同一数字，属**有意冗余**：`RewardBurned` 只记全局账本、不带 `memberId`，成员归属只能由本条给出；而且 `voteReward + boostReward == 0` 而 `burnReward > 0` 是可达状态（`govReward` 极小时 `votePoolAmount == 0`，加速上限随之为 0），此时「本次一枚未铸、额度全部销毁」必须由载荷表达，不能靠 `Minted` 字样推断。

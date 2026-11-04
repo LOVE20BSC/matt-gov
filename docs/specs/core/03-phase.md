@@ -11,6 +11,7 @@ Phase 维护连续的无语义时间片、同步观测和动态校准，不内�
 | 接口 | 返回或作用 |
 | --- | --- |
 | `currentPhase()` | 当前区块的 Phase |
+| `lastSyncPhase()` | 最近一次有效同步记录的 Phase，初值 0 |
 | `phaseInfo(phaseNumber)` | 阶段起始区块和区块数 |
 | `phaseAtBlock(blockNumber)` | 指定区块的 Phase |
 | `observations(offset, limit, reverse)` | 分页读取同步观测：返回区块号数组、时间戳数组和观测总数 |
@@ -41,7 +42,7 @@ Phase 维护连续的无语义时间片、同步观测和动态校准，不内�
 
 新参数不得改变当前或过去 Phase 的编号和边界，不能通过校准重获本轮同步机会。`adjusted = false` 时，`newPhaseBlocks` 返回当前值。
 
-`lastSyncPhase` 是 private，不提供 getter。判断「本 Phase 是否已同步」以 `observations` 的最后一条记录为准：本 Phase 已被同步后的重复调用静默返回、不发事件，因此**不能用 `PhaseSynchronized` 的事件计数推断同步状态**。
+`lastSyncPhase()` 返回最近一次有效同步记录的 Phase，初值为 0。判断「本 Phase 是否已同步」应读该 getter：`lastSyncPhase() == currentPhase()` 表示本 Phase 已消耗同步机会；未同步过或最近一次同步在更早 Phase 时两者不相等。本 Phase 已被同步后的重复调用静默返回、不发事件，因此**不能用 `PhaseSynchronized` 的事件计数推断同步状态**。
 
 ## 校准
 

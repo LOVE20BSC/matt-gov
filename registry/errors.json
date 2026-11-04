@@ -1560,7 +1560,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Mint.sol:538"
+        "core/src/Mint.sol:542"
       ],
       "selector": "0x8fde7ba3",
       "signature": "MemberHasNoVote(address,uint256,uint256)"
@@ -1575,7 +1575,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Mint.sol:531"
+        "core/src/Mint.sol:535"
       ],
       "selector": "0xc157061f",
       "signature": "MemberRewardAlreadyMinted(address,uint256,uint256)"
@@ -1590,7 +1590,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Mint.sol:541"
+        "core/src/Mint.sol:545"
       ],
       "selector": "0x86b94627",
       "signature": "MemberRewardPoolEmpty(address,uint256)"
@@ -1605,7 +1605,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Mint.sol:543"
+        "core/src/Mint.sol:547"
       ],
       "selector": "0xd632d7c1",
       "signature": "MemberRewardRoundedToZero(address,uint256,uint256)"
@@ -1734,7 +1734,7 @@
       "repo": "core",
       "revert_sites": [
         "core/src/Launch.sol:37",
-        "core/src/Mint.sol:237",
+        "core/src/Mint.sol:241",
         "core/src/Stake.sol:106",
         "core/src/Submit.sol:100",
         "core/src/Vote.sol:64"
@@ -1782,7 +1782,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Mint.sol:182"
+        "core/src/Mint.sol:186"
       ],
       "selector": "0xc157502b",
       "signature": "NotProposalTarget(address,address)"
@@ -1843,8 +1843,8 @@
       "repo": "core",
       "revert_sites": [
         "core/src/Phase.sol:50",
-        "core/src/Phase.sol:57",
-        "core/src/Phase.sol:88"
+        "core/src/Phase.sol:59",
+        "core/src/Phase.sol:90"
       ],
       "selector": "0xf2469089",
       "signature": "PhaseNotStarted()"
@@ -1890,7 +1890,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Mint.sol:208"
+        "core/src/Mint.sol:212"
       ],
       "selector": "0xbdf55b4f",
       "signature": "ProposalBelowThreshold(address,uint256,uint256,uint256,uint256)"
@@ -1950,7 +1950,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Mint.sol:211"
+        "core/src/Mint.sol:215"
       ],
       "selector": "0x11b384c6",
       "signature": "ProposalPoolEmpty(address,uint256)"
@@ -1965,7 +1965,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Mint.sol:200"
+        "core/src/Mint.sol:204"
       ],
       "selector": "0xece01b78",
       "signature": "ProposalRewardAlreadyMinted(address,uint256,uint256)"
@@ -1980,7 +1980,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Mint.sol:213"
+        "core/src/Mint.sol:217"
       ],
       "selector": "0xf6f9f8c8",
       "signature": "ProposalRewardRoundedToZero(address,uint256,uint256)"
@@ -2010,7 +2010,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Mint.sol:112"
+        "core/src/Mint.sol:116"
       ],
       "selector": "0x652d87c5",
       "signature": "RoundNotEnded(uint256)"
@@ -2457,8 +2457,8 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Mint.sol:194",
-        "core/src/Mint.sol:525"
+        "core/src/Mint.sol:198",
+        "core/src/Mint.sol:529"
       ],
       "selector": "0xceef9857",
       "signature": "ZeroRecipientAddress()"
