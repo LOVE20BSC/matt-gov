@@ -2,7 +2,7 @@
 
 > 对象 `action/src/GroupActionManager.sol`（506 行，`library`，经 `delegatecall` 由 `GroupActionExecutor` 调用）
 > 接口 `action/src/interfaces/IGroupActionManager.sol`（209 行，含 `GroupConfig` 结构体）
-> 基线 `action@e849e36`；审查日期 2026-11-03
+> 基线 `action@8478619`（`src/` 自 `e849e36` 无实质变化，行号未位移）；审查日期 2026-11-03
 > 判据 dev-standards §5.5、§5.2.2、§5.4；`specs/action/05-group-action-executor.md`
 
 ## 一、结论
@@ -180,3 +180,7 @@ GroupActionManager  写入口 4  带 modifier 3  无 modifier 1
 | 被调 | Core `Vote` | `totalVoteAmount`、`voteAmountByProposalId`（`maxJoinAmount`） |
 | 被调 | `IERC20` | `totalSupply`（`maxJoinAmount` 基数）、`safeTransferFrom`（质押）、`safeTransfer`（退款） |
 | 被复用 | `GroupActionJoin` | `groupOwnerOrRevert`、`currentJoinRound`、`_maxJoinAmount`（编译期内联） |
+
+## 处置
+
+`GAM-01`、`GAM-02`、`GAM-03`、`GAM-05` 的落点见 `README.md` §十（`05-group-action-executor.md`）；本卷不改库代码。

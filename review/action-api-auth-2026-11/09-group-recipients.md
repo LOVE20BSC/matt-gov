@@ -2,7 +2,7 @@
 
 > 对象 `action/src/GroupRecipients.sol`（367 行，`library`，经 `delegatecall` 由 `GroupServiceExecutor` 调用）
 > 接口 `action/src/interfaces/IGroupRecipients.sol`（94 行）
-> 基线 `action@e849e36`；审查日期 2026-11-03
+> 基线 `action@8478619`（`src/` 自 `e849e36` 无实质变化，行号未位移）；审查日期 2026-11-03
 > 判据 dev-standards §5.5、§5.2.2、§4.2（事件）；`specs/action/06-service-executor.md`
 
 ## 一、结论
@@ -156,3 +156,7 @@ GroupRecipients  写入口 2  带 modifier 0  无 modifier 2
 | 被调 | `IERC20` | `safeTransfer`（逐接收者付款） |
 | 被调 | `GroupServiceStorage.groupReward` | `ownerSlice` 的群切片权重（再委托 `GroupActionExecutor.generatedActionRewardByGroupId`） |
 | 被复用 | `GroupServiceExecutor` | 6 个 `external` 入口全部由它转发 |
+
+## 处置
+
+`GRC-02`～`GRC-04` 的落点见 `README.md` §十（`06-service-executor.md`）；`GRC-01` 已撤回，`GRC-04` 为鉴权位置登记。

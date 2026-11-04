@@ -17,6 +17,12 @@ Provider 提供的是额度：Provider 授予、追加或收回额度，成员�
 
 可复用的行动轮次状态至少按 `tokenAddress + actionId + round` 隔离；NFT 转移不改写投票、快照、验证或已结算结果。
 
+## 授权口径与资产转移
+
+**ERC721 授权不授予 action 写权限**：全部入口只认 `ownerOf(memberId) == msg.sender`。ERC721 的 `approve` / `setApprovalForAll` 让操作者能转让 NFT，但不让操作者调用 action 的写入口；与 core 卷 `G-02` 的 ERC721 授权口径同源，action 层按更严的一侧执行。
+
+**资产随 NFT 转移（三处口径）**：① LP 仓位与已存入代币按 `memberId` 归属，撤回与退出付给当前持有人；② GroupAction 的 Provider 额度与链群激活质押按 `providerId` / `groupId` 的当前持有人退还；③ GroupService 二次分配的付款对象是结算时的接收 NFT 持有人。NFT 转让即转移对应经济权益，不需要链上登记变更；旧持有人在同一笔转移后立即失去处分权，新持有人立即取得。
+
 ## 撤回与退出
 
 - 自有资产与各 Provider 额度资产可同时存在，撤回只能撤回自己那份：`withdraw` 只减少自有账本，由成员当前持有人调用；`withdrawProviderQuota` 只撤回指定链群内该 Provider 的未使用额度，由该 Provider 当前持有人调用，不影响任何参与量。两者不互相抵扣，也不影响其他来源；成员总参与量（自有 + 全部 Provider）归零时才自动退出行动。LP 的部分撤回规则见 [LP Executor](04-lp-executor.md#部分撤回)。
@@ -32,11 +38,13 @@ Provider 提供的是额度：Provider 授予、追加或收回额度，成员�
 
 Provider 额度接口见 [`IGroupActionJoin.sol`](https://github.com/LOVE20BSC/action/blob/main/src/interfaces/IGroupActionJoin.sol)。
 
-额度按 `tokenAddress + actionId + groupId + providerId + memberId` 记录，只有 Provider 当前持有人可改；成员身份须存在且不同于 Provider（`memberId == providerId` 回 `QuotaMemberIsProvider(providerId)`，成员为 0 由 `ownerOf` 回 `ERC721NonexistentToken`），两个数组等长，额度为正；同一成员重复授予是追加额度，不再回滚。批量接口没有协议固定长度上限，调用方按区块 Gas 分批操作，单笔失败整笔回滚。
+额度按 `tokenAddress + actionId + groupId + providerId + memberId` 记录，只有 Provider 当前持有人可改；**`groupId` 与 `memberId` 只是记录定位键，权限主体只有 `providerId` 的当前持有人**——成员身份是业务对象，不是调用者判据。成员身份须存在且不同于 Provider（`memberId == providerId` 回 `QuotaMemberIsProvider(providerId)`，成员为 0 由 `ownerOf` 回 `ERC721NonexistentToken`），两个数组等长，额度为正；同一成员重复授予是追加额度，不再回滚。批量接口没有协议固定长度上限，调用方按区块 Gas 分批操作，单笔失败整笔回滚。
 
 额度授予即存入合约：`addProviderQuota` 把对应代币从 Provider 当前持有人转入合约托管并追加授权额度；`removeProviderQuota` 收回该成员的整笔授权——可用额度与已投入一并退回，已投入部分同额减少该成员的参与量（总参与量归零时自动退出），该笔参与量发 `GroupActionWithdrawn`、授权额度发 `ProviderQuotaRemoved`。各笔划转按成员逐条发出 `ProviderQuotaAdded` / `ProviderQuotaRemoved`（单成员单条日志，`amount` 为本笔金额、与账本变动一致，`quotaTotal` 为该成员变动后的授权额度，收回后为 0）。成员 `join` 使用额度时只消耗可用额度、不再转移代币；`withdrawProviderQuota` 按链群撤回尚未使用的额度（支持部分撤回），授权额度同额扣减并发 `ProviderQuotaRemoved`，成员参与量不变。托管资金不按来源隔离存放，额度和已投入部分都由 Executor 按来源账本核算。
 
 额度入口的 `groupId == 0` 或群身份不存在回 `GroupNotExist(groupId)`；`removeProviderQuota` 的空 `memberIds` 在群存在时是空操作。
+
+**错误落点（加入）**：行动尚未创建时，`join` 首先判定群身份/激活状态，对外回 `GroupNotActive(groupId)`，而不是 `ActionNotCreated(tokenAddress, actionId)`——群身份挂在行动上，行动未创建时群也不存在。这是有意的错误落点，链下按 `GroupNotActive` 处理即可；`ActionNotCreated` 只由成员结算、群激活与验证者申请路径报出。
 
 `withdrawProviderQuota` 金额须满足 `0 < amount <= 该链群内该 Provider 的可用额度（授权 − 已用）`，不影响任何参与量、自有或其他 Provider 账本。Provider 身份不授予成员 `exit` 权限，也不授予成员管理 Provider 额度的权限。历史零值按 RoundHistory 记录；无历史额度返回 0，空名单返回等长空数组。`providerQuotas` 按标准分页返回某 Provider 在某个链群的授权表（成员、授权额度、已使用额度与真实总数）：授权额度只由 Provider 动作变动——授予追加、`removeProviderQuota` 清零、`withdrawProviderQuota` 减去撤回的未使用额度；已使用额度取该成员在当前所属链群的已投入量（成员已不在该链群时为 0），可用额度 = 授权额度 − 已使用额度；名单保留到授权额度归零。`providerAmountsByMemberId` 按标准分页返回某成员在 `round` 轮有余额的来源及其金额（RoundHistory 懒继承：无记录继承最近历史）；成员在某轮的参与记录由 `joinInfo` 返回（`JoinInfo`：`joinedRound`、`groupId`、`ownAmount`、`providerAmount`）；聚合总量 `joinedAmount` 只由基座 `joinedAmountByMemberId` 给出，`joinInfo` 不重复计算。
 

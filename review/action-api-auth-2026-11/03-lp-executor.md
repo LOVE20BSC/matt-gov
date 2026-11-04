@@ -2,7 +2,7 @@
 
 > 对象 `action/src/LpExecutor.sol`（533 行）+ 继承的 `action/src/ExecutorBase.sol`（140 行）
 > 接口 `action/src/interfaces/ILpExecutor.sol`（109 行，`is IActionExecutor`）
-> 基线 `action@e849e36`；审查日期 2026-11-03
+> 基线 `action@8478619`（`src/` 自 `e849e36` 无实质变化，行号未位移）；审查日期 2026-11-03
 > 判据 dev-standards §5.5、§4.4（退出顺序）、§4.2；`specs/action/04-lp-executor.md`、`specs/action/07-minting.md`
 
 ## 一、结论
@@ -175,3 +175,7 @@ violations: 0
 | 被调 | UniswapV2 `Factory` / `Pair` | `getPair`、`token0`/`token1`（创建回调的 Pair 登记校验） |
 | 被调 | `LOVE20Token` / `IERC20` | `burn`（销毁部分）、`safeTransfer`/`safeTransferFrom`（资产进出口） |
 | 被调 | 三个 Executor 共享 | `ExecutorBase` 的两个 modifier 与两个结算入口 |
+
+## 处置
+
+`LP-01`～`LP-04` 的落点见 `README.md` §十（`specs/action/04-lp-executor.md`）；本卷不改 `LpExecutor.sol`。

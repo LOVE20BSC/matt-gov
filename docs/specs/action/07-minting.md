@@ -6,9 +6,11 @@
 executor -> ActionTarget -> Mint -> executor
 ```
 
-只有关联 Executor 可发起 ActionTarget 的铸造入口 `mintActionReward`；ActionTarget 作为 Target 调用 Mint 时把该 Executor 作为 `recipient` 传入，Mint 直接把指定 token、Round、Proposal 的完整激励铸给 Executor——激励不落在 ActionTarget，没有「先铸给自己、再转一次」的转发，也没有中转余额需要清理。Executor 再按所属业务完成成员、验证者和 owner 分配。任一步失败回滚，不允许重复铸造。铸造去重由 Mint 持有：ActionTarget 不保存行动级铸造状态位，重复调用由 Mint 回滚 `ProposalRewardAlreadyMinted(tokenAddress, round, proposalId)`（Mint 是 init 固定的可信依赖、`LOVE20Token.mint` 无回调，外呼不可重入）。
+只有关联 Executor 可发起 ActionTarget 的铸造入口 `mintActionReward`；ActionTarget 作为 Target 调用 Mint 时把该 Executor 作为 `recipient` 传入，Mint 直接把指定 token、Round、Proposal 的完整激励铸给 Executor——激励不落在 ActionTarget，没有「先铸给自己、再转一次」的转发，也没有中转余额需要清理。Executor 再按所属业务完成成员、验证者和 owner 分配。任一步失败回滚，不允许重复铸造。铸造去重由 Mint 持有：ActionTarget 不保存行动级铸造状态位，重复调用由 Mint 回滚 `ProposalRewardAlreadyMinted(tokenAddress, round, proposalId)`（Mint 是 init 固定的可信依赖、`LOVE20Token.mint` 无回调，外呼不可重入）。**可结算窗口不在本入口**：`mintActionReward` 不判 `round` 与当前阶段的关系，窗口随行动类型不同（LP `phase−2`，Group/Service `phase−3`），由调用方 Executor 负责；新增 Executor 必须实现等价约束（边界同 core 卷 `MNT-01`）。
 
 流转由两条事件分别留痕，粒度与所在层一致：ActionTarget 在整笔转出时发出**行动级**的 `ActionRewardMinted(tokenAddress, actionId, round, amount)`，`amount` 即 `mintActionReward` 的返回值，与同层查询 `actionReward` 同源；各 Executor 在成员或角色结算时发出**成员级**的 `MemberRewardMinted(tokenAddress, actionId, memberId, round, mintAmount, burnAmount)`。本轮该行动只能铸造一次（去重键 `tokenAddress + actionId + round`，由 Mint 的状态位判定）；成员不参与这条链路也不需要了解它，成员级入口只存在于各 Executor。成员结算量为零（`mintAmount` 与 `burnAmount` 均为 0）时回滚 `MemberActionRewardUnavailable(tokenAddress, actionId, memberId, round)`，不置位已结算状态、不发事件，与 Core 铸造的零额拒绝同口径；有销毁量即允许结算。
+
+**事件例外（推举转发）**：`ActionTarget.onProposalSubmitted` 与各 Executor 的同名回调是纯转发，不新增 action 层的领域事件——推举事实由 Core 的 `ProposalSubmitted` 记录，action 层再发一条只会制造两份同义事实。这是本族「写入口必有事件」的唯一例外，登记在此以免被当成遗漏。
 
 成员级结算支持批量：`mintMemberRewards(tokenAddress, actionIds[], rounds[], memberId)` 以平行数组按下标配对，逐元素执行与 `mintMemberReward` 相同的结算，返回按下标对齐的 `(mintAmounts[], burnAmounts[])`。两数组长度不一致回滚 `BatchLengthMismatch(actionIdsLength, roundsLength)`；任一元素失败整笔回滚（下标对齐、不补空）；空数组在鉴权通过后返回空结果、不改状态；不设长度上限——成本由调用方自付，区块 gas 为自然上界（与 core `mintGovRewards` 同型）。批量入口同样先鉴权，权限与单条入口一致，由各 Executor 规格固定。
 
@@ -27,7 +29,7 @@ Core 的预留、铸造和取消额度账本见 [Mint](../core/07-mint.md)，不
 | `NotSubmit(address caller)` / `NotVote(address caller)` | ActionTarget 三类回调的调用者不是 Submit / Vote |
 | `NotActionTarget(address caller)` | Executor 三类回调的调用者不是 ActionTarget |
 | `UnboundProposal(tokenAddress, proposalId)` | ActionTarget 的推举/投票回调对应的 `(tokenAddress, proposalId)` 无绑定（结构上不可达，防御 Core 侧缺陷） |
-| `UnauthorizedExecutor(tokenAddress, actionId)` | 调用者不是该 `(tokenAddress, actionId)` 已注册绑定的 Executor（含未注册绑定时的任何调用者） |
+| `UnauthorizedExecutor(tokenAddress, actionId)` | 调用者不是该 `(tokenAddress, actionId)` 已注册绑定的 Executor（含未注册绑定时的任何调用者）。**同一 selector 同时表示「行动未绑定」与「调用者不匹配」**；链下要区分须反查 `executorByActionId`（零地址 = 未绑定），载荷本身没有区分位 |
 | `JoinNotOpen(tokenAddress, actionId, currentRound, createdRound)` | 注册加入时当前投票轮不大于该行动创建轮（投票轮未走完，加入未开放） |
 | `NotMemberOwner(memberId)` | 调用者非该 NFT 当前持有人 |
 | `ProposalNotVoted(tokenAddress, proposalId)` | Proposal 无票或未达门槛 |

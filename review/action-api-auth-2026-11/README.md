@@ -1,7 +1,7 @@
 # action/ 接口调用权限专项审查 · 2026-11
 
 > 范围 `action/src/` 全部 14 个源文件（7,226 行）：4 个可部署合约 + 1 个抽象基类 + 4 个业务库 + 5 个支撑库；逐函数判定「谁能调、凭什么、能不能绕过」。
-> 基线 `action@e849e36`（工作树干净）。
+> 基线 `action@8478619`（工作树干净）。`src/` 自原基线 `e849e36` 无实质变化（差异只在测试与门禁脚本），本卷未改 `src/`，各分卷行号未位移。`DeployAction.s.sol` / `21_check.sh` / `check_caller_auth.py` 的本卷改动落在 `8478619` 之上。
 > 判据 `docs/dev-standards.md` §5.5（调用者校验）、§5.4（`init`）、§5.7（校验分层）、§5.2.2（失败顺序）、§3.3（24KB 拆分）；`docs/specs/action/` 全 11 篇。
 > 产出：每个合约 / 业务库一份报告，共 10 份（5 个支撑库合并为一份）；本页是索引与横向结论。
 
@@ -15,8 +15,9 @@
 | 业务无许可写入口 | **0** |
 | 鉴权 modifier 定义 | 10 个（6 个名字：`onlyMemberOwner` ×4、`onlyGroupOwner` ×2、`onlyActionTarget`、`onlyBoundExecutor`、`onlySubmit`、`onlyVote`） |
 | 动钱入口 / 其中有重入锁 | 19 / **19**（另有 2 条不动钱的入口也上了锁，共 21 条带 `nonReentrant`） |
-| 登记项 | 38（Medium 1 / Low 1 / Info 36） |
+| 登记项 | 38（Medium 1 / Low 1 / Info 36）；Medium 的处置为「**部署期协议**」，仍计为登记项 |
 | 其中新增（不含既有审查已登记） | 37（Low 1 / Info 36） |
+| 裁决 | 3（A-1 `AT-01`/`G-01` 部署期协议；A-2 `AT-02` 规格；A-3 `G-02`/`GAE-01` 规范 + 门禁）——逐条落点见 §十 |
 | 正面结论（不编号为发现） | 20 |
 | 接口对账 | 4 个合约全部 **0 差异**（函数集、签名、返回值、mutability 全等） |
 | 鉴权位置检查 | `check_caller_auth.py action/src` → `violations: 0` |
@@ -25,9 +26,9 @@
 
 1. **没有找到「本应鉴权却没鉴权」的函数。** 41 个写入口里 40 个有明确主体，唯一无许可的 `ActionTarget.init` 是 §5.4 明示的一次性入口；三个 Executor 用构造函数，连 `init` 抢跑面都没有。**业务入口层面没有任何无许可写函数**——这一点比 core 更干净（core 有 4 个业务无许可入口）。
 
-2. **真正的风险只有一处：`ActionTarget.init` 抢跑会把四个鉴权根一次性换掉**（`SUBMIT_ADDRESS`、`VOTE_ADDRESS`、`MEMBER_NFT_ADDRESS`、`PHASE_ADDRESS`）外加 `MINT_ADDRESS`。它不属于「换参数」，属于「换掉全部回调鉴权与成员鉴权」，后果量级高于三个 Executor 的构造函数。这条与 core 的 DEP-01 同源（§5.4 把部署期不变量划给部署脚本），本报告不重复计数，只补「后果是什么」的描述（AT-01）。
+2. **真正的风险只有一处：`ActionTarget.init` 抢跑会把四个鉴权根一次性换掉**（`SUBMIT_ADDRESS`、`VOTE_ADDRESS`、`MEMBER_NFT_ADDRESS`、`PHASE_ADDRESS`）外加 `MINT_ADDRESS`。它不属于「换参数」，属于「换掉全部回调鉴权与成员鉴权」，后果量级高于三个 Executor 的构造函数。这条与 core 的 DEP-01 同源（§5.4 把部署期不变量划给部署脚本），本报告不重复计数，只补「后果是什么」的描述（AT-01）。**已裁决（A-1）：不改合约、部署期协议**——`init` 保持无许可，`DeployAction.s.sol` 断言 `init` 是部署后第一笔交易并回读五个绑定，`21_check.sh` 逐项复核；规格写明信任根在部署脚本。
 
-3. **12 条业务写入口的鉴权不在 `GroupActionExecutor` 上，而在被 `delegatecall` 的库里**（GAE-01）。功能上完整（`nonReentrant` 在 Executor、`onlyMemberOwner`/`onlyGroupOwner` 在库，拼起来才是一次完整校验），但 §5.5 的文本只覆盖「合约自身」与「唯一抽象基类」两个位置，**没有覆盖「库」**；`check_caller_auth.py` 也因此无法发现这处偏离（它不校验 modifier 定义在哪个文件）。这是规范需要补的一条，不是代码缺陷。
+3. **12 条业务写入口的鉴权不在 `GroupActionExecutor` 上，而在被 `delegatecall` 的库里**（GAE-01）。功能上完整（`nonReentrant` 在 Executor、`onlyMemberOwner`/`onlyGroupOwner` 在库，拼起来才是一次完整校验），但 §5.5 的文本只覆盖「合约自身」与「唯一抽象基类」两个位置，**没有覆盖「库」**；`check_caller_auth.py` 也看不到「modifier 定义在哪个文件」这层语义（它只校验形状，不校验主体归属）。这是规范需要补的一条，不是代码缺陷。**已裁决（A-3）**：§5.5 增「库内 modifier + 模块规格必须列入口 → 鉴权主体映射」；门禁脚本显式覆盖库文件并要求库内每个 `only*` 至少被一个入口使用（`violations` 仍为 0）；`05`/`06` 规格已补映射表。
 
 4. **四个业务库以 `public` 库部署，但其 `external` 函数不可被任何地址直接调用**（G-03，原判已撤回）。Solidity 为含 `external` 函数的库在 dispatcher 前置自地址守卫（`PUSH20 <自身地址> ADDRESS EQ`），直接 `CALL` 时 `ADDRESS() == 自身地址` 成立即在函数体执行前 revert、零日志；库的 `emit` 只有 `internal` 内联与 `external` `DELEGATECALL` 两条路径，emitter 恒为状态所有者。因此 16 个库级写入口的守卫分层（哪些读 `Layout`、哪些只读入参）只作**纵深防御**记录，不构成可利用面。真正值得补的门禁在测试侧：`vm.expectEmit` 全部用 4 参版本、不校验 emitter（见 `action-events-audit-2026-11` 的 `GL-EV-1`）。
 
@@ -134,7 +135,7 @@
 
 ## 五、共性问题
 
-### G-01（Medium，与 core DEP-01 同源，不新增计数）四处初始化面，只有 `ActionTarget.init` 有权限后果
+### G-01（Medium，与 core DEP-01 同源，不新增计数；**已裁决：部署期协议**）四处初始化面，只有 `ActionTarget.init` 有权限后果
 
 | 入口 | 形式 | 权限后果 |
 | --- | --- | --- |
@@ -143,9 +144,14 @@
 
 三个 Executor 用构造函数而非 `init`，因此没有抢跑面——这是 action 仓相对 core 的一个结构性改进。剩下的唯一面是 `ActionTarget.init`，兜底全在部署期：`DeployAction.s.sol` 广播前校验 + `21_check.sh` 部署后复核。§5.4/§5.7 明确把这条划给部署脚本，合约侧不校验是**符合分工**的。
 
-建议：在 `01-action-target.md` 的 `init` 段显式写出「四项派生值是本合约全部写入口的鉴权根」，并在 `DeployAction.s.sol` 的广播前校验里把「`init` 必须是部署脚本发出的第一笔 ActionTarget 交易」写成断言（当前只校验绑定结果，不校验时序）。
+**裁决与落点（A-1，不改合约）**：`ActionTarget.init` 保持无许可，与 core 卷 `DEP-01` 同口径——无许可一次性入口 + 部署期脚本负责。
 
-### G-02（Info）鉴权位置有三种，§5.5 只覆盖前两种
+- `action/script/deploy/DeployAction.s.sol`：`new ActionTarget()` 之后立即 `require(!initialized())` → `init` → `require(initialized())`，把「`init` 是部署后第一笔交易」钉在广播序列里；`_validateDeployment` 回读 `SUBMIT_ADDRESS`、`VOTE_ADDRESS`、`MEMBER_NFT_ADDRESS`、`PHASE_ADDRESS`、`MINT_ADDRESS` 五个绑定。
+- `action/script/deploy/21_check.sh`：同一组五个值逐项复核（落点在此，不在别的脚本）。
+- `matt-gov/docs/specs/action/01-action-target.md`：`init` 段写明「必须是部署后第一笔交易」、五个派生值是全部写入口的鉴权根、信任根在部署脚本。
+- 处置口径：**登记项仍记 Medium，处置为「部署期协议」**，不是「已修复（代码）」。
+
+### G-02（Info；**已裁决：规范 + 门禁**）鉴权位置有三种，§5.5 只覆盖前两种
 
 | 位置 | 实例 | §5.5 是否覆盖 |
 | --- | --- | --- |
@@ -155,7 +161,11 @@
 
 `check_caller_auth.py` 只校验「`msg.sender` 判定是否写在 `only*` modifier 里」与「每个 `only*` 是否判调用者/有 revert/以 `_;` 收尾」，不校验 modifier 定义在哪个文件，因此**无法发现第三类**。`violations: 0` 不代表 §5.5 这条被满足。
 
-建议：在 §5.5 增一条「实现体经 `delegatecall` 进库时，鉴权 modifier 可定义在该库，但模块规格必须列出『入口 → 鉴权主体』映射表」。本目录各报告第三节的表即该映射表。
+**裁决与落点（A-3）**：
+
+- `matt-gov/docs/dev-standards.md` §5.5 增一条：实现体进库时 modifier 可定义在库，但模块规格必须列「入口 → 鉴权主体」映射表；库单独被调用不提供鉴权。
+- `action/script/check_caller_auth.py`（实际路径 `matt-gov/script/check_caller_auth.py`）显式覆盖库文件，并新增「库内每个 `modifier only*` 至少被本文件一个入口使用」规则；改动前后 `action/src` 与 `core/src` 的 `violations` 均为 0（未放宽既有规则）。
+- `05-group-action-executor.md` 与 `06-service-executor.md` 补「入口 → 鉴权主体」表；本目录各报告第三节的表即规格外的审计副本。
 
 ### G-03（已撤回，原判 Info）四个业务库的 `external` 函数不可被直接调用；16 个库级写入口的守卫分层仅作纵深防御记录
 
@@ -211,7 +221,7 @@
 | `GroupActionExecutor.setGroupConfig` | 无 | 无 | 库 `onlyGroupOwner` | `IPhase.currentPhase`（只读） |
 | `GroupServiceExecutor.setRecipients` | 无 | `onlyGroupOwner` | 本合约 | `IPhase.currentPhase`（只读） |
 
-三条当前都安全（无状态变更外呼），但它们是「将来加外呼就会漏锁」的唯一位置。建议统一加锁，或在规格里显式写明「只调只读外部依赖的配置入口不设锁」。
+三条当前都安全（无状态变更外呼），但它们是「将来加外呼就会漏锁」的唯一位置。**处置（G-05 裁决）**：只写规格、不加锁——`05-group-action-executor.md` §实现约束与 `06-service-executor.md` §实现约束均已写明「只调只读外部依赖的配置入口不设 `nonReentrant`，新增外呼必须同批加锁」。
 
 ### G-06（Info）「行动未创建」的错误契约在三个入口上不一致
 
@@ -222,13 +232,13 @@
 | 三个 Executor 的结算 | `ActionNotCreated` | 是 |
 | `activateGroup` / `submitVerifierApplication` | `ActionNotCreated` | 是 |
 
-链下若按 `ActionNotCreated` 统一分类「行动不存在」，两个 `join` 的失败会被归到别的类别。建议在 `03-participation.md` / `04-lp-executor.md` 的错误落点表里各补一行。
+链下若按 `ActionNotCreated` 统一分类「行动不存在」，两个 `join` 的失败会被归到别的类别。**处置（G-06）**：已补规格——`03-participation.md` 增「错误落点（加入）：未创建行动回 `GroupNotActive`」；`04-lp-executor.md` 把 `ActionNotCreated` 限定为结算路径，并注明 `join` 走 ActionTarget 的 `UnauthorizedExecutor`。
 
 ### G-07（Info）业务层不认 ERC721 授权，受托方不能代为操作
 
 25 个 `ownerOf(id) == msg.sender` 判定一律不使用 `isApprovedForAll`/`getApproved`。后果：被授权方只能转移 NFT（连同质押、押金、未领奖励、群归属、验证资格一起转移），不能代为 `join`/`withdraw`/`exit`/`submit`/`settle`。多签或托管合约必须自己作为 `msg.sender` 调用。
 
-这与 core 审查的 G-02 是同一件事，在 action 仓同样成立且影响更大——action 侧有 25 个写入口用这条判据（core 是 12 个）。规格 `01-common-rules.md` 已写死这条，但接口不写 NatSpec（§4.1），集成方只能从规格得知。建议在规格里补一句「ERC721 授权不延伸到任何业务入口」。
+这与 core 审查的 G-02 是同一件事，在 action 仓同样成立且影响更大——action 侧有 25 个写入口用这条判据（core 是 12 个）。规格 `01-common-rules.md` 已写死这条，但接口不写 NatSpec（§4.1），集成方只能从规格得知。**处置（G-07）**：`03-participation.md` 新增「授权口径与资产转移」段，写明「ERC721 授权（`approve`/`setApprovalForAll`）不延伸到任何 action 业务入口，只认 `ownerOf == msg.sender`」；与 core `G-02` 同口径。
 
 ### G-08（Info）资产随身份走：三处「付款/退款对象是结算时或退款时的 NFT 持有人」
 
@@ -238,7 +248,7 @@
 | `GroupActionVerify.cancelVerifierApplication` | 押金退给 `ownerOf(verifierId)` | 同上，规格已明说 |
 | `GroupRecipients._distributeToRecipients` | 二次分配付给结算时的 `ownerOf(recipientId)` | 配置后转手 NFT，款项归新持有人（GSE-04） |
 
-三处都不是越权（新持有人本来就是该身份的控制者），但都是「配置时的意图」与「结算时的归属」可能分离的地方。与 core 审查的 MNT-03 同型。建议在三处规格段落统一补一句「资产归属以结算/退款时点的 NFT 持有人为准」。
+三处都不是越权（新持有人本来就是该身份的控制者），但都是「配置时的意图」与「结算时的归属」可能分离的地方。与 core 审查的 MNT-03 同型。**处置（G-08）**：三处规格已各补一句——`03-participation.md`「资产随 NFT 转移（三处口径）」总述；`05-group-action-executor.md` 激活质押随群 NFT 转移 + 同轮锁定；`06-service-executor.md` 二次分配付款对象是结算时持有人。
 
 ## 六、发现索引
 
@@ -265,7 +275,7 @@
 | Info | GAJ-01 | `withdrawProviderQuota` 只校验群存在，不要求调用者拥有该群 |
 | Info | GAJ-02 | 未创建行动的 `join` 报 `GroupNotActive` |
 | Info | GAJ-03 | `exit`/`withdraw` 的状态清理被退款切成两段，CEI 不完全成立（有锁） |
-| Info | GAV-01 | `submitVerifierApplication` 的错误优先级与 §5.2.2 相反（规格与规范冲突，待裁决） |
+| Info | GAV-01 | `submitVerifierApplication` 的错误优先级与 §5.2.2 相反（本卷只同步规格，重排交错误卷 `E-GAV-02`） |
 | Info | GAV-02 | `onProposalVoted` 库内无 modifier，鉴权完全外置 |
 | Info | GAV-03 | 同一个库里并存两个轮次口径（`currentPhase` / `currentVerifyRound`） |
 | Info | GAV-04 | `verifierApplications` 分页回含变长字段记录体（已登记例外） |
@@ -326,6 +336,8 @@
 
 本次**新增** 37 条（Low 1 / Info 36），全部是权限面、接口面与文档口径的问题，不含资金安全结论。资金结论以既有审查为准。（另有 2 条原判 Info 已撤回：`G-03`、`GRC-01`，见 G-03 与 `09` 的撤回记录。）
 
+**处置后口径**：38 条登记项里 0 条需要改 `action/src/` 业务合约。Medium 1 条（`AT-01`/`G-01`）处置为「部署期协议」——保持无许可 `init`，加固部署脚本与规格；Low 1 条（`AT-02`）为规格补写（合约源码不加注释）；其余 36 条 Info 全部是规格补写、口径登记或门禁扩展。唯一改动的门禁是 `check_caller_auth.py`（库文件覆盖），`violations` 前后均为 0。
+
 ## 八、方法与复现
 
 ```bash
@@ -356,7 +368,7 @@ python3 matt-gov/review/action-api-auth-2026-11/evidence/auth_scan.py
 
 - 本报告只做静态审查，未运行新的 PoC；资金安全结论以既有审查为准。
 - 读面（121 个只读入口）逐条确认「无权限、无事件要求」，未逐条展开；例外是会在未开始轮次回滚的 `currentJoinRound`/`currentMintRound`/`currentVerifyRound`（已标注）与带存在性断言的 `verifierApplication`/`joinInfo`/`actionReward`（已标注）。
-- `check_caller_auth.py` 只校验「调用者校验是否写在 `only*` modifier 里」，不证明「每个写入口都有鉴权来源」（由本报告人工逐入口判定补齐，41 个全覆盖），也不校验 modifier 定义在哪个文件（见 G-02）。
+- `check_caller_auth.py` 校验「调用者校验是否写在 `only*` modifier 里」与 modifier 形状；不证明「每个写入口都有鉴权来源」（由本报告人工逐入口判定补齐，41 个全覆盖）。本卷扩展后它覆盖库文件，并要求库内每个 `modifier only*` 至少被本文件一个入口使用；「入口 → 鉴权主体」的语义仍由规格表（见 G-02 裁决）承担。
 - 4 个业务库的 `external` 函数不在任何合约的 ABI 里，因此第 2 步的对账不覆盖它们；它们的入口清单来自 `auth_scan.py` 的 D 节。
 
 ## 九、目录
@@ -376,4 +388,57 @@ README.md                      本页：横向结论、全局矩阵、共性、�
 evidence/
   auth_scan.py                 函数、可见性、modifier、库入口的静态提取（生成各报告的入口表）
   output.txt                   上述脚本 + check_caller_auth + ABI 对账 + 函数计数的实际输出
+tasks.md                       本卷裁决与 35 条 B 项的逐条落点（执行清单）
 ```
+
+## 十、裁决与处置（逐条落点）
+
+基线 `action@8478619`。三条 A 类裁决与 35 条 B 类登记项全部有落点，`action/src/` 业务合约未改。
+
+### A 类（3 条裁决）
+
+| 编号 | 裁决 | 落点 |
+| --- | --- | --- |
+| `AT-01` / `G-01` | 不改合约：保持无许可 `init`，部署期协议（与 core `DEP-01` 同口径） | `DeployAction.s.sol`（首笔交易断言 + 五绑定回读）、`21_check.sh`（五值复核）、`specs/action/01-action-target.md` |
+| `AT-02` | 不在 `mintActionReward` 加轮次/窗口检查 | `specs/action/01-action-target.md`、`specs/action/07-minting.md`（引用 core `MNT-01`；合约源码零改动） |
+| `G-02` / `GAE-01` | 组织级规范 + 门禁扩展 | `dev-standards.md` §5.5、`check_caller_auth.py`、`05-group-action-executor.md` 与 `06-service-executor.md` 映射表 |
+
+### B 类（35 条）
+
+| 编号 | 处置 | 落点 |
+| --- | --- | --- |
+| `AT-03` | 登记：无 Executor 白名单，风险由提案投票承担 | `01-action-target.md` |
+| `AT-04` | 登记：`UnauthorizedExecutor` 同时表示未绑定与调用者不匹配 | `07-minting.md` |
+| `AT-05` | 补上界数值与出处 | `01-action-target.md`（core `05-submit.md`） |
+| `EB-01` | 登记：`mintMemberReward` 的 `external` 声明与 `public` 实现，ABI 不变 | `00-executor-interface.md` |
+| `EB-02` | 登记：`onProposalSubmitted` 无事件为例外 | `07-minting.md` |
+| `LP-01` | 补错误落点：`ActionNotCreated` 仅结算路径；`join` 报 `UnauthorizedExecutor` | `04-lp-executor.md` |
+| `LP-02` | 登记：资金出口依赖 `Phase.currentPhase()` | `04-lp-executor.md` |
+| `LP-03` | 登记：非首次加入不重复校验行动归属 | `04-lp-executor.md` |
+| `LP-04` | 登记：配置唯一性由 `AlreadyCreated` 保证 | `04-lp-executor.md` |
+| `GAE-02` | 登记：行动配置单写；部署脚本断言 ActionTarget 实现 | `05-group-action-executor.md` |
+| `GAE-03` | 只写规格：三条只读配置入口不设锁 | `05-group-action-executor.md`、`06-service-executor.md` |
+| `GAE-04` | 登记：激活质押随群 NFT 转移 | `05-group-action-executor.md` |
+| `GAE-05` | 登记：库 modifier 的 `self` 形参未使用 | `05-group-action-executor.md` |
+| `GAJ-01` | 补规格：定位键不是权限主体 | `03-participation.md` |
+| `GAJ-02` | 补错误契约：未创建行动回 `GroupNotActive` | `03-participation.md` |
+| `GAJ-03` | 登记：CEI 被退款切开但有锁 | `05-group-action-executor.md` |
+| `GAV-01` | 只同步规格；重排交错误卷 `E-GAV-02` | `05-group-action-executor.md` |
+| `GAV-02` | 登记：库内回调不判调用者 | `05-group-action-executor.md` |
+| `GAV-03` | 登记：两个轮次空间并存 | `05-group-action-executor.md` |
+| `GAV-04` | 登记：分页最坏 `limit × 1024` 字节 | `05-group-action-executor.md` |
+| `GAM-01` | 登记：创建唯一性由 ActionTarget + 编译器守卫 | `05-group-action-executor.md` |
+| `GAM-02` | 登记：同 `GAE-05` | `05-group-action-executor.md` |
+| `GAM-03` | 补因果：同轮停用锁 = 质押锁定一个加入轮 | `05-group-action-executor.md` |
+| `GAM-05` | 补口径：`hasActiveGroups` 第二参数是 `groupId` | `05-group-action-executor.md` |
+| `GSE-01` | 登记：协议常量默认不进 ABI，两个 `public` 为口径偏差 | `06-service-executor.md` |
+| `GSE-02` | 登记：群 owner 判定留在本合约 | `06-service-executor.md` |
+| `GSE-03` | 只写规格：`setRecipients` 不设锁 | `06-service-executor.md` |
+| `GSE-04` | 补口径：付款对象为结算时持有人 | `06-service-executor.md` |
+| `GSE-05` | 补成本上界 O(votedActions) | `06-service-executor.md` |
+| `GSE-06` | 补口径：同轮退出使该轮资格失效 | `06-service-executor.md` |
+| `GRC-02` | 登记：存在性先于参数的校验次序 | `06-service-executor.md` |
+| `GRC-03` | 登记：轮次由调用方保证 | `06-service-executor.md` |
+| `GRC-04` | 登记：`GroupRecipients` 鉴权在调用方 | `06-service-executor.md` |
+| `SUP-01` | 登记：`ownerOrZero` 只吞 `ERC721NonexistentToken` | `05-group-action-executor.md` |
+| `SUP-02` | 登记：`joinRound` 三份同式实现 | `02-phase-model.md` |

@@ -12,6 +12,10 @@ Target Data 是无键数组，按位置读取。第 `0` 项是 ActionTarget 保�
 
 写操作要求调用者持有 memberId；加入/追加金额为正，首次加入满足 `minGovRatio`。LP 从调用者转入 Executor，撤回时转给当前持有人。首次加入时调用 `ActionTarget.registerJoinState`；全额撤回与 `exit` 都调用 `ActionTarget.clearJoinState`；失败全部回滚。激励接口见 [行动铸造](07-minting.md#铸造链路)。
 
+**非首次加入不重复校验行动归属**：`registerJoinState` 只在首次加入调用，后续 `join` 不再经过它，因此不重新判行动是否已创建/已绑定 Executor。该不变量由 ActionTarget「绑定建立后永不删除」承担（见 [ActionTarget 索引](01-action-target.md#round-查询)）；本 Executor 侧的首次判定只读 `isJoined`，不自建副本。
+
+**配置写入的唯一性由 ActionTarget 承担**：创建回调对同一 `(tokenAddress, actionId)` 只成功一次（重复回滚 `AlreadyCreated`），因此本 Executor 的 `joinTokenAddress`、比例等配置在每个行动上只写一次，不需要自己的「已配置」状态位。
+
 校验与回滚：
 
 构造函数没有重复初始化入口；ActionTarget、Stake 及从 Stake 派生的 MemberNFT、Phase、Pair Factory 有代码由 `DeployAction` 广播前校验；`21_check.sh` 回读 `STAKE_ADDRESS()`、`MEMBER_NFT_ADDRESS()`、`PHASE_ADDRESS()` 并与 core 地址文件复核，`PAIR_FACTORY_ADDRESS()` 与 Stake 的工厂地址一致。
@@ -30,7 +34,7 @@ Target Data 是无键数组，按位置读取。第 `0` 项是 ActionTarget 保�
 | 首次加入且 `govRatio < minGovRatio` | `InsufficientGovRatio(minGovRatio, govRatio)` |
 | `exit` 时该成员没有加入记录 | `NotJoined(tokenAddress, actionId, memberId)` |
 | 加入轮低于该行动创建轮 | `JoinNotOpen(tokenAddress, actionId, currentRound, createdRound)`（ActionTarget 抛出） |
-| 行动未创建（`createdRound == 0`） | `ActionNotCreated(tokenAddress, actionId)` |
+| 成员结算时行动未创建（`createdRound == 0`） | `ActionNotCreated(tokenAddress, actionId)`（**仅结算路径**；`join` 路径在未创建行动上由 ActionTarget 回 `UnauthorizedExecutor(tokenAddress, actionId)`） |
 | 结算轮次低于该行动创建轮（行动已创建） | `RoundBeforeActionCreated(round, createdRound)` |
 | 结算轮次大于当前铸币轮（铸币阶段未开始时任何轮次都不在有效阶段） | `RoundAfterMintWindow(round, mintRound)` |
 | 同一成员同一轮重复结算 | `RewardAlreadyMinted(tokenAddress, actionId, memberId, round)` |
@@ -66,6 +70,8 @@ deductionByRound -= deductionReduction
 所有右侧均使用撤回前值。减少成员扣减和总扣减的数量必须相同；全额撤回时公式自然取尽剩余扣减，不留余数。部分撤回保留原加入区块/金额数组作为记录，不逐笔缩放；数组之和不再代表当前余额。
 
 全额撤回（`amount == joinedAmount`）与 `exit` 一样按退出处理：清空当前 Round 的上述数组与扣减、把该成员余额记录为零，调用 `ActionTarget.clearJoinState`，不删除过去 Round。事件按事实拆分：只要清仓路径执行（全额撤回或 `exit`），统一发两条——`LpWithdrawn(tokenAddress, actionId, memberId, round, amount)` 记录金额事实，`LpExited(tokenAddress, actionId, memberId, round)` 记录生命周期事实，`exit` 的 `LpWithdrawn.amount` 为本次返还金额；部分撤回只发 `LpWithdrawn`、不发 `LpExited`。加入态清理由 ActionTarget 的 `JoinStateCleared` 统一留痕。清仓顺序固定为：清自身状态 → 退款转账 → 发 `LpWithdrawn` → 回调 `ActionTarget.clearJoinState`（发 `JoinStateCleared(forced=false)`）→ 发 `LpExited`；`LpExited` 是无金额终态标记，必须最后发（见[事件规范 §4.4](../../event-standards.md#44-正常退出与注册表兜底清理)）。
+
+**可用性依赖**：`clearJoinState` 内部读 `Phase.currentPhase()` 推导清理轮，因此全额撤回与 `exit` 这两个资金出口都依赖 Phase 可调用。Phase 故障时整笔回滚（原子性保证不会出现「钱已退、注册表未清」的半截状态），但成员暂时无法通过这两条路径取回资金；这是抵押/退出路径与注册表唯一所有者耦合的已知代价，登记而不改结构。
 
 例（最小单位）：余额 7、扣减 3，撤回 2 后扣减减少 0，剩余余额 5、扣减 3；再 `exit` 取尽剩余扣减 3。
 

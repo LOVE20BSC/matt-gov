@@ -2,7 +2,7 @@
 
 > 对象 `action/src/GroupActionJoin.sol`（849 行，`library`，经 `delegatecall` 由 `GroupActionExecutor` 调用）
 > 接口 `action/src/interfaces/IGroupActionJoin.sol`（256 行）
-> 基线 `action@e849e36`；审查日期 2026-11-03
+> 基线 `action@8478619`（`src/` 自 `e849e36` 无实质变化，行号未位移）；审查日期 2026-11-03
 > 判据 dev-standards §5.5、§4.4（退出顺序）、§5.2.2（失败顺序）；`specs/action/03-participation.md`、`specs/action/05-group-action-executor.md`
 
 ## 一、结论
@@ -178,3 +178,7 @@ GroupActionJoin  写入口 6  带 modifier 6  无 modifier 0
 | 被调 | `IERC20` | `safeTransferFrom`（`join` 自有来源、`addProviderQuota`）、`safeTransfer`（`withdraw`/`exit`/`removeProviderQuota`/`withdrawProviderQuota`） |
 | 内联复用 | `GroupActionManager` | `groupOwnerOrRevert`、`currentJoinRound`、`_maxJoinAmount`（编译期内联，无跨库 `delegatecall`） |
 | 读写 | `GroupActionStorage.Layout` | 全部参与量、归属、额度、验证信息值、Provider 索引 |
+
+## 处置
+
+`GAJ-01`～`GAJ-03` 的落点见 `README.md` §十（`03-participation.md` 与 `05-group-action-executor.md`）；本卷不改库代码。

@@ -3,7 +3,7 @@
 > 对象 `action/src/GroupActionExecutor.sol`（750 行）+ 继承的 `action/src/ExecutorBase.sol`（140 行）
 > 接口 `action/src/interfaces/IGroupActionExecutor.sol`（81 行，`is IGroupActionVerify, IGroupActionIndexes, IActionExecutor`）
 > 业务实现落在四个 `public` 库：`GroupActionJoin`、`GroupActionVerify`、`GroupActionManager`（另见本目录 05/06/07 三份报告）
-> 基线 `action@e849e36`；审查日期 2026-11-03
+> 基线 `action@8478619`（`src/` 自 `e849e36` 无实质变化，行号未位移）；审查日期 2026-11-03
 > 判据 dev-standards §5.5、§3.3（24KB 拆分）、§5.2.2；`specs/action/05-group-action-executor.md`
 
 ## 一、结论
@@ -163,7 +163,7 @@
 - 规格已登记这一偏离：`05-group-action-executor.md` 写「`requireMemberOwner` 已按 §5.5 改为各库本地的 `onlyMemberOwner` modifier」。所以这是**规格主动选择的方案**，不是实现走偏。
 - 为什么 `check_caller_auth.py` 不报：该脚本只校验两件事——`msg.sender` 判定是否写在 `only*` modifier 里、每个 `only*` 是否判调用者/有 revert/以 `_;` 收尾。它不校验 modifier 定义在哪个文件或哪个合约，因此无法发现这处偏离（`violations: 0` 不代表 §5.5 的这条被满足）。
 - 后果（不是缺陷，是接口契约的可读性问题）：ABI 读者看 `join` 只看到 `nonReentrant`，看不到「必须是 `memberId` 的持有人」。集成方若按 ABI 猜权限，会把 `join` 当成无许可入口。规格是唯一说明，而接口按 §4.1 不写 NatSpec。
-- 建议：不改代码（24KB 拆分下这是唯一可行写法），改规范——在 §5.5 增一条「实现体经 `delegatecall` 进库时，鉴权 modifier 可定义在该库，但必须在模块规格列出「入口 → 鉴权主体」映射表」。本报告第三节的表即该映射表。
+- **处置（A-3，已裁决：规范 + 门禁，不改代码）**：§5.5 增「实现体进库时 modifier 可定义在库，但模块规格必须列『入口 → 鉴权主体』映射表」；`check_caller_auth.py` 显式覆盖库文件并新增「库内 `only*` 必须被本文件入口使用」规则（改动前后 `violations` 均为 0）；`05-group-action-executor.md` 的「入口与鉴权主体」节即规格映射表，本报告第三节是审计副本。
 
 ### GAE-02（Info）`activationStakeAmountByActionId` 的「只写一次」由 ActionTarget 保证，本合约无本地守卫
 
@@ -245,3 +245,7 @@ $ forge build --sizes | grep GroupActionExecutor
 | 被调 | Core `MemberNFT` | `ownerOf`（四个鉴权函数） |
 | 被调 | `GroupActionJoin` / `GroupActionVerify` / `GroupActionManager` | 12 条业务入口的 `delegatecall` 目标 |
 | 被读 | `GroupServiceExecutor` | `hasActiveGroups`、`verifierApplication`、`generatedActionReward(ByGroupId)`、`lockedVerifierId`、`totalStaked`、`stakedByMemberId`、`joinTokenAddress`、`isGroupMember` |
+
+## 处置
+
+`GAE-01`（并入 A-3）、`GAE-02`～`GAE-05`、`GAM-01`、`GAM-02`、`GAM-05`、`GAV-01`、`GAV-02`、`GAJ-03`、`SUP-01` 的落点见 `README.md` §十；规格映射表在 `05-group-action-executor.md` 的「入口与鉴权主体」节。

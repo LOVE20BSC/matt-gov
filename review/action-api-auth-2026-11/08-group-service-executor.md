@@ -3,7 +3,7 @@
 > 对象 `action/src/GroupServiceExecutor.sol`（800 行）+ 继承的 `action/src/ExecutorBase.sol`（140 行）
 > 接口 `action/src/interfaces/IGroupServiceExecutor.sol`（162 行，`is IGroupRecipients, IActionExecutor`）
 > 二次分配配置面落在 `GroupRecipients` 库（另见本目录 09 号报告）
-> 基线 `action@e849e36`；审查日期 2026-11-03
+> 基线 `action@8478619`（`src/` 自 `e849e36` 无实质变化，行号未位移）；审查日期 2026-11-03
 > 判据 dev-standards §5.5、§5.2.2；`specs/action/06-service-executor.md`
 
 ## 一、结论
@@ -230,3 +230,7 @@ $ forge build --sizes | grep GroupServiceExecutor
 | 被调 | Core `Phase` / `Stake` | `currentPhase`、`validGovVotes`、`totalValidGovVotes`（治理上限） |
 | 被调 | Core `MemberNFT` | `ownerOf`（群主鉴权、二次分配付款对象） |
 | 被调 | `GroupRecipients` | `setRecipients`、`distribute`、`distribution`、`projectedDistribution`、`ownerSlice` |
+
+## 处置
+
+`GSE-01`～`GSE-06` 的落点见 `README.md` §十（`06-service-executor.md`）；本卷不改 `GroupServiceExecutor.sol`。

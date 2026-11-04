@@ -18,6 +18,8 @@
 
 实现分层：`GroupActionRoundAxis`（join/verify/mint）与 `LpRoundAxis`（join/mint）只做 `phase → round` 纯换算，入参是 Phase 地址、不 import 错误接口。未开始守卫由消费方承担：Executor 基座的 `currentVoteRound`/`currentJoinRound`/`currentMintRound` 是 ABI 查询入口；业务模块内部用到时，`GroupActionManager.currentJoinRound` 与 `GroupActionVerify.currentVerifyRound` 是共享实现，其他模块以 `internal` 内联复用。两条路径回滚同一载荷 `RoundNotStarted(1, 0)`。
 
+**已登记的重复实现**：`GroupActionRoundAxis.joinRound`、`LpRoundAxis.joinRound` 与 `ActionTarget._joinRound` 是三份同式实现（`p - 1`；`p == 0` 时取 0）。轴库之间不复用是它们不共享类型依赖，ActionTarget 不 import 轴库是为保持写入路径不引入外部依赖；三份同改的概率低，登记为已接受重复，不强行合并。
+
 冷启动示例：
 
 | 当前 Phase | 已开始的最早业务 |

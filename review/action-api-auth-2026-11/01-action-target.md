@@ -2,7 +2,7 @@
 
 > 对象 `action/src/ActionTarget.sol`（531 行）
 > 接口 `action/src/interfaces/IActionTarget.sol`（186 行，`is IProposalTarget`）
-> 基线 `action@e849e36`（工作树干净）；审查日期 2026-11-03
+> 基线 `action@8478619`（工作树干净；`src/` 自 `e849e36` 无实质变化，行号未位移）；审查日期 2026-11-03
 > 判据 dev-standards §5.5（调用者校验）、§5.4（`init`）、§5.7（校验分层）、§4.2（事件）；`specs/action/01-action-target.md`、`specs/action/07-minting.md`
 
 ## 一、结论
@@ -104,7 +104,7 @@ return bound != address(0) && bound == msg.sender;
 - 唯一业务校验：`IVote.isProposalIdVoted(tokenAddress, round, actionId)`（`L269`）→ `ProposalNotVoted`。
 - 收款方强制为 `bound`（`L273-275`），不由调用者指定——这是本条最重要的权限性质：Executor 只能把激励铸给自己，不能再导向第三方。
 - 去重不在本合约：重复调用由 Mint 回滚 `ProposalRewardAlreadyMinted`（`L274` 注释）。
-- **不校验 `round` 是否在铸币窗口内**（见 AT-02）。
+- **可结算窗口不在本入口**（A-2 裁决）：`round` 的窗口约束由 Executor 负责，ActionTarget 不掌握行动类型，不在入口做半套检查；见 `specs/action/01-action-target.md` 与 core `MNT-01`。
 
 ### 三类回调
 
@@ -131,7 +131,7 @@ return bound != address(0) && bound == msg.sender;
   4. **`PHASE_ADDRESS`**：加入轮/创建轮整体偏移。
 
 - 为什么当前不构成可利用缺陷：§5.4 与 §5.7 明确把「部署期静态不变量」划给部署脚本，`DeployAction.s.sol` 在广播前校验、`21_check.sh` 部署后复核；规范同时明说「不能把『部署后立即初始化』当作防抢跑保证」。本报告只补一条权限后果的描述：**ActionTarget 的 `init` 不是「换参数」，是「换掉全部回调鉴权与成员鉴权」**，其后果量级高于三个 Executor 的构造函数（后者只绑定自己的依赖，不影响他人）。
-- 建议：在 `01-action-target.md` 的 `init` 段落显式写出「四项派生值是本合约全部写入口的鉴权根」，并在 `DeployAction.s.sol` 的广播前校验里把「`init` 必须是部署脚本发出的第一笔 ActionTarget 交易」写成断言（当前只校验绑定结果，不校验时序）。
+- **处置（A-1，已裁决：不改合约、部署期协议）**：`init` 保持无许可（与 core `DEP-01` 同口径）。`DeployAction.s.sol` 在 `new ActionTarget()` 后立即 `require(!initialized())` → `init` → `require(initialized())`，并在 `_validateDeployment` 回读五个绑定；`21_check.sh` 逐项复核同一组值；`specs/action/01-action-target.md` 写明「必须是部署后第一笔交易」与五项鉴权根。登记项仍计 Medium，处置为「部署期协议」，不是「已修复（代码）」。
 
 ### AT-02（Low）`mintActionReward` 不校验铸币窗口，`round` 完全由 Executor 自选
 
@@ -139,26 +139,26 @@ return bound != address(0) && bound == msg.sender;
 - 实际可达范围由三个 Executor 各自收窄：`LpExecutor._mintMemberReward`、`GroupActionExecutor._mintMemberReward`、`GroupServiceExecutor._mintMemberReward` 都先过 `_checkMintWindow`（`ExecutorBase.sol:107`），要求 `createdRound <= round <= _mintRound()`。所以单看 `action` 仓，越界不可达。
 - 仍然登记的原因：本合约是**唯一的铸造入口**，它的入参契约里没有窗口约束，窗口约束是调用方的实现细节。若将来新增一个 Executor（ActionTarget 允许提案绑定任意 Executor，见 AT-03），新实现漏掉 `_checkMintWindow` 就能对任意已结束轮次发起铸造。
 - 权限后果的具体形状：Mint 的 `_prepareRewardIfNeeded` 在**准备时点**按 `rewardAvailable(tokenAddress)` 定池（`core/src/Mint.sol:126-128`），因此「谁能决定准备时点」等价于「谁能决定各轮池子的相对大小」。`round` 不设窗口时，这个决定权落在 Executor 手里；设了窗口后仍可决定「过去各轮的准备顺序」，但无法提前准备未来轮次。
-- 建议：把 `round` 的窗口约束下沉到 `ActionTarget.mintActionReward`（一次 `IPhase.currentPhase()` 读取），或至少在规格里写明「本入口不校验轮次，窗口由 Executor 负责」，让新实现的作者看得到这条契约。
+- **处置（A-2，已裁决：不下沉窗口检查）**：`ActionTarget.mintActionReward` 与 `action/src/` 业务逻辑均不改。`specs/action/01-action-target.md` 与 `07-minting.md` 写明「可结算窗口由 Executor 负责，新 Executor 必须实现等价约束；ActionTarget 不掌握行动类型，不在入口做半套检查」，并引用 core `MNT-01` 作为边界（准备时点属机制设计），不重开该结论。
 
 ### AT-03（Info）`onProposalCreated` 只做握手，不校验 Executor 的实现来源
 
 - 证据（`L434-447`）：唯一门槛是「有代码 + `ACTION_TARGET_ADDRESS()` 返回 `address(this)`」。没有注册表、没有白名单、没有实现指纹。
 - 后果：提案创建者（任何能提交 Proposal 的成员）可以绑定一个自造合约作为 Executor。该合约随即获得该 `(tokenAddress, actionId)` 上的 `registerJoinState`/`clearJoinState`/`mintActionReward` 三项权限，可以把该行动的整笔激励铸给自己而不分给参与者，也可以随意改写加入态注册表。
 - 为什么不是缺陷：行动的资金来自加入者自愿 `join`，而 `targetData[0]` 在提案正文里对投票者可见——「这个行动由哪个 Executor 结算」是投票决策的一部分。这与 core 的 `Mint.mintProposalReward` 认「提案 target 地址」同型：授权主体可以把权益导向任意地址，但主体本身由治理选出。
-- 建议：在 `01-action-target.md` 的创建回调段落补一句「Executor 的实现来源不在本合约的校验范围，风险由提案投票承担」，避免集成方误以为存在可信 Executor 名单。
+- **处置（B，已登记）**：`specs/action/01-action-target.md` 的创建回调段已补「Executor 的实现来源不在本合约的校验范围，风险由提案投票承担」，并明确不存在可信 Executor 名单。
 
 ### AT-04（Info）写入口对未绑定行动的错误面不一致
 
 - 三个 Executor 写入入口对未绑定行动一律 `UnauthorizedExecutor(tokenAddress, actionId)`（`_isBoundExecutor` 的 `bound != 0` 分支）。
 - 只有 `forceClearJoinState` 对未绑定行动放行（幂等空操作），因为它的权限主体是成员而非 Executor，且规格要求它在 Executor 失效时仍可用。
-- 判定：这是有意的差异，不是缺陷。但链下若要区分「行动不存在」与「我不是该行动的 Executor」，`UnauthorizedExecutor` 的载荷里没有区分位——两种情形共用一个 selector。建议在错误目录里把这一条标注为「同时表示未绑定与调用者不匹配」。
+- 判定：这是有意的差异，不是缺陷。但链下若要区分「行动不存在」与「我不是该行动的 Executor」，`UnauthorizedExecutor` 的载荷里没有区分位——两种情形共用一个 selector。**处置（B，已登记）**：`specs/action/07-minting.md` 的错误表已标注「同一 selector 同时表示未绑定与调用者不匹配」，并给出链下区分方法（反查 `executorByActionId`）。
 
 ### AT-05（Info）`votedActions` 的无界内部读取是全仓唯一一处
 
 - 证据（`L399-405`）：`IVote.votedProposalIds(tokenAddress, round, 0, type(uint256).max, false)`。
 - 影响面：`votedActions` 本身是只读（`eth_call` 不计 gas），但 `GroupServiceExecutor._votedGroupActions`（`GroupServiceExecutor.sol:648`）在**每次结算**里都走这条路径，成本落在交易上。
-- 规模上界：规格称「列表规模上界由 Submit 的每轮提案数上界保证」，但该上界不在 `action` 仓内，本仓无法自证。建议在 `06-service-executor.md` 或 `01-action-target.md` 写明该上界的数值与出处，使「结算成本有界」成为可核对的事实。
+- 规模上界：规格称「列表规模上界由 Submit 的每轮提案数上界保证」，但该上界不在 `action` 仓内，本仓无法自证。**处置（B，已补）**：`01-action-target.md` 与 `06-service-executor.md` 已写明上界 = 本轮有推举资格的成员数（每人每轮至多推举一个），出处 core `05-submit.md`，使「结算成本有界」可核对。
 
 ### AT-06（正面结论）`_isBoundExecutor` 先判零再比对，避开 0 哨兵陷阱
 
@@ -207,3 +207,7 @@ violations: 0
 | 调 | Core `MemberNFT` | `ownerOf`（`forceClearJoinState` 的鉴权函数） |
 | 调 | Core `Phase` | `currentPhase`（加入轮与创建轮的唯一来源） |
 | 被调 | 三个 Executor | `registerJoinState`/`clearJoinState`/`mintActionReward`（`onlyBoundExecutor`） |
+
+## 处置
+
+`AT-01`、`AT-02`、`AT-03`、`AT-04`、`AT-05` 的裁决与落点见 `README.md` §十；基线已重核至 `8478619`，`ActionTarget.sol` 相对基线零改动，行号未位移。

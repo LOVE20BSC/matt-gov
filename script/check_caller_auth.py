@@ -8,10 +8,15 @@ Rules from dev-standards 5.5:
    (`onERC721Received`) are exempt.
 2. Every `modifier only*` must test the caller (directly on `msg.sender` or
    through an `_is*` predicate), revert, and end with `_;`.
+3. Library files are in scope. A `modifier only*` declared inside a `library`
+   must be applied to at least one entry in the same file: when the
+   implementation body moves behind `delegatecall`, the library modifier is the
+   whole auth surface, and an unattached one means an entry silently lost it.
 
 The checker validates caller-check placement and modifier shape. It does not
 prove every write entry has an auth source, nor that a modifier is free of
-state writes; those remain spec and review items.
+state writes; those remain spec and review items. Entry -> auth-subject
+mapping stays a spec requirement (dev-standards 5.5).
 
 Usage:
     ./matt-gov/script/check_caller_auth.sh
@@ -27,6 +32,7 @@ SKIP_DIRS = {"lib", "interfaces"}
 EXEMPT = {"onERC721Received"}
 
 DECL = re.compile(r"\b(modifier|function)\s+(\w+)")
+LIBRARY_DECL = re.compile(r"\blibrary\s+\w+")
 CALLER_CMP = re.compile(r"(==|!=)\s*msg\.sender|msg\.sender\s*(==|!=)")
 CALLER_LOOKUP = re.compile(r"\b(?:if|require|assert)\s*\([^;{}]*\[\s*msg\.sender\s*\]")
 CALLER_TEST = re.compile(r"msg\.sender|_is\w+\s*\(")
@@ -142,11 +148,13 @@ def check_modifier(name, body):
 def check_file(path):
     text = clean(path.read_text())
     violations = []
+    library_modifiers = []
     for kind, name, line, body in declarations(text):
         if name in EXEMPT:
             continue
         if kind == "modifier":
             if name.startswith("only"):
+                library_modifiers.append((name, line))
                 reason = check_modifier(name, body)
                 if reason:
                     violations.append((path, line, f"modifier {name}", reason))
@@ -161,6 +169,13 @@ def check_file(path):
             violations.append(
                 (path, line, f"function {name}", "caller check must move into a modifier only*")
             )
+    if LIBRARY_DECL.search(text):
+        for name, line in library_modifiers:
+            # One occurrence is the definition; the modifier must also be attached to an entry.
+            if len(re.findall(rf"\b{name}\b\s*\(", text)) < 2:
+                violations.append(
+                    (path, line, f"modifier {name}", "library modifier is not applied to any entry")
+                )
     return violations
 
 

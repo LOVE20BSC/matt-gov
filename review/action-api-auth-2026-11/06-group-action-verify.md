@@ -2,7 +2,7 @@
 
 > 对象 `action/src/GroupActionVerify.sol`（853 行，`library`，经 `delegatecall` 由 `GroupActionExecutor` / `GroupServiceExecutor` 调用）
 > 接口 `action/src/interfaces/IGroupActionVerify.sol`（260 行，`is IVerificationInfo`）
-> 基线 `action@e849e36`；审查日期 2026-11-03
+> 基线 `action@8478619`（`src/` 自 `e849e36` 无实质变化，行号未位移）；审查日期 2026-11-03
 > 判据 dev-standards §5.5、§5.2.2（失败顺序）、§4.3（集合读取）；`specs/action/05-group-action-executor.md`
 
 ## 一、结论
@@ -166,3 +166,7 @@ GroupActionVerify  写入口 4  带 modifier 3  无 modifier 1
 | 被调 | ActionTarget | `clearJoinState` 不在此库；本库不调 ActionTarget |
 | 被复用 | `GroupServiceExecutor` | `currentVerifyRound`（`setRecipients` 的轮次来源）、`isRoundVerified` 语义 |
 | 内联复用 | `GroupActionRoundAxis` | `verifyRound` 纯换算 |
+
+## 处置
+
+`GAV-01`～`GAV-04` 的落点见 `README.md` §十（`05-group-action-executor.md`）；`GAV-01` 只同步规格，重排交错误卷。

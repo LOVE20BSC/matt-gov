@@ -31,6 +31,8 @@ targetData[0] = abi.encode(executorAddress)
 
 完整签名统一见 [Core Target 回调](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/IProposalTarget.sol)。ActionTarget 与每个 Executor 都实现这三类回调：ActionTarget 的 `onProposalCreated`/`onProposalSubmitted` 仅 Submit 可调用（否则回滚 `NotSubmit(caller)`），`onProposalVoted` 仅 Vote 可调用（否则回滚 `NotVote(caller)`）；Executor 的同名回调仅接受 ActionTarget 调用，其他调用者回滚 `NotActionTarget(caller)`。推举与投票回调遇到未绑定 `(tokenAddress, proposalId)` 时回滚 `UnboundProposal(tokenAddress, proposalId)`——结构上不可达（创建回调必先于推举），仅防御 Core 侧缺陷。任一回调失败均回滚对应外层操作。
 
+**Executor 的实现来源不在本合约的校验范围**：创建回调只做握手（有代码 + `ACTION_TARGET_ADDRESS()` 回指），没有注册表、白名单或实现指纹。提案创建者可以绑定自造合约，该合约随即获得该行动的 `registerJoinState`/`clearJoinState`/`mintActionReward` 三项写入权；这属于「授权主体把权益导向任意地址」，风险由提案投票承担（`targetData[0]` 在提案正文中对投票者可见）。集成方不应假设存在可信 Executor 名单。
+
 ## 加入与退出
 
 记录当前成员是否加入行动，供加入列表和外部资格查询；包括 GroupAction，但不保存 Executor 的资产、验证或群归属。
@@ -53,9 +55,15 @@ targetData[0] = abi.encode(executorAddress)
 
 完整 ABI 见 [`IActionTarget.sol`](https://github.com/LOVE20BSC/action/blob/main/src/interfaces/IActionTarget.sol)。
 
-`init` 只接收 Mint 地址：重复调用回滚 `AlreadyInitialized()`；不设调用者限制、不保存部署者。`mintAddress` 及从 Mint 派生出的 `voteAddress`、`submitAddress`、`memberNFTAddress`、`phaseAddress` 有代码是部署期静态不变量，由 `DeployAction` 广播前校验、`21_check.sh` 复核。四项派生依赖在 init 内各读取一次并缓存，经同名 getter 暴露；Mint 须先完成 init，不把「部署后立即初始化」当作防抢跑保证。`phaseAddress` 由 Mint 从 Vote 派生后再由 ActionTarget 读取，ActionTarget 因此与投票轴共享同一 Phase，当前投票轮直读 `IPhase.currentPhase()`，不经 Mint 或 Vote 二跳。
+`init` 只接收 Mint 地址：重复调用回滚 `AlreadyInitialized()`；**不设调用者限制、不保存部署者**——与 core 卷 `DEP-01` 同一分工：一次性初始化入口无许可，防抢跑责任在部署期脚本，合约侧不校验。
+
+**`init` 必须是部署后发往该 ActionTarget 的第一笔交易**。`DeployAction.s.sol` 在 `new ActionTarget()` 之后立即广播 `init`，广播前断言该地址尚未初始化、广播后断言已初始化；若任何其他交易先到，要么本脚本的 `init` 回滚 `AlreadyInitialized`，要么部署后的五个绑定校验失败，部署中止。**这五个绑定值就是本合约全部写入口的鉴权根**：`SUBMIT_ADDRESS`/`VOTE_ADDRESS` 门禁三类 Core 回调，`MEMBER_NFT_ADDRESS` 是成员持有人判据，`PHASE_ADDRESS` 决定加入轮与结算轮，`MINT_ADDRESS` 是唯一铸造出口；部署脚本广播前校验、`21_check.sh` 部署后逐项复核这五个值。因此 `init` 抢跑等价于「换掉全部鉴权根」，不是「换掉参数」。
+
+`mintAddress` 及从 Mint 派生出的 `voteAddress`、`submitAddress`、`memberNFTAddress`、`phaseAddress` 有代码是部署期静态不变量。五项派生依赖在 init 内各读取一次并缓存，经同名 getter 暴露；Mint 须先完成 init，不把「部署后立即初始化」当作防抢跑保证。`phaseAddress` 由 Mint 从 Vote 派生后再由 ActionTarget 读取，ActionTarget 因此与投票轴共享同一 Phase，当前投票轮直读 `IPhase.currentPhase()`，不经 Mint 或 Vote 二跳。
 
 **写操作权限**：`registerJoinState`/`clearJoinState`/`mintActionReward` 仅该 `(tokenAddress, actionId)` 已注册绑定的 Executor 可调用——判据是 `executor[tokenAddress][actionId] == msg.sender` 且该绑定非零，未注册绑定时任何调用者都拒绝；不满足即回滚 `UnauthorizedExecutor(tokenAddress, actionId)`。`registerJoinState` 另有硬性入口校验：当前投票轮必须**大于**该行动的创建轮（`ActionRegistered` 的 round），否则回滚 `JoinNotOpen(tokenAddress, actionId, currentRound, createdRound)`——加入在投票后一个阶段开放，投票轮未走完不得登记加入；`clearJoinState`/`forceClearJoinState` 无需该校验（已加入本身蕴含加入轮已开放，且轮次单调不减）。`mintActionReward` 只接受已创建关联行动的 `actionId`，绑定键与铸造键一致，不存在「持某个行动的 Executor 去铸另一个行动」的路径。`forceClearJoinState` 仅该 memberId 的 MemberNFT 当前持有人可调用，否则 `NotMemberOwner(memberId)`。
+
+**`mintActionReward` 不校验 `round` 的可结算窗口**：窗口随行动类型不同（LP 执行器 `phase−2`，Group/Service 执行器 `phase−3`），由调用方 Executor 负责；新 Executor 必须实现等价约束，否则可对任意已结束轮次发起铸造。ActionTarget 不掌握行动类型，因此不在入口做半套检查——该边界与 core 卷 `MNT-01` 一致（准备时点属机制设计，不在此重开）。
 
 重复加入、重复退出均不改状态、不发重复事件；因此 `forceClearJoinState` 后，Executor 正常调用 `clearJoinState` 必须成功且不改状态。重复铸造回滚 Mint 的 `ProposalRewardAlreadyMinted(tokenAddress, round, proposalId)`——行动级去重键 `tokenAddress + actionId + round` 由 Mint 的状态位承担，ActionTarget 不另存铸造状态位。不存在关联时 `executor` 返回零，但写操作拒绝零关联。`isJoined` 与 `isJoinedByRound` 无记录时返回 false。
 
@@ -81,7 +89,7 @@ Executor 失效时的兜底清理：成员 NFT 当前持有人可清除加入态
 
 **行动登记索引**：`actions(tokenAddress, offset, limit, reverse) returns (actionIds[], executors[], totalCount)` 与 `actionIdsByExecutor(tokenAddress, executor, offset, limit, reverse) returns (actionIds[], totalCount)` 由 `onProposalCreated` 维护的追加写入索引派生（绑定建立后永不删除，故 `reverse` 即创建逆序），前者为本代币全部已关联行动，后者为某 Executor 名下的行动。两者均为无界集合（由行动创建数决定），采用标准分页签名。
 
-**本轮有投票的行动**：`votedActions(tokenAddress, round, offset, limit, reverse) returns (actionIds[], executors[], totalCount)` 一次读取 Vote 的 `votedProposalIds(tokenAddress, round, 0, type(uint256).max, false)` 取得本轮有票 Proposal 全列表（Pagination 对超限 `limit` 返回剩余；列表规模上界由 Submit 的每轮提案数上界保证），再按 `executor` 映射筛选，不在这里计算激励门槛；不能读成历史累计。其 `totalCount` 由「读完本轮列表 → 按映射筛选 → 切片」得出，单次调用在同一交易内完成，ActionTarget 不另设人工 Proposal 数量上限。
+**本轮有投票的行动**：`votedActions(tokenAddress, round, offset, limit, reverse) returns (actionIds[], executors[], totalCount)` 一次读取 Vote 的 `votedProposalIds(tokenAddress, round, 0, type(uint256).max, false)` 取得本轮有票 Proposal 全列表（Pagination 对超限 `limit` 返回剩余；列表规模上界 = 该代币本轮有推举资格的成员数，出处 core [提交](../core/05-submit.md)：每个成员每轮最多推举一个提案），再按 `executor` 映射筛选，不在这里计算激励门槛；不能读成历史累计。其 `totalCount` 由「读完本轮列表 → 按映射筛选 → 切片」得出，单次调用在同一交易内完成，ActionTarget 不另设人工 Proposal 数量上限。
 
 ## 实现约束
 

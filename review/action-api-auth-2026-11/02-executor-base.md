@@ -2,7 +2,7 @@
 
 > 对象 `action/src/ExecutorBase.sol`（140 行，`abstract contract`）
 > 接口 `action/src/interfaces/IActionExecutor.sol`（102 行，`is IProposalTarget`）
-> 基线 `action@e849e36`；审查日期 2026-11-03
+> 基线 `action@8478619`（`src/` 自 `e849e36` 无实质变化，行号未位移）；审查日期 2026-11-03
 > 判据 dev-standards §5.5（modifier 的唯一定义位置）、§5.2.2（失败顺序）、§4.3（集合读取）；`specs/action/00-executor-interface.md`
 
 ## 一、结论
@@ -137,3 +137,7 @@ onlyActionTarget  sender=yes revert=yes ends=_;  L36
 | 读 | Core `Phase.currentPhase` | 三个 Round 查询的唯一来源 |
 | 读 | Core `Vote.STAKE_ADDRESS`、`Stake.MEMBER_NFT_ADDRESS` / `PHASE_ADDRESS` | 构造期一次性派生 |
 | 调 | 子类 `_joinRound()` / `_mintRound()` / `_mintMemberReward()` | 三处虚函数，权限判定全部在基类 |
+
+## 处置
+
+`EB-01`、`EB-02` 的落点见 `README.md` §十（`00-executor-interface.md` 的可见性说明与 `07-minting.md` 的推举转发例外）。

@@ -85,6 +85,20 @@ interface IActionExecutor is IProposalTarget, IActionExecutorEvents, IActionExec
 
 `IActionExecutor` 装六处真正共享的成员：自证绑定、初始化查询、完全退出、Round 查询、成员级奖励（`mintMemberReward`/`mintMemberRewards`/`memberReward` 与事件 `MemberRewardMinted`，成员级奖励裁决定稿）、参与量查询（`joinedAmount` 族，按加入轮累计）。各 Executor 的 `Errors` 子接口按各自旧文件拆分。
 
+**可见性说明（已登记，不改代码）**：基座把 `mintMemberReward` 声明为 `external`，实现体是 `public`——`mintMemberRewards` 在合约内部复用同一条结算路径。`public` 是对 `external` 的合法放宽，外部 ABI 不变。若将来要收窄，只能拆成内部 `_mintMemberReward` 加两个外部入口，属于接口面整理，不改变任何权限语义。
+
+## 入口与鉴权主体（基座）
+
+实现体由 `ExecutorBase` 与各 Executor 拼成，鉴权 modifier 定义在基座；按 dev-standards §5.5 的要求列出映射：
+
+| 入口 | 鉴权主体 | 实现位置 |
+| --- | --- | --- |
+| `mintMemberReward(tokenAddress, actionId, round, memberId)` | `memberId` 当前持有人 | `ExecutorBase.onlyMemberOwner` |
+| `mintMemberRewards(tokenAddress, actionIds[], rounds[], memberId)` | 同上 | `ExecutorBase.onlyMemberOwner` |
+| `onProposalCreated` / `onProposalSubmitted` / `onProposalVoted` | ActionTarget | `ExecutorBase.onlyActionTarget` |
+| `exit(tokenAddress, actionId, memberId)` | `memberId` 当前持有人 | 各 Executor 覆盖（同时带 `nonReentrant`） |
+| `ACTION_TARGET_ADDRESS` 等 getter | 无（只读） | — |
+
 ## 与 ActionTarget 的调用关系
 
 Executor 不使用加密调用 `ActionTarget` 上同名的 `join`/`exit`：ActionTarget 侧的登记入口命名为 `registerJoinState` / `clearJoinState`，与 `IActionExecutor.exit`（动本金）语义区分。加入态的唯一所有者是 ActionTarget，Executor 判定首次加入必须读 `IActionTarget.isJoined`，不得自建「是否加入」副本。

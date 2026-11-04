@@ -6,7 +6,7 @@
 > `action/src/GroupActionRoundAxis.sol`（21 行，`library`）
 > `action/src/LpRoundAxis.sol`（16 行，`library`）
 > `action/src/MemberOwner.sol`（26 行，`library`）
-> 基线 `action@e849e36`；审查日期 2026-11-03
+> 基线 `action@8478619`（`src/` 自 `e849e36` 无实质变化，行号未位移）；审查日期 2026-11-03
 > 判据 dev-standards §5.3（注释）、§5.5（鉴权位置）、§3.3（24KB 拆分）；`specs/action/02-phase-model.md`
 
 ## 一、结论
@@ -137,3 +137,7 @@ violations: 0
 | 被调 | `GroupActionExecutor.generatedActionRewardByGroupId` | `GroupServiceStorage.groupReward` 的唯一外呼 |
 | 被用 | `GroupActionJoin` / `GroupActionVerify` / `GroupActionManager` / `GroupServiceExecutor` | Layout、Protocol、常量与轴函数 |
 | 被用 | `ActionTarget` | 自带一份 `_joinRound()`（与两个轴库同式，见 SUP-02） |
+
+## 处置
+
+`SUP-01`、`SUP-02` 的落点见 `README.md` §十（`05-group-action-executor.md` 的 `ownerOrZero` 段与 `02-phase-model.md` 的重复实现段）；本卷不改支撑库。
