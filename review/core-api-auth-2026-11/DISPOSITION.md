@@ -28,9 +28,9 @@
 | PHS-02 | **已修** | `fe72581` 新增只读 `Phase.lastSyncPhase()`（`core/src/Phase.sol:56`、`core/src/interfaces/IPhase.sol:24`），`_lastSyncPhase` 仍为 private、写入逻辑不变；`03-phase.md:14/45` 改为「读 getter 判断本 Phase 是否已同步」，不再建议用 `observations` 反推。 |
 | STK-02 | **已修** | `1adaef3` 让 `stakeBoost` 改走 `_checkActiveRound()`（`core/src/Stake.sol:144`），Round 0 直接回滚，不再依赖不可达路径；`e452546` 把该错误定为 `StakeNotStarted`，`04-stake.md:181/197` 条件表已补行。 |
 | STK-03 | **保留（接受）** | `_hasUsedStakeRights` 的信任链经过 `Vote.SUBMIT_ADDRESS()`，该地址由 `Vote.init` 一次性固定、无 setter；未初始化时的空 revert 属部署期问题，部署 check 会发现，不新增代码。 |
-| SUB-01 | **保留（接受）** | `submit` 只校验成员持有与当轮推举名额，允许推举他人提案；`05-submit.md:48` 起写明了推举职责与原子创建+推举语义，接口不写 NatSpec。 |
+| SUB-01 | **保留（接受）** | `submit` 只校验成员持有与当轮推举名额，允许推举他人提案；`05-submit.md:50` 明确「推举者可以是作者以外的人」，接口按 §4.1 不写 NatSpec。 |
 | SUB-02 | **保留（接受）** | `ProposalBody.target` 明确是未来提案奖励的唯一领取主体；`05-submit.md:38` 与 `07-mint.md:74/106` 已写明「target 可为 EOA、与提案内容无链上关联」。 |
-| SUB-03 | **保留（接受）** | 回调重入被 `MemberAlreadySubmitted` 拒绝：推举状态在回调前已写入，重入无法重复占用名额；`05-submit.md` 的创建+推举段已说明顺序。 |
+| SUB-03 | **保留（接受）** | 回调重入被 `MemberAlreadySubmitted` 拒绝：推举状态在回调前已写入（`05-submit.md:108/113`），重入无法重复占用名额。 |
 | SUB-04 | **已修（补写规格）** | `07-mint.md:169` 的「透传来源」表登记 `Submit.ProposalNotFound(address,uint256)`（错误卷 E-SUB-04 落地），链下可按本合约/上游两类错误分类。 |
 | VOT-01 | **保留（接受）** | `vote` 无锁，但快照先写后判额度、票上限每批只读一次（`06-vote.md:24/37`），重入不能突破票上限或重复计入整份快照。 |
 | VOT-02 | **已修（补写规格）** | `01-common-rules.md:12` 写明未由 Launch 登记的代币没有质押入口，治理票权与加速份额恒为 0，`Submit`/`Vote` 不校验登记由该不变量兜底。 |
