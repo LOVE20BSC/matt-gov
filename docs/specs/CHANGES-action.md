@@ -21,7 +21,7 @@
 
 - 全协议新增 selector **值** 8 个：`InsufficientTargetDataItems(uint256,uint256)` `0xa2e9b41f`、`TooManyTargetDataItems(uint256,uint256)` `0xa87702a7`、`ZeroMinJoinAmount()` `0x155083e4`、`ZeroGroupId()` `0x32002782`、`RoundVerifierLocked(address,uint256,uint256,uint256)` `0x08010030`、`ZeroEffectiveJoinAmount(address,uint256,uint256)` `0xcf075bed`、`ZeroFinalScore(address,uint256,uint256)` `0xd4553417`、`ZeroRewardWeight(address,uint256,uint256)` `0x7a448f07`。
 - action 侧 ABI 净增 **10** 个（84 → 90）：上述 8 个，加上与 core 同签名的 `MemberRewardPoolEmpty(address,uint256)` `0x86b94627` 与 `MemberRewardRoundedToZero(address,uint256,uint256)` `0xd632d7c1`。
-- 删除 4 个 action 侧旧 selector：`TargetDataLengthMismatch(uint256,uint256)`、`InvalidMinJoinAmount(uint256)`、`VerifierAlreadyLocked(address,uint256,uint256)`、`MemberActionRewardUnavailable(address,uint256,uint256,uint256)`（`TargetDataLengthMismatch` 仍存在于 `group-chat/lib/action` 的 vendored 副本，随指针同步消失）。
+- 删除 4 个 action 侧旧 selector：`TargetDataLengthMismatch(uint256,uint256)`、`InvalidMinJoinAmount(uint256)`、`VerifierAlreadyLocked(address,uint256,uint256)`、`MemberActionRewardUnavailable(address,uint256,uint256,uint256)`（`TargetDataLengthMismatch` 已随子模块指针升级在当前 vendored 副本中消失，副本为 `group-chat@c010158` / `lib/action` = `1750118`）。
 - 语义不变、只改声明字段名（selector 不变）：`ScoreCountExceeded` 第三参数 `memberCount` → `maxCount`，`DistributionOverflow` 第二参数 `available` → `limit`，`ProposalNotVoted` 第一参数 `proposalId` → `actionId`。
 - core 的 `MemberHasNoVote`（治理票）不变；`MemberRewardPoolEmpty` / `MemberRewardRoundedToZero` 继续与 core 同名同签名。
 - **链下 SDK / 索引器必须按 [`registry/errors.md`](../../registry/errors.md) 重新生成错误 ABI**，不要复用旧 selector。
