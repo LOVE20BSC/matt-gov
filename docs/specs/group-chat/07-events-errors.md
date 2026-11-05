@@ -10,7 +10,7 @@
 
 ## 错误
 
-错误采用 local-first 模型：每个合约/模块只在自己的 `I<Name>Errors` 接口声明错误，不设中央枚举或全局错误接口，不跨仓导入错误。一个错误只对应一个条件；payload 由主体键和条件值组成，定长，不含字符串或数组。运行期地址检查（source/plugin、token 等）用 `*NotContract(address dependency)` / `TokenNotLOVE20(address tokenAddress)` 并携带失败地址；构造期依赖代码、参数与地址关系的静态校验由部署脚本在广播前完成（dev-standards §5.7），错误表只列运行期错误。OZ 标准错误按继承使用；只有不可达分支才用 `assert(false)`，不用裸 `require` / `revert` / 字符串。
+错误采用 local-first 模型：每个合约/模块只在自己的 `I<Name>Errors` 接口声明错误，不设中央枚举或全局错误接口，不跨仓导入错误。一个错误只对应一个条件；payload 由主体键和条件值组成，定长，不含字符串或数组。运行期地址检查（source/plugin、token 等）用 `*NotContract(address dependency)` / `TokenNotLOVE20(address tokenAddress)` 并携带失败地址；`TokenNotLOVE20` 同时覆盖「地址无代码」与「不是 LOVE20 token」两类，属同一「不可作为 LOVE20 token」语义，登记为已知边界，不拆 ABI。构造期依赖代码、参数与地址关系的静态校验由部署脚本在广播前完成（dev-standards §5.7），错误表只列运行期错误。OZ 标准错误按继承使用；只有不可达分支才用 `assert(false)`，不用裸 `require` / `revert` / 字符串。
 
 | 模块 | 错误 |
 | --- | --- |
@@ -20,15 +20,19 @@
 | GroupAdmin | `NotGroupOperator(uint256 groupId, uint256 operatorId)`、`GroupNotExist(uint256 groupId)`、`DuplicateMemberId(uint256 memberId)`、`AdminIdsLimitExceeded(uint256 groupId, uint256 count, uint256 maxCount)` |
 | GroupMember / GroupChatBanList | `NotGroupOperator(uint256 groupId, uint256 operatorId)`、`GroupNotExist(uint256 groupId)`、`ZeroTargetSenderId()`、`DuplicateMemberId(uint256 memberId)` |
 | 内置 Scope/Ban Source | `GroupNotExist(uint256 groupId)`、`BanVoteWeightSourceUnavailable(uint256 groupId, address source)`、`ZeroTargetSenderId()`、`ZeroVoteWeight(uint256 groupId, uint256 voterId)`、`VoteUnchanged(uint256 groupId, uint256 targetSenderId, uint256 voterId)`、`VoteNotFound(uint256 groupId, uint256 targetSenderId, uint256 voterId)`、`NotMemberOwner(uint256 memberId)` |
-| Manager | `AlreadyManaged(uint256 groupId)`、`ManagerGroupNameUnavailable()`、`ManagerMintCostChanged(uint256 expected, uint256 actual)`、`TokenNotLOVE20(address tokenAddress)`、`UnexpectedManagerERC721Received(address operator, address from, uint256 tokenId)`、`ActionNotExist(address tokenAddress, uint256 actionId)`；付款/授权失败走 OZ 标准 `SafeERC20FailedOperation(address token)` |
+| Manager | `AlreadyManaged(uint256 groupId)`、`ManagerGroupNameUnavailable()`、`TokenNotLOVE20(address tokenAddress)`、`UnexpectedManagerERC721Received(address operator, address from, uint256 tokenId)`、`ActionNotExist(address tokenAddress, uint256 actionId)`；付款/授权失败走 OZ 标准 `SafeERC20FailedOperation(address token)` |
 
 Group Chat 各接口不继承标准错误：`ownerOf` 的 `ERC721NonexistentToken` 按失败契约透传登记，来源 ABI 为 MemberNFT；Manager 的 `SafeERC20FailedOperation` 通过库进入 ABI，token 的 ERC20 标准错误由 token ABI 拥有。
 
-存在性按角色区分：缺失群回 `GroupNotExist(groupId)`；缺失成员角色 ID（sender、member、admin、mention、voter）回 `ERC721NonexistentToken(id)`，成员/管理员的 `0` 值按缺失处理，都不借用 `GroupNotExist`。人工黑名单/GovVoted 的目标 sender 只要求非零，不要求 NFT 存在，见 [Chat 类型](05-chat-types.md#黑名单)。
+按模块登记透传面：GroupChat 的 `MemberNFT.ownerOf` 与 `MemberOwner.ownerOrZero`、`IGroupAdmin.isAdminId` 空返回；GroupMember/GroupAdmin/GroupChatBanList 的 `MemberNFT.ownerOf` 与 `IGroupAdmin.isAdminId`；GovVotedBanSource 的 `MemberNFT.ownerOf`（`IBanVoteWeightSource` 调用已被 `try/catch` 归一）；ManagerBase 的 `MemberNFT` 名称/ERC721 错误、`IERC20Metadata.symbol()`、`ILaunch.isLOVE20Token`；TokenActionScopeManagerBase 的 `ISubmit.proposalIds`、`IActionTarget.executorByActionId`、`IVote.voteAmountByMemberIdByProposalId`、`IMemberNFT.ownerOf`。上述外部调用失败均原样冒泡，不保证携带本模块自定义 selector。
 
-所有权与操作者按角色区分：成员 NFT 所有权统一回 `NotMemberOwner(memberId)`（发言传 `senderId`，GovVoted voter 传 `voterId`）。群 owner 非 owner 回 `NotGroupOwner(groupId)`；owner/admin 的复合群鉴权回 `NotGroupOperator(groupId, operatorId)`。
+存在性按角色区分：缺失群回 `GroupNotExist(groupId)`；缺失成员角色 ID（sender、member、admin、mention、voter）回 `ERC721NonexistentToken(id)`，成员/管理员的 `0` 值按缺失处理，都不借用 `GroupNotExist`。人工黑名单/GovVoted 的目标 sender 只要求非零，不要求 NFT 存在，见 [Chat 类型](05-chat-types.md#黑名单)；批量入口按入参顺序返回第一个零值，`ZeroTargetSenderId()` 无载荷，定位靠调用方按入参顺序回放。
+
+所有权与操作者按角色区分：成员 NFT 所有权统一回 `NotMemberOwner(memberId)`（发言传 `senderId`，GovVoted voter 传 `voterId`）。群 owner 非 owner 回 `NotGroupOwner(groupId)`；owner/admin 的复合群鉴权回 `NotGroupOperator(groupId, operatorId)`，一个 selector 覆盖「operatorId 不等于 groupId」与「调用者非 owner/admin」两类，属已知边界，不拆 ABI。`MentionAllUnauthorized` 名沿用既有语义，表示「无 mention-all 资格」，不因 payload 为 `(groupId, senderId)` 而改名。
 
 数组内重复成员 ID 回 `DuplicateMemberId(memberId)`。
+
+`Reentrant` 由 after 插件失败捕获的 `errorSelector` 间接断言，属已知边界，不再新增直接用例。
 
 旧 `NotChatOwner`、`SenderNotGroupOwner`、`NotChatOwnerOrDelegateIdOwner`、`UnauthorizedGroup*Manager`、`DuplicateMentionedSenderId`、`DuplicateAdminId`、`DelegateIdCannotBeGroupId`、`TargetMemberIdZero`、`SenderNotMemberOwner(uint256)`、`SenderNotDelegateOwner()`、`DelegateIsSelfGroup(uint256)`、`DelegateNotAcceptingNewDelegations(uint256)` 已从接口删除；不得重新引入。旧 `InvalidAddress`、`*AddressHasNoCode`、`InvalidMessageId`、`InvalidQuotedMessageId` 及其它无区分度的旧错误名同样删除，不保留兼容别名。
 

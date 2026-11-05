@@ -4,7 +4,7 @@
 
 保留 TokenMainManager、TokenGovManager、TokenActionMainManager、TokenActionGovManager；每个 Manager 可以管理多个 Chat，不为每个 Chat 部署新 Manager。四个 Manager 同时实现 `IBanVoteWeightSource`，为托管群提供封禁权重；`GovVotedBanSource` 从群 NFT 的持有者解析权重源，因此托管是治理加权封禁成立的前提（见 [类型与资格](05-chat-types.md)）。
 
-同一个 token（token Manager）或 token + actionId（action Manager）只能在同一 Manager 中激活一次，重复激活回 `AlreadyManaged(groupId)`（`groupId` 为已存在的托管群）。唯一性只在单个 Manager 内生效；同一 token 或同一 action 可在不同类型 Manager 中各自托管，实例之间不共享状态。保留 tokenAddressByGroupId/groupIdByTokenAddress、actionByGroupId/groupIdByActionId 及批量、分页查询；托管代币枚举 `tokens` 与行动枚举 `actions` 都按 `(offset, limit, reverse) → (列表, totalCount)` 分页并回真实总数，不另设计数入口；行动定位使用已有 `actionByGroupId(groupId)` 返回 tokenAddress 和 actionId，不另加重复的 getActionId。actionId 为 0、超出提案总数、或该 proposal 未在 ActionTarget 注册 executor（非行动提案）回 `ActionNotExist(tokenAddress, actionId)`；激活期用 `IActionTarget.executorByActionId` 判定类型，复用同一错误，不改 ABI。`RECENT_ROUNDS` 必须 >0，由部署脚本在广播前校验，合约为 0 时该 Manager 的治理资格恒为 false；合约不对 `RECENT_ROUNDS` 设协议上限，值越大行动资格查询的逐轮回看次数越多。
+同一个 token（token Manager）或 token + actionId（action Manager）只能在同一 Manager 中激活一次，重复激活回 `AlreadyManaged(groupId)`（`groupId` 为已存在的托管群）；`groupId` 从 1 起分配，`0` 为「未托管」哨兵，二者不会冲突。唯一性只在单个 Manager 内生效；同一 token 或同一 action 可在不同类型 Manager 中各自托管，实例之间不共享状态。保留 tokenAddressByGroupId/groupIdByTokenAddress、actionByGroupId/groupIdByActionId 及批量、分页查询；托管代币枚举 `tokens` 与行动枚举 `actions` 都按 `(offset, limit, reverse) → (列表, totalCount)` 分页并回真实总数，不另设计数入口；行动定位使用已有 `actionByGroupId(groupId)` 返回 tokenAddress 和 actionId，不另加重复的 getActionId。actionId 为 0、超出提案总数、或该 proposal 未在 ActionTarget 注册 executor（非行动提案）回 `ActionNotExist(tokenAddress, actionId)`；激活期用 `IActionTarget.executorByActionId` 判定类型，复用同一错误，不改 ABI。`RECENT_ROUNDS` 必须 >0，由部署脚本在广播前校验，合约为 0 时该 Manager 的治理资格恒为 false；合约不对 `RECENT_ROUNDS` 设协议上限，值越大行动资格查询的逐轮回看次数越多。
 
 Token Manager 与 Action Manager 的接口分别见 [`ITokenScopeManagerBase.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/managers/ITokenScopeManagerBase.sol) 和 [`ITokenActionScopeManagerBase.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/managers/ITokenActionScopeManagerBase.sol)，两者共享的槽位 getter、`TYPE_CODE()` 与错误在 [`IManagerBase.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/managers/IManagerBase.sol)。两类接口不合并，避免单个 Manager 实现另一类 Manager 的无关方法。
 
@@ -12,8 +12,8 @@ Token Manager 与 Action Manager 的接口分别见 [`ITokenScopeManagerBase.sol
 
 保留旧 BaseManager 的激活交易：
 
-1. 校验 LOVE20 token、存在的 Proposal 及未重复激活，生成唯一名称；名称规则见下节，最多 8 次重试，长度读取 MemberNFT 配置。名称空间下限 `MAX_NAME_LENGTH ≥ bytes(TYPE_CODE()).length + 9` 字节（类型码 + 1 字节分隔符 + 4 位十六进制随机后缀 + 4 字节 Test 前缀；当前四类 2 字节类型码即 11）是部署期不变量。广播前 Manager 尚未部署，部署脚本按「当前最长类型码 2 字节」预检 `MAX_NAME_LENGTH ≥ 11`，该假设由 `testT181` 对四个已部署 Manager 的实际 `TYPE_CODE()` 反向锁定（不一致即测试失败）；`21_check.sh` 部署后按每个 Manager 的 `TYPE_CODE()` 独立复核。8 次重试仍取不到可用名称回 `ManagerGroupNameUnavailable()`。
-2. Manager 计算铸造费用，从激活者 msg.sender 转入首币并按需授权 MemberNFT；零费用不转账。付款/授权失败由 `SafeERC20` 回滚 `SafeERC20FailedOperation(token)`，实际费用与报价不一致回 `ManagerMintCostChanged(expected, actual)`；非 LOVE20 token 回 `TokenNotLOVE20(tokenAddress)`。
+1. 校验 LOVE20 token、存在的 Proposal 及未重复激活，生成唯一名称；名称规则见下节，最多 8 次重试，长度读取 MemberNFT 配置。名称空间下限 `MAX_NAME_LENGTH ≥ bytes(TYPE_CODE()).length + 9` 字节（类型码 + 1 字节分隔符 + 4 位十六进制随机后缀 + 4 字节 Test 前缀；当前四类 2 字节类型码即 11）是部署期不变量。广播前 Manager 尚未部署，部署脚本按「当前最长类型码 2 字节」预检 `MAX_NAME_LENGTH ≥ 11`，该假设由 `testT181` 对四个已部署 Manager 的实际 `TYPE_CODE()` 反向锁定（不一致即测试失败）；`21_check.sh` 部署后按每个 Manager 的 `TYPE_CODE()` 独立复核。8 次重试仍取不到可用名称回 `ManagerGroupNameUnavailable()`；该错误无载荷，`_mintNonce` 已推进，重试会换候选名。名称算术下溢属不可达部署不变量违反（`MAX_NAME_LENGTH ≥ 11` 被破坏），表现为 `Panic(0x11)`，不映射为自定义错误。
+2. Manager 计算铸造费用，从激活者 msg.sender 转入首币并按需授权 MemberNFT；零费用不转账。付款/授权失败由 `SafeERC20` 回滚 `SafeERC20FailedOperation(token)`；Manager 信任 MemberNFT 定价确定性，实付与报价一致由测试保障（`testT161` 走真实 MemberNFT 路径断言实际扣减 == `calculateMintCost` 报价），链上不再断言；非 LOVE20 token 回 `TokenNotLOVE20(tokenAddress)`。
 3. Manager 铸造并持有 NFT，以其 memberId 为 groupId 记录业务映射；scope 使用 Manager 自身，其他槽位使用构造时固定的模块，然后激活同一个 GroupChat 合约。
 4. 任一步失败整体回滚，付款、NFT、映射和激活不能半完成；激活者只是付费者，不因付费获得 Chat 管理权。
 
@@ -45,7 +45,7 @@ Token Manager 与 Action Manager 的接口分别见 [`ITokenScopeManagerBase.sol
 
 名称的 Test 前缀按 MemberNFT 的 `LOVE20_TOKEN_ADDRESS` 符号判定；该地址由部署 check 保证已初始化，Manager 不判断其是否为零地址或无代码。
 
-构造期依赖代码、参数与地址关系的静态校验由部署脚本在广播前完成（dev-standards §5.7）；Manager 构造期不重复校验三个 immutable 依赖的代码与零地址。托管映射在 NFT 铸造后写入；协议内 MemberNFT 不可升级，依赖替换属部署信任边界。托管群的 `BAN_SOURCE_ADDRESS`、`BEFORE_POST_PLUGIN_ADDRESS`、`AFTER_POST_PLUGIN_ADDRESS` 还必须在广播前人工核对接口；托管群 owner 是 Manager 且无配置转发，`beforePostPlugin` 误配会让该 Manager 名下所有群永久无法发言。`onERC721Received` 收到非协议 NFT 合约或非零 `from` 时回 `UnexpectedManagerERC721Received(operator, from, tokenId)`。
+构造期依赖代码、参数与地址关系的静态校验由部署脚本在广播前完成（dev-standards §5.7）；Manager 构造期不重复校验三个 immutable 依赖的代码与零地址。托管映射在 NFT 铸造后写入；协议内 MemberNFT 不可升级，依赖替换属部署信任边界。托管群的 `BAN_SOURCE_ADDRESS`、`BEFORE_POST_PLUGIN_ADDRESS`、`AFTER_POST_PLUGIN_ADDRESS` 还必须在广播前人工核对接口；托管群 owner 是 Manager 且无配置转发，`beforePostPlugin` 误配会让该 Manager 名下所有群永久无法发言。`onERC721Received` 收到非协议 NFT 合约或非零 `from` 时回 `UnexpectedManagerERC721Received(operator, from, tokenId)`；payload 不含 `msg.sender`，实际调用地址可从 tx 读取，登记为已知边界。正常路径下 MemberNFT 的 `ERC721NonexistentToken`、名称错误与 `calculateMintCost` 溢出不会出现，属透传面，由 [事件与错误](07-events-errors.md) 统一登记。
 
 BSC MemberNFT 的返回值/费用查询 ABI 与旧 group 不完全相同，迁移时适配接口并保留付款金额校验，不新增补贴、退款账户或代付凭证。
 

@@ -2662,7 +2662,7 @@
       ],
       "repo": "group-chat",
       "revert_sites": [
-        "group-chat/src/managers/ManagerBase.sol:99"
+        "group-chat/src/managers/ManagerBase.sol:95"
       ],
       "selector": "0xcd0d3eb5",
       "signature": "AlreadyManaged(uint256)"
@@ -2835,25 +2835,10 @@
       ],
       "repo": "group-chat",
       "revert_sites": [
-        "group-chat/src/managers/ManagerBase.sol:140"
+        "group-chat/src/managers/ManagerBase.sol:136"
       ],
       "selector": "0x4a6464df",
       "signature": "ManagerGroupNameUnavailable()"
-    },
-    {
-      "declarations": 1,
-      "files": [
-        "group-chat/src/interfaces/managers/IManagerBase.sol"
-      ],
-      "interfaces": [
-        "IManagerBaseErrors"
-      ],
-      "repo": "group-chat",
-      "revert_sites": [
-        "group-chat/src/managers/ManagerBase.sol:87"
-      ],
-      "selector": "0xeb6a25aa",
-      "signature": "ManagerMintCostChanged(uint256,uint256)"
     },
     {
       "declarations": 1,
@@ -3242,14 +3227,14 @@
     }
   ],
   "summary": {
-    "declarations": 240,
+    "declarations": 239,
     "repos": {
       "action": 106,
       "core": 88,
-      "group-chat": 46,
+      "group-chat": 45,
       "libs": 0
     },
-    "signatures": 200,
-    "unique_signatures": 189
+    "signatures": 199,
+    "unique_signatures": 188
   }
 }

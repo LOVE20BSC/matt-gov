@@ -20,11 +20,11 @@
 
 ## 黑名单
 
-`targetSenderId` 只要求非零，不要求 MemberNFT 存在（允许预黑名单）；`0` 回 `ZeroTargetSenderId()`。人工黑名单的 operator state 记录最后一次实际变更的操作者，重复封禁同一目标不改写，不表示「最后请求者」；名单与 operator state 不随群 NFT 转移清空，转移后旧 operator 仅作历史字段。
+`targetSenderId` 只要求非零，不要求 MemberNFT 存在（允许预黑名单）；`0` 回 `ZeroTargetSenderId()`。批量入口按入参顺序返回第一个零值；`ZeroTargetSenderId()` 无载荷，定位靠调用方按入参顺序回放。人工黑名单的 operator state 记录最后一次实际变更的操作者，重复封禁同一目标不改写，不表示「最后请求者」；名单与 operator state 不随群 NFT 转移清空，转移后旧 operator 仅作历史字段。批量封禁/解封的顺序为「鉴权 → 群存在性 → 逐元素零值 → 逐元素重复 → 写入」，首个失败元素决定错误；空批次为 no-op，不写状态、不发事件。
 
 `voteWeight(groupId, voterId)` 使用上表权重；两类 token Manager 和两类 action Manager 的 `totalVoteWeight(groupId)` 都取所属社区的当前总有效治理票，不取行动总票数或创建 Round。
 
-权重源不是独立配置项，而是群 NFT 的当前持有者：`GovVotedBanSource` 以 `MemberNFT.ownerOf(groupId)` 解析权重合约，再调用其 `voteWeight` / `totalVoteWeight`。四类 Manager 在托管群 NFT 的同时实现 `IBanVoteWeightSource`，因此只有 Manager 托管的 Chat 具备治理加权封禁。群不存在回 `GroupNotExist(groupId)`；群存在但持有者是 EOA，或未实现该接口的合约钱包时，写票回 `BanVoteWeightSourceUnavailable(groupId, source)`（`source` 为解析出的失败权重源地址），只能用人工黑名单；`setBanSource` 只校验地址有代码，误配不会在配置期报错。
+权重源不是独立配置项，而是群 NFT 的当前持有者：`GovVotedBanSource` 以 `MemberNFT.ownerOf(groupId)` 解析权重合约，再调用其 `voteWeight` / `totalVoteWeight`。四类 Manager 在托管群 NFT 的同时实现 `IBanVoteWeightSource`，因此只有 Manager 托管的 Chat 具备治理加权封禁。群不存在回 `GroupNotExist(groupId)`；群存在但持有者是 EOA，或未实现该接口的合约钱包时，写票回 `BanVoteWeightSourceUnavailable(groupId, source)`（`source` 为解析出的失败权重源地址），只能用人工黑名单；该错误同时覆盖「无代码」与「权重调用失败」两类，属同一「权重源不可用」语义，登记为已知边界，不拆 ABI。`setBanSource` 只校验地址有代码，误配不会在配置期报错。
 
 GovVotedBanSource 的接口见 [`IGovVotedBanSource.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/sources/ban/IGovVotedBanSource.sol)，其 voter 和 target 均使用 `memberId`。
 
@@ -36,7 +36,7 @@ supportWeight > opposeWeight * 10
 supportWeight * 1e18 >= totalVoteWeight * 3e15
 ```
 
-同时满足才进入黑名单，保留严格比较、0.3% 门槛及无变化/无投票记录的处理：重复投票（方向与权重都未变）回 `VoteUnchanged(groupId, targetSenderId, voterId)`，不做名单同步（source 不可用时先回 `BanVoteWeightSourceUnavailable`）。同票重投不结算权重漂移；该 target 上任何投票/撤票/刷新都会按实时分母重算名单，本票权重的唯一改口入口是 `refreshVoteByTargetSenderId`。撤票或刷新找不到记录回 `VoteNotFound(groupId, targetSenderId, voterId)`，投票权重为 0 回 `ZeroVoteWeight(groupId, voterId)`。`minSupportToOpposeMultiplier > 0` 与 `banThresholdRatio <= 1e18`（0 合法）是部署期静态不变量，由部署脚本在广播前校验（dev-standards §5.7）。投票/撤票/刷新后同步目标名单；`isBanned` 读取已结算名单，不全量扫描重算。
+同时满足才进入黑名单，保留严格比较、0.3% 门槛及无变化/无投票记录的处理：重复投票（方向与权重都未变）回 `VoteUnchanged(groupId, targetSenderId, voterId)`，不做名单同步（source 不可用时先回 `BanVoteWeightSourceUnavailable`）。同票重投不结算权重漂移；该 target 上任何投票/撤票/刷新都会按实时分母重算名单，本票权重的唯一改口入口是 `refreshVoteByTargetSenderId`。撤票或刷新找不到记录回 `VoteNotFound(groupId, targetSenderId, voterId)`；若 source 不可用，先回 `BanVoteWeightSourceUnavailable`，记录存在性检查在其后。投票权重为 0 回 `ZeroVoteWeight(groupId, voterId)`。`minSupportToOpposeMultiplier > 0` 与 `banThresholdRatio <= 1e18`（0 合法）是部署期静态不变量，由部署脚本在广播前校验（dev-standards §5.7）。投票/撤票/刷新后同步目标名单；`isBanned` 读取已结算名单，不全量扫描重算。
 
 不设版本字段：每次已结算变更都由 `SenderBanVoteCast` / `GovSenderBanChanged` 携带完整事实，链下缓存按事件失效即可。
 
@@ -44,7 +44,7 @@ supportWeight * 1e18 >= totalVoteWeight * 3e15
 
 投票身份按 voterId 该 MemberNFT 的**当前**持有人校验，不保存 owner 快照，与 admin 的双快照模型不同：NFT 转移后旧票仍按原 `settledWeight` 计数，新持有人可改票、撤票或刷新，旧持有人不再能操作该票。
 
-查询视图对 source 无代码的处理：单条 `voteStatusBySenderId` 返回 `(false, 0, 0)`；批量 `voteStatusBySenderIds`、`isBanned`、`isSenderIdBannedBatch` 不检查 source，直接读已结算名单与权重。已结算值照常可读，权重查询才需要 source 合约存在。
+查询视图对 source 无代码的处理：单条 `voteStatusBySenderId`、`voteWeightsBySenderIdsByVoterId`、`votedSenderIds`、`votersBySenderId` 返回空/零；批量 `voteStatusBySenderIds`、`isBanned`、`isSenderIdBannedBatch` 不检查 source，直接读已结算名单与权重。该差异为已知边界：前一组视图以「source 可用」为前提，后一组以已结算名单为准。
 
 ## forceClearJoinState 与资格
 
@@ -57,7 +57,7 @@ supportWeight * 1e18 >= totalVoteWeight * 3e15
 
 ## 成员与管理员
 
-成员/管理员和人工黑名单的旧批量增删、枚举、事件、owner 快照及幂等行为不变，只删除地址目标和默认身份查找。`MAX_ADMIN_IDS` 按已登记集合计数，失效（快照不再匹配）的条目仍占名额，需显式撤销后才能新增管理员；重复添加且快照变化会刷新快照并发出 `listed = true, prevListed = true`。`removeAdmins` / `removeMemberIds` 要求对应 NFT 当前存在，当前无 burn，未来引入 burn 后这两条删除入口会拒绝已销毁 ID。批量入参长度不设协议上限，去重为 O(n²)，整批失败整体回滚，gas 由调用者自担。成员名单以 `groupId + memberId` 为键，不随群 NFT 或成员 NFT 转移清空或改写。权限见 [生命周期](01-lifecycle.md#权限范围)。
+成员/管理员和人工黑名单的旧批量增删、枚举、事件、owner 快照及幂等行为不变，只删除地址目标和默认身份查找。`MAX_ADMIN_IDS` 按已登记集合计数，失效（快照不再匹配）的条目仍占名额，需显式撤销后才能新增管理员；重复添加且快照变化会刷新快照并发出 `listed = true, prevListed = true`。`removeAdmins` / `removeMemberIds` 要求对应 NFT 当前存在，当前无 burn，未来引入 burn 后这两条删除入口会拒绝已销毁 ID。批量入参长度不设协议上限，去重为 O(n²)，整批失败整体回滚，gas 由调用者自担；空批次为 no-op。`addMemberIds` / `addAdmins` 的顺序为「鉴权 → 群存在性 → 逐元素 NFT 存在性 → 逐元素重复 → `addAdmins` 上限 → 写入」，首个失败元素决定错误；`remove*` 不校验上限。成员名单以 `groupId + memberId` 为键，不随群 NFT 或成员 NFT 转移清空或改写。权限见 [生命周期](01-lifecycle.md#权限范围)。
 
 成员、管理员和人工黑名单接口见 [`IGroupAdmin.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/IGroupAdmin.sol)、[`IGroupMember.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/IGroupMember.sol) 与 [`IGroupChatBanList.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/IGroupChatBanList.sol)。写操作显式传入操作者 `operatorId`。
 

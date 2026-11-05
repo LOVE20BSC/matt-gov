@@ -25,7 +25,7 @@
 | beforePostPlugin | 整笔发言回滚 |
 | afterPostPlugin | 消息与通知事件保留；捕获错误并发出 `AfterPostPluginFailed(groupId, messageId, pluginAddress, round, errorHash, errorLength, errorSelector)` |
 
-after 插件在消息及通知事件之后调用。捕获到的外部错误数据只记录 `keccak256(errorData)`、字节长度与首 4 字节 selector（`errorHash`、`errorLength`、`errorSelector`），不把无界 `bytes` 写入事件。上述是业务容错要求，不代表无限 Gas 或任意错误数据都天然可安全捕获。
+after 插件在消息及通知事件之后调用。捕获到的外部错误数据只记录 `keccak256(errorData)`、字节长度与首 4 字节 selector（`errorHash`、`errorLength`、`errorSelector`），不把无界 `bytes` 写入事件。上述是业务容错要求，不代表无限 Gas 或任意错误数据都天然可安全捕获。`beforePostPlugin` 的 revert 数据原样冒泡，可能不携带自定义 selector，调用方不得假设固定错误集。
 
 ## 预检查
 
