@@ -29,7 +29,7 @@ GroupChat 的 11 个集合查询都是 `(作用域键 → offset → limit → r
 - `offset` 大于或等于总数时返回空数组与真实 `totalCount`，不校验也不回滚。
 - `limit` 为 0 时返回空数组与真实 `totalCount`，这是取基数的唯一入口。
 - `limit` 大于剩余条数时按剩余条数返回。
-- `reverse` 为 `true` 时逆序遍历**当前存储顺序**。消息、sender、mention、mention-all、Round 五个集合只追加不删除，`reverse` 即插入逆序；管理员名单、成员名单、人工黑名单、治理封禁的 voter/target 等 `Uint256Set` 集合允许删除，删除采用 swap-and-pop，因此页序不等于插入序，链下折叠必须按事件重放删除位置。
+- `reverse` 为 `true` 时逆序遍历**当前存储顺序**。消息、sender、mention、mention-all、Round 五个集合只追加不删除，`reverse` 即插入逆序；管理员名单、成员名单、人工黑名单、治理封禁的 voter/target 等 `Uint256Set` 集合允许删除，删除采用 swap-and-pop，因此页序不等于插入序，链下折叠必须按事件重放删除位置。发言判定只读取 `config.banSource` 指向的源；另一套源的事件仍会发射，折叠时必须按当前 `banSource` 过滤。切换来源不回滚或重算旧源名单，切回旧源即恢复其历史名单，可能已过期。
 
 ## 边界
 

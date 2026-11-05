@@ -418,7 +418,7 @@ v1 基线：
 | Message | 发布、提及、afterPost 失败 | `MessagePosted`、`SenderMentioned`、`AfterPostPluginFailed` |
 | AdminSet | 管理员增删、快照刷新 | `AdminChanged` |
 | MemberSet | 成员状态 | `MemberStatusChanged` |
-| BanSet | 管理员封禁、投票、撤票/归零、结果封禁 | `SenderBanChanged`、`SenderBanVoteCast`、`SenderBanVoteCleared`、`GovSenderBanChanged` |
+| BanSet | 管理员封禁、投票、撤票/归零、结果封禁 | `SenderBanChanged`、`SenderBanVoteCast`、`SenderBanVoteCleared`、`GovSenderBanChanged`；两套集合（人工/治理）按 `banSource` 生效 |
 | ManagerLink | token → group、token+action → group | `TokenGroupActivated`、`TokenActionGroupActivated` |
 | GroupName | 群名铸造 | core `MemberMinted`（跨仓链路） |
 
