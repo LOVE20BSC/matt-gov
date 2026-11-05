@@ -1,0 +1,190 @@
+# group-chat 接口调用权限专项 · 证据输出
+# 基线 group-chat@e982df8  工作树 0 项改动
+
+## 1. check_caller_auth.py group-chat/src
+violations: 0
+
+## 2. ABI 对账（实现 vs 自有接口）
+
+GroupChat vs IGroupChat:
+  impl=35 iface=35
+  impl-only=none
+  iface-only=none
+  mismatched=none
+
+GroupAdmin vs IGroupAdmin:
+  impl=6 iface=6
+  impl-only=none
+  iface-only=none
+  mismatched=none
+
+GroupMember vs IGroupMember:
+  impl=7 iface=7
+  impl-only=none
+  iface-only=none
+  mismatched=none
+
+GroupChatBanList vs IGroupChatBanList:
+  impl=8 iface=8
+  impl-only=none
+  iface-only=none
+  mismatched=none
+
+TokenMainManager vs ITokenScopeManagerBase:
+  impl=18 iface=14
+  impl-only=['LAUNCH_ADDRESS', 'PHASE_ADDRESS', 'STAKE_ADDRESS', 'currentPhase']
+  iface-only=none
+  mismatched=["onERC721Received: impl={'inputs': ('address', 'address', 'uint256', 'bytes'), 'outputs': ('bytes4',), 'stateMutability': 'view'} iface={'inputs': ('address', 'address', 'uint256', 'bytes'), 'outputs': ('bytes4',), 'stateMutability': 'nonpayable'}"]
+
+TokenGovManager vs ITokenScopeManagerBase:
+  impl=18 iface=14
+  impl-only=['LAUNCH_ADDRESS', 'PHASE_ADDRESS', 'STAKE_ADDRESS', 'currentPhase']
+  iface-only=none
+  mismatched=["onERC721Received: impl={'inputs': ('address', 'address', 'uint256', 'bytes'), 'outputs': ('bytes4',), 'stateMutability': 'view'} iface={'inputs': ('address', 'address', 'uint256', 'bytes'), 'outputs': ('bytes4',), 'stateMutability': 'nonpayable'}"]
+
+TokenActionMainManager vs ITokenActionScopeManagerBase:
+  impl=21 iface=17
+  impl-only=['LAUNCH_ADDRESS', 'PHASE_ADDRESS', 'STAKE_ADDRESS', 'currentPhase']
+  iface-only=none
+  mismatched=["onERC721Received: impl={'inputs': ('address', 'address', 'uint256', 'bytes'), 'outputs': ('bytes4',), 'stateMutability': 'view'} iface={'inputs': ('address', 'address', 'uint256', 'bytes'), 'outputs': ('bytes4',), 'stateMutability': 'nonpayable'}"]
+
+TokenActionGovManager vs ITokenActionScopeManagerBase:
+  impl=21 iface=17
+  impl-only=['LAUNCH_ADDRESS', 'PHASE_ADDRESS', 'STAKE_ADDRESS', 'currentPhase']
+  iface-only=none
+  mismatched=["onERC721Received: impl={'inputs': ('address', 'address', 'uint256', 'bytes'), 'outputs': ('bytes4',), 'stateMutability': 'view'} iface={'inputs': ('address', 'address', 'uint256', 'bytes'), 'outputs': ('bytes4',), 'stateMutability': 'nonpayable'}"]
+
+AdminBanSource vs IAdminBanSource:
+  impl=2 iface=2
+  impl-only=none
+  iface-only=none
+  mismatched=none
+
+GovVotedBanSource vs IGovVotedBanSource:
+  impl=14 iface=14
+  impl-only=none
+  iface-only=none
+  mismatched=none
+
+GroupJoinScopeSource vs IGroupJoinScopeSource:
+  impl=3 iface=3
+  impl-only=none
+  iface-only=none
+  mismatched=none
+
+GroupMemberScope vs IGroupMemberScope:
+  impl=2 iface=2
+  impl-only=none
+  iface-only=none
+  mismatched=none
+
+## 3. 函数计数（ABI）
+GroupChat: ABI 35 = 写 7 + 读 28
+GroupAdmin: ABI 6 = 写 2 + 读 4
+GroupMember: ABI 7 = 写 2 + 读 5
+GroupChatBanList: ABI 8 = 写 2 + 读 6
+TokenMainManager: ABI 18 = 写 1 + 读 17
+TokenGovManager: ABI 18 = 写 1 + 读 17
+TokenActionMainManager: ABI 21 = 写 1 + 读 20
+TokenActionGovManager: ABI 21 = 写 1 + 读 20
+AdminBanSource: ABI 2 = 写 0 + 读 2
+GovVotedBanSource: ABI 14 = 写 3 + 读 11
+GroupJoinScopeSource: ABI 3 = 写 0 + 读 3
+GroupMemberScope: ABI 2 = 写 0 + 读 2
+
+## 4. 鉴权扫描（入口表来源）
+unit                     function                       vis       mut         modifiers                                        line
+-----------------------------------------------------------------------------------------------------------------------------------
+GroupAdmin               addAdmins                      external  nonpayable  onlyGroupOwner,groupId,operatorId                src/GroupAdmin.sol:32
+GroupAdmin               removeAdmins                   external  nonpayable  onlyGroupOwner,groupId,operatorId                src/GroupAdmin.sol:46
+GroupAdmin               isAdminId                      external  view        -                                                src/GroupAdmin.sol:59
+GroupAdmin               adminIds                       external  view        -                                                src/GroupAdmin.sol:64
+GroupChat                activateChat                   external  nonpayable  nonReentrant,onlyChatOwner,groupId               src/GroupChat.sol:104
+GroupChat                setPostingAllowed              external  nonpayable  nonReentrant,onlyGroupOwner,groupId,operatorId   src/GroupChat.sol:147
+GroupChat                setScopeSource                 external  nonpayable  nonReentrant,onlyGroupOwner,groupId,operatorId   src/GroupChat.sol:169
+GroupChat                setBanSource                   external  nonpayable  nonReentrant,onlyGroupOwner,groupId,operatorId   src/GroupChat.sol:177
+GroupChat                setBeforePostPlugin            external  nonpayable  nonReentrant,onlyGroupOwner,groupId,operatorId   src/GroupChat.sol:185
+GroupChat                setAfterPostPlugin             external  nonpayable  nonReentrant,onlyGroupOwner,groupId,operatorId   src/GroupChat.sol:193
+GroupChat                post                           external  nonpayable  nonReentrant,onlySenderOwner,senderId            src/GroupChat.sol:201
+GroupChat                chatInfo                       external  view        -                                                src/GroupChat.sol:297
+GroupChat                chatInfosByGroupIds            external  view        -                                                src/GroupChat.sol:301
+GroupChat                isPostingAllowed               external  view        -                                                src/GroupChat.sol:329
+GroupChat                scopeSource                    external  view        -                                                src/GroupChat.sol:334
+GroupChat                banSource                      external  view        -                                                src/GroupChat.sol:339
+GroupChat                beforePostPlugin               external  view        -                                                src/GroupChat.sol:344
+GroupChat                afterPostPlugin                external  view        -                                                src/GroupChat.sol:349
+GroupChat                canPost                        external  view        -                                                src/GroupChat.sol:354
+GroupChat                currentRound                   public    view        -                                                src/GroupChat.sol:362
+GroupChat                message                        external  view        -                                                src/GroupChat.sol:370
+GroupChat                messages                       external  view        -                                                src/GroupChat.sol:379
+GroupChat                messagesByRound                external  view        -                                                src/GroupChat.sol:389
+GroupChat                messagesBySenderId             external  view        -                                                src/GroupChat.sol:405
+GroupChat                messageIdsBySenderId           external  view        -                                                src/GroupChat.sol:416
+GroupChat                messagesByMentionedSenderId    external  view        -                                                src/GroupChat.sol:427
+GroupChat                messageIdsByMentionedSenderId  external  view        -                                                src/GroupChat.sol:444
+GroupChat                mentionAllMessages             external  view        -                                                src/GroupChat.sol:457
+GroupChat                mentionAllMessageIds           external  view        -                                                src/GroupChat.sol:468
+GroupChat                senderIds                      external  view        -                                                src/GroupChat.sol:479
+GroupChat                groupIds                       external  view        -                                                src/GroupChat.sol:490
+GroupChat                rounds                         external  view        -                                                src/GroupChat.sol:499
+GroupChat                roundInfo                      external  view        -                                                src/GroupChat.sol:516
+GroupChat                roundInfosByRounds             external  view        -                                                src/GroupChat.sol:521
+GroupChatBanList         banBySenderIds                 external  nonpayable  onlyOperator,groupId,operatorId                  src/GroupChatBanList.sol:35
+GroupChatBanList         unbanBySenderIds               external  nonpayable  onlyOperator,groupId,operatorId                  src/GroupChatBanList.sol:42
+GroupChatBanList         isSenderIdBanned               external  view        -                                                src/GroupChatBanList.sol:49
+GroupChatBanList         isSenderIdBannedBatch          external  view        -                                                src/GroupChatBanList.sol:53
+GroupChatBanList         senderIdBanDetails             external  view        -                                                src/GroupChatBanList.sol:65
+GroupChatBanList         senderIdBanList                external  view        -                                                src/GroupChatBanList.sol:82
+GroupMember              addMemberIds                   external  nonpayable  onlyOperator,groupId,operatorId                  src/GroupMember.sol:29
+GroupMember              removeMemberIds                external  nonpayable  onlyOperator,groupId,operatorId                  src/GroupMember.sol:36
+GroupMember              isMemberId                     external  view        -                                                src/GroupMember.sol:43
+GroupMember              isMemberIdBatch                external  view        -                                                src/GroupMember.sol:47
+GroupMember              memberIds                      external  view        -                                                src/GroupMember.sol:59
+ManagerBase              TYPE_CODE                      external  view        -                                                src/managers/ManagerBase.sol:54
+ManagerBase              onERC721Received               external  view        -                                                src/managers/ManagerBase.sol:58
+TokenActionGovManager    activate                       external  nonpayable  -                                                src/managers/TokenActionGovManager.sol:29
+TokenActionGovManager    isSenderAllowed                external  view        -                                                src/managers/TokenActionGovManager.sol:33
+TokenActionMainManager   activate                       external  nonpayable  -                                                src/managers/TokenActionMainManager.sol:30
+TokenActionMainManager   isSenderAllowed                external  view        -                                                src/managers/TokenActionMainManager.sol:34
+TokenActionScopeManagerBase actionByGroupId                external  view        -                                                src/managers/TokenActionScopeManagerBase.sol:29
+TokenActionScopeManagerBase groupIdByActionId              external  view        -                                                src/managers/TokenActionScopeManagerBase.sol:34
+TokenActionScopeManagerBase actions                        external  view        -                                                src/managers/TokenActionScopeManagerBase.sol:56
+TokenActionScopeManagerBase groupIdsByActionIds            external  view        -                                                src/managers/TokenActionScopeManagerBase.sol:74
+TokenActionScopeManagerBase actionsByGroupIds              external  view        -                                                src/managers/TokenActionScopeManagerBase.sol:85
+TokenActionScopeManagerBase voteWeight                     external  view        -                                                src/managers/TokenActionScopeManagerBase.sol:99
+TokenActionScopeManagerBase totalVoteWeight                external  view        -                                                src/managers/TokenActionScopeManagerBase.sol:108
+TokenGovManager          activate                       external  nonpayable  -                                                src/managers/TokenGovManager.sol:25
+TokenGovManager          isSenderAllowed                external  view        -                                                src/managers/TokenGovManager.sol:29
+TokenMainManager         activate                       external  nonpayable  -                                                src/managers/TokenMainManager.sol:28
+TokenMainManager         isSenderAllowed                external  view        -                                                src/managers/TokenMainManager.sol:32
+TokenManagerBase         currentPhase                   public    view        -                                                src/managers/TokenManagerBase.sol:40
+TokenScopeManagerBase    tokenAddressByGroupId          external  view        -                                                src/managers/TokenScopeManagerBase.sol:17
+TokenScopeManagerBase    groupIdByTokenAddress          external  view        -                                                src/managers/TokenScopeManagerBase.sol:21
+TokenScopeManagerBase    tokens                         external  view        -                                                src/managers/TokenScopeManagerBase.sol:39
+TokenScopeManagerBase    voteWeight                     public    view        -                                                src/managers/TokenScopeManagerBase.sol:56
+TokenScopeManagerBase    totalVoteWeight                external  view        -                                                src/managers/TokenScopeManagerBase.sol:60
+AdminBanSource           isBanned                       external  view        -                                                src/sources/ban/AdminBanSource.sol:15
+GovVotedBanSource        voteByTargetSenderId           external  nonpayable  onlyVoterOwner,voterId                           src/sources/ban/GovVotedBanSource.sol:48
+GovVotedBanSource        clearVoteByTargetSenderId      external  nonpayable  onlyVoterOwner,voterId                           src/sources/ban/GovVotedBanSource.sol:55
+GovVotedBanSource        refreshVoteByTargetSenderId    external  nonpayable  -                                                src/sources/ban/GovVotedBanSource.sol:62
+GovVotedBanSource        voteWeightsBySenderIdsByVoterId external  view        -                                                src/sources/ban/GovVotedBanSource.sol:66
+GovVotedBanSource        voteStatusBySenderId           external  view        -                                                src/sources/ban/GovVotedBanSource.sol:83
+GovVotedBanSource        votedSenderIds                 external  view        -                                                src/sources/ban/GovVotedBanSource.sol:97
+GovVotedBanSource        votersBySenderId               external  view        -                                                src/sources/ban/GovVotedBanSource.sol:128
+GovVotedBanSource        isBanned                       external  view        -                                                src/sources/ban/GovVotedBanSource.sol:144
+GovVotedBanSource        isSenderIdBannedBatch          external  view        -                                                src/sources/ban/GovVotedBanSource.sol:148
+GovVotedBanSource        voteStatusBySenderIds          external  view        -                                                src/sources/ban/GovVotedBanSource.sol:160
+GroupJoinScopeSource     isSenderAllowed                external  view        -                                                src/sources/scope/GroupJoinScopeSource.sol:18
+GroupMemberScope         isSenderAllowed                external  view        -                                                src/sources/scope/GroupMemberScope.sol:15
+
+## 5. 无 only* modifier 的外部写入口
+TokenActionGovManager.activate  src/managers/TokenActionGovManager.sol:29  modifiers=-
+TokenActionMainManager.activate  src/managers/TokenActionMainManager.sol:30  modifiers=-
+TokenGovManager.activate  src/managers/TokenGovManager.sol:25  modifiers=-
+TokenMainManager.activate  src/managers/TokenMainManager.sol:28  modifiers=-
+GovVotedBanSource.refreshVoteByTargetSenderId  src/sources/ban/GovVotedBanSource.sol:62  modifiers=-
+
+## 6. 证据命令
+forge test
+bash matt-gov/script/check_caller_auth.sh src
+forge inspect <path>:<contract> abi --json

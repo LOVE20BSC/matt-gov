@@ -45,7 +45,7 @@ Token Manager 与 Action Manager 的接口分别见 [`ITokenScopeManagerBase.sol
 
 名称的 Test 前缀按 MemberNFT 的 `LOVE20_TOKEN_ADDRESS` 符号判定；该地址由部署 check 保证已初始化，Manager 不判断其是否为零地址或无代码。
 
-构造期依赖代码、参数与地址关系的静态校验由部署脚本在广播前完成（dev-standards §5.7）。`onERC721Received` 收到非协议 NFT 合约或非零 `from` 时回 `UnexpectedManagerERC721Received(operator, from, tokenId)`。
+构造期依赖代码、参数与地址关系的静态校验由部署脚本在广播前完成（dev-standards §5.7）。托管群的 `BAN_SOURCE_ADDRESS`、`BEFORE_POST_PLUGIN_ADDRESS`、`AFTER_POST_PLUGIN_ADDRESS` 还必须在广播前人工核对接口；托管群 owner 是 Manager 且无配置转发，`beforePostPlugin` 误配会让该 Manager 名下所有群永久无法发言。`onERC721Received` 收到非协议 NFT 合约或非零 `from` 时回 `UnexpectedManagerERC721Received(operator, from, tokenId)`。
 
 BSC MemberNFT 的返回值/费用查询 ABI 与旧 group 不完全相同，迁移时适配接口并保留付款金额校验，不新增补贴、退款账户或代付凭证。
 
