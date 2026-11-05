@@ -4,6 +4,66 @@
 
 本文档列出 BSC Core 相对于 LOVE20TKM 旧协议的所有变更。保留项直接引用旧代码位置，避免重复描述。
 
+## 加速激励改版：入口限量，取消输出溢出（2026-11-06）
+
+加速激励的反资本约束从「输出侧截断」改为「质押入口限量」。旧口径在 `Mint` 内按 `voteReward × MAX_GOV_BOOST_REWARD_MULTIPLIER` 截断，超出部分记为 `burnReward` 并销毁；新口径在 `Stake` 存入加速本金时只校验单人上限，`Mint` 按理论份额全额铸出，不再截断、不再销毁、不再释放预留。
+
+上限公式与量纲：
+
+```text
+C   = ⌊T × 已铸量 / 最大供应量⌋ × 2 × F
+m_i = ⌊C × 成员有效票 / 总有效票⌋ × M
+
+T = 流动性质押中的社区代币本金（以实际入池量记账，不读现货储备）
+2 = Uniswap V2 双边等值换算因子（协议常量 LIQUIDITY_TOKEN_EQUIVALENCE_FACTOR）
+F = BOOST_STAKE_SUPPLY_FACTOR（部署参数，示例 2，允许 1–10）
+M = BOOST_STAKE_MULTIPLIER（部署参数，示例 5，允许 1–20）
+```
+
+入口只校验 `member.boostShares + amount ≤ m_i`。`C` 只是单人上限的基数，社区层面没有聚合上限：`Σ m_i = C × M` 是各人额度之和，不是预分配总量，因此不存在先到先得，后来者不会因为前人占满额度而无法存入。`totalBoostShares` 保留为查询与事件口径（`BoostStaked` / `StakeWithdrawn` / `totalStake`），不再参与任何校验。
+
+上限只约束新存入；当 `C` 因销毁或提款收缩、或票权占比因后来者投票被稀释时，已有仓位不被强制减仓（祖父条款），新存入按当时的 `m_i` 判定。不存在起始倍数、爬升轮数或按轮次变化的上限。
+
+需要如实说明的边界：入口限量保证的是「单人最多按票占比锁定 `M` 倍加速本金」，**不保证**「任何人的加速回报不超过投票回报的 `M` 倍」，也不再保证社区加速本金合计不超过 `C`。由 `B ≤ C × M` 得回报比 `≤ C × M / B`，又由 `B ≥ b_i` 得回报比 `≤ 1 / 票占比`；两者取小。成员打满额度且为唯一加速者时回报比为 `1 / 票占比`（反例 `M=5`、票占比 10% → `10 > 5`）；全员打满时 `C × M / B = 1`，`M` 只是本金倍数，不是收益率倍数。推导见 `docs/specs/core/07-mint.md`。
+
+`Mint` 侧删除：
+
+- 状态变量 `MAX_GOV_BOOST_REWARD_MULTIPLIER`、`init` 的对应入参、同名 getter；
+- `_govRewardCalculation` 的 `maxBoostReward` 截断与 `burnReward` 返回值；`boostReward = theoreticalBoost`；
+- `_mintGovReward` 的 `_totalRewardBurned += burnReward` 与 `RewardBurned(BoostOverflow)` 发射；
+- `IMint.BurnReason` 的 `BoostOverflow`（`BoostPoolCancelled` / `ProposalPoolCancelled` 序号仍为 0 / 1，`RewardBurned` topic0 不变）。
+
+`Stake` 侧新增两个部署参数、一个本金台账 `_totalLiquidityTokenAmount` 与单人入口校验；`mergeStake` 在融合后校验目标单人上限（聚合总量不变，但目标票占比变大，防御性检查）。`BoostTotalCapExceeded` 不进入 ABI：聚合校验与聚合上限一并取消，只保留 `BoostCapExceeded`。
+
+ABI / selector 变化：
+
+| 入口 | 旧 selector | 新 selector |
+| --- | --- | --- |
+| `Mint.init(...)` | `0x8187933a`（8 参数） | `0xaa9ed5e6`（7 参数） |
+| `Stake.init(...)` | `0xa3f76c36`（9 参数） | `0xb8f7506d`（11 参数） |
+| `Mint.MAX_GOV_BOOST_REWARD_MULTIPLIER()` | `0xb2398720` | 删除 |
+| `Stake.BOOST_STAKE_SUPPLY_FACTOR()` | — | `0x20ebdf1b` |
+| `Stake.BOOST_STAKE_MULTIPLIER()` | — | `0x51a6c52b` |
+| `Stake.LIQUIDITY_TOKEN_EQUIVALENCE_FACTOR()` | — | `0x25af39e0` |
+| `Stake.liquidityTokenAmount(address)` | — | `0x9c8636c7` |
+| `Stake.boostStakeCap(address,uint256)` | — | `0x72f89ab1`（返回 `(baseCap, memberCap, memberUsed)`，3 项） |
+| `Stake.BoostCapExceeded(address,uint256,uint256,uint256)` | — | `0x837ed964` |
+
+`mintGovReward`、`mintGovRewards`、`govRewardByMemberId` 的 selector 不变（`0x53ad345e` / `0xc4a5477d` / 既有值），变化仅在返回项少一个 `burnReward`。事件：
+
+| 事件 | 旧 topic0 | 新 topic0 |
+| --- | --- | --- |
+| `GovRewardMinted` | `0x696d07c676e6677254a96b9063b04f9d63a2df2b28040d3483c0e8d8e326dbd1`（7 字段） | `0x9cb7d6e9b2665c14c616a3f9bb8ccf82d37e2f9aa14bebaf1faa4de60500f94b`（6 字段） |
+| `RewardBurned` | `0x06ad56b4b5a15c8a828b342b5172c3308a03c399b1cc2ab6ca820dfd397e9070` | 不变（仅触发条件收窄为两条池取消） |
+
+新的 `GovRewardMinted` topic0 与 2026-11-03 追加 `totalRewardMinted` 之前的值相同——字段集退回原始的 6 项。
+
+存储布局：`Mint` 释放末位 `MAX_GOV_BOOST_REWARD_MULTIPLIER` 的槽位，其余变量槽号不变；`Stake` 在 `FEE_SETTLEMENT_RATIO` 之后新增 `BOOST_STAKE_SUPPLY_FACTOR`、`BOOST_STAKE_MULTIPLIER` 两个槽位，并在映射区末位新增 `_totalLiquidityTokenAmount`，此前的槽号不变。pre-mainnet 不保留兼容占位。
+
+部署：`CoreConfig.maxBoostMultiplier` 删除，改为 `boostStakeSupplyFactor` / `boostStakeMultiplier`；env 键 `BOOST_STAKE_SUPPLY_FACTOR` / `BOOST_STAKE_MULTIPLIER`；`DeployCore` 广播前校验 1–10 与 1–20，部署后读回两个 getter 与 `LIQUIDITY_TOKEN_EQUIVALENCE_FACTOR() == 2`；`21_check.sh` 与 `deploy_scripts_test.py` 同步。
+
+同步范围：`core` 的 `src/`、`script/deploy/`、`script/network/anvil31337_dev/core.params`、`test/` 与 `script/events/`；`matt-gov` 的 `docs/specs/core/`（00/04/07/09）；`core/docs/whitepaper-core.md`。
+
 ## 事件累计锚点与 Mint 查询改名（2026-11-03）
 
 本批收口事件审计的 P2 项：五个事件追加后置累计字段，Mint 的三个查询入口统一为 `total*` 前缀。

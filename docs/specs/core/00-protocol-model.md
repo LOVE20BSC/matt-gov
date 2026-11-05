@@ -38,7 +38,8 @@ Core 不解释具体 Proposal 的业务字段，扩展通过 Target 接入。
 | Mint | `VOTE_ADDRESS`、`SUBMIT_ADDRESS`、`LAUNCH_ADDRESS`、`MEMBER_NFT_ADDRESS` | 投票、提案、发射和身份依赖；BSC 版本已移除原 `STAKE_ADDRESS`（加速数据源改为 Vote 快照）；`PHASE_ADDRESS` 由 `init` 从 `VOTE_ADDRESS` 派生缓存，不重复作为入参 |
 | Mint | `proposalRewardMinVoteRatio` | 提案激励门槛；状态变量和公开 getter 为 `PROPOSAL_REWARD_MIN_VOTE_RATIO`，`1e18` 表示 100%，如 `5e16 = 5%` |
 | Mint | `roundRewardGovRatio`、`roundRewardProposalRatio` | 治理池、提案池占可用供应的比例；状态变量和公开 getter 为 `ROUND_REWARD_GOV_RATIO`、`ROUND_REWARD_PROPOSAL_RATIO`，`1e18` 表示 100%，如 `1e17 = 10%` |
-| Mint | `maxGovBoostRewardMultiplier` | 加速激励相对投票激励的倍数上限；状态变量和公开 getter 为 `MAX_GOV_BOOST_REWARD_MULTIPLIER`，如 `2` |
+| Stake | `boostStakeSupplyFactor` | 单人加速质押上限基数 `C` 的已铸造比例因子 `F`；状态变量和公开 getter 为 `BOOST_STAKE_SUPPLY_FACTOR`，默认 `2`，允许 `1..10` |
+| Stake | `boostStakeMultiplier` | 单人加速质押上限的倍数 `M`；状态变量和公开 getter 为 `BOOST_STAKE_MULTIPLIER`，默认 `5`，允许 `1..20`，不随轮次变化 |
 | Launch | `MINT_ADDRESS`、`MEMBER_NFT_ADDRESS`、`PAIR_FACTORY_ADDRESS` | 铸造、身份与建池依赖；每个代币在创建时即创建或复用 Pair |
 | Launch | `ROOT_PARENT_TOKEN_ADDRESS` | 根父币（Router.WETH() 读取）；首币与根级同级币的父币，也是根级次数的账本维度 |
 | Launch | `distributor`、`name`、`symbol` | 首币分发目标、名称和符号；首币固定使用 `NoCallback`，`distributor` 非零 |

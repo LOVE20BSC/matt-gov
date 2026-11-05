@@ -23,12 +23,16 @@ Stake 按 `tokenAddress + memberId` 维护流动性质押和加速质押，不�
 | `pairAddress[tokenAddress]` | 社区对应的 Uniswap V2 兼容 Pair 地址 |
 | `totalBurnedToken[tokenAddress]` | 社区代币全局累计销毁量 |
 | `totalParentTokenBurned[tokenAddress]` | 该社区手续费中父币的累计数量（换币前） |
+| `totalLiquidityTokenAmount[tokenAddress]` | 流动性质押中的**社区代币本金**台账：入池时按实际转入量增加，提取时按份额占比减少。只读该台账、不读 Pair 现货储备，因此不受捐赠与闪电贷影响；内部映射，对外由 `liquidityTokenAmount(tokenAddress)` 暴露 |
+| `BOOST_STAKE_SUPPLY_FACTOR` | 单人加速质押上限基数 `C` 的部署因子 `F`（`uint256 public`，默认 2，允许 1–10） |
+| `BOOST_STAKE_MULTIPLIER` | 单人加速质押上限的部署倍数 `M`（`uint256 public`，默认 5，允许 1–20） |
+| `LIQUIDITY_TOKEN_EQUIVALENCE_FACTOR` | 恒定 `2`：Uniswap V2 双边等值折算因子（`uint256 public constant`） |
 
 `totalLp` 不是存储字段：`totalStake()` 与 `_updateSqrtKBaseline` 都在使用时由 `lastWithdrawableLp + lastFeeLp` 派生，值等于合约记账的 LP 总量（不含他人主动转入的 LP）。
 
 ## 流动性质押与手续费
 
-`init` 只校验 `initialized` 状态并固定依赖地址和参数，不设调用者限制；成功后 `initialized` 置为 `true`，再次调用回滚 `AlreadyInitialized()`。固定 `PHASE_ADDRESS`、`MEMBER_NFT_ADDRESS`、`VOTE_ADDRESS`、`LAUNCH_ADDRESS`、`ROUTER_ADDRESS`、`PAIR_FACTORY_ADDRESS`、`PROMISED_WAITING_PHASES_MIN`、`PROMISED_WAITING_PHASES_MAX` 和 `FEE_SETTLEMENT_RATIO`。所有成员写操作校验当前 NFT 持有人；`VOTE_ADDRESS` 提供本轮投票记录并暴露其已绑定的 Submit，`LAUNCH_ADDRESS` 用于确认代币由 Launch 登记。金额单位为代币最小单位，等待期为 Phase。
+`init` 只校验 `initialized` 状态并固定依赖地址和参数，不设调用者限制；成功后 `initialized` 置为 `true`，再次调用回滚 `AlreadyInitialized()`。固定 `PHASE_ADDRESS`、`MEMBER_NFT_ADDRESS`、`VOTE_ADDRESS`、`LAUNCH_ADDRESS`、`ROUTER_ADDRESS`、`PAIR_FACTORY_ADDRESS`、`PROMISED_WAITING_PHASES_MIN`、`PROMISED_WAITING_PHASES_MAX`、`FEE_SETTLEMENT_RATIO`、`BOOST_STAKE_SUPPLY_FACTOR` 和 `BOOST_STAKE_MULTIPLIER`。所有成员写操作校验当前 NFT 持有人；`VOTE_ADDRESS` 提供本轮投票记录并暴露其已绑定的 Submit，`LAUNCH_ADDRESS` 用于确认代币由 Launch 登记。金额单位为代币最小单位，等待期为 Phase。
 
 每个社区的唯一 Pair 由 [Launch](08-launch.md) 在发射该代币的同一笔交易内创建或复用；`Stake` 在首次质押时通过 `PAIR_FACTORY_ADDRESS.getPair(tokenAddress, parentTokenAddress)` 读取并保存，为零地址时回滚 `PairMissing(tokenAddress)`。**`Stake` 的所有入口都只接受 Launch 已登记的代币，只读取已登记的 Pair，不创建 Pair**，未登记回滚 `TokenNotRegistered(tokenAddress)`，无 Pair 回滚 `PairMissing(tokenAddress)`。
 
@@ -39,7 +43,7 @@ parentTokenAmountOptimal = floor(tokenAmountDesired * reserveParent / reserveTok
 tokenAmountOptimal      = floor(parentTokenAmountDesired * reserveToken / reserveParent)
 ```
 
-先算父币方向；该值不超过期望值时入池 `(期望代币量, 折算父币量)`，否则改算代币方向并入池 `(折算代币量, 期望父币量)`。折算使任一方向的入池量低于期望值时，偏离量不得超过 `floor(期望量 * slippage / 1e18)`，否则回滚 `SlippageExceeded(actualDeviation, maxDeviation)`——两个参数同为代币最小单位，第一个是本次的实际偏离量、第二个是按容差算出的允许偏离量；`slippage` 按 `1e18` 精度表达允许的相对偏离，`0` 表示不允许任何偏离，不设除零以外的上界。Pair 任一侧储备为零时不做折算，直接采用期望数量。Pair 铸出的 LP 数量为零时回滚 `ZeroLiquidityMinted()`；该分支保留给“返回 0 而不是回滚”的 V2 兼容 Pair，参考实现会先以 `INSUFFICIENT_LIQUIDITY_MINTED` 回滚。添加 LP 成功后按 LP 数量计份额；提取时移除 LP 并返还双币。
+先算父币方向；该值不超过期望值时入池 `(期望代币量, 折算父币量)`，否则改算代币方向并入池 `(折算代币量, 期望父币量)`。折算使任一方向的入池量低于期望值时，偏离量不得超过 `floor(期望量 * slippage / 1e18)`，否则回滚 `SlippageExceeded(actualDeviation, maxDeviation)`——两个参数同为代币最小单位，第一个是本次的实际偏离量、第二个是按容差算出的允许偏离量；`slippage` 按 `1e18` 精度表达允许的相对偏离，`0` 表示不允许任何偏离，不设除零以外的上界。Pair 任一侧储备为零时不做折算，直接采用期望数量。Pair 铸出的 LP 数量为零时回滚 `ZeroLiquidityMinted()`；该分支保留给“返回 0 而不是回滚”的 V2 兼容 Pair，参考实现会先以 `INSUFFICIENT_LIQUIDITY_MINTED` 回滚。添加 LP 成功后按 LP 数量计份额，并按实际转入的社区代币数量增加本金台账 `totalLiquidityTokenAmount[tokenAddress]`；提取时移除 LP 并返还双币，同时按 `floor(liquidityShares × T / totalLiquidityShares)` 扣减该台账。
 
 份额铸造公式（必须在手续费重分类之后计算）：
 
@@ -133,6 +137,43 @@ totalValidBoostShares(R) = totalValidBoostSharesAdded(R) - totalValidBoostShares
 - 每轮流量由累计值差分得到：`Added(R) - Added(R-1)`。`Removed` 同理。
 - 事件里的 `totalValidGovVotes` / `totalValidBoostShares` 就是这个差值，与查询结果逐条相等。
 
+## 加速激励质押上限
+
+加速质押在入口处限量，Mint 侧不再设输出上限。上限只由「流动性质押本金」和「代币已铸造比例」决定，不随轮次爬升，也没有起始倍数或爬升轮数。
+
+```text
+C(token) = floor(T × totalSupply / MAX_SUPPLY) × 2 × F
+m_i      = floor(C × v_i / V) × M
+```
+
+- `T = totalLiquidityTokenAmount[token]`：流动性质押中的社区代币本金，不是 LP 份额，也不是 `tokenAmountForLiquidity` 的现货折算。
+- 第一个 `2` 是命名常量 `LIQUIDITY_TOKEN_EQUIVALENCE_FACTOR`：Uniswap V2 池内双币价值对等，一份社区代币本金对应池内两侧各一份价值，用它把本金折算成社区代币口径。
+- `totalSupply / MAX_SUPPLY` 是已铸造比例；两个值都从 `ILOVE20Token(token)` 读取。
+- `F = BOOST_STAKE_SUPPLY_FACTOR`：部署参数，不是字面量。
+- `v_i = validGovVotes(token, round, memberId)`，`V = totalValidGovVotes(token, round)`，`round` 为入口当轮。
+- `M = BOOST_STAKE_MULTIPLIER`：部署参数，固定配置，不随轮次变化。
+- 所有除法向下取整；上限只会因取整而收紧，不会放宽。
+
+**`C` 只是单人上限的基数，不是社区聚合上限。** 入口只校验单人 allowance：
+
+```text
+stakeBoost 通过条件：member.boostShares + amount <= m_i
+```
+
+社区层面不设总量校验。取消聚合上限的原因是它会造成先到先得：早期质押者占满额度后，后期成员即使票权更高也押不进去，而票权占比本身已经随时间与质押规模变化，聚合上限会把这种变化固化成排队顺序。取消后，各成员的额度之和最大为 `Σ m_i = C × M`，但这是上限之和，不是协议承诺或预分配的总量；实际总量只由成员各自存入多少决定。
+
+`totalBoostShares` 保留为**查询与事件口径**，不再是约束：它继续在 `stakeBoost` 时累加、在 `withdraw` 时扣减，出现在 `BoostStaked` / `StakeWithdrawn` 事件和 `totalStake` 返回值中，供前端与审计读取社区加速本金总额。入口校验不再读取该字段，也不再存在以它为比较对象的错误。
+
+**单调性与收缩。** `totalSupply` 会因手续费结算销毁而下降，`T` 会因成员提取本金而下降，因此 `C` 与 `m_i` 都可能变小，已质押的加速余额可能事后超过新上限。处理方式是**入口校验 + 祖父条款**：不强制减仓、不自动销毁已质押代币，已有头寸保持不变；上限收缩后新的 `stakeBoost` 因 `member.boostShares + amount > m_i` 回滚，直到成员提取、票权占比回升或已铸造比例回升。`MAX_SUPPLY` 由代币构造参数固定为 `immutable`，不会变化。
+
+**公平性残留。** 单人上限按入口当轮的票权占比计算。后加入者投票会稀释 `v_i / V`，早期成员的 `m_i` 随之下调，但其已存头寸按祖父条款保留，形成「旧头寸超过新额度」的残留；反过来，若某成员在轮内先追加质押、提高票权再存入，其额度按提高后的占比重算。残留的大小取决于占比变化幅度：占比减半则旧头寸可达新额度的两倍，且这部分超额头寸在提取前持续参与加速分配。协议不强行清算这部分，因为清算需要卖出或扣押成员已存入的代币，属于入口校验之外的新机制。
+
+**查询入口。** `boostStakeCap(tokenAddress, memberId)` 返回 `(baseCap, memberCap, memberUsed)`，其中 `baseCap = C`、`memberCap = m_i`、`memberUsed` 为该成员已存加速本金，均按当前轮计算。成员可在 `stakeBoost` 前读到自己的可用额度；但额度会随本轮新增投票、`totalSupply` 销毁和他人提取而变化，查询只是当时快照。`liquidityTokenAmount(tokenAddress)` 返回本金台账 `T`。
+
+**量纲与可操纵性。** `T` 取 `_totalLiquidityTokenAmount` 本金台账，入池时增加实际转入的社区代币数量，提取时扣除 `floor(liquidityShares × T / totalLiquidityShares)`，与可提取 LP 的份额口径一致。选择本金而非 `tokenAmountForLiquidity`（`withdrawableLp × reserveToken / pairTotalSupply`）的原因：后者读 Pair 现货储备，可被捐赠 + `sync`、闪电贷或价格波动移动；本金台账只由协议自己的入池/提取写入，不受外部转账影响。代价是本金按入池时数量记账，不随池价重估。
+
+**释放时点。** `unstake` 只把有效加速份额清零，不减少 `totalBoostShares`；`withdraw` 真正归还代币时才减少。由于聚合字段不再参与校验，这一差异只影响查询口径，不影响任何人的可用额度。`mergeStake` 保持聚合总量不变，但在融合完成后按目标的新票占比重算 `m_target` 并校验目标余额；该检查是防御性的，正常融合会提高目标票占比，只可能在目标已被祖父条款覆盖（已超上限）且源带有加速余额时命中。
+
 ## 解锁与提取
 
 1. 当前 NFT 持有人申请统一解锁，记录申请 Phase 和承诺等待期，立即清零治理票，禁止追加及融合。**本 Round 已推举或已投票的成员不得申请解锁**：解锁只清零当前票权，撤不回已经计入本轮的票，放行等于让同一份质押资产在本轮既投票又退出。该限制与融合对源成员的「本轮已使用质押权」检查同口径，只作用于当前治理 Round，上一 Round 用过质押权的成员在新一轮可以解锁。
@@ -166,7 +207,7 @@ totalValidBoostShares(R) = totalValidBoostSharesAdded(R) - totalValidBoostShares
 | --- | --- | --- |
 | 1 | 已初始化 | `AlreadyInitialized()` |
 
-Factory 与 `Router.factory()` 一致、`promisedWaitingPhasesMin > 0`、`0 < feeSettlementRatio <= MAX_FEE_SETTLEMENT_RATIO（2.5e15）`、`min <= max` 由 DeployCore 广播前校验；六个依赖地址有代码由 DeployCore 部署后校验；两者均由 21_check 独立复核；`init` 只防重复初始化并保存入参。
+Factory 与 `Router.factory()` 一致、`promisedWaitingPhasesMin > 0`、`0 < feeSettlementRatio <= MAX_FEE_SETTLEMENT_RATIO（2.5e15）`、`min <= max`、`0 < boostStakeSupplyFactor <= 10`、`0 < boostStakeMultiplier <= 20` 由 DeployCore 广播前校验；六个依赖地址有代码、`LIQUIDITY_TOKEN_EQUIVALENCE_FACTOR == 2` 由 DeployCore 部署后校验；两者均由 21_check 独立复核；`init` 只防重复初始化并保存入参。
 
 ### `stakeLiquidity`
 
@@ -198,6 +239,9 @@ Factory 与 `Router.factory()` 一致、`promisedWaitingPhasesMin > 0`、`0 < fe
 | 6 | 已申请解锁 | `UnstakeAlreadyRequested(tokenAddress, memberId)` |
 | 7 | 无流动性质押 | `NoStakedLiquidity(tokenAddress, memberId)` |
 | 8 | `promisedWaitingPhases` 小于已有值 | `PromisedWaitingPhasesDecreased(promisedWaitingPhases, member.promisedWaitingPhases)` |
+| 9 | 追加后超过该成员的单人上限 `m_i` | `BoostCapExceeded(tokenAddress, memberId, boostAmount, memberRemaining)` |
+
+第 9 行在同一轮按当前 `T`、`totalSupply / MAX_SUPPLY`、`v_i / V` 现算；`allowed` 是当前剩余额度，已超限的祖父头寸对应 `0`。社区层面没有聚合校验，也没有对应的回滚错误。
 
 ### `unstake`
 
@@ -233,6 +277,9 @@ Factory 与 `Router.factory()` 一致、`promisedWaitingPhasesMin > 0`、`0 < fe
 | 7 | 源无流动性质押 | `NoStakedLiquidity(tokenAddress, sourceMemberId)` |
 | 8 | 源在当前治理 Round 已使用过质押权（已推举或已投票） | `StakeRightsUsed(tokenAddress, round, sourceMemberId)` |
 | 9 | 目标非空且其 `promisedWaitingPhases` 短于源 | `TargetPromisedWaitingPhasesTooShort(target.promisedWaitingPhases, source.promisedWaitingPhases)` |
+| 10 | 融合后目标加速余额超过目标新票占比下的 `m_target`（仅源带有加速余额时校验） | `BoostCapExceeded(tokenAddress, targetMemberId, targetBoostShares, targetCap)` |
+
+第 10 行是防御性检查：融合不改变聚合总量，且正常融合会提高目标票占比，因此只可能在目标已因上限收缩而被祖父条款覆盖时命中。
 
 ### `settleFees`
 
@@ -274,7 +321,7 @@ Factory 与 `Router.factory()` 一致、`promisedWaitingPhasesMin > 0`、`0 < fe
 - 空目标沿用本文件的等待期继承例外；`MemberStake` 和 `TotalStake` 结构体仅用于内部存储，不作为查询返回格式。
 - `memberId == 0` 与不存在的 `memberId` 同走 `MemberNFT.ownerOf`，由 OpenZeppelin 抛出 `ERC721NonexistentToken`；Stake 不声明 `InvalidMemberId()`，与 `Launch` 的既有实现一致。
 - 治理票的**原始乘积**为 `liquidityShares × promisedWaitingPhases`，只用于在写点计算增量；对外可查的是轮次账本 `validGovVotes(round, memberId)`，申请解锁当轮记 `0`。`stakeLiquidity`、`stakeBoost` 提升等待期、`unstake`、`mergeStake` 四处写点必须同时更新成员账本与社区的 `Added` / `Removed`，使 `totalValidGovVotes(round)` 恒等于该轮全体成员 `validGovVotes` 之和。加速份额同构，但**只在社区净额变化时**写社区账本：`mergeStake` 的加速搬迁只在成员之间移动，净额为零，不写 `Added` / `Removed`（各记一笔等额会把 `total` 抬成两倍）。
-- `memberStake()` 和 `totalStake()` 返回的 `tokenAmountForLiquidity` / `parentTokenAmountForLiquidity` 以及 `withdrawableLp` / `feeLp` 都是查询时根据当前 Pair 状态现算的值，不是直接读取存储的历史基准。
+- `memberStake()` 和 `totalStake()` 返回的 `tokenAmountForLiquidity` / `parentTokenAmountForLiquidity` 以及 `withdrawableLp` / `feeLp` 都是查询时根据当前 Pair 状态现算的值，不是直接读取存储的历史基准。加速上限不读这些现算值，只读本金台账 `_totalLiquidityTokenAmount`。
 - 加速份额不提供「哪些 Round 发生过变更」的链上枚举：该轮次集合完全可由 `BoostStaked`/`Unstaked`/`StakesMerged` 的 `round` 折叠得到，属派生缓存（事件规范 §6.9），不再单独开分页查询。
 
 历史来源：`LOVE20TKM/core/src/LOVE20Stake.sol` 和 `LOVE20TKM/core/src/LOVE20SLToken.sol`；提交已固定，当前 BSC 行为以本文件为准。验收见 [Core 验收](09-testing.md)。
