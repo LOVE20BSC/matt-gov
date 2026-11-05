@@ -58,7 +58,7 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/ActionTarget.sol:451"
+        "action/src/ActionTarget.sol:455"
       ],
       "selector": "0xca699de2",
       "signature": "AlreadyCreated(address,uint256)"
@@ -209,7 +209,7 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/ActionTarget.sol:448"
+        "action/src/ActionTarget.sol:452"
       ],
       "selector": "0x4042953c",
       "signature": "ExecutorHandshakeFailed(address)"
@@ -224,7 +224,7 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/ActionTarget.sol:441"
+        "action/src/ActionTarget.sol:445"
       ],
       "selector": "0xa6585817",
       "signature": "ExecutorNotContract(address)"
@@ -239,7 +239,7 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/ActionTarget.sol:445"
+        "action/src/ActionTarget.sol:449"
       ],
       "selector": "0x77523042",
       "signature": "ExecutorTargetMismatch(address,address)"
@@ -417,8 +417,8 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/ActionTarget.sol:434",
-        "action/src/ActionTarget.sol:487",
+        "action/src/ActionTarget.sol:441",
+        "action/src/ActionTarget.sol:491",
         "action/src/GroupActionManager.sol:70",
         "action/src/GroupServiceExecutor.sol:409",
         "action/src/LpExecutor.sol:101"
@@ -548,9 +548,7 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/ActionTarget.sol:437",
-        "action/src/ActionTarget.sol:490",
-        "action/src/ActionTarget.sol:519",
+        "action/src/ActionTarget.sol:394",
         "action/src/GroupActionManager.sol:78",
         "action/src/GroupActionVerify.sol:393",
         "action/src/GroupServiceExecutor.sol:417",
@@ -1016,8 +1014,8 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/ActionTarget.sol:494",
-        "action/src/ActionTarget.sol:523"
+        "action/src/ActionTarget.sol:495",
+        "action/src/ActionTarget.sol:521"
       ],
       "selector": "0xb4d298bc",
       "signature": "TargetDataExecutorMismatch(address,address)"
@@ -1116,8 +1114,8 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/ActionTarget.sol:484",
-        "action/src/ActionTarget.sol:515"
+        "action/src/ActionTarget.sol:488",
+        "action/src/ActionTarget.sol:516"
       ],
       "selector": "0x283a3095",
       "signature": "UnboundProposal(address,uint256)"
