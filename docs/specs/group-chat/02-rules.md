@@ -17,7 +17,7 @@
 
 只有 `senderId == groupId` 可跳过 scope/ban；sender 存在及调用者持有的鉴权、群存在、激活、发言开关的校验仍必须执行。
 
-sender 为群本身（`senderId == groupId`）或有效 admin 可 `mentionAll`；admin 不因此绕过 scope/ban。插件失败处理见 [发言](03-posting.md#消息与插件)。source 调用成功但返回数据不可解码时，ABI 解码错误直接在 GroupChat 内冒泡，不保证归一为 `ScopeSourceFailed` / `BanSourceFailed`。
+sender 为群本身（`senderId == groupId`）或有效 admin 可 `mentionAll`；admin 不因此绕过 scope/ban。插件失败处理见 [发言](03-posting.md#消息与插件)。source 调用成功但返回数据不可解码时，ABI 解码错误（空 revert，无 selector）直接在 GroupChat 内冒泡，不保证归一为 `ScopeSourceFailed` / `BanSourceFailed`。
 
 ## 标准接口
 

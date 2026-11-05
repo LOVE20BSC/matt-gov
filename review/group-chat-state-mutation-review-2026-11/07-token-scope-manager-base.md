@@ -116,5 +116,5 @@ _checkLOVE20Token
 | ID | 处置 | 落点 |
 | --- | --- | --- |
 | `TSM-01` | 登记：唯一性仅在单实例内，跨 Manager 可各自托管 | `06-manager.md`「四类 Manager」 |
-| `TSM-02` | 信任边界说明；已按 MemberNFT 不可升级修正表述 | 本节正文、`06-manager.md`「构造期依赖」 |
+| `TSM-02` | 信任边界说明；已按 MemberNFT 不可升级修正表述 | 本节正文、`06-manager.md`「托管群名称」（L48） |
 | `TSM-03` | 登记：托管无删除/迁移（既有文本已覆盖） | `06-manager.md`「转移与失效」 |

@@ -98,6 +98,6 @@ TokenManagerBase 构造：STAKE_ADDRESS  = IVote(VOTE_ADDRESS).STAKE_ADDRESS()
 
 | ID | 处置 | 落点 |
 | --- | --- | --- |
-| `TMB-01` | 登记：三个 immutable 不在构造期重复校验 | `06-manager.md`「构造期依赖」 |
+| `TMB-01` | 登记：三个 immutable 不在构造期重复校验 | `06-manager.md`「托管群名称」（L48） |
 | `TMB-02` | 登记：symbol 清洗规则，名称非身份（既有文本已覆盖） | `06-manager.md`「托管群名称」 |
 | `TMB-03` | 登记：`currentPhase` 直接透传、不缓存 | `04-query.md`「群聊 Round」 |

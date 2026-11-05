@@ -226,7 +226,7 @@ nonReentrant + onlySenderOwner
 | --- | --- | --- |
 | `GCH-01` | 同 api-auth 卷 `GC-01`，Low，A（文档已落地）；原处置行保留 | `docs/specs/group-chat/03-posting.md` |
 | `GCH-02` | 由 api-auth 卷 `GC-02` 关闭，文档已落地 | `docs/specs/group-chat/01-lifecycle.md`、`06-manager.md` |
-| `GCH-03` | A（文档）：声明不可解码返回以原始 ABI 解码错误冒泡 | `02-rules.md`「顺序与例外」、`07-events-errors.md`「安全」 |
+| `GCH-03` | A（文档）：声明不可解码返回以原始 ABI 解码错误冒泡 | `02-rules.md`「顺序与例外」、`07-events-errors.md`「命名与迁移规则」（L55） |
 | `GCH-04` | 登记：无「以暂停态激活」入参 | `01-lifecycle.md`「激活与配置」 |
 | `GCH-05` | 登记：`limit` 与批量入参无协议上限 | `04-query.md`「边界」 |
 | `GCH-06` | 登记：no-op 判断在代码校验之后 | `01-lifecycle.md`「激活与配置」 |
@@ -234,6 +234,6 @@ nonReentrant + onlySenderOwner
 ### 4.7 卷级汇总（2026-11-05）
 
 - 原 40 条：`Low` 1（`GCH-01`，保留原处置行）、`Info` 39（自测）。
-- 处置分布：api-auth 已覆盖并关闭 2 条（`GCH-01`、`GCH-02`）；文档登记 35 条；裁决 3 条（`GCH-03` A、`GAD-01` A、`TAM-01` B）。计数与原表一致，无新增/降级。
+- 处置分布：api-auth 已覆盖并关闭 2 条（`GCH-01`、`GCH-02`）；文档登记 35 条（其中既有文本已覆盖 8 条）；裁决 3 条（`GCH-03` A、`GAD-01` A、`TAM-01` B）。计数与原表一致，无新增/降级。
 - 补充审查：`04-group-chat-ban-list.md` §5 新增 `GVB-01..06`，6 项核对不计入原 40 条；其中 5 项成立、`GVB-02` 仅实时口径不成立（规格已声明的结算过期）。
 - 代码变更：仅 `TAM-01`（`TokenActionScopeManagerBase._checkExistingAction` + `testT113C`）；ABI/storageLayout 未变。

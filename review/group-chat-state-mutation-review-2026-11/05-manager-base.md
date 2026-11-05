@@ -137,5 +137,5 @@ _nextGroupName（写 _mintNonce，调用 isNameUsed view）
 | --- | --- | --- |
 | `MGB-01` | 登记：打包前抢注不在 8 次重试覆盖范围 | `06-manager.md`「托管群名称」 |
 | `MGB-02` | 登记：activate 无许可，付款者不获管理权（既有文本已覆盖） | `06-manager.md`「NFT 付款与持有」 |
-| `MGB-03` | 登记：`MAX_NAME_LENGTH` 下界为部署不变量 | `06-manager.md`「托管群名称」 |
+| `MGB-03` | 既有覆盖：`MAX_NAME_LENGTH` 下界为部署不变量，规格已写 | `06-manager.md`「NFT 付款与持有」（L15） |
 | `MGB-04` | 登记：`_mintNonce` 无 getter/事件，仅影响命名 | `06-manager.md`「托管群名称」 |

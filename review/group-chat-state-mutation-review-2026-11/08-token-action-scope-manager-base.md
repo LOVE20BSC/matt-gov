@@ -36,7 +36,7 @@
 关键点：
 
 - 三本状态在同一笔交易内写入，`_checkNotManaged` 使用 `_groupIdByActionId[token][action] != 0`；actionId 0 在 `_checkExistingAction` 被拒，所以 0 可以作为哨兵。
-- `_checkExistingAction` 只校验 `actionId <= proposalCount`；Submit 的 proposalId 从 1 连续递增且不删除，所以这等价于“存在该 ID 的 proposal”。它不额外校验该 proposal 是否为行动类型；行动 Manager 的语义是“为某个 proposal 建行动群”，由上层协议保证 proposal 是行动（见 `TAM-01`）。
+- `_checkExistingAction` 先校验 `actionId <= proposalCount`；Submit 的 proposalId 从 1 连续递增且不删除，所以这等价于“存在该 ID 的 proposal”。自 §4.6 方案 B 落地后，激活期再用 `IActionTarget.executorByActionId` 判定该 proposal 是否已在 ActionTarget 注册 executor，未注册则回 `ActionNotExist`，不再依赖上层协议保证类型（见 `TAM-01`）。
 - `_actionIdsByTokenAddress` 与 `_groupIdByActionId` 一一对应；`actions` 分页时用映射回填 groupId，不会漂移。
 - 同一 token+actionId 可以在不同 Manager 类型/实例各托管一次（行动主群 / 行动治理群），本合约只保证本实例内一次。
 
@@ -84,14 +84,14 @@ _checkLOVE20Token
 
 | ID | 级别 | 一句话 | 证据 |
 | --- | --- | --- | --- |
-| `TAM-01` | Info | `_checkExistingAction` 只看 `actionId <= proposalCount`，不校验该 proposal 是否为行动；行动语义由 Submit/Action 层保证 | E1 |
+| `TAM-01` | Info | `_checkExistingAction` 先校验 `actionId <= proposalCount`，再用 `executorByActionId` 判型；非行动 proposal 回 `ActionNotExist`（§4.6 方案 B 已落地） | E1 |
 | `TAM-02` | Info | `RECENT_ROUNDS == 0` 时行动治理经理的最近投票资格恒 false，行动主经理仍可用参与分支；这是部署参数语义，不是状态写入分支 | E1 |
 | `TAM-03` | Info | 三本状态没有删除/迁移路径；token+action 托管后永久保留 | E1 |
 | `TAM-04` | Info | `RECENT_ROUNDS` 没有协议上限，回看循环最多 `RECENT_ROUNDS` 次外部 view；部署值越大，`isSenderAllowed` gas 越高 | E1 |
 
 逐条说明：
 
-- **`TAM-01`**：`_checkExistingAction`（`:142-147`）调用 `ISubmit.proposalIds(token,0,0,false)` 取 `totalCount`，然后判 `actionId == 0 || actionId > proposalCount`。Submit 的 proposalId 连续无空洞，所以这等价于“proposal 存在”；但若存在非行动的 proposal，也会被接受。规格 `06-manager.md` 的“行动不存在或 actionId 为 0 回 ActionNotExist”只要求存在性，未要求类型校验。
+- **`TAM-01`**：`_checkExistingAction`（`:142-150`）调用 `ISubmit.proposalIds(token,0,0,false)` 取 `totalCount`，判 `actionId == 0 || actionId > proposalCount`；随后调用 `IActionTarget(ACTION_TARGET_ADDRESS).executorByActionId(tokenAddress, actionId)`，未注册 executor（非行动 proposal）回 `ActionNotExist`。规格 `06-manager.md` 已同步为类型校验。
 - **`TAM-02`**：`TokenActionGovManager.isSenderAllowed` 只调用 `_hasRecentActionVote`；`RECENT_ROUNDS = 0` 时循环不执行，返回 false。`TokenActionMainManager` 还接受 `_hasActionParticipation`，所以不受该参数影响。部署脚本要求 `RECENT_ROUNDS > 0`。
 - **`TAM-03`**：没有 remove/transfer/reconfigure 入口；GroupChat 配置由 Manager 固定。规格明确“不转出、不重配”。
 - **`TAM-04`**：`_hasRecentActionVote` 每轮调用一次 `IVote.voteAmountByMemberIdByProposalId`（view）。`RECENT_ROUNDS` 由部署参数决定，当前建议值 3；若设置极大，`isSenderAllowed` 可能超出区块 gas，导致该类群无法发言。合约没有上限保护。
@@ -137,3 +137,12 @@ _checkLOVE20Token
 | `TAM-02` | 登记：`RECENT_ROUNDS = 0` 时 `ag` 恒 false、`am` 参与分支不受影响 | `06-manager.md`「四类 Manager」、`05-chat-types.md`「资格数据」 |
 | `TAM-03` | 登记：action 托管无删除/迁移（既有文本已覆盖） | `06-manager.md`「转移与失效」 |
 | `TAM-04` | 登记：`RECENT_ROUNDS` 无协议上限，回看成本线性增长 | `06-manager.md`「四类 Manager」 |
+
+可复现 MD5（`group-chat`，2026-11-05）：
+
+| 合约 | 命令 | MD5 |
+| --- | --- | --- |
+| `TokenActionMainManager` | `forge inspect TokenActionMainManager abi --json \| md5` | `39adb15dbae9be578b4112ecabb62fae` |
+| `TokenActionMainManager` | `forge inspect TokenActionMainManager storageLayout --json \| md5` | `e7ed7ef5da3f57dcef5b53693db50637` |
+| `TokenActionGovManager` | `forge inspect TokenActionGovManager abi --json \| md5` | `39adb15dbae9be578b4112ecabb62fae` |
+| `TokenActionGovManager` | `forge inspect TokenActionGovManager storageLayout --json \| md5` | `a1d3dc15c595e3d5581307f036a5d1dd` |
