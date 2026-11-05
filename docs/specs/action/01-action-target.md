@@ -7,7 +7,7 @@ ActionTarget 是社群行动 Proposal 的统一 Target。Core 和回调使用 `p
 创建行动时指定 `tokenAddress`、`title`、`details`，并固定 `target = ActionTarget`、`targetMode = Callback`。Proposal 回调本身不要求 Target Data 非空；ActionTarget 创建行动另有一个必须的 `executor` 保留项，使用 Core 的 `targetData` 数组：
 
 ```text
-targetData[EXECUTOR_SLOT_INDEX] = abi.encode(executorAddress)
+targetData[SLOT_EXECUTOR] = abi.encode(executorAddress)
 ```
 
 `onProposalCreated` 按以下顺序校验，任一失败回滚整个创建操作：
@@ -31,7 +31,7 @@ targetData[EXECUTOR_SLOT_INDEX] = abi.encode(executorAddress)
 
 完整签名统一见 [Core Target 回调](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/IProposalTarget.sol)。ActionTarget 与每个 Executor 都实现这三类回调：ActionTarget 的 `onProposalCreated`/`onProposalSubmitted` 仅 Submit 可调用（否则回滚 `NotSubmit(caller)`），`onProposalVoted` 仅 Vote 可调用（否则回滚 `NotVote(caller)`）；Executor 的同名回调仅接受 ActionTarget 调用，其他调用者回滚 `NotActionTarget(caller)`。推举与投票回调遇到未绑定 `(tokenAddress, proposalId)` 时回滚 `UnboundProposal(tokenAddress, proposalId)`——结构上不可达（创建回调必先于推举），仅防御 Core 侧缺陷。任一回调失败均回滚对应外层操作。
 
-**Executor 的实现来源不在本合约的校验范围**：创建回调只做握手（有代码 + `ACTION_TARGET_ADDRESS()` 回指），没有注册表、白名单或实现指纹。提案创建者可以绑定自造合约，该合约随即获得该行动的 `registerJoinState`/`clearJoinState`/`mintActionReward` 三项写入权；这属于「授权主体把权益导向任意地址」，风险由提案投票承担（`targetData[EXECUTOR_SLOT_INDEX]` 在提案正文中对投票者可见）。集成方不应假设存在可信 Executor 名单。
+**Executor 的实现来源不在本合约的校验范围**：创建回调只做握手（有代码 + `ACTION_TARGET_ADDRESS()` 回指），没有注册表、白名单或实现指纹。提案创建者可以绑定自造合约，该合约随即获得该行动的 `registerJoinState`/`clearJoinState`/`mintActionReward` 三项写入权；这属于「授权主体把权益导向任意地址」，风险由提案投票承担（`targetData[SLOT_EXECUTOR]` 在提案正文中对投票者可见）。集成方不应假设存在可信 Executor 名单。
 
 ## 加入与退出
 

@@ -17,7 +17,7 @@
 
 ## Target Data 长度常量不派生（2026-11-05）
 
-`targetData` 的字段下标与长度改为私有常量（`TARGET_DATA_PAYLOAD_START_INDEX`、`JOIN_TOKEN_SLOT_INDEX` … `VERIFICATION_INFO_SLOT_INDEX`），但**长度常量保持字面量，不用派生式 `LEN = LAST_SLOT + 1`**：实测 solc 0.8.37 不把该派生式折叠成常量，`LpExecutor` 增加 58 字节、`GroupServiceExecutor` 增加 59 字节，因此放弃派生。
+`targetData` 的字段下标与长度改为私有常量（`SLOT_PAYLOAD_START`、`SLOT_JOIN_TOKEN` … `SLOT_VERIFICATION_INFO`），但**长度常量保持字面量，不用派生式 `LEN = LAST_SLOT + 1`**：实测 solc 0.8.37 不把该派生式折叠成常量，`LpExecutor` 增加 58 字节、`GroupServiceExecutor` 增加 59 字节，因此放弃派生。
 
 代价是长度常量与字段下标之间为**人工保持一致的耦合**——`GroupActionManager` 的 `TARGET_DATA_MIN_LENGTH = 6` / `TARGET_DATA_MAX_LENGTH = 7`（对应第 `1`～`5` 项必需、第 `6` 项可选验证信息）、`LpExecutor` 与 `GroupServiceExecutor` 的 `TARGET_DATA_LENGTH = 4`、`ActionTarget` 的 `TARGET_DATA_LENGTH = 1`（仅 executor 槽位）。增删任一 `targetData` 字段时必须同步修改对应长度常量，评审逐处核对取值与字段区间。长度常量按执行器各自持有、不跨执行器共享，因为四个入口的项数边界本就不同（`ActionTarget` 1、LP / GSE 4、GAE 6~7）。数值本身是 ABI 契约，改动即改变回滚载荷，见 [04](action/04-lp-executor.md)、[05](action/05-group-action-executor.md)、[06](action/06-service-executor.md)。
 
@@ -166,7 +166,7 @@ Action 门禁：**406 tests 全绿**；`build --deny warnings`、`lint`、`check
 #### Executor 保留项
 - **保留项位置**：`targetData` 的第 `0` 项固定为 `executor`
 - **最小长度**：`targetData.length` 必须 >= 1，第 0 项为 executor，其余项由 Executor 解释
-- **格式**：`targetData[EXECUTOR_SLOT_INDEX] = abi.encode(executorAddress)`
+- **格式**：`targetData[SLOT_EXECUTOR] = abi.encode(executorAddress)`
 - **校验**：第 1～3 步依次为「第 0 项存在」「第 0 项恰为 32 字节（`abi.encode(address)` 形态）、解码后非零且有代码」「`IActionExecutor(executor).actionTarget() == address(this)`」，任一失败回滚 `InvalidExecutor()`；第 4 步同一复合键重复创建回滚 `AlreadyCreated(tokenAddress, actionId)`
 
 #### Target Data 位置契约
