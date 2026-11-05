@@ -146,6 +146,8 @@
 | 2 | `ActionTarget.sol:485` | `function onProposalSubmitted` | `targetData[0].length != 32` | `0, targetData[0].length` |
 | 3 | `ActionTarget.sol:514` | `function onProposalVoted` | `targetData[0].length != 32` | `0, targetData[0].length` |
 
+> 追注（`action@e4c2555`）：三处校验已合并为一个私有函数 `_executorFromSlot(bytes calldata)`（`ActionTarget.sol:392`），`revert` 由 3 处减为 1 处（`ActionTarget.sol:394`），载荷与 selector 不变；本文件站点 20 → 18，该错误跨仓站点 7 → 5（其余 4 处分别在 `GroupActionManager.sol:78`、`GroupActionVerify.sol:393`、`GroupServiceExecutor.sol:417`、`LpExecutor.sol:109`），声明仍为 4 份。收敛提交为 `action@e4c2555` `refactor(action): extract executor target data access`，注册表随 `matt-gov@7744337` `chore(registry): 刷新错误站点行号` 重生成——该提交信息只提「行号」，实际含站点数收敛，勿按纯位移理解。上表行号与站点数仍按 `2014788` 基线口径。
+
 ### `ExecutorNotContract` · 1 站点 · 保留
 
 - 声明：`interfaces/IActionTarget.sol:65`
