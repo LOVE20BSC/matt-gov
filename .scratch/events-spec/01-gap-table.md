@@ -109,7 +109,7 @@
 | 11 | `SetAdmin` `IGroupAdmin:12` | `AdminChanged` | 改名+改形 | 合并快照：增 `prevListed` 与 `groupOwnerSnapshot`/`adminOwnerSnapshot` 的旧+新值 | 同时覆盖 `removeAdmins` 删除快照的静默写；见 O2 |
 | 12 | `SetAdminSnapshot` `IGroupAdmin:16` | — | 删除（合并） | 并入 `AdminChanged` | NFT 转移导致的失效由 core ERC721 `Transfer` 推导；见 O2 |
 | 13 | `SetMemberId` `IGroupMember:10` | `MemberStatusChanged` | 改名 | `listed`；旧值布尔取反可推 | — |
-| 14 | `SetSenderIdBan` `IGroupChatBanList:11` | `SenderBanChanged` | 改名 | `listed`；旧值布尔取反可推；`operatorAddress` 统一为 `operator` | 解禁时 operator 字段仍为执行者，语义明确 |
+| 14 | `SetSenderIdBan` `IGroupChatBanList:11` | `AdminSenderBanChanged` | 改名 | `listed`；旧值布尔取反可推；`operatorAddress` 统一为 `operator` | 解禁时 operator 字段仍为执行者，语义明确 |
 | 15 | `SetDelegateId` `IGroupChatDelegate:13` | `DelegateChanged` | 改名+改形 | 增 `ownerSnapshot`/`delegateOwnerSnapshot` 的旧+新值；保留 `prevDelegateId` | 覆盖两个 snapshot 静默写 |
 | 16 | `ClearDelegatedGroupId` `IGroupChatDelegate:17` | `DelegationCleared` | 改名+改形 | 增快照旧值（新值为 0） | 清零事实独立于 `DelegateChanged` |
 | 17 | `SetDelegatorWhitelistEnabled` `IGroupChatDelegate:19` | `DelegationAcceptanceChanged` | 改名+改义 | `enabled`；按群白名单改为按 delegateId 的接受开关，旧值布尔取反可推 | 2026-10-29 |
@@ -157,7 +157,7 @@
 | `AdminChanged` | 两个快照 | 两个快照 | 新增旧值；`listed` 布尔取反可推 |
 | `DelegateChanged` | `prevDelegateId` + 两个快照 | 新 | 新增快照旧值 |
 | `DelegationCleared` | 两个快照 | 0 | 新增旧值 |
-| `PostingAllowedChanged` / `MemberStatusChanged` / `SenderBanChanged` / `DelegationAcceptanceChanged` / `GovSenderBanChanged` | 布尔取反可推 | 新 | 省略旧值（Q32a）；接受开关按 memberId 继承，不随 delegate NFT 转移重置 |
+| `PostingAllowedChanged` / `MemberStatusChanged` / `AdminSenderBanChanged` / `DelegationAcceptanceChanged` / `GovSenderBanChanged` | 布尔取反可推 | 新 | 省略旧值（Q32a）；接受开关按 memberId 继承，不随 delegate NFT 转移重置 |
 | ~~`StateVersionChanged`~~ | — | — | 已删除；`stateVersion` 字段/getter 随后整体移除，变更由 `SenderBanVoteCast`/`GovSenderBanChanged` 承载 |
 | `SenderBanVoteCast` | 上一条投票事件 | 新 vote + 累计权重 | 非配置变更，不强制旧值 |
 
@@ -180,7 +180,7 @@
 | `_mintNonce` | `ManagerBase.sol:134` | 群创建事件（core `MemberMinted` + manager 链路事件）的计数 |
 | delegate 原始索引与 owner 快照 | `GroupChatDelegate.sol:14-21` | `DelegateChanged`/`DelegationCleared`；**有效性**另由 core ERC721 `Transfer`（群 owner / delegate owner 变化）折叠 |
 | `_delegationAcceptanceEnabled` | `GroupChatDelegate.sol:22` | `DelegationAcceptanceChanged` 逐条覆盖；开关不参与有效性，也不随 NFT 转移重置 |
-| ban 列表 operator 状态 | `GroupChatBanList.sol:128-130` | `SenderBanChanged` 的 actor + `listed` |
+| ban 列表 operator 状态 | `GroupChatBanList.sol:128-130` | `AdminSenderBanChanged` 的 actor + `listed` |
 | `firstActivatedOwner`/`firstActivatedBlockNumber`/`firstActivatedTimestamp` | `GroupChat.sol:125-127` | `GroupChatActivated.owner` + 该日志的块号/时间戳 |
 | `Message.senderAddress` | `GroupChat.sol:864` | `MessagePosted.sender`（`onlySenderOwner` 保证恒等于该 `senderId` 的 owner） |
 | admin 有效性 | `GroupAdmin.sol:83-89,173-182` | `AdminChanged` 快照 + core ERC721 `Transfer`（owner 变化） |

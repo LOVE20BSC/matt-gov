@@ -15,23 +15,23 @@
 | P0 / P1 / P2 / P3 | 0 / 0 / 0 / 0（独立发现） |
 | 放行 | 可放行；关联 `GL-EV-2`（`senderIdBanList` 枚举顺序）、`GL-EV-4`（幂等零日志断言）见 README |
 
-`GroupChatBanList` 维护管理员手工封禁名单与「最后一次封禁操作者」状态。`SenderBanChanged` 同时覆盖 `listed=true`（封禁）与 `listed=false`（解封）；封禁时写入操作者快照，解封时删除操作者快照。事件在集合与操作者状态写入之后发射，重复封禁/解封不写不发。
+`GroupChatBanList` 维护管理员手工封禁名单与「最后一次封禁操作者」状态。`AdminSenderBanChanged` 同时覆盖 `listed=true`（封禁）与 `listed=false`（解封）；封禁时写入操作者快照，解封时删除操作者快照。事件在集合与操作者状态写入之后发射，重复封禁/解封不写不发。
 
 ## 二、事件与发射点总览
 
 | 事件 | indexed | 发射点 | 前置写入 | 紧随其后的动作 |
 | --- | --- | --- | --- | --- |
-| `SenderBanChanged`（封禁） | `groupId`, `targetSenderId`, `operator` | `_setSenderIdBanTargets:119` | `senderIdBanList.add:116`、`senderIdBanOperatorStates:134` | 返回 `banBySenderIds` 循环 |
-| `SenderBanChanged`（解封） | 同上 | `_setSenderIdBanTargets:119` | `senderIdBanList.remove:116`、`delete senderIdBanOperatorStates:136` | 返回 `unbanBySenderIds` 循环 |
+| `AdminSenderBanChanged`（封禁） | `groupId`, `targetSenderId`, `operator` | `_setSenderIdBanTargets:119` | `senderIdBanList.add:116`、`senderIdBanOperatorStates:134` | 返回 `banBySenderIds` 循环 |
+| `AdminSenderBanChanged`（解封） | 同上 | `_setSenderIdBanTargets:119` | `senderIdBanList.remove:116`、`delete senderIdBanOperatorStates:136` | 返回 `unbanBySenderIds` 循环 |
 
 `banBySenderIds` / `unbanBySenderIds` 的 `onlyOperator:37` / `:44` 完成群存在性与 owner/admin 鉴权；`_setSenderIdBanTargets` 内逐项检查 `targetSenderId != 0` 和数组内重复。
 
 ## 三、逐事件赋值链
 
-### 3.1 `SenderBanChanged`
+### 3.1 `AdminSenderBanChanged`
 
 ```
-event SenderBanChanged(
+event AdminSenderBanChanged(
     uint256 indexed groupId,
     uint256 indexed targetSenderId,
     uint256 operatorId,
@@ -56,14 +56,14 @@ event SenderBanChanged(
 4. `changed == true` 时 `_setSenderIdBanOperatorState:118`：封禁写 `BanOperatorState(msg.sender, operatorId)`（`:134`），解封删除（`:136`）；随后 emit。
 5. `changed == false` 不写不发；任一项 revert 整批回滚。
 
-解封事件的 `operator` / `operatorId` 是**解封者**，不是原封禁者。原封禁者仍可从更早的 `SenderBanChanged(listed=true)` 事件还原；解封后 `senderIdBanDetails` 返回零操作者，与视图语义一致。
+解封事件的 `operator` / `operatorId` 是**解封者**，不是原封禁者。原封禁者仍可从更早的 `AdminSenderBanChanged(listed=true)` 事件还原；解封后 `senderIdBanDetails` 返回零操作者，与视图语义一致。
 
 ## 四、状态写入与事件覆盖对照
 
 | 状态 | 写入点 | 承载事件 | 折叠口径 |
 | --- | --- | --- | --- |
-| `senderIdBanList`（`Uint256Set`） | `add:116` / `remove:116` | `SenderBanChanged.listed` | 按日志顺序取最后一次 |
-| `senderIdBanOperatorStates[groupId][senderId]` | `:134` / `delete:136` | `SenderBanChanged.operator` + `operatorId` | 封禁时新值，解封时删除；历史操作者由事件序列保留 |
+| `senderIdBanList`（`Uint256Set`） | `add:116` / `remove:116` | `AdminSenderBanChanged.listed` | 按日志顺序取最后一次 |
+| `senderIdBanOperatorStates[groupId][senderId]` | `:134` / `delete:136` | `AdminSenderBanChanged.operator` + `operatorId` | 封禁时新值，解封时删除；历史操作者由事件序列保留 |
 
 两个业务写入面全部有事件覆盖。`senderIdBanList(groupId, offset, limit, reverse)` 的页序依赖 `Uint256Set` 当前存储顺序（swap-and-pop），见 `GL-EV-2`；`senderIdBanDetails` 的 `operatorAddresses` / `operatorIds` 对未封禁项返回零，与删除后的状态一致。
 
@@ -92,7 +92,7 @@ event SenderBanChanged(
 
 ### 正面结论（不计入发现）
 
-- `SenderBanChanged` 覆盖封禁/解封两个方向，`listed` 明确方向，旧值可推出。
+- `AdminSenderBanChanged` 覆盖封禁/解封两个方向，`listed` 明确方向，旧值可推出。
 - 封禁与解封的 `senderIdBanOperatorStates` 写入/删除都在事件之前；`testT128B` 断言解封后重新封禁的操作者切换，`testT128` 断言未封禁项返回零操作者。
 - 目标只要求非零，不要求 NFT 存在，符合 `05-chat-types.md` 的预黑名单规则；零目标与重复 ID 都由 custom error 回滚。
 - 批次按入参逐条发事件；`testT123` 的列表页与 `testT123B` 的 swap-and-pop 当前存储顺序均有覆盖。
@@ -102,10 +102,10 @@ event SenderBanChanged(
 
 | 事件 | 用例 | 覆盖内容 |
 | --- | --- | --- |
-| `SenderBanChanged` | `AdminBanSource.t.sol:61-89`（T120B） | 封禁 + 解封；3 个 topic、`operatorId`、`listed`；未断言 emitter |
-| `SenderBanChanged` | `:346-397`（T128B） | 解封清空操作者、重新封禁切换操作者；未断言事件字段 |
-| `SenderBanChanged` | `:170-214`（T123） | 列表页、重复封禁（未断言零日志） |
-| `SenderBanChanged` | `:215-242`（T123B） | swap-and-pop 当前存储顺序（视图侧） |
+| `AdminSenderBanChanged` | `AdminBanSource.t.sol:61-89`（T120B） | 封禁 + 解封；3 个 topic、`operatorId`、`listed`；未断言 emitter |
+| `AdminSenderBanChanged` | `:346-397`（T128B） | 解封清空操作者、重新封禁切换操作者；未断言事件字段 |
+| `AdminSenderBanChanged` | `:170-214`（T123） | 列表页、重复封禁（未断言零日志） |
+| `AdminSenderBanChanged` | `:215-242`（T123B） | swap-and-pop 当前存储顺序（视图侧） |
 
 ## 八、复现
 

@@ -42,7 +42,7 @@
 
 ## 第三轮修复（2026-10-27）
 
-- group-chat 字段顺序：`AdminChanged`/`MemberStatusChanged`/`SenderBanChanged`/`DelegateChanged` 对象 id 在 actor 前；`SenderMentioned` 改为 `groupId, messageId, mentionedSenderId`；`MessagePosted` 的 `content` 后置，emit 改为从已落库 `StoredMessage` 读取以避免 stack-too-deep。
+- group-chat 字段顺序：`AdminChanged`/`MemberStatusChanged`/`AdminSenderBanChanged`/`DelegateChanged` 对象 id 在 actor 前；`SenderMentioned` 改为 `groupId, messageId, mentionedSenderId`；`MessagePosted` 的 `content` 后置，emit 改为从已落库 `StoredMessage` 读取以避免 stack-too-deep。
 - `DelegateChanged(delegateId=0)` 保留为显式清除编码；`providerId=0` 定义为 self；规范 §3.6/§6.4 已登记。
 - Checker 增加参数名/anonymous、移除 `src/interfaces/` 盲区、基线重生成（28/34/23）；三仓 `.github/workflows/events.yml` 已加。
 - 新 action 错误参数名 `max`→`maxLength`/`maxCount`；helper 单行参数、空段、`I*BaseEvents` 命名、Mint 注释、Stake 剩余公式、`ApplicationVoteRecorded` emitter 断言已修（action 444）。
@@ -108,7 +108,7 @@
 | 事件 | 成对字段 | 理由 |
 |---|---|---|
 | `GroupChatActivated` | `groupId` / `ownerId` | group-chat 域内 owner 的 actor id 恒为 `groupId`（`ownerOrDelegateIdOf(groupId, owner)` 返回 `groupId`，与群 NFT 由 EOA 还是 Manager 持有无关），故 `ownerId` 必然等于 `groupId`；保留它是为满足 §6.4 的 id/address 成对、并保持 `gc.management` 族 topic2 = actor id 的布局，不是冗余 |
-| `AdminChanged` / `MemberStatusChanged` / `SenderBanChanged` | `operatorId` ≡ `groupId`（群 owner 操作时） | 群 owner 的 actor id 恒为 `groupId`（`ownerOrDelegateIdOf(groupId, owner)` 返回 `groupId`），因此 owner 操作时 `operatorId` 必然等于 `groupId`；admin 操作时 `operatorId` 为其 memberId，两者在夹具中可用 admin 用例区分。保留 `operatorId` 是为 §6.4 的 id/address 成对，不是冗余 |
+| `AdminChanged` / `MemberStatusChanged` / `AdminSenderBanChanged` | `operatorId` ≡ `groupId`（群 owner 操作时） | 群 owner 的 actor id 恒为 `groupId`（`ownerOrDelegateIdOf(groupId, owner)` 返回 `groupId`），因此 owner 操作时 `operatorId` 必然等于 `groupId`；admin 操作时 `operatorId` 为其 memberId，两者在夹具中可用 admin 用例区分。保留 `operatorId` 是为 §6.4 的 id/address 成对，不是冗余 |
 | `DelegateChanged` | `owner` / `ownerSnapshot`（`delegateId != 0`） | actor 地址槽与新快照组在非零委托时取同一个值：`owner` 是当前群主（actor），`ownerSnapshot` 写入的也是当前群主；`delegateId = 0` 时快照写零而 `owner` 非零，两者可分。结构上必须保留两个槽（actor 地址 + 新快照组），夹具无法区分只能登记 |
 | `StakesMerged` | `targetGovVotes` ≡ `targetLiquidityShares` × `targetPromisedWaitingPhases` | 同事件内两个字段的乘积；保留派生值让消费方免于复算 |
 | `StakesMerged` | `prevSourceGovVotes` ≡ `liquiditySharesMerged` × `prevSourcePromisedWaitingPhases` | 同上；`prevSource*` 是融合前源成员状态，源被清空后只能由此处取 |

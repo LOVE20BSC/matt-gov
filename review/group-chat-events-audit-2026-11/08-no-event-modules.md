@@ -23,7 +23,7 @@
 - 对象 `src/sources/ban/AdminBanSource.sol`（18 行），`contract`；接口 `IAdminBanSource`（`isBanned`）。
 - 状态：仅 `GROUP_BAN_LIST_ADDRESS` immutable（构造），无可变业务状态。
 - 逻辑：`isBanned(groupId, senderId)` 直接读 `IGroupChatBanList.isSenderIdBanned`（`:15-17`）。
-- 事件：无。黑名单事实由 `GroupChatBanList.SenderBanChanged` 承载，`AdminBanSource` 只是读取适配器，不重复发射。
+- 事件：无。黑名单事实由 `GroupChatBanList.AdminSenderBanChanged` 承载，`AdminBanSource` 只是读取适配器，不重复发射。
 - 结论：0 事件合理；无状态写入。
 
 ### 2.2 `GroupJoinScopeSource`
@@ -70,7 +70,7 @@
 
 | 模块 | 可变业务状态 | 承载事件/推导 | 结论 |
 | --- | --- | --- | --- |
-| `AdminBanSource` | 无 | 读 `GroupChatBanList` 的 `SenderBanChanged` 结果 | 无缺口 |
+| `AdminBanSource` | 无 | 读 `GroupChatBanList` 的 `AdminSenderBanChanged` 结果 | 无缺口 |
 | `GroupJoinScopeSource` | 无 | 读 `GroupMember` / GroupAction 索引事件结果 | 无缺口 |
 | `GroupMemberScope` | 无 | 读 `GroupMember.MemberStatusChanged` 结果 | 无缺口 |
 | `ManagerBase` | `_mintNonce` | §6.9 派生缓存（mint nonce）；名称事实由 core `MemberMinted` | 无缺口 |

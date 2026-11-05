@@ -185,7 +185,7 @@
 
 - `Joined` / `Exited` / `Withdrawn` → `GroupActionJoined` / `LpJoined` / `ServiceJoined` 等域前缀。
 - `Activate` → `GroupChatActivated` / `TokenGroupActivated` / `TokenActionGroupActivated`。
-- `SetSenderIdBan` → `SenderBanChanged`（管理员封禁列表）/ `GovSenderBanChanged`（治理投票结果）。
+- `SetSenderIdBan` → `AdminSenderBanChanged`（管理员封禁列表）/ `GovSenderBanChanged`（治理投票结果）。
 - `Exited` 在 LP 与 Service 之间的 topic0 冲突随域前缀消除。
 
 ### 5.3 创建事实
@@ -237,7 +237,7 @@ ERC-20 / ERC-721 标准事件保持不变，不进入本规范正文。`AddHolde
 | action.verification | 根键 → actionId → 主体 id（`memberId`/`groupId`/`voterId`/`verifierId`）→ round → `applicationId`/`verifierId` → 次级 id（被投的验证者 / 上一申请）→ 数值/布尔 → 文本/数组 | `OriginScoresSubmitted`、`VerifierApplicationSubmitted`、`VerifierApplicationCancelled`、`VerifierStakeDeposited`、`VerifierStakeRefunded`、`VerifierLocked`、`ApplicationVoteRecorded` |
 | action.recipients | 根键 → sourceActionId → round → groupId → 新表 → 旧表 | `RecipientsChanged` |
 | action.service | 根键 → serviceActionId → round → 对象链（groupId 或 actionTokenAddress）→ 源链/角色 → 数值 | `RecipientPaid`、`ServiceRewardsDistributed` |
-| gc.management | 根键 → 对象标识（id 或对象地址）→ actor id → actor 地址 → 新值组 → 旧值组 | `AdminChanged`、`MemberStatusChanged`、`SenderBanChanged`、`GroupChatActivated`、`PostingAllowedChanged`、`ScopeSourceChanged`、`BanSourceChanged`、`BeforePostPluginChanged`、`AfterPostPluginChanged` |
+| gc.management | 根键 → 对象标识（id 或对象地址）→ actor id → actor 地址 → 新值组 → 旧值组 | `AdminChanged`、`MemberStatusChanged`、`AdminSenderBanChanged`、`GroupChatActivated`、`PostingAllowedChanged`、`ScopeSourceChanged`、`BanSourceChanged`、`BeforePostPluginChanged`、`AfterPostPluginChanged` |
 | gc.ban-vote | 根键 → targetSenderId → voterId → 布尔 → 数值 | `SenderBanVoteCast`、`GovSenderBanChanged` |
 | gc.message | 根键 → messageId → senderId → sender → round → 引用 messageId → 数值/布尔 → content | `MessagePosted`、`SenderMentioned` |
 | gc.plugin | 根键 → messageId → round → pluginAddress → 错误指纹 | `AfterPostPluginFailed` |
@@ -267,7 +267,7 @@ ERC-20 / ERC-721 标准事件保持不变，不进入本规范正文。`AddHolde
 - 纯链路事件（`TokenActionGroupActivated`）的 3 个槽给链路键；actor 入 payload。
 - `string` / `bytes` / 动态数组绝不 indexed；禁止 anonymous event。
 - actor 与主对象 id 应当 indexed；同组事件必须在迁移中对齐（`VerifierLocked`、`StakesMerged`）。
-- `gc.management` 族的 actor 在只剩一个槽时按「对象标识形态」择一：对象标识是 **id** 时第三个槽给 actor **地址**（`AdminChanged`、`MemberStatusChanged`、`SenderBanChanged`）；对象标识是**地址**时第三个槽给 actor **id**（`ScopeSourceChanged`、`BanSourceChanged`、`BeforePostPluginChanged`、`AfterPostPluginChanged`）；对象只有根键时 id 与地址都 indexed（`PostingAllowedChanged`、`GroupChatActivated`；后者的 `ownerId` 是 actor id 且恒等于 `groupId`）。这样每个事件至少提供一个对象键和一个 actor 的可过滤形式——钱包按地址订阅、协议按 id 对账各取所需。
+- `gc.management` 族的 actor 在只剩一个槽时按「对象标识形态」择一：对象标识是 **id** 时第三个槽给 actor **地址**（`AdminChanged`、`MemberStatusChanged`、`AdminSenderBanChanged`）；对象标识是**地址**时第三个槽给 actor **id**（`ScopeSourceChanged`、`BanSourceChanged`、`BeforePostPluginChanged`、`AfterPostPluginChanged`）；对象只有根键时 id 与地址都 indexed（`PostingAllowedChanged`、`GroupChatActivated`；后者的 `ownerId` 是 actor id 且恒等于 `groupId`）。这样每个事件至少提供一个对象键和一个 actor 的可过滤形式——钱包按地址订阅、协议按 id 对账各取所需。
 - **已登记的三槽取舍**：`ApplicationVoteRecorded` 的三个槽被 `tokenAddress` / `actionId` / `applicationId` 占满，`voterId` 与 `verifierId` 降为 payload；它不与同族前 6 条「actor indexed」对齐，是槽位优先级的结果，不是漂移。`RecipientsChanged` / `RecipientPaid` 的三个槽被 `sourceTokenAddress` / `sourceActionId` / `groupId` 占满，`recipientIds`（动态数组，禁止 indexed）与 `recipientId` 不能作为 topic；按收款人检索必须从 payload 建链下索引，不改为可过滤而牺牲对象键。
 
 ### 6.4 角色词表
@@ -418,7 +418,7 @@ v1 基线：
 | Message | 发布、提及、afterPost 失败 | `MessagePosted`、`SenderMentioned`、`AfterPostPluginFailed` |
 | AdminSet | 管理员增删、快照刷新 | `AdminChanged` |
 | MemberSet | 成员状态 | `MemberStatusChanged` |
-| BanSet | 管理员封禁、投票、撤票/归零、结果封禁 | `SenderBanChanged`、`SenderBanVoteCast`、`SenderBanVoteCleared`、`GovSenderBanChanged`（带 `totalVoteWeight` / `supportWeight` / `opposeWeight` 完整快照）；两套集合（人工/治理）按 `banSource` 生效 |
+| BanSet | 管理员封禁、投票、撤票/归零、结果封禁 | `AdminSenderBanChanged`、`SenderBanVoteCast`、`SenderBanVoteCleared`、`GovSenderBanChanged`（带 `totalVoteWeight` / `supportWeight` / `opposeWeight` 完整快照）；两套集合（人工/治理）按 `banSource` 生效 |
 | ManagerLink | token → group、token+action → group | `TokenGroupActivated`、`TokenActionGroupActivated` |
 | GroupName | 群名铸造 | core `MemberMinted`（跨仓链路） |
 
@@ -433,7 +433,7 @@ v1 基线：
 
 ## 8. 可执行化
 
-1. 每个事件至少一个测试断言：发射条件、发射次数、字段顺序、indexed 布局、**字段取值**。同一事件内两个同类型字段必须由**取值可区分**的夹具断言——把两个实参互换后测试仍通过，等于没有断言。协议上恒等的成对字段免于此条，但必须满足其一并在 `.scratch/events-spec/03-migration-status.md` 的「恒等对」清单登记理由（迁移冻结后该清单并入本文 §7 的对象表，随对象表一起维护）：(a) §6.4 的 `<role>Id` / `<role>` 成对槽位，且该 id 必然等于另一字段（`GroupChatActivated.ownerId` ≡ `groupId`，因为 group-chat 域内 owner 的 actor id 恒为 `groupId`；同理，群 owner 作为操作者时 `AdminChanged.operatorId` / `MemberStatusChanged.operatorId` / `SenderBanChanged.operatorId` ≡ `groupId`，admin 操作时 `operatorId` 为其 memberId）；(b) 1:1 记账使两个字段恒等，或同事件内两个字段的乘积恒等于第三个字段（`StakesMerged.targetGovVotes` ≡ `targetLiquidityShares × targetPromisedWaitingPhases`、`prevSourceGovVotes` ≡ `liquiditySharesMerged × prevSourcePromisedWaitingPhases`）——后者保留派生值是为了让消费方免于复算，属有意冗余。两个字段只是「本次夹具恰好同值」不构成恒等，必须改夹具让它们分开。
+1. 每个事件至少一个测试断言：发射条件、发射次数、字段顺序、indexed 布局、**字段取值**。同一事件内两个同类型字段必须由**取值可区分**的夹具断言——把两个实参互换后测试仍通过，等于没有断言。协议上恒等的成对字段免于此条，但必须满足其一并在 `.scratch/events-spec/03-migration-status.md` 的「恒等对」清单登记理由（迁移冻结后该清单并入本文 §7 的对象表，随对象表一起维护）：(a) §6.4 的 `<role>Id` / `<role>` 成对槽位，且该 id 必然等于另一字段（`GroupChatActivated.ownerId` ≡ `groupId`，因为 group-chat 域内 owner 的 actor id 恒为 `groupId`；同理，群 owner 作为操作者时 `AdminChanged.operatorId` / `MemberStatusChanged.operatorId` / `AdminSenderBanChanged.operatorId` ≡ `groupId`，admin 操作时 `operatorId` 为其 memberId）；(b) 1:1 记账使两个字段恒等，或同事件内两个字段的乘积恒等于第三个字段（`StakesMerged.targetGovVotes` ≡ `targetLiquidityShares × targetPromisedWaitingPhases`、`prevSourceGovVotes` ≡ `liquiditySharesMerged × prevSourcePromisedWaitingPhases`）——后者保留派生值是为了让消费方免于复算，属有意冗余。两个字段只是「本次夹具恰好同值」不构成恒等，必须改夹具让它们分开。
 2. 每个仓库维护两份事件表：从 ABI 生成的「事件清单」基线 `script/events/events-baseline.txt`，以及「事件 → 族」映射 `script/events/event-families.txt`。检查器 `<repo>/script/events/check-events.py` 校验族覆盖、根键首字段与 `round` 锚点，并对比 ABI 基线；新增/修改/删除事件必须显式更新两份表。检查器内的族槽位表是 §6.1 的**逐仓切片**，只登记本仓发射的族，全量以本文为准；切片之外的部分（ABI 扫描、基线比对、槽位判定）三仓逐字节相同。各仓 `.github/workflows/ci.yml` 在 push/PR 运行该检查器。
 3. 新增或修改事件时，必须同步更新覆盖矩阵与本文的对象模型；只改代码不改模型视为规范缺陷。
 4. 事件声明与 emit 点不写注释；语义只写在本文。

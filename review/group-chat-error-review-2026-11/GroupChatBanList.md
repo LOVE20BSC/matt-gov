@@ -52,7 +52,7 @@ banBySenderIds / unbanBySenderIds
 2. 元素  逐元素：
          senderId == 0                       → ZeroTargetSenderId()
          与前面元素重复                        → DuplicateMemberId(senderId)
-         add / remove；changed 才更新 operator 记录并发 SenderBanChanged
+         add / remove；changed 才更新 operator 记录并发 AdminSenderBanChanged
 ```
 
 - `_isOperator` 对 `operatorId` 用 `MemberOwner.ownerOrZero`，缺失的 operator NFT 得到地址 0，随后按鉴权失败回 `NotGroupOperator`，不透传 `ERC721NonexistentToken`。这与 07-events-errors:29 的“复合群鉴权回 `NotGroupOperator`”一致，也避免向未授权方泄露身份存在性。

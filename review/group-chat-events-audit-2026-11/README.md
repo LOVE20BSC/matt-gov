@@ -96,7 +96,7 @@
 | 9 | `AfterPostPluginFailed` | GroupChat | gc.plugin | `GroupChat:284` | 01 |
 | 10 | `AdminChanged` | GroupAdmin | gc.management | `GroupAdmin:97`、`:125` | 02 |
 | 11 | `MemberStatusChanged` | GroupMember | gc.management | `GroupMember:81` | 03 |
-| 12 | `SenderBanChanged` | GroupChatBanList | gc.management | `GroupChatBanList:119` | 04 |
+| 12 | `AdminSenderBanChanged` | GroupChatBanList | gc.management | `GroupChatBanList:119` | 04 |
 | 13 | `SenderBanVoteCast` | GovVotedBanSource | gc.ban-vote | `GovVotedBanSource:298` | 05 |
 | 14 | `GovSenderBanChanged` | GovVotedBanSource | gc.ban-vote | `GovVotedBanSource:319` | 05 |
 | 15 | `TokenGroupActivated` | TokenMainManager、TokenGovManager | gc.link | `TokenScopeManagerBase:89` | 06 |
@@ -156,7 +156,7 @@
 | `vm.expectEmit` | 0 | **0** | 无 4 参/5 参 `expectEmit`；emitter 一律手工断言 |
 | 手工 `.emitter` 断言 | **3** | **33** | 基线 `GroupAdmin.t.sol:238`（`AdminChanged`）、`TypedManagers.t.sol:600` / `:617`（两个 link helper；本卷加 GC-EV-3 断言后为 `:606` / `:629`） |
 | 有 emitter 断言的事件类 | **3 / 16** | **17 / 17** | `AdminChanged`、`TokenGroupActivated`、`TokenActionGroupActivated` 为基线已有；其余 13 类 + `SenderBanVoteCleared` 本卷补齐 |
-| 缺 emitter 断言的事件类 | **13 / 16** | **0** | `GroupChatActivated`、`PostingAllowedChanged`、`ScopeSourceChanged`、`BanSourceChanged`、`BeforePostPluginChanged`、`AfterPostPluginChanged`、`MessagePosted`、`SenderMentioned`、`AfterPostPluginFailed`、`MemberStatusChanged`、`SenderBanChanged`、`SenderBanVoteCast`、`GovSenderBanChanged` |
+| 缺 emitter 断言的事件类 | **13 / 16** | **0** | `GroupChatActivated`、`PostingAllowedChanged`、`ScopeSourceChanged`、`BanSourceChanged`、`BeforePostPluginChanged`、`AfterPostPluginChanged`、`MessagePosted`、`SenderMentioned`、`AfterPostPluginFailed`、`MemberStatusChanged`、`AdminSenderBanChanged`、`SenderBanVoteCast`、`GovSenderBanChanged` |
 
 - 结论：group-chat 不是「0 处事件断言」——基线有 35 个 `recordLogs` 块、大量 `topics[0]` / `data` 断言，也已有 3 处手工 emitter 断言；缺口是「13 个事件类只要在既有 `recordLogs` 块各补一行 `assertEq(log.emitter, address(...))`」。本卷已按此闭合到 17/17。
 - 与既有审查的差异：`matt-gov/review/action-events-audit-2026-11/README.md:146` 的表格把 group-chat 的 emitter 断言记为 0；本次以基线 e982df8 实测为 **3 处 / 3 个事件类**（口径：`vm.expectEmit = 0`，全部为手工 `.emitter` 断言）。以本次实测为准，建议该表后续同步更正。
@@ -170,7 +170,7 @@
 | --- | --- | --- | --- |
 | GroupAdmin | `adminIds(groupId)` | `adminIds.items` | `AdminChanged` 只给成员增删 |
 | GroupMember | `memberIds(groupId, offset, limit, reverse)` | `memberIds.items` | `MemberStatusChanged` 只给成员增删 |
-| GroupChatBanList | `senderIdBanList(groupId, offset, limit, reverse)` | `senderIdBanList.items` | `SenderBanChanged` 只给封禁/解封 |
+| GroupChatBanList | `senderIdBanList(groupId, offset, limit, reverse)` | `senderIdBanList.items` | `AdminSenderBanChanged` 只给封禁/解封 |
 | GovVotedBanSource | `votedSenderIds`、`votersBySenderId` | `senderIdTargets.items`、`target.voters.items` | `SenderBanVoteCast` / `GovSenderBanChanged` 只给投票/名单变化 |
 
 - 现状：`08-testing.md:14` 已把 `reverse` 的视图行为登记为「当前存储顺序」，并有 `testT123B_banListReverseWalksCurrentStorageOrder`、`testT135B_votedSenderIdsReverseWalksCurrentStorageOrder`、`testT135C_votersBySenderIdReverseWalksCurrentStorageOrder`、`testT133B_adminCanAddAndRemoveMemberIds` 覆盖。

@@ -24,7 +24,7 @@
 | 1 | 修饰器 `:146-155` | `onlyOperator(groupId, operatorId)` | 群不存在回 `GroupNotExist`；`operatorId == groupId` 要求群 owner；否则要求调用者是 operatorId NFT owner 且 `GroupAdmin.isAdminId` |
 | 2 | `:108-115` | 逐项 `_checkTargetSenderId` + 数组内去重 | target 只要求非零，不要求 MemberNFT 存在（允许预黑名单）；重复回 `DuplicateMemberId` |
 | 3 | `:116` | `senderIdBanList.add` 或 `remove` | 集合返回是否实际变化 |
-| 4 | `:117-126` | 仅 `changed` 时：写/删 operator state，发 `SenderBanChanged` | 幂等操作不更新 operator state、不发事件 |
+| 4 | `:117-126` | 仅 `changed` 时：写/删 operator state，发 `AdminSenderBanChanged` | 幂等操作不更新 operator state、不发事件 |
 
 ### 2.2 `senderIdBanList`
 
@@ -61,7 +61,7 @@ onlyOperator（群存在 -> 调用者身份）
 
 逐条说明：
 
-- **`GBL-01`**：`changed` 为 false 时跳过 `_setSenderIdBanOperatorState` 与事件。因此“A 封禁 → B 再次封禁同一目标”后，详情里仍是 A。任何需要“最后请求者”的链下逻辑不能用该字段，只能看 `SenderBanChanged` 事件。
+- **`GBL-01`**：`changed` 为 false 时跳过 `_setSenderIdBanOperatorState` 与事件。因此“A 封禁 → B 再次封禁同一目标”后，详情里仍是 A。任何需要“最后请求者”的链下逻辑不能用该字段，只能看 `AdminSenderBanChanged` 事件。
 - **`GBL-02`**：`_setSenderIdBanTargets` 每项回扫查重；没有 MAX 批次。target 只校验非零，`unban` 也不要求 NFT 存在，允许清理任意预黑名单 ID。写入口只有 owner/admin，失败整批回滚。
 - **`GBL-03`**：状态以 `groupId + senderId` 为键；群 NFT 转移后 `onlyOperator` 的 owner 判定切换，名单内容与旧 operator 记录保留。旧 operator 记录不赋予任何权限，只是查询字段。
 
@@ -81,7 +81,7 @@ onlyOperator（群存在 -> 调用者身份）
 | --- | --- | --- | --- |
 | B1 | `senderIdBanList` 无重复 | ✅ | `Uint256Set.add` + 数组去重 |
 | B2 | `senderIdBanOperatorStates[s]` 非零当且仅当 `senderIdBanList` 包含 `s` | ✅ | 只在 add 成功时写、只在 remove 成功时 delete；无其他写入 |
-| B3 | 每次实际名单变化都伴随 `SenderBanChanged`；无变化不发事件 | ✅ | `changed` 判定 |
+| B3 | 每次实际名单变化都伴随 `AdminSenderBanChanged`；无变化不发事件 | ✅ | `changed` 判定 |
 | B4 | 只有群 owner 或当前有效 admin 能改名单 | ✅ | `_isOperator` + `GroupAdmin.isAdminId` |
 | B5 | 批量操作原子 | ✅ | 单笔循环，无 try/catch |
 
