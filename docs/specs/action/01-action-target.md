@@ -51,7 +51,7 @@ targetData[SLOT_EXECUTOR] = abi.encode(executorAddress)
 
 **顺序契约（不保证跨调用稳定）**：`actionIdsByMemberId`、`memberIdsByActionId` 由共享集合原语支撑——追加写入，删除用 swap-and-pop（把末位元素搬到被删元素的位置）。因此**同一集合、同一 `offset` 的返回内容不保证在两次调用之间稳定**，`reverse` 只表示「逆序遍历当前存储顺序」，仅在集合自建立以来没有发生过删除时才等于「加入逆序」。调用方（前端、索引）必须每次以 `totalCount` 为准重新拉取，不得跨调用缓存 `offset`，也不得按「先拉首页、再按旧 `totalCount` 增量补后续页」的方式拼接。
 
-`actions`、`actionIdsByExecutor` 由创建回调维护的**追加写入、从不删除**的索引派生，`reverse` 即创建逆序；`votedActions` 由 Vote 的本轮只追加列表派生，顺序随 Vote。三者的 `offset` 语义同样按上面执行。
+`actions`、`actionIdsByExecutor` 由创建回调维护的**追加写入、从不删除**的索引派生，`reverse` 即创建逆序；`votedActionIds` 由 Vote 的本轮只追加列表派生，顺序随 Vote。三者的 `offset` 语义同样按上面执行。
 
 完整 ABI 见 [`IActionTarget.sol`](https://github.com/LOVE20BSC/action/blob/main/src/interfaces/IActionTarget.sol)。
 
@@ -89,7 +89,9 @@ Executor 失效时的兜底清理：成员 NFT 当前持有人可清除加入态
 
 **行动登记索引**：`actions(tokenAddress, offset, limit, reverse) returns (actionIds[], executors[], totalCount)` 与 `actionIdsByExecutor(tokenAddress, executor, offset, limit, reverse) returns (actionIds[], totalCount)` 由 `onProposalCreated` 维护的追加写入索引派生（绑定建立后永不删除，故 `reverse` 即创建逆序），前者为本代币全部已关联行动，后者为某 Executor 名下的行动。两者均为无界集合（由行动创建数决定），采用标准分页签名。
 
-**本轮有投票的行动**：`votedActions(tokenAddress, round, offset, limit, reverse) returns (actionIds[], executors[], totalCount)` 一次读取 Vote 的 `votedProposalIds(tokenAddress, round, 0, type(uint256).max, false)` 取得本轮有票 Proposal 全列表（Pagination 对超限 `limit` 返回剩余；列表规模上界 = 该代币本轮有推举资格的成员数，出处 core [提交](../core/05-submit.md)：每个成员每轮最多推举一个提案），再按 `executor` 映射筛选，不在这里计算激励门槛；不能读成历史累计。其 `totalCount` 由「读完本轮列表 → 按映射筛选 → 切片」得出，单次调用在同一交易内完成，ActionTarget 不另设人工 Proposal 数量上限。
+**本轮有投票的行动**：`votedActionIds(tokenAddress, round, offset, limit, reverse) returns (actionIds[], executors[], totalCount)` 一次读取 Vote 的 `votedProposalIds(tokenAddress, round, 0, type(uint256).max, false)` 取得本轮有票 Proposal 全列表（Pagination 对超限 `limit` 返回剩余；列表规模上界 = 该代币本轮有推举资格的成员数，出处 core [提交](../core/05-submit.md)：每个成员每轮最多推举一个提案），再按 `executor` 映射筛选，不在这里计算激励门槛；不能读成历史累计。其 `totalCount` 由「读完本轮列表 → 按映射筛选 → 切片」得出，单次调用在同一交易内完成，ActionTarget 不另设人工 Proposal 数量上限。
+
+**按 Executor 集合的本轮投票行动**：`votedActionIdsByExecutors(tokenAddress, round, executors[]) returns (actionIds[], actionExecutors[])` 与 `votedActionIds` 同源同序——在同一份「读 Vote 的本轮有票 Proposal 全列表 → 按 `executorByActionId` 筛掉未绑定项」的有效集合上，保留 executor 属于给定集合的行动；顺序沿用本轮投票列表原序（不提供 `reverse`），`actionExecutors` 与 `actionIds` 逐项对齐。给定集合为空返回空数组；入参中重复的 executor 不会产生重复项。不分页、不返回 `totalCount`（全量返回时它恒等于 `actionIds.length`）。它是只读派生、不落存储索引：每轮行动数上界受 core 的推举资格约束，遍历成本有界，投票路径不因它增加任何写入。链上消费方 GroupService 结算已用它替代「取全量后自行过滤」，结果等价。
 
 ## 实现约束
 
