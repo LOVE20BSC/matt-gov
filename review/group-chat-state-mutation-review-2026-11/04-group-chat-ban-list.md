@@ -113,7 +113,7 @@ onlyOperator（群存在 -> 调用者身份）
 | --- | --- | --- | --- |
 | `GVB-01` | `settledWeight == 0` ⟺ 不在 `voters` | 成立 | 新增票在 `_setVoteIfChanged`（`:191-223`）同笔写票重并加入 `voters`；`_refreshVoteIfFound`（`:254-286`）在权重归零时调 `_removeVote`（`:391-397`）；`_clearVoteIfFound`（`:231-246`）同路径。未见“票重 0 仍留在 `voters`”的写入。 |
 | `GVB-02` | 名单命中 ⟺ 阈值谓词成立 | 结算时点成立；实时口径不成立（已知过期） | `_syncBanList`（`:310-324`）在每次结算后用当次 `totalWeight` 调 `_isTargetBanned`（`:371-379`）写名单；外部票权变化不会自动触发同步，名单可能滞后，`05-chat-types.md:43` 已声明“结算结果可提前刷新、可能过期”。不是实现缺陷。 |
-| `GVB-03` | `refresh` 不改变 `supportBan` 立场 | 成立 | `_refreshVoteIfFound`（`:254-286`）保留 `vote.supportBan`，按原立场先 `_removeWeight` 再加新权重，事件仍带原立场。 |
+| `GVB-03` | `refresh` 不改变 `supportBan` 立场 | 成立 | `_refreshVoteIfFound`（`:254-286`）保留 `vote.supportBan`，按原立场先 `_removeWeight` 再加新权重；非零刷新发 `SenderBanVoteCast`，归零路径发 `SenderBanVoteCleared`，原立场由 `prevSupportBan` 携带（随 events 卷 A2 对齐）。 |
 | `GVB-04` | `voters` / `targets` 归零清理无残留 | 成立（可枚举集合）；映射空壳保留 | `_removeVoteAfterWeightRemoved`（`:399-410`）在 `voters.count() == 0` 时移出 `senderIdTargets`；`senderIdTargetStates` 是含嵌套 mapping 的 struct，Solidity 无法 `delete`，仅保留零值空壳，不参与枚举。名单在 `_syncBanList` 中按谓词移出。 |
 | `GVB-05` | `_removeWeight` 无下溢 | 成立 | `_removeWeight`（`:432-438`）使用 0.8 检查算术；减数来自该票已计入的 `settledWeight`，刷新路径先减旧值再加新值（`:275` / `:282`），清除路径只减非零票重（`:231-246`）。 |
 | `GVB-06` | 任意调用者对同一 voterId 结果一致 | 成立 | `refreshVoteByTargetSenderId`（`:62-64`）不读 `msg.sender`；权重来自 `IGroupActionVote` 与 `MemberOwner.ownerOrZero(GROUP_ADDRESS, groupId)`，与调用者无关；同一状态下重复调用走 `weight == settledWeight` 的仅同步分支（`:265-273`）。 |

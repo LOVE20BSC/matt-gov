@@ -20,7 +20,7 @@
 | Manager | 激活付款、费用不一致、NFT 接收、重复激活 | 调用者支付，Manager 持有；失败整体回滚；一个 Manager 管理多个 Chat；构造参数与依赖由部署脚本校验，合约不检查 |
 | Manager | 转出 NFT、approve、重配、付费者接管 | 不新增这些入口，普通 owner Chat 不受此限制 |
 | 权限边界 | 配置/管理员仅 owner，成员/黑名单 owner 或 admin | 配置与管理员入口拒绝 admin；成员与人工黑名单接受有效 admin；发言豁免 scope/ban 仅 owner；mentionAll 接受 owner 与 admin |
-| 黑名单 | 当前行动 Vote Round、全社区分母、权重归零刷新 | 不使用创建 Round；保留 settledWeight、改票/撤票/刷新；未翻名单时只有投票事件 |
+| 黑名单 | 当前行动 Vote Round、全社区分母、权重归零刷新 | 不使用创建 Round；保留 settledWeight、改票/撤票/刷新；未翻名单时只有投票事件；撤票与刷新归零发 `SenderBanVoteCleared`（`prevSupportBan`/`prevSettledWeight`），不再用 `settledWeight=0` 的 `SenderBanVoteCast` |
 | 黑名单 | 社区权重按当前 Round 读取 | 两类 token Manager 与两类 action Manager 的 `voteWeight` / `totalVoteWeight` 都取 `IPhase.currentPhase()` 对应的票权，不取行动总票数或创建 Round；Manager 的 `PHASE_ADDRESS` 在构造时从 `IStake.PHASE_ADDRESS()` 派生，`21_check.sh` 复核 `Stake.PHASE_ADDRESS == PHASE_ADDRESS` |
 | 黑名单 | 管理员身份不绕过封禁 | admin 的成员 NFT 被 ban 后发言回 `BanRejected(groupId, senderId, source)`；以群 NFT 发言仍可（`testT121B`） |
 | 持币 | 首币余额 0、1、2 个最小单位 | 0 不满足持币分支，1、2 满足；其他资格分支照常 |

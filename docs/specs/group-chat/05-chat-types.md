@@ -28,7 +28,7 @@
 
 GovVotedBanSource 的接口见 [`IGovVotedBanSource.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/sources/ban/IGovVotedBanSource.sol)，其 voter 和 target 均使用 `memberId`。
 
-支持/反对按 `groupId + targetSenderId + voterId` 保存。保留 GovVotedBanSource 的增量结算：改票先移除旧 settledWeight，再加入新权重；撤票移除旧权重；任何地址可刷新已存在的 voterId 票，权重归零时清除该票。写入/撤票需校验该 voterId 当前 owner；刷新不能改变支持/反对立场。
+支持/反对按 `groupId + targetSenderId + voterId` 保存。保留 GovVotedBanSource 的增量结算：改票先移除旧 settledWeight，再加入新权重；撤票移除旧权重；任何地址可刷新已存在的 voterId 票，权重归零时清除该票。写入/撤票需校验该 voterId 当前 owner；刷新不能改变支持/反对立场。撤票与刷新归零（删除该票）发 `SenderBanVoteCleared`，携带原立场 `prevSupportBan` 与原权重 `prevSettledWeight`；其余结算发 `SenderBanVoteCast`，其 `settledWeight` 恒非零。
 
 ```text
 totalVoteWeight > 0
@@ -38,7 +38,7 @@ supportWeight * 1e18 >= totalVoteWeight * 3e15
 
 同时满足才进入黑名单，保留严格比较、0.3% 门槛及无变化/无投票记录的处理：重复投票（方向与权重都未变）回 `VoteUnchanged(groupId, targetSenderId, voterId)`，不做名单同步（source 不可用时先回 `BanVoteWeightSourceUnavailable`）。同票重投不结算权重漂移；该 target 上任何投票/撤票/刷新都会按实时分母重算名单，本票权重的唯一改口入口是 `refreshVoteByTargetSenderId`。撤票或刷新找不到记录回 `VoteNotFound(groupId, targetSenderId, voterId)`；若 source 不可用，先回 `BanVoteWeightSourceUnavailable`，记录存在性检查在其后。投票权重为 0 回 `ZeroVoteWeight(groupId, voterId)`。`minSupportToOpposeMultiplier > 0` 与 `banThresholdRatio <= 1e18`（0 合法）是部署期静态不变量，由部署脚本在广播前校验（dev-standards §5.7）。投票/撤票/刷新后同步目标名单；`isBanned` 读取已结算名单，不全量扫描重算。
 
-不设版本字段：每次已结算变更都由 `SenderBanVoteCast` / `GovSenderBanChanged` 携带完整事实，链下缓存按事件失效即可。
+不设版本字段：每次已结算变更都由 `SenderBanVoteCast` / `SenderBanVoteCleared` / `GovSenderBanChanged` 携带完整事实，链下缓存按事件失效即可。
 
 `supportWeight` / `opposeWeight` / `isBanned` 都是**已结算**值，分母 `totalVoteWeight` 是**实时**值；跨轮或 Stake 变化不会自动刷新其他人的票，名单因此可能双向过期（该进未进、该出未出）。`refreshVoteByTargetSenderId` 无鉴权、幂等、结果与调用者无关，任何地址都可提前结算。
 

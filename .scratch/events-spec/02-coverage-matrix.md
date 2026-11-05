@@ -92,8 +92,9 @@
 | AdminSet | 增加/刷新/移除 | `AdminChanged` | adminId、listed、两个 owner 快照旧/新 | 合并 `SetAdminSnapshot`；转移失效由 core `Transfer` 推导 |
 | MemberSet | 成员增删 | `MemberStatusChanged` | memberId、listed | 布尔旧值可推 |
 | BanSet | 管理员封禁 | `SenderBanChanged` | targetSenderId、listed、operator | 旧值可推 |
-| BanSet | 投票 | `SenderBanVoteCast` | supportBan、settledWeight、累计 support/oppose | 旧方向由上一条事件推 |
-| BanSet | 投票结果封禁 | `GovSenderBanChanged` | targetSenderId、listed | 每次已结算变更由本条或上一条投票事件携带 |
+| BanSet | 投票 | `SenderBanVoteCast` | supportBan、settledWeight、累计 support/oppose | 旧方向由上一条事件推；`settledWeight` 恒非零 |
+| BanSet | 撤票/刷新归零 | `SenderBanVoteCleared` | prevSupportBan、prevSettledWeight、累计 support/oppose | 删除该 voter 的票；旧值与后置总量同条携带，不再用零哨兵 |
+| BanSet | 投票结果封禁 | `GovSenderBanChanged` | targetSenderId、listed | 每次已结算变更由本条或上一条投票/清除事件携带 |
 | Delegation | 设置 delegate | `DelegateChanged` | delegateId、owner、ownerSnapshot、delegateOwnerSnapshot、prev* | 新快照组→旧快照组 |
 | Delegation | 清零 | `DelegationCleared` | delegateId、delegateOwner、prevOwnerSnapshot、prevDelegateOwnerSnapshot | 旧快照随清除事实携带 |
 | Delegation | 接受开关 | `DelegationAcceptanceChanged` | delegateId、enabled | 布尔旧值可推；按 memberId 继承，不随 NFT 转移重置 |
@@ -108,7 +109,7 @@
 1. **群对象**：`MemberMinted(memberId = groupId)` + `TokenGroupActivated`/`TokenActionGroupActivated` + `GroupActivated` + `GroupChatActivated` + 后续 `*Changed` 事件，折叠结果必须等于三仓 view 的并集（名称/所有者、组配置、聊天配置、激活轮）。
 2. **消息**：`MessagePosted` + `SenderMentioned` 折叠 = 消息正文、引用、mentionAll、sender、round、messageId、提及集合。
 3. **管理员有效性**：`AdminChanged`（快照旧/新 + listed） + core ERC721 `Transfer`（owner 变化）折叠 = `isAdminId`。
-4. **封禁**：`SenderBanChanged`/`SenderBanVoteCast`/`GovSenderBanChanged` 折叠 = 封禁集合与权重。
+4. **封禁**：`SenderBanChanged`/`SenderBanVoteCast`/`SenderBanVoteCleared`/`GovSenderBanChanged` 折叠 = 封禁集合与权重；`SenderBanVoteCast` 写入或更新 voter 票，`SenderBanVoteCleared` 删除 voter 票。集合页序允许删除（`Uint256Set` swap-and-pop），折叠必须按事件重放删除位置，不能按插入序假设。
 5. **质押**：`LiquidityStaked`/`BoostStaked`/`Unstaked`/`StakeWithdrawn`/`FeesSettled`/`FeeReclassified`/`StakesMerged` 折叠 = 成员 shares/govVotes/待解锁轮 + 全局 shares/govVotes/有效 boost/累计 burn；LP 基准按 §7 派生。
 6. **额度**：`LaunchCountAdded`/`LaunchCountMerged`/`LaunchCountConsumed` 折叠 = 成员余额 + 发行总量（含首 token 的根账本镜像）。
 7. **奖励**：`RewardPrepared`/`GovRewardMinted`/`ProposalRewardMinted`/`RewardBurned` 折叠 = 奖池、minted、burned、成员 entitlement；`_launchCredit` 按 §7 派生。

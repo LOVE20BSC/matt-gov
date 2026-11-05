@@ -2,6 +2,15 @@
 
 用户确认：群聊几乎原样迁移，功能、流程、查询和失败行为保持；业务身份统一为 MemberNFT，删除地址主体平行路径。群内 NFT 委托已整体移除（2026-10-31），见下节与 [ADR-005](../adr/005-remove-group-chat-delegation.md)；消息正文与提及上限已改为协议常量（2026-11-02），见下节与 [ADR-006](../adr/006-group-chat-limits-as-protocol-constants.md)。
 
+## 撤票/归零拆出 `SenderBanVoteCleared`（2026-11-05）
+
+用户确认：撤票与刷新归零不再复用 `SenderBanVoteCast` 的 `settledWeight = 0`（event-standards §3.6 禁止零哨兵），改用独立事件。这是 events 审查卷 `GVB-EV-1` 的处置 **A2**：
+
+- **合约**：`IGovVotedBanSource.sol` 在 `SenderBanVoteCast` 之后新增 `SenderBanVoteCleared(groupId indexed, targetSenderId indexed, voterId indexed, bool prevSupportBan, uint256 prevSettledWeight, uint256 supportWeight, uint256 opposeWeight)`；`GovVotedBanSource._settleVote` 按 `settledWeight == 0` 分流，撤票与刷新归零在删除前捕获旧方向/旧权重。`SenderBanVoteCast` 的签名与 topic0 不变。
+- **基线**：`events-baseline.txt` 18 → 19、`event-families.txt` 16 → 17；静态 `emit` 17 → 18、唯一事件名 16 → 17、运行时发射合约仍 9。
+- **文档**：`05-chat-types.md`、`07-events-errors.md`、`08-testing.md`、`event-standards.md` §7.3、`.scratch/events-spec/02-coverage-matrix.md` 的折叠规则同步；state 卷 `GVB-03` 措辞对齐（结论不变）。
+- **测试**：`T130C` / `T131D` 的事件断言同步，`T131` 新增归零路径断言，`T131C` 的同值刷新零日志断言经 A2 仍成立；新增 `T131E` 覆盖撤票/归零的旧值与后置总量可区分。
+
 ## 消息上限改为协议常量（2026-11-02）
 
 用户确认：`MAX_CONTENT_LENGTH = 4096` 与 `MAX_MENTIONED_SENDER_IDS = 32` 是协议常量而非部署参数，见 [ADR-006](../adr/006-group-chat-limits-as-protocol-constants.md)。这是对「保留构造参数而非新增硬编码」的明确反转，理由是单条消息的日志体量与该上限直接相关，可配置等于让 gas 估算与索引器资源边界失效：
