@@ -94,7 +94,7 @@
 | BanSet | 管理员封禁 | `SenderBanChanged` | targetSenderId、listed、operator | 旧值可推 |
 | BanSet | 投票 | `SenderBanVoteCast` | supportBan、settledWeight、累计 support/oppose | 旧方向由上一条事件推；`settledWeight` 恒非零 |
 | BanSet | 撤票/刷新归零 | `SenderBanVoteCleared` | prevSupportBan、prevSettledWeight、累计 support/oppose | 删除该 voter 的票；旧值与后置总量同条携带，不再用零哨兵 |
-| BanSet | 投票结果封禁 | `GovSenderBanChanged` | targetSenderId、listed | 每次已结算变更由本条或上一条投票/清除事件携带 |
+| BanSet | 投票结果封禁 | `GovSenderBanChanged` | targetSenderId、listed、totalVoteWeight、supportWeight、opposeWeight | 每次已结算变更由本条或上一条投票/清除事件携带；四字段为当次判定完整快照 |
 | Delegation | 设置 delegate | `DelegateChanged` | delegateId、owner、ownerSnapshot、delegateOwnerSnapshot、prev* | 新快照组→旧快照组 |
 | Delegation | 清零 | `DelegationCleared` | delegateId、delegateOwner、prevOwnerSnapshot、prevDelegateOwnerSnapshot | 旧快照随清除事实携带 |
 | Delegation | 接受开关 | `DelegationAcceptanceChanged` | delegateId、enabled | 布尔旧值可推；按 memberId 继承，不随 NFT 转移重置 |

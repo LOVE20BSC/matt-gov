@@ -40,7 +40,7 @@ supportWeight * 1e18 >= totalVoteWeight * 3e15
 
 不设版本字段：每次已结算变更都由 `SenderBanVoteCast` / `SenderBanVoteCleared` / `GovSenderBanChanged` 携带完整事实，链下缓存按事件失效即可。
 
-`supportWeight` / `opposeWeight` / `isBanned` 都是**已结算**值，分母 `totalVoteWeight` 是**实时**值；跨轮或 Stake 变化不会自动刷新其他人的票，名单因此可能双向过期（该进未进、该出未出）。`refreshVoteByTargetSenderId` 无鉴权、幂等、结果与调用者无关，任何地址都可提前结算。该刷新在权重不变时先按实时 `totalVoteWeight` 同步名单再返回；若分母变化导致名单翻转，日志中只有 `GovSenderBanChanged`、没有任何投票事件，消费方不得假设派生事件必有前置投票事件。事件暂不携带 `totalVoteWeight`，复核阈值需查询链上分母。
+`supportWeight` / `opposeWeight` / `isBanned` 都是**已结算**值，分母 `totalVoteWeight` 是**实时**值；跨轮或 Stake 变化不会自动刷新其他人的票，名单因此可能双向过期（该进未进、该出未出）。`refreshVoteByTargetSenderId` 无鉴权、幂等、结果与调用者无关，任何地址都可提前结算。该刷新在权重不变时先按实时 `totalVoteWeight` 同步名单再返回；若分母变化导致名单翻转，日志中只有 `GovSenderBanChanged`、没有任何投票事件，消费方不得假设派生事件必有前置投票事件。`GovSenderBanChanged` 携带该次判定的完整快照（`totalVoteWeight`、`supportWeight`、`opposeWeight`），可直接复核阈值；投票事件不带分母。
 
 投票身份按 voterId 该 MemberNFT 的**当前**持有人校验，不保存 owner 快照，与 admin 的双快照模型不同：NFT 转移后旧票仍按原 `settledWeight` 计数，新持有人可改票、撤票或刷新，旧持有人不再能操作该票。
 

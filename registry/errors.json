@@ -2707,9 +2707,9 @@
       ],
       "repo": "group-chat",
       "revert_sites": [
-        "group-chat/src/sources/ban/GovVotedBanSource.sol:360",
-        "group-chat/src/sources/ban/GovVotedBanSource.sol:376",
-        "group-chat/src/sources/ban/GovVotedBanSource.sol:384"
+        "group-chat/src/sources/ban/GovVotedBanSource.sol:370",
+        "group-chat/src/sources/ban/GovVotedBanSource.sol:386",
+        "group-chat/src/sources/ban/GovVotedBanSource.sol:394"
       ],
       "selector": "0x76befc7f",
       "signature": "BanVoteWeightSourceUnavailable(uint256,address)"
@@ -2820,7 +2820,7 @@
         "group-chat/src/GroupChat.sol:817",
         "group-chat/src/GroupChatBanList.sol:149",
         "group-chat/src/GroupMember.sol:95",
-        "group-chat/src/sources/ban/GovVotedBanSource.sol:357"
+        "group-chat/src/sources/ban/GovVotedBanSource.sol:367"
       ],
       "selector": "0xfeddf96a",
       "signature": "GroupNotExist(uint256)"
@@ -3136,7 +3136,7 @@
       "repo": "group-chat",
       "revert_sites": [
         "group-chat/src/GroupChatBanList.sol:142",
-        "group-chat/src/sources/ban/GovVotedBanSource.sol:411"
+        "group-chat/src/sources/ban/GovVotedBanSource.sol:425"
       ],
       "selector": "0x16f52684",
       "signature": "ZeroTargetSenderId()"
