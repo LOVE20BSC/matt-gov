@@ -13,7 +13,7 @@
 - **实现走只读遍历**：复用 `_boundActions` 的同一枚举路径（Vote 的本轮有票列表 → 按 `executorByActionId` 筛掉未绑定项），再用集合成员判定过滤；顺序沿用本轮投票列表原序，给定集合为空返回空数组，入参重复的 executor 不产生重复项。不新增 `mapping(executor => mapping(round => uint256[]))` 存储索引：每轮行动数上界由 core 的推举资格约束（每个成员每轮最多推举一个提案），遍历成本有界；存储索引会让每次投票多一笔写入、增加存储布局与字节码，换来的只是省掉一次已存在且有界的枚举。
 - 同步：`IActionTarget` 声明、`ActionTarget` 实现、`GroupServiceExecutor._votedGroupActions` 调用点（改为直接传入 `[GROUP_ACTION_EXECUTOR_ADDRESS()]` 单元素集合，删除全量 `executors[]` 与本地两趟过滤循环）、`ActionTarget.t.sol` / `ActionTargetEdgeCases.t.sol` / `ActionTargetFuzz.t.sol` / `ActionTargetRealIntegration.t.sol` 调用与用例名、`GroupServiceMocks` 的 `votedActionIdsByExecutors` 与 `setVotedActionIds`、[01](action/01-action-target.md)、[06](action/06-service-executor.md)、[08](action/08-testing.md)。
 - 不变：`actionIdsByExecutor`、`actions`、存储布局与事件；`votedActions` 的旧名在本文「迁移变更清单」的历史叙述中保留，不回写。
-- 下游 `group-chat/lib/action` 的 vendored 副本仍为旧名，随子模块指针升级一并同步。
+- 下游 `group-chat/lib/action` 的 vendored 副本已随子模块指针升级（`group-chat@c010158`，其 `lib/action` = `1750118`）同步为新名，不再有待同步的旧名残留。
 
 ## 错误 ABI 收敛（2026-11-05）
 
