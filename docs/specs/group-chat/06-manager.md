@@ -4,7 +4,7 @@
 
 保留 TokenMainManager、TokenGovManager、TokenActionMainManager、TokenActionGovManager；每个 Manager 可以管理多个 Chat，不为每个 Chat 部署新 Manager。四个 Manager 同时实现 `IBanVoteWeightSource`，为托管群提供封禁权重；`GovVotedBanSource` 从群 NFT 的持有者解析权重源，因此托管是治理加权封禁成立的前提（见 [类型与资格](05-chat-types.md)）。
 
-同一个 token（token Manager）或 token + actionId（action Manager）只能在同一 Manager 中激活一次，重复激活回 `AlreadyManaged(groupId)`（`groupId` 为已存在的托管群）。保留 tokenAddressByGroupId/groupIdByTokenAddress、actionByGroupId/groupIdByActionId 及批量、分页查询；托管代币枚举 `tokens` 与行动枚举 `actions` 都按 `(offset, limit, reverse) → (列表, totalCount)` 分页并回真实总数，不另设计数入口；行动定位使用已有 `actionByGroupId(groupId)` 返回 tokenAddress 和 actionId，不另加重复的 getActionId。行动不存在或 actionId 为 0 回 `ActionNotExist(tokenAddress, actionId)`；`RECENT_ROUNDS` 必须 >0，由部署脚本在广播前校验，合约为 0 时该 Manager 的治理资格恒为 false。
+同一个 token（token Manager）或 token + actionId（action Manager）只能在同一 Manager 中激活一次，重复激活回 `AlreadyManaged(groupId)`（`groupId` 为已存在的托管群）。唯一性只在单个 Manager 内生效；同一 token 或同一 action 可在不同类型 Manager 中各自托管，实例之间不共享状态。保留 tokenAddressByGroupId/groupIdByTokenAddress、actionByGroupId/groupIdByActionId 及批量、分页查询；托管代币枚举 `tokens` 与行动枚举 `actions` 都按 `(offset, limit, reverse) → (列表, totalCount)` 分页并回真实总数，不另设计数入口；行动定位使用已有 `actionByGroupId(groupId)` 返回 tokenAddress 和 actionId，不另加重复的 getActionId。actionId 为 0、超出提案总数、或该 proposal 未在 ActionTarget 注册 executor（非行动提案）回 `ActionNotExist(tokenAddress, actionId)`；激活期用 `IActionTarget.executorByActionId` 判定类型，复用同一错误，不改 ABI。`RECENT_ROUNDS` 必须 >0，由部署脚本在广播前校验，合约为 0 时该 Manager 的治理资格恒为 false；合约不对 `RECENT_ROUNDS` 设协议上限，值越大行动资格查询的逐轮回看次数越多。
 
 Token Manager 与 Action Manager 的接口分别见 [`ITokenScopeManagerBase.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/managers/ITokenScopeManagerBase.sol) 和 [`ITokenActionScopeManagerBase.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/managers/ITokenActionScopeManagerBase.sol)，两者共享的槽位 getter、`TYPE_CODE()` 与错误在 [`IManagerBase.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/managers/IManagerBase.sol)。两类接口不合并，避免单个 Manager 实现另一类 Manager 的无关方法。
 
@@ -21,7 +21,7 @@ Token Manager 与 Action Manager 的接口分别见 [`ITokenScopeManagerBase.sol
 
 名称只是展示标签，不是身份来源；token/actionId 从 `TokenGroupActivated` / `TokenActionGroupActivated` 事件与 `tokenAddressByGroupId` / `actionByGroupId` 读取。
 
-`ManagerBase` 只提供通用命名机制，不维护类型清单，也不决定 payload 内容；类型码与 payload 由各 Manager 自己定义，不设集中清单。`ManagerBase` 不接收 type code 构造参数，具体 Manager 实现 `_typeCode()`，并由 `IManagerBase.TYPE_CODE()` 暴露。四类 Manager 的 `_typeCode()` 必须非空且互异（源码/测试不变量，`testT180` 锁定）。当前四类为 `tm`（TokenMainManager）、`tg`（TokenGovManager）、`am`（TokenActionMainManager）、`ag`（TokenActionGovManager），各 2 字节。沿用同一命名格式时，新增托管类型只需新 Manager 实现自己的 `_typeCode()` 与 payload，不改 `ManagerBase`，也不需要在脚本里维护 Manager 清单；只有类型码比当前最长（2 字节）更长时，才需抬高部署脚本的预检常量，并把新 Manager 加入 `testT181` 的类型码核对——漏改时预检偏低，由 `21_check.sh` 部署后拦下。若需要不同的命名格式，仍需单独扩展命名机制。
+`ManagerBase` 只提供通用命名机制，不维护类型清单，也不决定 payload 内容；类型码与 payload 由各 Manager 自己定义，不设集中清单。`ManagerBase` 不接收 type code 构造参数，具体 Manager 实现 `_typeCode()`，并由 `IManagerBase.TYPE_CODE()` 暴露；`_mintNonce` 不暴露 getter 或事件，仅参与随机后缀生成，不影响身份或权限。四类 Manager 的 `_typeCode()` 必须非空且互异（源码/测试不变量，`testT180` 锁定）。当前四类为 `tm`（TokenMainManager）、`tg`（TokenGovManager）、`am`（TokenActionMainManager）、`ag`（TokenActionGovManager），各 2 字节。沿用同一命名格式时，新增托管类型只需新 Manager 实现自己的 `_typeCode()` 与 payload，不改 `ManagerBase`，也不需要在脚本里维护 Manager 清单；只有类型码比当前最长（2 字节）更长时，才需抬高部署脚本的预检常量，并把新 Manager 加入 `testT181` 的类型码核对——漏改时预检偏低，由 `21_check.sh` 部署后拦下。若需要不同的命名格式，仍需单独扩展命名机制。
 
 格式为 `type[_payload]_random`：
 
@@ -30,7 +30,7 @@ Token Manager 与 Action Manager 的接口分别见 [`ITokenScopeManagerBase.sol
 - 整段 payload 连同 4 位十六进制随机后缀放得下时：`type_payload_<4 位 hex>`，payload 原样保留。
 - 放不下时：payload 整段丢弃（不哈希、不截断），名称为 `type_<随机串>`，随机串填满剩余字节。
 - 随机后缀：有 payload 时固定 4 位十六进制；无 payload 时填满 `MAX_NAME_LENGTH - typeCode.length - 1 - testPrefix` 位。
-- 4 位 hex 后缀只用于同 stem 消歧；定向抢占与后缀长度无关，占满 4 hex 空间需 65,536 次 mint，这是已知取舍。
+- 4 位 hex 后缀只用于同 stem 消歧；定向抢占与后缀长度无关，占满 4 hex 空间需 65,536 次 mint，这是已知取舍。打包前被抢注不在 8 次重试覆盖范围，重试只处理「名称已存在」。
 
 32 字节、6 位 actionId 下 payload 最大长度：
 
@@ -45,7 +45,7 @@ Token Manager 与 Action Manager 的接口分别见 [`ITokenScopeManagerBase.sol
 
 名称的 Test 前缀按 MemberNFT 的 `LOVE20_TOKEN_ADDRESS` 符号判定；该地址由部署 check 保证已初始化，Manager 不判断其是否为零地址或无代码。
 
-构造期依赖代码、参数与地址关系的静态校验由部署脚本在广播前完成（dev-standards §5.7）。托管群的 `BAN_SOURCE_ADDRESS`、`BEFORE_POST_PLUGIN_ADDRESS`、`AFTER_POST_PLUGIN_ADDRESS` 还必须在广播前人工核对接口；托管群 owner 是 Manager 且无配置转发，`beforePostPlugin` 误配会让该 Manager 名下所有群永久无法发言。`onERC721Received` 收到非协议 NFT 合约或非零 `from` 时回 `UnexpectedManagerERC721Received(operator, from, tokenId)`。
+构造期依赖代码、参数与地址关系的静态校验由部署脚本在广播前完成（dev-standards §5.7）；Manager 构造期不重复校验三个 immutable 依赖的代码与零地址。托管映射在 NFT 铸造后写入；协议内 MemberNFT 不可升级，依赖替换属部署信任边界。托管群的 `BAN_SOURCE_ADDRESS`、`BEFORE_POST_PLUGIN_ADDRESS`、`AFTER_POST_PLUGIN_ADDRESS` 还必须在广播前人工核对接口；托管群 owner 是 Manager 且无配置转发，`beforePostPlugin` 误配会让该 Manager 名下所有群永久无法发言。`onERC721Received` 收到非协议 NFT 合约或非零 `from` 时回 `UnexpectedManagerERC721Received(operator, from, tokenId)`。
 
 BSC MemberNFT 的返回值/费用查询 ABI 与旧 group 不完全相同，迁移时适配接口并保留付款金额校验，不新增补贴、退款账户或代付凭证。
 

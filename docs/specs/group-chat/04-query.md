@@ -2,7 +2,7 @@
 
 ## 群聊 Round
 
-构造时接收 Phase 地址，`currentRound = phase.currentPhase()`，从 1 开始，与治理 Round 一对一。不独立维护 `originBlock` 和 `phaseBlocks`，也不按行动阶段偏移。Phase 地址有代码且 `Phase.ORIGIN_PHASE_BLOCKS() != 0` 是部署期静态不变量，由部署脚本在广播前校验（dev-standards §5.7）。
+构造时接收 Phase 地址，`currentRound = phase.currentPhase()`，从 1 开始，与治理 Round 一对一。不独立维护 `originBlock` 和 `phaseBlocks`，也不按行动阶段偏移。Phase 地址有代码且 `Phase.ORIGIN_PHASE_BLOCKS() != 0` 是部署期静态不变量，由部署脚本在广播前校验（dev-standards §5.7）。`currentPhase()` 直接透传 Phase，不缓存；Phase 为 0 时由 GroupChat 的发言预检查先回 `RoundNotStarted(1, 0)`。
 
 消息创建时记录的 Round 永久固定；后续配置变化不回写消息。
 
@@ -33,7 +33,7 @@ GroupChat 的 11 个集合查询都是 `(作用域键 → offset → limit → r
 
 ## 边界
 
-- `chatInfosByGroupIds(requestedGroupIds)` 按入参下标对齐返回，任一 groupId 不存在即整笔回滚 `GroupNotExist(groupId)`，不跳过、不补空（`dev-standards §4.3(7)`）。
+- `chatInfosByGroupIds(requestedGroupIds)` 按入参下标对齐返回，任一 groupId 不存在即整笔回滚 `GroupNotExist(groupId)`，不跳过、不补空（`dev-standards §4.3(7)`）。入参长度不设协议上限，gas 由调用者自担；`limit` 同样无协议上限。
 - 正向索引为 `offset + i`，反向为 `totalCount - 1 - offset - i`，ID 保持原值不重新编号。
 - 群不存在时相应群查询回滚 `GroupNotExist(groupId)`；有效群内单条 messageId 为 0 或超出消息数时回滚 `MessageNotFound(groupId, messageId)`。
 - 空 Round 的总数为 0、消息数组为空，roundInfo 返回 `RoundSpan(round, 0, 0, 0)`；rounds 列表只枚举有消息的 Round。

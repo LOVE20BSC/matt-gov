@@ -12,14 +12,15 @@
 
 ## 资格数据
 
-- 持币判断为 `token.balanceOf(MemberNFT.ownerOf(senderId)) > 0`，任一最小单位即满足；身份解析改为 memberId，“删除地址主体”不删除 ERC20 余额读取。
+- 持币判断为 `token.balanceOf(MemberNFT.ownerOf(senderId)) > 0`，任一最小单位即满足；身份解析改为 memberId，“删除地址主体”不删除 ERC20 余额读取。资格均按查询时刻的实时状态判断，不使用快照。
 - 治理票和 Proposal 投票直接按 memberId 查询；普通/扩展行动的参与来源统一适配为 ActionTarget，不保留旧 Join/ExtensionCenter 地址主体查询。
 - `RECENT_ROUNDS > 0`；当前部署值 3。检查当前治理 Round 并逐轮向前，遇 BSC 最小有效 Round 1 停止；有一轮给该行动投票即满足资格。它是发言资格窗口，不是黑名单权重窗口。
 - GroupMemberScope 只查名单；组合资格源先查名单，再查 `IGroupActionIndexes.isGroupMember(groupId, senderId)`。标准 GroupAction Executor 覆盖其所有社区和行动。
+- 行动参与分支只取 `limit = 1` 的第一页并以 `total` 判断「存在参与」，不枚举全部参与记录；`RECENT_ROUNDS = 0` 时 `ag` 的近期投票资格恒 false，`am` 的参与分支不受影响。
 
 ## 黑名单
 
-`targetSenderId` 只要求非零，不要求 MemberNFT 存在（允许预黑名单）；`0` 回 `ZeroTargetSenderId()`。
+`targetSenderId` 只要求非零，不要求 MemberNFT 存在（允许预黑名单）；`0` 回 `ZeroTargetSenderId()`。人工黑名单的 operator state 记录最后一次实际变更的操作者，重复封禁同一目标不改写，不表示「最后请求者」；名单与 operator state 不随群 NFT 转移清空，转移后旧 operator 仅作历史字段。
 
 `voteWeight(groupId, voterId)` 使用上表权重；两类 token Manager 和两类 action Manager 的 `totalVoteWeight(groupId)` 都取所属社区的当前总有效治理票，不取行动总票数或创建 Round。
 
@@ -49,14 +50,14 @@ supportWeight * 1e18 >= totalVoteWeight * 3e15
 
 采用组合资格源的群组，满足以下任一条件即可通过成员资格检查：在该群的成员名单中，或仍在该群下参加至少一个 GroupAction。仅名单型资格源只看成员名单。
 
-- ActionTarget.forceClearJoinState 不修改 GroupAction 的群归属与 Executor 仓位，所以不会取消上述群组资格；但会取消代币社区/行动 Chat 中由该行动加入状态提供的资格。持币、治理票、近期投票等其他条件仍独立判断。
+- ActionTarget.forceClearJoinState 不修改 GroupAction 的群归属与 Executor 仓位，所以不会取消上述群组资格；但会取消代币社区/行动 Chat 中由该行动加入状态提供的资格。参与分支实现上只查 `isJoined`，`forceClearJoinState` 后返回 false 即不再满足。持币、治理票、近期投票等其他条件仍独立判断。
 - GroupAction 实际退出（包括 Provider 额度撤回至总参与量为零）后，若成员已不在该群下参加任何行动，便不再满足行动归属条件；名单仍有效时，仍能通过成员资格检查。
 
 例：成员同时在群成员名单中、也在该群下参加一个行动。退出该行动后，因为仍在名单中，成员资格仍成立。实际发言还须通过发言开关、黑名单等检查。
 
 ## 成员与管理员
 
-成员/管理员和人工黑名单的旧批量增删、枚举、事件、owner 快照及幂等行为不变，只删除地址目标和默认身份查找。权限见 [生命周期](01-lifecycle.md#权限范围)。
+成员/管理员和人工黑名单的旧批量增删、枚举、事件、owner 快照及幂等行为不变，只删除地址目标和默认身份查找。`MAX_ADMIN_IDS` 按已登记集合计数，失效（快照不再匹配）的条目仍占名额，需显式撤销后才能新增管理员；重复添加且快照变化会刷新快照并发出 `listed = true, prevListed = true`。`removeAdmins` / `removeMemberIds` 要求对应 NFT 当前存在，当前无 burn，未来引入 burn 后这两条删除入口会拒绝已销毁 ID。批量入参长度不设协议上限，去重为 O(n²)，整批失败整体回滚，gas 由调用者自担。成员名单以 `groupId + memberId` 为键，不随群 NFT 或成员 NFT 转移清空或改写。权限见 [生命周期](01-lifecycle.md#权限范围)。
 
 成员、管理员和人工黑名单接口见 [`IGroupAdmin.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/IGroupAdmin.sol)、[`IGroupMember.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/IGroupMember.sol) 与 [`IGroupChatBanList.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/IGroupChatBanList.sol)。写操作显式传入操作者 `operatorId`。
 

@@ -52,7 +52,7 @@ Group Chat 各接口不继承标准错误：`ownerOf` 的 `ERC721NonexistentToke
 - 黑名单：`SenderBanChanged`（管理员封禁列表）、`SenderBanVoteCast`（投票，带累计 `supportWeight`/`opposeWeight`）、`GovSenderBanChanged`（治理投票结果）。不设版本字段或版本事件：每次已结算变更都由这两条事实事件携带。
 - Manager 链路：`TokenGroupActivated`（`tokenAddress`/`groupId`/`operator` indexed）、`TokenActionGroupActivated`（`tokenAddress`/`actionId`/`groupId` indexed，`operator` 入 payload）。
 
-`AfterPostPluginFailed` 记录捕获错误的 `keccak256`、字节长度与首 4 字节 selector（`errorHash`、`errorLength`、`errorSelector`），不写入无界 `bytes`。scope/ban 的返回 false 和外部调用失败继续分别报 `ScopeRejected` / `BanRejected` 与 `ScopeSourceFailed` / `BanSourceFailed`，不能误改为静默放行。
+`AfterPostPluginFailed` 记录捕获错误的 `keccak256`、字节长度与首 4 字节 selector（`errorHash`、`errorLength`、`errorSelector`），不写入无界 `bytes`。scope/ban 的返回 false 和外部调用失败继续分别报 `ScopeRejected` / `BanRejected` 与 `ScopeSourceFailed` / `BanSourceFailed`，不能误改为静默放行。source 返回数据不可解码时，解码错误在 GroupChat 内冒泡为原始 ABI 解码错误，不保证归一为 `ScopeSourceFailed` / `BanSourceFailed`；`canPost` 同样不做该归一。
 
 `MessagePosted` 的两个派生锚点是有意冗余，按事件规范 §8.1 登记：`hasQuote` 与 `quotedMessageId != 0` 严格恒等，保留布尔是为了让消费方不必把 `0` 读作「不存在」（§3.6 的显式布尔）；`mentionedSenderCount` 与 `mentionedSenderIds.length` 同源，并等于该消息后续 `SenderMentioned` 的条数，使单条消息的提及列表长度不依赖「下一条 `MessagePosted` 之前」的区间约定。折叠规则：`SenderMentioned` 紧跟同 `messageId` 的 `MessagePosted` 且按入参顺序，`mentionedSenderIds` 由该区间内的 `SenderMentioned.mentionedSenderId` 顺序拼出，条数必须等于 `mentionedSenderCount`。
 

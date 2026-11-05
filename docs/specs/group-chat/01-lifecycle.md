@@ -2,9 +2,9 @@
 
 ## 激活与配置
 
-保留 GroupChat 的 `activateChat` 和五个配置 setter。仅 groupId 当前 owner 可首次激活；NFT 必须存在，Chat 尚未激活，非零规则地址必须有代码。代码存在不等于接口匹配：托管群的 `banSource`、`beforePostPlugin`、`afterPostPlugin` 必须在部署前人工核对接口（`scopeSource` 由 Manager 自身实现，不在此列）；托管群 owner 是 Manager 且无配置转发，`beforePostPlugin` 误配会让该 Manager 名下所有群永久无法发言。激活永久记录首次 owner/区块/时间，默认允许发言并加入可发现群列表。激活事件 `GroupChatActivated` 携带初始 5 项配置（`postingAllowed`、`scopeSource`、`banSource`、`beforePostPlugin`、`afterPostPlugin`），零地址表示该槽位关闭。
+保留 GroupChat 的 `activateChat` 和五个配置 setter。仅 groupId 当前 owner 可首次激活；NFT 必须存在，Chat 尚未激活，非零规则地址必须有代码。代码存在不等于接口匹配：托管群的 `banSource`、`beforePostPlugin`、`afterPostPlugin` 必须在部署前人工核对接口（`scopeSource` 由 Manager 自身实现，不在此列）；托管群 owner 是 Manager 且无配置转发，`beforePostPlugin` 误配会让该 Manager 名下所有群永久无法发言。激活永久记录首次 owner/区块/时间，默认允许发言并加入可发现群列表；激活即允许发言，不提供「以暂停态激活」的入参，需要先暂停时由 owner 在激活后另行关闭。激活事件 `GroupChatActivated` 携带初始 5 项配置（`postingAllowed`、`scopeSource`、`banSource`、`beforePostPlugin`、`afterPostPlugin`），零地址表示该槽位关闭。
 
-激活后，仅群 owner 可更新发言开关和四个槽位；普通管理员无此权限。配置写入口先完成鉴权（含群存在性），再校验已激活；非授权方不会拿到激活状态或配置差异。入口的 `operatorId` 必须等于 `groupId`，否则回 `NotGroupOperator(groupId, operatorId)`；该参数仅为事件字段保留。相同配置重复设置按旧实现无操作返回。每次变更发对应 `*Changed` 事件（`PostingAllowedChanged`、`ScopeSourceChanged`、`BanSourceChanged`、`BeforePostPluginChanged`、`AfterPostPluginChanged`），地址槽位保留旧值。typed Manager 未暴露配置转发，故不能由激活付款者重配，见 [Manager](06-manager.md)。
+激活后，仅群 owner 可更新发言开关和四个槽位；普通管理员无此权限。配置写入口先完成鉴权（含群存在性），再校验已激活；非授权方不会拿到激活状态或配置差异。入口的 `operatorId` 必须等于 `groupId`，否则回 `NotGroupOperator(groupId, operatorId)`；该参数仅为事件字段保留。相同配置重复设置按旧实现无操作返回；该 no-op 判断在地址代码校验之后，若旧槽位地址已无代码，按相同地址重复设置仍会因 `*NotContract` 回滚，需先设零地址或新地址。每次变更发对应 `*Changed` 事件（`PostingAllowedChanged`、`ScopeSourceChanged`、`BanSourceChanged`、`BeforePostPluginChanged`、`AfterPostPluginChanged`），地址槽位保留旧值。typed Manager 未暴露配置转发，故不能由激活付款者重配，见 [Manager](06-manager.md)。
 
 ## NFT 委托（已移除）
 

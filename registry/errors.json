@@ -2631,7 +2631,8 @@
       ],
       "repo": "group-chat",
       "revert_sites": [
-        "group-chat/src/managers/TokenActionScopeManagerBase.sol:145"
+        "group-chat/src/managers/TokenActionScopeManagerBase.sol:145",
+        "group-chat/src/managers/TokenActionScopeManagerBase.sol:148"
       ],
       "selector": "0x9c0f73f0",
       "signature": "ActionNotExist(address,uint256)"
