@@ -39,7 +39,7 @@
 | Stake | 上限的量纲与可操纵性：捐赠、闪电贷、现货储备变化 | 上限只读 `totalLiquidityTokenAmount` 本金台账，不读 `withdrawableLp × reserve / pairTotalSupply`；移动 Pair 储备前后 `boostStakeCap` 不变；对应 `StakeTest.testBoostCapIgnoresPoolReserves` |
 | Stake | 本金台账随入池与提取变化 | 入池按实际转入社区代币增加，提取按 `floor(liquidityShares × T / totalLiquidityShares)` 扣减，全部提取后归零；对应 `StakeTest.testLiquidityPrincipalLedgerFollowsDepositAndWithdraw` |
 | Stake | 上限收缩：手续费销毁或本金提取后已质押超限 | 上限变小后已有加速余额被祖父化、不强制减仓；新的 `stakeBoost` 因单人上限不足回 `BoostCapExceeded(..., 0)`；对应 `StakeTest.testSupplyBurnShrinksCapAndGrandfathersExistingBoost` |
-| Stake | 加速余额融合的上限校验 | 融合保持聚合总量不变；目标按融合后的新票占比重算 `memberCap` 并校验；对应 `StakeTest.testMergeKeepsAggregateAndChecksTargetCap` |
+| Stake | 加速余额融合的上限校验（仅源带加速时） | 融合保持聚合总量不变；源带加速时目标按融合后的新票占比重算 `memberCap` 并校验，超限回 `BoostCapExceeded(tokenAddress, targetMemberId, targetBoostShares, targetCap)`；源不带加速时即使目标已被祖父化到上限之上也允许融合，且不新增额度；源带加速但融合后仍在额度内时成功；对应 `StakeTest.testMergeKeepsAggregateAndChecksTargetCap`、`testMergeWithBoostSucceedsWithinTargetCap`、`testMergeWithoutBoostSucceedsWhenTargetIsAboveCap`、`testMergeWithBoostRevertsWhenTargetIsAboveCap` |
 | [Proposal](05-submit.md) / [Vote](06-vote.md) | 零 Target、三类回调失败 | 拒绝并整体回滚 |
 | Proposal | `proposalIds`/`proposalIdsByAuthor`/`submitInfos` 分页：`offset` 越界、`limit` 超剩余、`reverse`、只取总数 | 三个查询都按 `(offset, limit, reverse)` 按页返回并给出真实总数，越界返回空数组且不回滚，`reverse` 时从新到旧；`proposalIds`/`proposalIdsByAuthor` 只回 `proposalId`；`limit = 0` 只回总数 |
 | Proposal | `proposalInfosByProposalIds(requestedProposalIds)` 批量：未分配 ID、批量缺项、批量大小 | 回 `ProposalInfo` 数组，与入参下标一一对应，无长度上限；任一 ID 未分配回滚 `ProposalNotFound`，不静默补空 |
