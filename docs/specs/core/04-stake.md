@@ -24,8 +24,8 @@ Stake 按 `tokenAddress + memberId` 维护流动性质押和加速质押，不�
 | `totalBurnedToken[tokenAddress]` | 社区代币全局累计销毁量 |
 | `totalParentTokenBurned[tokenAddress]` | 该社区手续费中父币的累计数量（换币前） |
 | `totalLiquidityTokenAmount[tokenAddress]` | 流动性质押中的**社区代币本金**台账：入池时按实际转入量增加，提取时按份额占比减少。只读该台账、不读 Pair 现货储备，因此不受捐赠与闪电贷影响；内部映射，对外由 `liquidityTokenAmount(tokenAddress)` 暴露 |
-| `BOOST_STAKE_SUPPLY_FACTOR` | 单人加速质押上限基数 `C` 的部署因子 `F`（`uint256 public`，默认 2，允许 1–10） |
-| `BOOST_STAKE_MULTIPLIER` | 单人加速质押上限的部署倍数 `M`（`uint256 public`，默认 5，允许 1–20） |
+| `BOOST_STAKE_SUPPLY_FACTOR` | 单人加速质押上限基数 `C` 的部署因子 `F`（`uint256 public`，默认 2，建议 1–10，仅建议不作校验） |
+| `BOOST_STAKE_MULTIPLIER` | 单人加速质押上限的部署倍数 `M`（`uint256 public`，默认 5，建议 1–20，仅建议不作校验） |
 | `LIQUIDITY_TOKEN_EQUIVALENCE_FACTOR` | 恒定 `2`：Uniswap V2 双边等值折算因子（`uint256 public constant`） |
 
 `totalLp` 不是存储字段：`totalStake()` 与 `_updateSqrtKBaseline` 都在使用时由 `lastWithdrawableLp + lastFeeLp` 派生，值等于合约记账的 LP 总量（不含他人主动转入的 LP）。
@@ -164,7 +164,7 @@ stakeBoost 通过条件：member.boostShares + amount <= m_i
 
 `totalBoostShares` 保留为**查询与事件口径**，不再是约束：它继续在 `stakeBoost` 时累加、在 `withdraw` 时扣减，出现在 `BoostStaked` / `StakeWithdrawn` 事件和 `totalStake` 返回值中，供前端与审计读取社区加速本金总额。入口校验不再读取该字段，也不再存在以它为比较对象的错误。
 
-**单调性与收缩。** `totalSupply` 会因手续费结算销毁而下降，`T` 会因成员提取本金而下降，因此 `C` 与 `m_i` 都可能变小，已质押的加速余额可能事后超过新上限。处理方式是**入口校验 + 祖父条款**：不强制减仓、不自动销毁已质押代币，已有头寸保持不变；上限收缩后新的 `stakeBoost` 因 `member.boostShares + amount > m_i` 回滚，直到成员提取、票权占比回升或已铸造比例回升。`MAX_SUPPLY` 由代币构造参数固定为 `immutable`，不会变化。
+**单调性与收缩。** `totalSupply` 会因手续费结算销毁而下降，`T` 会因成员提取本金而下降，因此 `C` 与 `m_i` 都可能变小，已质押的加速余额可能事后超过新上限。处理方式是**入口校验 + 祖父条款**：不强制减仓、不自动销毁已质押代币，已有头寸保持不变；上限收缩后新的 `stakeBoost` 因 `member.boostShares + amount > m_i` 回滚，直到成员提取、票权占比回升或已铸造比例回升。可观测口径：此时 `boostStakeCap` 返回 `memberUsed > memberCap`，且任何新存入的 `BoostCapExceeded` 载荷 `allowed = 0`。`MAX_SUPPLY` 由代币构造参数固定为 `immutable`，不会变化。
 
 **公平性残留。** 单人上限按入口当轮的票权占比计算。后加入者投票会稀释 `v_i / V`，早期成员的 `m_i` 随之下调，但其已存头寸按祖父条款保留，形成「旧头寸超过新额度」的残留；反过来，若某成员在轮内先追加质押、提高票权再存入，其额度按提高后的占比重算。残留的大小取决于占比变化幅度：占比减半则旧头寸可达新额度的两倍，且这部分超额头寸在提取前持续参与加速分配。协议不强行清算这部分，因为清算需要卖出或扣押成员已存入的代币，属于入口校验之外的新机制。
 
@@ -207,7 +207,7 @@ stakeBoost 通过条件：member.boostShares + amount <= m_i
 | --- | --- | --- |
 | 1 | 已初始化 | `AlreadyInitialized()` |
 
-Factory 与 `Router.factory()` 一致、`promisedWaitingPhasesMin > 0`、`0 < feeSettlementRatio <= MAX_FEE_SETTLEMENT_RATIO（2.5e15）`、`min <= max`、`0 < boostStakeSupplyFactor <= 10`、`0 < boostStakeMultiplier <= 20` 由 DeployCore 广播前校验；六个依赖地址有代码、`LIQUIDITY_TOKEN_EQUIVALENCE_FACTOR == 2` 由 DeployCore 部署后校验；两者均由 21_check 独立复核；`init` 只防重复初始化并保存入参。
+Factory 与 `Router.factory()` 一致、`promisedWaitingPhasesMin > 0`、`0 < feeSettlementRatio <= MAX_FEE_SETTLEMENT_RATIO（2.5e15）`、`min <= max`、`boostStakeSupplyFactor > 0`（建议 1–10，非校验条件）、`boostStakeMultiplier > 0`（建议 1–20，非校验条件）由 DeployCore 广播前校验；六个依赖地址有代码、`LIQUIDITY_TOKEN_EQUIVALENCE_FACTOR == 2` 由 DeployCore 部署后校验；两者均由 21_check 独立复核；`init` 只防重复初始化并保存入参。
 
 ### `stakeLiquidity`
 

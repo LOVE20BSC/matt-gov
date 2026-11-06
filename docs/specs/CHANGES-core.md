@@ -16,8 +16,8 @@ m_i = ⌊C × 成员有效票 / 总有效票⌋ × M
 
 T = 流动性质押中的社区代币本金（以实际入池量记账，不读现货储备）
 2 = Uniswap V2 双边等值换算因子（协议常量 LIQUIDITY_TOKEN_EQUIVALENCE_FACTOR）
-F = BOOST_STAKE_SUPPLY_FACTOR（部署参数，示例 2，允许 1–10）
-M = BOOST_STAKE_MULTIPLIER（部署参数，示例 5，允许 1–20）
+F = BOOST_STAKE_SUPPLY_FACTOR（部署参数，示例 2，建议 1–10，仅要求 > 0）
+M = BOOST_STAKE_MULTIPLIER（部署参数，示例 5，建议 1–20，仅要求 > 0）
 ```
 
 入口只校验 `member.boostShares + amount ≤ m_i`。`C` 只是单人上限的基数，社区层面没有聚合上限：`Σ m_i = C × M` 是各人额度之和，不是预分配总量，因此不存在先到先得，后来者不会因为前人占满额度而无法存入。`totalBoostShares` 保留为查询与事件口径（`BoostStaked` / `StakeWithdrawn` / `totalStake`），不再参与任何校验。
@@ -60,7 +60,7 @@ ABI / selector 变化：
 
 存储布局：`Mint` 释放末位 `MAX_GOV_BOOST_REWARD_MULTIPLIER` 的槽位，其余变量槽号不变；`Stake` 在 `FEE_SETTLEMENT_RATIO` 之后新增 `BOOST_STAKE_SUPPLY_FACTOR`、`BOOST_STAKE_MULTIPLIER` 两个槽位，并在映射区末位新增 `_totalLiquidityTokenAmount`，此前的槽号不变。pre-mainnet 不保留兼容占位。
 
-部署：`CoreConfig.maxBoostMultiplier` 删除，改为 `boostStakeSupplyFactor` / `boostStakeMultiplier`；env 键 `BOOST_STAKE_SUPPLY_FACTOR` / `BOOST_STAKE_MULTIPLIER`；`DeployCore` 广播前校验 1–10 与 1–20，部署后读回两个 getter 与 `LIQUIDITY_TOKEN_EQUIVALENCE_FACTOR() == 2`；`21_check.sh` 与 `deploy_scripts_test.py` 同步。
+部署：`CoreConfig.maxBoostMultiplier` 删除，改为 `boostStakeSupplyFactor` / `boostStakeMultiplier`；env 键 `BOOST_STAKE_SUPPLY_FACTOR` / `BOOST_STAKE_MULTIPLIER`；`DeployCore` 广播前只校验两者大于 0（不再限制 1–10 / 1–20），部署后读回两个 getter 与 `LIQUIDITY_TOKEN_EQUIVALENCE_FACTOR() == 2`；`21_check.sh` 与 `deploy_scripts_test.py` 同步。
 
 同步范围：`core` 的 `src/`、`script/deploy/`、`script/network/anvil31337_dev/core.params`、`test/` 与 `script/events/`；`matt-gov` 的 `docs/specs/core/`（00/04/07/09）；`core/docs/whitepaper-core.md`。
 
