@@ -46,7 +46,7 @@ ABI / selector 变化：
 | `Stake.BOOST_STAKE_MULTIPLIER()` | — | `0x51a6c52b` |
 | `Stake.LIQUIDITY_TOKEN_EQUIVALENCE_FACTOR()` | — | `0x25af39e0` |
 | `Stake.liquidityTokenAmount(address)` | — | `0x9c8636c7` |
-| `Stake.boostStakeCap(address,uint256)` | — | `0x72f89ab1`（返回 `(baseCap, memberCap, memberUsed)`，3 项） |
+| `Stake.boostStakeCap(address,uint256)` | — | `0x72f89ab1`（返回 `(memberCap, memberUsed)`，2 项；selector 只由入参决定，不变） |
 | `Stake.BoostCapExceeded(address,uint256,uint256,uint256)` | — | `0x837ed964` |
 
 `mintGovReward`、`mintGovRewards`、`govRewardByMemberId` 的 selector 不变（`0x53ad345e` / `0xc4a5477d` / 既有值），变化仅在返回项少一个 `burnReward`。事件：

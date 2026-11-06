@@ -168,7 +168,7 @@ stakeBoost 通过条件：member.boostShares + amount <= m_i
 
 **公平性残留。** 单人上限按入口当轮的票权占比计算。后加入者投票会稀释 `v_i / V`，早期成员的 `m_i` 随之下调，但其已存头寸按祖父条款保留，形成「旧头寸超过新额度」的残留；反过来，若某成员在轮内先追加质押、提高票权再存入，其额度按提高后的占比重算。残留的大小取决于占比变化幅度：占比减半则旧头寸可达新额度的两倍，且这部分超额头寸在提取前持续参与加速分配。协议不强行清算这部分，因为清算需要卖出或扣押成员已存入的代币，属于入口校验之外的新机制。
 
-**查询入口。** `boostStakeCap(tokenAddress, memberId)` 返回 `(baseCap, memberCap, memberUsed)`，其中 `baseCap = C`、`memberCap = m_i`、`memberUsed` 为该成员已存加速本金，均按当前轮计算。成员可在 `stakeBoost` 前读到自己的可用额度；但额度会随本轮新增投票、`totalSupply` 销毁和他人提取而变化，查询只是当时快照。`liquidityTokenAmount(tokenAddress)` 返回本金台账 `T`。
+**查询入口。** `boostStakeCap(tokenAddress, memberId)` 返回 `(memberCap, memberUsed)`，其中 `memberCap = m_i`、`memberUsed` 为该成员已存加速本金，均按当前轮计算；上限基数 `C` 只在合约内部计算，不对外返回（其输入 `T` 仍可由 `liquidityTokenAmount(tokenAddress)` 读取）。成员可在 `stakeBoost` 前读到自己的可用额度；但额度会随本轮新增投票、`totalSupply` 销毁和他人提取而变化，查询只是当时快照。
 
 **量纲与可操纵性。** `T` 取 `_totalLiquidityTokenAmount` 本金台账，入池时增加实际转入的社区代币数量，提取时扣除 `floor(liquidityShares × T / totalLiquidityShares)`，与可提取 LP 的份额口径一致。选择本金而非 `tokenAmountForLiquidity`（`withdrawableLp × reserveToken / pairTotalSupply`）的原因：后者读 Pair 现货储备，可被捐赠 + `sync`、闪电贷或价格波动移动；本金台账只由协议自己的入池/提取写入，不受外部转账影响。代价是本金按入池时数量记账，不随池价重估。
 
