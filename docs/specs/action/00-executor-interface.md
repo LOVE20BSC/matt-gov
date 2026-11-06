@@ -111,7 +111,7 @@ Executor 不使用加密调用 `ActionTarget` 上同名的 `join`/`exit`：Actio
 
 ## 状态口径
 
-- `init` 必须先于任何 Executor 的部署与绑定完成：Executor 构造函数从 `ActionTarget` 读四个 immutable，绑定读取自身也依赖已初始化的地址；顺序颠倒只表现为构造期解码失败。部署脚本以「`!initialized()` → `init` → `initialized()`」断言收尾，并回读五个绑定。
+- `ActionTarget` 的构造注入必须先于任何 Executor 的部署与绑定完成：Executor 构造函数从 `ActionTarget` 读四个 immutable，构造期读到的绑定已在那笔部署交易内固化；顺序颠倒只表现为构造期解码失败。部署脚本在广播前复核 Mint 派生结果，部署后回读五个绑定。
 - 批量结算不设长度上限：gas 由调用方自付，区块 gas 是自然上界；逐元素可能触发外部铸币或转账，任一元素失败整笔回滚，不存在部分结算。
 - 铸币窗口未开始（`mintRound == 0`）时，成员结算统一回滚 `RoundNotStarted(1, 0)`；`RoundAfterMintWindow` 只用于「已开始但已过窗」。读面 `currentMintRound()` 与写面同口径。
 

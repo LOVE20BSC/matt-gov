@@ -55,11 +55,11 @@ targetData[SLOT_EXECUTOR] = abi.encode(executorAddress)
 
 完整 ABI 见 [`IActionTarget.sol`](https://github.com/LOVE20BSC/action/blob/main/src/interfaces/IActionTarget.sol)。
 
-`init` 只接收 Mint 地址：重复调用回滚 `AlreadyInitialized()`；**不设调用者限制、不保存部署者**——与 core 卷 `DEP-01` 同一分工：一次性初始化入口无许可，防抢跑责任在部署期脚本，合约侧不校验。
+`ActionTarget` 的构造函数只接收 Mint 地址，并在构造期从 Mint 读取 `VOTE_ADDRESS`、`SUBMIT_ADDRESS`、`MEMBER_NFT_ADDRESS`、`PHASE_ADDRESS` 保存，同时保存 `MINT_ADDRESS`；**不设调用者限制、不保存部署者、不做零地址校验**——与 core 卷 `DEP-01` 同一分工：部署期静态不变量由部署脚本在广播前校验，合约侧不重复校验。
 
-**`init` 必须是部署后发往该 ActionTarget 的第一笔交易**。`DeployAction.s.sol` 在 `new ActionTarget()` 之后立即广播 `init`，广播前断言该地址尚未初始化、广播后断言已初始化；若任何其他交易先到，要么本脚本的 `init` 回滚 `AlreadyInitialized`，要么部署后的五个绑定校验失败，部署中止。**这五个绑定值就是本合约全部写入口的鉴权根**：`SUBMIT_ADDRESS`/`VOTE_ADDRESS` 门禁三类 Core 回调，`MEMBER_NFT_ADDRESS` 是成员持有人判据，`PHASE_ADDRESS` 决定加入轮与结算轮，`MINT_ADDRESS` 是唯一铸造出口；部署脚本广播前校验、`21_check.sh` 部署后逐项复核这五个值。因此 `init` 抢跑等价于「换掉全部鉴权根」，不是「换掉参数」。
+构造注入后不存在「部署后第一笔交易被抢跑」的初始化窗口：五个绑定在同一笔部署交易内完成。**这五个绑定值就是本合约全部写入口的鉴权根**：`SUBMIT_ADDRESS`/`VOTE_ADDRESS` 门禁三类 Core 回调，`MEMBER_NFT_ADDRESS` 是成员持有人判据，`PHASE_ADDRESS` 决定加入轮与结算轮，`MINT_ADDRESS` 是唯一铸造出口；部署脚本广播前校验、`21_check.sh` 部署后逐项复核这五个值。
 
-`mintAddress` 及从 Mint 派生出的 `voteAddress`、`submitAddress`、`memberNFTAddress`、`phaseAddress` 有代码是部署期静态不变量。五项派生依赖在 init 内各读取一次并缓存，经同名 getter 暴露；Mint 须先完成 init，不把「部署后立即初始化」当作防抢跑保证。`phaseAddress` 由 Mint 从 Vote 派生后再由 ActionTarget 读取，ActionTarget 因此与投票轴共享同一 Phase，当前投票轮直读 `IPhase.currentPhase()`，不经 Mint 或 Vote 二跳。
+`mintAddress` 及从 Mint 派生出的 `voteAddress`、`submitAddress`、`memberNFTAddress`、`phaseAddress` 有代码是部署期静态不变量。四项派生依赖在构造函数内各读取一次并缓存，经同名 getter 暴露；Mint 须先完成部署。`phaseAddress` 由 Mint 从 Vote 派生后再由 ActionTarget 读取，ActionTarget 因此与投票轴共享同一 Phase，当前投票轮直读 `IPhase.currentPhase()`，不经 Mint 或 Vote 二跳。
 
 **写操作权限**：`registerJoinState`/`clearJoinState`/`mintActionReward` 仅该 `(tokenAddress, actionId)` 已注册绑定的 Executor 可调用——判据是 `executor[tokenAddress][actionId] == msg.sender` 且该绑定非零，未注册绑定时任何调用者都拒绝；不满足即回滚 `UnauthorizedExecutor(tokenAddress, actionId)`。`registerJoinState` 另有硬性入口校验：当前投票轮必须**大于**该行动的创建轮（`ActionRegistered` 的 round），否则回滚 `JoinNotOpen(tokenAddress, actionId, currentRound, createdRound)`——加入在投票后一个阶段开放，投票轮未走完不得登记加入；`clearJoinState`/`forceClearJoinState` 无需该校验（已加入本身蕴含加入轮已开放，且轮次单调不减）。`mintActionReward` 只接受已创建关联行动的 `actionId`，绑定键与铸造键一致，不存在「持某个行动的 Executor 去铸另一个行动」的路径。`forceClearJoinState` 仅该 memberId 的 MemberNFT 当前持有人可调用，否则 `NotMemberOwner(memberId)`。
 

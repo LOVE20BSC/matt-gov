@@ -5,7 +5,7 @@
 | 模块 | 必测场景 | 预期 |
 | --- | --- | --- |
 | [ActionTarget](01-action-target.md) | 三类回调、executor 握手、映射、重复创建、非授权调用、加入轮校验、行动列表查询 | 只用关联 Executor，回调失败全回滚，当前投票轮不大于创建轮时注册回滚 `JoinNotOpen`，`votedActionIds` 与本轮投票一致，`actions`/`actionIdsByExecutor` 与创建绑定一致 |
-| ActionTarget | `init` 只收 Mint、派生依赖 | `VOTE_ADDRESS`/`SUBMIT_ADDRESS`/`MEMBER_NFT_ADDRESS`/`PHASE_ADDRESS` 从 Mint 读取一次并缓存；依赖代码与绑定由 `DeployAction` 广播前交叉校验、21_check 直接读取 Stake getter 覆盖，`init` 只防重复初始化 |
+| ActionTarget | 构造注入只收 Mint、派生依赖 | `VOTE_ADDRESS`/`SUBMIT_ADDRESS`/`MEMBER_NFT_ADDRESS`/`PHASE_ADDRESS` 在构造函数内从 Mint 读取一次并缓存；派生结果由 `DeployAction` 广播前交叉校验、21_check 部署后逐项复核，不存在可重入的初始化入口 |
 | ActionTarget | forceClearJoinState 兜底清理 | 只清 ActionTarget 注册表并发 `JoinStateCleared(forced = true)`；不回调 Executor、不转账、不结算、不发 `*Exited`，Executor 侧仓位与群归属保持原样；成员不在注册表时重复调用幂等成功、不发重复事件；Executor 若仍可用，其自身退出路径照常结算并回调 `clearJoinState`（无操作） |
 | ActionTarget | 分页顺序契约 | 按 `01-action-target.md` 顺序契约执行：加入态集合的 `offset` 不保证跨调用稳定，删除（swap-and-pop）后同一 `offset` 的返回内容可变化；`offset` 越界返回空数组与真实总数、`limit = 0` 只返回总数 |
 | ActionTarget | Target Data 位置契约 | 创建与推举回调共用同一份 Target Data：第 `0` 项均为 executor 保留项、业务项从第 `1` 项起；投票回调为投票者提供的数据，非空时第 `0` 项为已绑定 Executor、其后为业务项；三类回调转发门禁——`targetData` 非空时第 `0` 项必须为已绑定 Executor 地址（否则回滚），投票回调空数据原样透传；项数、位置与编码由各 Executor 自定并自行拒绝 |

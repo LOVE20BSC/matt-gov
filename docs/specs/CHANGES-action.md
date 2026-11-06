@@ -4,6 +4,15 @@
 
 > 本文记录迁移当时的新旧对照。标识符回写口径（2026-11-01 定）：「旧 → 新」对照列和记录迁移当时状态的叙述保留旧名，不逐一回写；描述当前 ABI 或当前行为的句子随改名回写（如「轮次轴分层」段里守卫所覆盖的入口名）。当前 ABI 与命名以 `action/src/interfaces/`、[`docs/specs/action/`](action/) 与 [`naming-standards.md`](../naming-standards.md)（§14 进度）为准。
 
+## ActionTarget 构造注入（2026-11-07）
+
+`ActionTarget.init(address)` 改为 `constructor(address mintAddress)`，与 core 卷 `DEP-01` 同型，**ABI 变化（删除 `init` 与 `initialized()`，删除错误 `AlreadyInitialized()`），旧 ABI 不可复用**：
+
+- 构造函数只收 Mint 地址，并在构造期从 Mint 读取 `VOTE_ADDRESS`、`SUBMIT_ADDRESS`、`MEMBER_NFT_ADDRESS`、`PHASE_ADDRESS` 保存，同时保存 `MINT_ADDRESS`；五个绑定在同一笔部署交易内固化，不再存在「部署后第一笔交易被抢跑」的初始化窗口。core 为跨仓、部署时已落地的依赖，构造期读取其 getter 属于 `dev-standards` §5.4 的跨仓既有地址边界，不是同批部署例外。
+- 5 个存储字段一个不减；`bool initialized` 只占 1 字节，与 `PHASE_ADDRESS` 打包在 slot 4（`PHASE_ADDRESS` 位于 `4:0`、`initialized` 位于 `4:20`），删除后只释放 slot 4 的 offset 20，后续 mapping 槽位不变，仍为 5–11（`forge inspect ActionTarget storageLayout` 实测）。不做 `code.length`、不保存部署者、不做零地址校验，校验责任在部署脚本。
+- 同步：`IActionTarget` 删除 `init`/`initialized` 声明，`IActionTargetErrors` 删除 `AlreadyInitialized`；`DeployAction.s.sol` 改构造参数并删除「`!initialized()` → `init` → `initialized()`」断言（保留广播前 Mint 派生复核与部署后五项绑定复核）；`21_check.sh` 退休 `initialized()` 断言；`31_verify.sh` 以 `constructor(address)` + `MINT_ADDRESS` 回填构造参数，并新增载入 `addresses.core.params`；`deploy_scripts_test.py` 对 ActionTarget 增加 1 槽逐槽校验。
+- 规格：[01](action/01-action-target.md)、[00](action/00-executor-interface.md)、[07](action/07-minting.md)、[08](action/08-testing.md) 的 `init`/`initialized`/`AlreadyInitialized` 描述同步改写；组织规范 §5.4 补跨仓派生边界与固定部署全序。
+
 ## 本轮投票行动改名与按执行器查询（2026-11-06）
 
 `ActionTarget` 的本轮投票查询改名并新增按执行器过滤入口，**`votedActions` 的 selector 变化，旧 ABI 不可复用**：
@@ -115,7 +124,7 @@ struct JoinInfo {
 
 ## 校验分层（2026-10-25）
 
-- `ActionTarget`、`LpExecutor`、`GroupActionExecutor`、`GroupServiceExecutor` 的 `init` 依赖代码、派生的非零检查和 splits 空数组/范围/递增检查，移到 `DeployAction` 广播前校验与 `21_check.sh` 部署后复核；`DeployAction` 额外交叉核对 Mint/Stake 的派生图与 Vote/Submit 绑定，21_check 直接读取 Stake 的派生 getter；`init` 只防重复初始化并保存入参。
+- 当时的 `ActionTarget`、`LpExecutor`、`GroupActionExecutor`、`GroupServiceExecutor` 的 `init` 依赖代码、派生的非零检查和 splits 空数组/范围/递增检查，移到 `DeployAction` 广播前校验与 `21_check.sh` 部署后复核；`DeployAction` 额外交叉核对 Mint/Stake 的派生图与 Vote/Submit 绑定，21_check 直接读取 Stake 的派生 getter；当时的 `init` 只防重复初始化并保存入参。（ActionTarget 的 `init` 已于 2026-11-07 由构造注入取代，见本文首节。）
 - `DeployAction` 部署后核对 `GroupActionExecutor.actionTarget` 与 `GroupServiceExecutor.groupActionExecutorAddress`；后者为本次新增 getter。
 - 删除 `DependencyNotContract(address)` 与 `InvalidSplits(index,value)`；错误模型 v3 小节中的对应记录保留为当时状态。
 

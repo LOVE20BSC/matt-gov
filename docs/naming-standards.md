@@ -104,7 +104,7 @@
 
 ### 4.4 判断
 
-返回**单个** bool 且**带参数**的函数必须是 `is/has/can/should` 开头：判断对象在参数里，名字要说明在判断什么。零参 bool getter 是状态读取，用形容词或过去分词（`initialized`），不套 `is`。返回 tuple 的函数不算——`actionReward` 返回 `(amount, minted)`，是读，不是判断。
+返回**单个** bool 且**带参数**的函数必须是 `is/has/can/should` 开头：判断对象在参数里，名字要说明在判断什么。零参 bool getter 是状态读取，用形容词或过去分词（`activated`），不套 `is`。返回 tuple 的函数不算——`actionReward` 返回 `(amount, minted)`，是读，不是判断。
 
 ### 4.5 禁止重载
 
@@ -115,7 +115,7 @@
 | 位置 | 形式 | 例 |
 | --- | --- | --- |
 | 带参数的 bool 函数（判断别的主体） | 谓词 | `isJoined`、`hasActiveGroups`、`canVote` |
-| 零参 bool getter / bool 状态变量 | 形容词或过去分词 | `initialized`、`activated` |
+| 零参 bool getter / bool 状态变量 | 形容词或过去分词 | `activated`、`paused` |
 | 结构体字段 / 返回值 / 参数 | 形容词或过去分词 | `postingAllowed`、`mentionAll` |
 
 谓词用于判断**别的主体**是否满足条件，判断对象在参数里；读取合约自身状态时，名字与声明同处一处，再加 `is` 是重复。
@@ -223,7 +223,7 @@
 
 24KB 拆分用的根布局 struct 统一 `_layout`，禁止单字母 `s`；库函数的 storage 参数用 `self`（参数不带 `_`，`layout` 会触发 6335 未来关键字警告）。
 
-Layout 中**部署后冻结的字段**按 §3.1 用 `UPPER_SNAKE`（`ACTION_TARGET_ADDRESS`、`STAKE_ADDRESS`、`SPLITS`），其余可变字段用 `lowerCamelCase`；`initialized` 是初始化完成标志（§4.4 的零参 bool getter），保持 `lowerCamelCase`。
+Layout 中**部署后冻结的字段**按 §3.1 用 `UPPER_SNAKE`（`ACTION_TARGET_ADDRESS`、`STAKE_ADDRESS`、`SPLITS`），其余可变字段用 `lowerCamelCase`。
 
 ### 8.6 结构体类型
 

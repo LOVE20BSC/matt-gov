@@ -6,7 +6,7 @@
 executor -> ActionTarget -> Mint -> executor
 ```
 
-只有关联 Executor 可发起 ActionTarget 的铸造入口 `mintActionReward`；ActionTarget 作为 Target 调用 Mint 时把该 Executor 作为 `recipient` 传入，Mint 直接把指定 token、Round、Proposal 的完整激励铸给 Executor——激励不落在 ActionTarget，没有「先铸给自己、再转一次」的转发，也没有中转余额需要清理。Executor 再按所属业务完成成员、验证者和 owner 分配。任一步失败回滚，不允许重复铸造。铸造去重由 Mint 持有：ActionTarget 不保存行动级铸造状态位，重复调用由 Mint 回滚 `ProposalRewardAlreadyMinted(tokenAddress, round, proposalId)`（Mint 是 init 固定的可信依赖、`LOVE20Token.mint` 无回调，外呼不可重入）。**可结算窗口不在本入口**：`mintActionReward` 不判 `round` 与当前阶段的关系，窗口随行动类型不同（LP `phase−2`，Group/Service `phase−3`），由调用方 Executor 负责；新增 Executor 必须实现等价约束（边界同 core 卷 `MNT-01`）。
+只有关联 Executor 可发起 ActionTarget 的铸造入口 `mintActionReward`；ActionTarget 作为 Target 调用 Mint 时把该 Executor 作为 `recipient` 传入，Mint 直接把指定 token、Round、Proposal 的完整激励铸给 Executor——激励不落在 ActionTarget，没有「先铸给自己、再转一次」的转发，也没有中转余额需要清理。Executor 再按所属业务完成成员、验证者和 owner 分配。任一步失败回滚，不允许重复铸造。铸造去重由 Mint 持有：ActionTarget 不保存行动级铸造状态位，重复调用由 Mint 回滚 `ProposalRewardAlreadyMinted(tokenAddress, round, proposalId)`（Mint 地址由构造函数注入并固化，ActionTarget 在构造期从 Mint 派生 `VOTE_ADDRESS`/`SUBMIT_ADDRESS`/`MEMBER_NFT_ADDRESS`/`PHASE_ADDRESS`，属构造期绑定的可信依赖；`LOVE20Token.mint` 无回调，外呼不可重入）。**可结算窗口不在本入口**：`mintActionReward` 不判 `round` 与当前阶段的关系，窗口随行动类型不同（LP `phase−2`，Group/Service `phase−3`），由调用方 Executor 负责；新增 Executor 必须实现等价约束（边界同 core 卷 `MNT-01`）。
 
 流转由两条事件分别留痕，粒度与所在层一致：ActionTarget 在整笔转出时发出**行动级**的 `ActionRewardMinted(tokenAddress, actionId, round, amount)`，`amount` 即 `mintActionReward` 的返回值，与同层查询 `actionReward` 同源；各 Executor 在成员或角色结算时发出**成员级**的 `MemberRewardMinted(tokenAddress, actionId, memberId, round, mintAmount, burnAmount)`。本轮该行动只能铸造一次（去重键 `tokenAddress + actionId + round`，由 Mint 的状态位判定）；成员不参与这条链路也不需要了解它，成员级入口只存在于各 Executor。成员结算量为零（`mintAmount` 与 `burnAmount` 均为 0）时按成因三分，成员级按量纲独立命名：`ZeroEffectiveJoinAmount(tokenAddress, actionId, memberId)`（LP：有效加入量/份额为零）、`ZeroFinalScore(tokenAddress, actionId, memberId)`（GroupAction：**已验证轮**内最终验证得分为零）、`ZeroRewardWeight(tokenAddress, actionId, memberId)`（Service：该轮未按轮加入，或加入后验证者/owner 两个权重都为零）；轮级为 `MemberRewardPoolEmpty(tokenAddress, round)`（轮次未完成验证、轮级分母为零或行动激励为零，`GroupActionExecutor` 对未验证轮先判此项，即使成员有票也回此项）；取整为 `MemberRewardRoundedToZero(tokenAddress, round, memberId)`（逐项取整为零）；Service 侧这三项由 `GroupServiceStorage.SettlementCause` 的 `NoEligibleWeight` / `PoolEmpty` / `RoundedToZero` 驱动。不置位已结算状态、不发事件，与 Core 铸造的零额拒绝同口径；有销毁量即允许结算。`MemberRewardPoolEmpty` / `MemberRewardRoundedToZero` 与 core `IMintErrors` 同名同签名；三个成员级错误名是 action 侧独有——core 的 `MemberHasNoVote` 判的是治理票（`Vote.voteAmountByMemberId`），与份额/得分/权重不是同一量，不复用其名字。
 
@@ -24,7 +24,6 @@ Core 的预留、铸造和取消额度账本见 [Mint](../core/07-mint.md)，不
 
 | 错误 | 拒绝条件 |
 | --- | --- |
-| `AlreadyInitialized()` | ActionTarget 的 `init` 被重复调用 |
 | `ZeroJoinTokenAddress()` / `ZeroActionTokenAddress()` | 创建回调的参与计价代币或服务行动代币为零 |
 | `NotSubmit(address caller)` / `NotVote(address caller)` | ActionTarget 三类回调的调用者不是 Submit / Vote |
 | `NotActionTarget(address caller)` | Executor 三类回调的调用者不是 ActionTarget |
