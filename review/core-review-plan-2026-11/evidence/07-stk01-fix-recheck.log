@@ -1,0 +1,69 @@
+# STK-01 fix re-review — 2026-11-06T09:18:26Z
+# fixture: /tmp/core-stk01-review
+#          rsync of core/ (excl. out/cache/broadcast) -> git reset --hard 036b2ed -> forge clean
+#          test/audit/ is untracked in core and was carried over unchanged
+
+## commit
+036b2ed4f88b94f7b1965fe839aa664a8e6d76c6
+036b2ed feat(stake): cap boost principal per member and pay full boost reward
+
+## forge
+forge Version: 1.8.1
+Commit SHA: 982849d3140c01fd3b72905759581a132df7aa98
+Build Timestamp: 2026-08-28T17:50:40.383510000Z (1787939440)
+
+## build --force --deny warnings
+# foundry 的 DynamicTestLinkingPreprocessor(solar) 打印了 7 条 ERC20 标准错误
+# 「already declared」的预处理告警（lib/openzeppelin-contracts），不是 solc 编译错误：
+# build rc=0，且 "Compiler run successful!"。solc --deny warnings 无告警。
+Compiling 91 files with Solc 0.8.37
+Solc 0.8.37 finished in 9.06s
+Compiler run successful!
+build rc=0
+
+## lint
+lint rc=0
+
+## test (HEAD 527 + 3 review-only = 530)
+Ran 21 test suites in 2.88s (8.51s CPU time): 530 tests passed, 0 failed, 0 skipped (530 total tests)
+
+## events
+event manifest OK: 28 events; families OK; declaration style OK; emit style OK; emit keys OK
+events rc=0
+
+## deploy scripts
+Passed 41 isolated deployment checks (no network calls or broadcasts).
+deploy rc=0
+
+## audit PoC (regression baseline, 11 cases, unchanged)
+[PASS] test_settlementNeverTouchesBoostBacking() (gas: 2805626)
+[PASS] test_submitGateCapturedWithOneWeiOfBoost() (gas: 4287762)
+[PASS] test_zeroValueBurnFallsBackToLpTransfer() (gas: 2106648)
+Suite result: ok. 11 passed; 0 failed; 0 skipped; finished in 21.66ms
+=> STK-01 的原 PoC 在 HEAD 仍然通过（未由「通过」变「失败」）
+
+## STK-01 measurement (review-only test, same fixture as AuditPoC)
+[PASS] test_stk01HeadMeasurements() (gas: 3897583)
+  m1 memberCap before boost 1999999999999936045
+  m1 votes before 99999999999999999000
+  totalValidGovVotes before 399999999999999999000
+  requiredVotes before 19999999999999999950
+  liquidityTokenAmount 400000000000000000000
+  m1 votes after 1 wei boost 9999999999999999900000
+  totalValidGovVotes after 10299999999999999900000
+  requiredVotes after 514999999999999995000
+=> 1 wei = cap 的 5e-19；票权 1e20 -> 1e22 (100x)；门槛 2e19 -> 5.15e20；
+   m2 票权 1e20 < 5.15e20，仍被排除
+
+## boundary behaviour (review-only tests)
+[PASS] test_boostCapRevertPayloadIsRemaining() (gas: 1226658)
+[PASS] test_zeroWeiBoostReverts() (gas: 1072578)
+Suite result: ok. 2 passed; 0 failed; 0 skipped
+=> stakeBoost(0) -> ZeroBoostAmount
+=> stakeBoost(cap+1) -> BoostCapExceeded(token, 1, cap+1, cap)；allowed = 剩余额度
+=> mergeStake 路径同一 selector 的 allowed = 目标绝对上限（规格 04-stake.md:280）
+
+## ABI spot checks
+cast sig "BoostCapExceeded(address,uint256,uint256,uint256)" => 0x837ed964
+Mint.govRewardByMemberId outputs => (voteReward, boostReward, minted)  # 4 -> 3
+Mint.GovRewardMinted inputs => (tokenAddress, round, memberId, voteReward, boostReward, totalRewardMinted)  # 7 -> 6

@@ -6,7 +6,7 @@
 | --- | --- |
 | 基线 | `9297a33`，工作树干净，`src/` 审查期间零改动 |
 | 范围 | `src/` 8 文件 4,036 行 + 10 接口 + 3 库，切 29 单元全部到「已审」 |
-| 登记项 | 22 条：**High 1 / Medium 3 / Low 7 / Info 11** |
+| 登记项 | 22 条：**High 1 / Medium 3 / Low 7 / Info 11**（其中 STK-01、MNT-01 已裁为机制设计、按已接受登记） |
 | 已排除 | 1 条（STK-06：两条「重点怀疑」路径经反例搜索不成立） |
 | 设计命题 | D-01..D-10 全部三档判定（兑现 2 / 可接受 7 / 缺陷 1） |
 | 路径 | P-01..P-08 全部给出「可利用 / 不可利用 / 需人裁决」，无「待观察」 |
@@ -19,14 +19,14 @@
 
 | 级 | 条数 | F-ID |
 | --- | --- | --- |
-| High | 1 | STK-01 |
-| Medium | 3 | MNT-01、NFT-01、DEP-01 |
+| High | 1 | STK-01（已裁为机制设计、按已接受登记） |
+| Medium | 3 | MNT-01（已裁为机制设计、按已接受登记）、NFT-01、DEP-01 |
 | Low | 7 | STK-02、MNT-02、MNT-03、LCH-02、NFT-02、NFT-03、PHS-01 |
 | Info | 11 | STK-03、STK-04、STK-05、MNT-04、MNT-05、LCH-01、LCH-03、LCH-04、VOT-01、TOK-01、TOK-02 |
 
 ## 四条主结论
 
-### 1. STK-01（High）· 提交门槛被 1 wei 捕获
+### 1. STK-01（High，已裁为机制设计、按已接受登记）· 提交门槛被 1 wei 捕获
 
 `Submit:81` 的门槛是 `ratio × totalValidGovVotes`，而 `totalValidGovVotes` 的每一项都由成员自己设定（`Stake:875` 的 `shares × promisedWaitingPhases`）。`stakeBoost` 只要求 `boostAmount > 0`，于是 **1 wei** 就能把既有全部份额的乘数从 MIN 拉到 MAX（`Stake:154-159`），自己的票权与分母同时放大 `MAX/MIN` 倍。由于门槛是比例，攻击者始终合格，其他成员原地不动即出局；`promisedWaitingPhases` 只增不减，所以这个出局是**永久**的。
 
@@ -36,11 +36,13 @@
 
 > **后续卷交叉标注**：`core-state-mutation-review-2026-11` 在 `core@0466d67` 基线上把这条判为「**兑现（机制设计）**」——相同资产下，共识高者自愿选择更长的解锁期换取更高票权与治理激励，拉满不是必经路径，低共识者可选短解锁期，`MAX/MIN` 始终保留区分度。理由与失效边界（等份额 235–33,234 的过渡态排除区、51% 份额抬到约 15.4%、1 wei 只做自补入场券、真实成本是 `MAX` 个 Phase 锁定期、对手可同样拉满反制）见该卷 [05-stake.md](../core-state-mutation-review-2026-11/05-stake.md) 的 `STK-01`。
 
-### 2. MNT-01（Medium）· 每轮奖池由首个 mint 的时序决定
+### 2. MNT-01（Medium，已裁为机制设计、按已接受登记）· 每轮奖池由首个 mint 的时序决定
 
 `_prepareRewardIfNeeded:126-130` 用「当前 `rewardAvailable()` × 固定比例」定义单轮额度，而「哪一轮先被 prepare」没有任何约束。先 mint 后一轮，就能把前一轮压到 `17/20`（实测：`9.99e25` vs `8.4915e25`）。对「在 A 轮占比高、B 轮占比低」的成员，重排是纯获利。
 
 - 破坏的不变量：轮 N 的额度应在轮 N 结束时确定，与之后任何人的 mint 顺序无关。
+
+> **后续卷交叉标注**：`core-state-mutation-review-2026-11` 在 `core@0466d67` 基线上把这条判为「**机制设计，非缺陷**」——`prepareRewardIfNeeded` 提供的是「任何地址都能在轮次结束后立即准备」的确定性；正常运转下每轮都有人铸币，准备动作本就发生在轮次一开始，不存在对抗性窗口。池值按准备时点的实时快照落账，三个入口（`prepareRewardIfNeeded` / `mintProposalReward` / `mintGovReward(s)`）共用同一 internal 实现、口径一致。边界见该卷 [08-mint.md](../core-state-mutation-review-2026-11/08-mint.md) 的 `MNT-01`。
 
 ### 3. NFT-01（Medium）· 身份名唯一性只折 ASCII
 
