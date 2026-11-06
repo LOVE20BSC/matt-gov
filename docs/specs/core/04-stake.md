@@ -170,9 +170,9 @@ stakeBoost 通过条件：member.boostShares + amount <= m_i
 
 **查询入口。** `boostStakeCap(tokenAddress, memberId)` 返回 `(memberCap, memberUsed)`，其中 `memberCap = m_i`、`memberUsed` 为该成员已存加速本金，均按当前轮计算；上限基数 `C` 只在合约内部计算，不对外返回（其输入 `T` 仍可由 `liquidityTokenAmount(tokenAddress)` 读取）。成员可在 `stakeBoost` 前读到自己的可用额度；但额度会随本轮新增投票、`totalSupply` 销毁和他人提取而变化，查询只是当时快照。
 
-**量纲与可操纵性。** `T` 取 `_totalLiquidityTokenAmount` 本金台账，入池时增加实际转入的社区代币数量，提取时扣除 `floor(liquidityShares × T / totalLiquidityShares)`，与可提取 LP 的份额口径一致。选择本金而非 `tokenAmountForLiquidity`（`withdrawableLp × reserveToken / pairTotalSupply`）的原因：后者读 Pair 现货储备，可被捐赠 + `sync`、闪电贷或价格波动移动；本金台账只由协议自己的入池/提取写入，不受外部转账影响。代价是本金按入池时数量记账，不随池价重估。
+**量纲与可操纵性。** `T` 取 `_totalLiquidityTokenAmount` 本金台账，入池时增加实际转入的社区代币数量，提取时按扣减前的 `totalLiquidityShares` 扣除 `floor(liquidityShares × T / totalLiquidityShares)`，再扣减份额总量，与可提取 LP 的份额口径一致。选择本金而非 `tokenAmountForLiquidity`（`withdrawableLp × reserveToken / pairTotalSupply`）的原因：后者读 Pair 现货储备，可被捐赠 + `sync`、闪电贷或价格波动移动；本金台账只由协议自己的入池/提取写入，不受外部转账影响。代价是本金按入池时数量记账，不随池价重估。
 
-**释放时点。** `unstake` 只把有效加速份额清零，不减少 `totalBoostShares`；`withdraw` 真正归还代币时才减少。由于聚合字段不再参与校验，这一差异只影响查询口径，不影响任何人的可用额度。`mergeStake` 保持聚合总量不变，但在融合完成后按目标的新票占比重算 `m_target` 并校验目标余额；该检查是防御性的，正常融合会提高目标票占比，只可能在目标已被祖父条款覆盖（已超上限）且源带有加速余额时命中。
+**释放时点。** `unstake` 只把有效加速份额清零，不减少 `totalBoostShares`；`withdraw` 真正归还代币时才减少。由于聚合字段不再参与校验，这一差异只影响查询口径，不影响任何人的可用额度。`mergeStake` 保持聚合总量不变。仅当源带加速余额且目标合并前非空（有流动性质押或有加速余额）时，才在融合完成后按目标的新票占比重算 `m_target` 并校验目标余额；目标为空仓时豁免，因为那只是同一份加速换了持有身份，不构成新存入，合并后该仓位随即处于祖父状态。该检查是防御性的：命中意味着合并后的合计超过按新票占比算出的额度，至少一方在合并前已超限。
 
 ## 解锁与提取
 
@@ -277,9 +277,9 @@ Factory 与 `Router.factory()` 一致、`promisedWaitingPhasesMin > 0`、`0 < fe
 | 7 | 源无流动性质押 | `NoStakedLiquidity(tokenAddress, sourceMemberId)` |
 | 8 | 源在当前治理 Round 已使用过质押权（已推举或已投票） | `StakeRightsUsed(tokenAddress, round, sourceMemberId)` |
 | 9 | 目标非空且其 `promisedWaitingPhases` 短于源 | `TargetPromisedWaitingPhasesTooShort(target.promisedWaitingPhases, source.promisedWaitingPhases)` |
-| 10 | 融合后目标加速余额超过目标新票占比下的 `m_target`（仅源带有加速余额时校验） | `BoostCapExceeded(tokenAddress, targetMemberId, targetBoostShares, targetCap)` |
+| 10 | 目标合并前非空且融合后加速余额超过目标新票占比下的 `m_target`（仅源带有加速余额时校验） | `BoostCapExceeded(tokenAddress, targetMemberId, targetBoostShares, targetCap)` |
 
-第 10 行是防御性检查：融合不改变聚合总量，且正常融合会提高目标票占比，因此只可能在目标已因上限收缩而被祖父条款覆盖时命中。
+第 10 行是防御性检查。**目标合并前为空仓（既无流动性质押、也无加速余额）时豁免**：此时融合只是同一份加速换了个持有身份，不构成新存入、也不新增加速，因此即使合并后超过额度也允许；该仓位随即处于祖父状态，后续不能再新增。目标只要已有仓位——包括“有 LP 但无加速”——融合都会改变票权结构或带来加速增量，源带加速时照常按合并后的新票占比重算 `memberCap` 并校验。由于融合不改变聚合总量，且目标额度按合并后的合计票占比重算，这一校验只在至少一方合并前已超限时命中。
 
 ### `settleFees`
 

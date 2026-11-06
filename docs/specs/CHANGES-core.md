@@ -33,7 +33,7 @@ M = BOOST_STAKE_MULTIPLIER（部署参数，示例 5，建议 1–20，仅要求
 - `_mintGovReward` 的 `_totalRewardBurned += burnReward` 与 `RewardBurned(BoostOverflow)` 发射；
 - `IMint.BurnReason` 的 `BoostOverflow`（`BoostPoolCancelled` / `ProposalPoolCancelled` 序号仍为 0 / 1，`RewardBurned` topic0 不变）。
 
-`Stake` 侧新增两个部署参数、一个本金台账 `_totalLiquidityTokenAmount` 与单人入口校验；`mergeStake` 在融合后校验目标单人上限（聚合总量不变，但目标票占比变大，防御性检查）。`BoostTotalCapExceeded` 不进入 ABI：聚合校验与聚合上限一并取消，只保留 `BoostCapExceeded`。
+`Stake` 侧新增两个部署参数、一个本金台账 `_totalLiquidityTokenAmount` 与单人入口校验；`mergeStake` 仅当目标合并前非空且源带加速时，在融合后校验目标单人上限；目标为空仓时豁免（只是同一份加速更换持有身份，不新增加速），合并后该仓位处于祖父状态。聚合总量不变。`BoostTotalCapExceeded` 不进入 ABI：聚合校验与聚合上限一并取消，只保留 `BoostCapExceeded`。
 
 ABI / selector 变化：
 
