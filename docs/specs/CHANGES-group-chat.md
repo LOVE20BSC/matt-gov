@@ -2,6 +2,15 @@
 
 用户确认：群聊几乎原样迁移，功能、流程、查询和失败行为保持；业务身份统一为 MemberNFT，删除地址主体平行路径。群内 NFT 委托已整体移除（2026-10-31），见下节与 [ADR-005](../adr/005-remove-group-chat-delegation.md)；消息正文与提及上限已改为协议常量（2026-11-02），见下节与 [ADR-006](../adr/006-group-chat-limits-as-protocol-constants.md)。
 
+## 封禁投票查询统一读已结算状态（2026-11-06）
+
+`GovVotedBanSource` 的查询视图不再按群 NFT 持有者是否有代码分流，单条与批量统一读已结算事实，消除 [05-chat-types.md](group-chat/05-chat-types.md)「查询视图」段此前登记的单条/批量不一致：
+
+- **合约**：删除 `_sourceHasCode(uint256 groupId)`（原实现为 `MemberOwner.ownerOrZero(GROUP_ADDRESS, groupId).code.length != 0`），以及它在 `voteWeightsBySenderIdsByVoterId`、`voteStatusBySenderId`、`votedSenderIds`、`votersBySenderId` 的短路；四个视图改为直接读 `_chatState[groupId]`，不再 `STATICCALL` `MemberNFT.ownerOf`。写入路径不变，仍以 `_sourceOrRevert` 先回 `GroupNotExist(groupId)` / `BanVoteWeightSourceUnavailable(groupId, source)`。
+- **行为**：持有者无代码时，`voteWeightsBySenderIdsByVoterId` 返回与入参等长的零数组、`voteStatusBySenderId` 返回 `(false, 0, 0)`、`votedSenderIds` 与 `votersBySenderId` 返回空数组且 `totalCount = 0`；现在四者与 `voteStatusBySenderIds`、`isBanned`、`isSenderIdBannedBatch` 一致，返回已结算权重与名单（可能已陈旧）。群不存在时 `_chatState[groupId]` 为空，新旧结果相同。
+- **测试**：`testT133_readerDegradesWhenSourceUnavailable` 改名 `testT133_readersReturnSettledStateWhenSourceUnavailable`，把群 NFT 转给 EOA 后断言 `isBanned`、`voteStatusBySenderId`、`voteStatusBySenderIds` 返回已结算的 `supportWeight = 7`。
+- **文档**：`05-chat-types.md`「查询视图」段同步为单条与批量一致。
+
 ## 撤票/归零拆出 `SenderBanVoteCleared`（2026-11-05）
 
 用户确认：撤票与刷新归零不再复用 `SenderBanVoteCast` 的 `settledWeight = 0`（event-standards §3.6 禁止零哨兵），改用独立事件。这是 events 审查卷 `GVB-EV-1` 的处置 **A2**：
