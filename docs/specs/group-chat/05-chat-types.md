@@ -44,7 +44,7 @@ supportWeight * 1e18 >= totalVoteWeight * 3e15
 
 投票身份按 voterId 该 MemberNFT 的**当前**持有人校验，不保存 owner 快照，与 admin 的双快照模型不同：NFT 转移后旧票仍按原 `settledWeight` 计数，新持有人可改票、撤票或刷新，旧持有人不再能操作该票。
 
-查询视图对 source 无代码的处理：单条 `voteStatusBySenderId`、`voteWeightsBySenderIdsByVoterId`、`votedSenderIds`、`votersBySenderId` 返回空/零；批量 `voteStatusBySenderIds`、`isBanned`、`isSenderIdBannedBatch` 不检查 source，直接读已结算名单与权重。该差异为已知边界：前一组视图以「source 可用」为前提，后一组以已结算名单为准。
+查询视图对 source 无代码的处理：单条与批量口径一致——`voteStatusBySenderId`、`voteWeightsBySenderIdsByVoterId`、`votedSenderIds`、`votersBySenderId`、`voteStatusBySenderIds`、`isBanned`、`isSenderIdBannedBatch` 都不检查 source，直接读已结算名单与权重。source 不可用时读到的仍是已结算事实（可能已陈旧），与发帖拦截所依据的 `isBanned` 一致；写入路径仍先回 `BanVoteWeightSourceUnavailable`。
 
 ## forceClearJoinState 与资格
 

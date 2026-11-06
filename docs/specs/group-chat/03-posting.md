@@ -49,6 +49,6 @@ enum PostRejectionReason {
 }
 ```
 
-成功返回 `(true, PostRejectionReason.None)`；失败返回 `(false, reason)`。无内容预检查不验证正文、提及、引用或 before 插件。Phase 未启动时也不返回拒绝原因：`PostRejectionReason` 是封闭枚举，不含轮次原因，实际 `post` 仍会回 `RoundNotStarted(1, 0)`。预检查不验证 sender 所有权；缺失 senderId 返回 `SenderNotExist`，实际 `post` 写入路径按成员错误回滚（缺失回 `ERC721NonexistentToken`，非 owner 回 `NotMemberOwner(senderId)`）。该例外只适用于 `canPost` 的原因枚举；`post` 写入路径和其它入口仍按成员角色错误回滚，不得据此扩展 `GroupNotExist`。
+成功返回 `(true, PostRejectionReason.None)`；失败返回 `(false, reason)`。无内容预检查不验证正文、提及、引用或 before 插件。Phase 未启动时也不返回拒绝原因：`PostRejectionReason` 是封闭枚举，不含轮次原因，实际 `post` 仍会回 `RoundNotStarted(1, 0)`。因此 `canPost` 只表达群与发送者级的准入结论，不表示轮次已开始；调用方若要避免构造必然回滚的 `post`，需自行检查 `currentRound()`。预检查不验证 sender 所有权；缺失 senderId 返回 `SenderNotExist`，实际 `post` 写入路径按成员错误回滚（缺失回 `ERC721NonexistentToken`，非 owner 回 `NotMemberOwner(senderId)`）。该例外只适用于 `canPost` 的原因枚举；`post` 写入路径和其它入口仍按成员角色错误回滚，不得据此扩展 `GroupNotExist`。
 
 正文上限 `MAX_CONTENT_LENGTH = 4096` 字节、提及上限 `MAX_MENTIONED_SENDER_IDS = 32` 是协议常量而非部署参数（决策与取舍见 [ADR-006](../../adr/006-group-chat-limits-as-protocol-constants.md)）：单条消息的日志体量随正文与提及条数线性增长，上文 gas 估算以 4096 字节正文为前提（每条提及另发一个 `SenderMentioned`，其条数同样由该上限约束），允许按部署放大等于让该估算失效，故不设可调项。`21_check.sh` 只复核两者非零，具体取值由开源验证比对源码。错误和插件捕获机制沿用已核对的旧 GroupChat，不另设计恢复流程。身份接口和事件按 [迁移边界](00-overview.md#迁移边界) 适配，验收见 [群聊验收](08-testing.md)。
