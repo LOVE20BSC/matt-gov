@@ -323,9 +323,9 @@ v1 基线：
 | `ProposalCreated.targetData` | ≤16 KiB、≤16 个元素 |
 | `GroupConfigChanged.description` | 现有 1024 字节 |
 | `GroupActivated.description` | 现有 1024 字节 |
-| `RecipientsChanged.remarks` | 每条 ≤256 字节，条数 ≤`DEFAULT_MAX_RECIPIENTS` |
-| `RecipientsChanged.recipientIds` / `ratios` | ≤`DEFAULT_MAX_RECIPIENTS`（10 项） |
-| `RecipientsChanged.prevRecipientIds` / `prevRatios` / `prevRemarks` | 与当次 `recipientIds` 同界，≤`DEFAULT_MAX_RECIPIENTS` |
+| `RecipientsChanged.remarks` | 每条 ≤256 字节，条数 ≤`MAX_RECIPIENTS_PER_ACTION` |
+| `RecipientsChanged.recipientIds` / `ratios` | ≤`MAX_RECIPIENTS_PER_ACTION`（10 项） |
+| `RecipientsChanged.prevRecipientIds` / `prevRatios` / `prevRemarks` | 与当次 `recipientIds` 同界，≤`MAX_RECIPIENTS_PER_ACTION` |
 | `GroupActionCreated.verificationKeys` / `verificationDescriptions` | ≤16 项，每项 ≤1024 字节 |
 | `GroupActionJoined.verificationValues` | ≤16 项，每项 ≤1024 字节 |
 | `OriginScoresSubmitted.scores` | ≤`MAX_VERIFICATION_BATCH`（100） |
