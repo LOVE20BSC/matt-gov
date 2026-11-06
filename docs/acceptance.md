@@ -100,19 +100,19 @@
 - 次数融合不携带 `launchCredit`
 
 ### 子币发射分发边界
-**覆盖要求**：覆盖首个代币通过 `Launch.init(LaunchInitParams)` 一次性启动、使用 WETH 且不带分发数据、不消耗发射次数、启动后不能重复创建首个代币、普通发射社区与 `parentTokenAddress` 一致、非零 `distributor`、普通发射的 `NoCallback`/`Callback` 两种分发模式、普通发射的 `distributorData` 可空且原样透传、`NoCallback` 下 `distributorData` 被忽略、Callback 回调失败回滚、首币固定使用 Airdrop 与 `NoCallback`、首币含名称和符号的 `GenesisTokenCreated` 事件，以及代币列表与子币列表分页查询、符号唯一性与符号字符集（ASCII 与 CJK 基本区汉字、非法 UTF-8 拒绝）。
+**覆盖要求**：覆盖首个代币由 `Launch` 构造函数（`LaunchInitParams` 构造参数）一次性创建、使用 WETH 且不带分发数据、不消耗发射次数、首币创建后无重复创建入口、普通发射社区与 `parentTokenAddress` 一致、非零 `distributor`、普通发射的 `NoCallback`/`Callback` 两种分发模式、普通发射的 `distributorData` 可空且原样透传、`NoCallback` 下 `distributorData` 被忽略、Callback 回调失败回滚、首币固定使用 Airdrop 与 `NoCallback`、首币含名称和符号的 `GenesisTokenCreated` 事件，以及代币列表与子币列表分页查询、符号唯一性与符号字符集（ASCII 与 CJK 基本区汉字、非法 UTF-8 拒绝）。
 
 **测试方式**：
 - 单元测试：`core/test/Launch.t.sol` 的首个代币启动、普通发射场景
-- 单元测试：`core/test/Launch.t.sol` 的初始化、首币创建和事件场景
+- 单元测试：`core/test/Launch.t.sol` 的构造期首币创建和事件场景
 - 验收证据：首个代币部署与 Airdrop 集成日志
 
 **判定标准**：
 - `core` 只部署 Launch 一条代币创建路径；`ILaunch` 不暴露独立创建入口，LOVE20Token 仅由 Launch 内部部署
-- 首个代币启动只能成功一次
+- 首个代币由 Launch 构造函数创建，部署后不存在重复创建入口
 - NoCallback 不回调，Callback 成功调用且失败回滚
 - 首币发 `GenesisTokenCreated`（无 launcher）；成员发射发 `TokenLaunched`，并在扣减后发 `LaunchCountConsumed`
-- 只有 `init` 校验初始化状态，`launchToken`、`mergeLaunchCount`、`addLaunchCount` 不重复校验
+- 首币创建与依赖绑定在构造期一次完成；`launchToken`、`mergeLaunchCount`、`addLaunchCount` 不重复校验部署状态
 - `tokens`/`childTokens` 按创建顺序分页返回且包含首币，`childTokens(ROOT_PARENT_TOKEN_ADDRESS)` 返回首币与根级同级币，`offset` 越界返回空数组与真实总数
 - 施加 `Test` 前缀后的最终符号重复时回滚 `TokenSymbolAlreadyExists(keccak256(bytes(finalSymbol)))`，`tokenAddressBySymbol` 命中已登记符号
 - 子币符号按 UTF-8 字节长度（等于 `TOKEN_SYMBOL_LENGTH`）与字符集校验：首字符为 ASCII `A-Z` 或 CJK 基本区汉字（`U+4E00`–`U+9FFF`），其余为 ASCII `A-Z`、`0-9` 或汉字；长度不符回滚 `InvalidTokenSymbolLength(length, TOKEN_SYMBOL_LENGTH)`，字符集不符回滚 `InvalidTokenSymbolCharacters()`

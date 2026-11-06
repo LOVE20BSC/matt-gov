@@ -8,7 +8,7 @@
 
 六个 core 合约（`Launch`、`MemberNFT`、`Stake`、`Submit`、`Vote`、`Mint`）的 `init` 入口改为构造函数；`initialized` 状态与 `AlreadyInitialized()` 删除。`Mint` 新增 `phaseAddress` 首参，不再从 `Vote.PHASE_ADDRESS()` 派生。`LOVE20Token` 构造函数删除 `minter`/`parentTokenAddress` 的 `code.length` 校验，`DependencyNotContract(address)` 随之从接口、错误注册表和测试中删除。
 
-部署顺序固定为 `Phase → Launch → MemberNFT → Stake → Submit → Vote → Mint`：首币仍由 `Launch` 构造函数创建（构造函数内唯一 CREATE），`MemberNFT` 的首币地址取自已部署的 `Launch.FIRST_TOKEN_ADDRESS()`；`MemberNFT`、`Vote`、`Mint` 三处前向引用由部署脚本按部署者 nonce 预测（+2 / +5 / +6），并在对应合约部署后立即核对，同时核对 `Stake.VOTE_ADDRESS()` 交叉指针。
+部署顺序固定为 `Phase → Launch → MemberNFT → Stake → Submit → Vote → Mint`：首币仍由 `Launch` 构造函数创建（`Launch` 自身唯一的 CREATE；对第三方 `factory` 的 `getPair`/`createPair` 调用属允许例外），`MemberNFT` 的首币地址取自已部署的 `Launch.FIRST_TOKEN_ADDRESS()`；`MemberNFT`、`Vote`、`Mint` 三处前向引用由部署脚本按部署者 nonce 预测（+2 / +5 / +6），并在对应合约部署后立即核对，同时核对 `Stake.VOTE_ADDRESS()` 交叉指针。
 
 构造函数硬约定：只保存传入地址与配置，不调用同代码仓库、同批部署合约的任何 getter 或函数；`Launch` 对已部署第三方 `factory.getPair`/`createPair` 是唯一例外。依赖代码与静态参数改由 `DeployCore` 广播前/部署后校验及 `21_check.sh` 复核。`ActionTarget` 的 `init` 与 `action`/`group-chat` 不在本批。
 
