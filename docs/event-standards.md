@@ -324,7 +324,7 @@ v1 基线：
 | `GroupConfigChanged.description` | 现有 1024 字节 |
 | `GroupActivated.description` | 现有 1024 字节 |
 | `RecipientsChanged.remarks` | 每条 ≤256 字节，条数 ≤`MAX_RECIPIENTS_PER_ACTION` |
-| `RecipientsChanged.recipientIds` / `ratios` | ≤`MAX_RECIPIENTS_PER_ACTION`（10 项） |
+| `RecipientsChanged.recipientIds` / `ratios` | ≤`MAX_RECIPIENTS_PER_ACTION`（8 项） |
 | `RecipientsChanged.prevRecipientIds` / `prevRatios` / `prevRemarks` | 与当次 `recipientIds` 同界，≤`MAX_RECIPIENTS_PER_ACTION` |
 | `GroupActionCreated.verificationKeys` / `verificationDescriptions` | ≤16 项，每项 ≤1024 字节 |
 | `GroupActionJoined.verificationValues` | ≤16 项，每项 ≤1024 字节 |
