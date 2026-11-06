@@ -74,5 +74,5 @@
 
 1. **远端未推送。** 本轮只在本地提交：`core@1411edb`、`core@fe72581`、`action@4ca3885` + `action@2493b52`、`group-chat@9f3326d` + `group-chat@eca0d34`、`matt-gov` 的规格/registry/本记录。推送顺序必须是 `core` → `action` → `group-chat`，否则子模块指针指向远端尚不存在的提交。
 2. **MNT-01 的残余风险（未改经济设计）。** 中立入口把「触发定池」开放给任何地址，但池值仍按首次准备时点的 `rewardAvailable` 计算；领取者仍可抢先调用。若要把定池时点彻底从「首个调用者」剥离，需要改为按轮次结束区块的可分配额度锚定，属池值口径变更，未纳入本次。
-3. **`prepareRewardIfNeeded` 的直接单测。** 现有 511 条用例覆盖 internal 准备路径（自动准备、零投票取消池、`RoundNotEnded`），但没有直接调用新 external 入口的「未结束轮回滚」「重复调用不更新状态」用例。门禁全绿；是否补测由后续决定。
+3. **`prepareRewardIfNeeded` 的直接单测。** 已落地（`0466d67`），本轮补残余：round==0 拒绝与不重复读的幂等断言，提交 `core@7431b2f`。
 4. **`21_check` 的 `MEMBER_NFT_ADDRESS` 检查。** 排序与失败文案**用户决定不改**，只依赖最终全绿，本轮未动。

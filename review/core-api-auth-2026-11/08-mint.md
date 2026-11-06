@@ -81,14 +81,14 @@
 - 批量版逐轮调用同一个私有实现；任一轮失败整批回滚（`MemberRewardAlreadyMinted` / `MemberRewardUnavailable` 等）。
 - 空数组合法：`onlyMemberOwner` 仍会执行（`test/Mint.t.sol:145-148` 断言空批也先判所有权）。
 
-### 奖励池的准备：没有独立入口
+### 奖励池的准备：internal helper 与对外无鉴权入口并存
 
-`_prepareRewardIfNeeded` 是 `internal`，只能由两个 mint 入口触发。含义：
+`_prepareRewardIfNeeded` 是 `internal`，三个入口共用它：两个 mint 入口，以及对外无鉴权的 `prepareRewardIfNeeded`（`core@1411edb` 起）。含义：
 
-- 任何人都不能「只准备不领取」；
-- 池子大小在**第一次 mint 该轮奖励时**按当时的 `rewardAvailable()` 确定（`Math.mulDiv(available, RATIO, 1e18)`）；
-- 由于 `rewardAvailable` 随全协议的铸造/销毁变化，**先领的人与后领的人看到的池子不同**；
-- 谁有领取权，谁就有「抢先定池」的能力：治理奖励的持有人与提案 target 都能触发准备。
+- 任何人都可以「只准备不领取」，在轮次结束后由任意地址先把池子定下来；
+- 池子大小在**第一次准备该轮**时按当时的 `rewardAvailable()` 确定（`Math.mulDiv(available, RATIO, 1e18)`）；
+- 由于 `rewardAvailable` 随全协议的铸造/销毁变化，**先准备的人与后准备的人看到的池子不同**；
+- 谁先调用准备，谁就有「抢先定池」的能力：不再只限于治理奖励的持有人与提案 target。
 
 ### `_updateLaunchCredit` — 奖励到发射次数的唯一通道
 
