@@ -1515,22 +1515,6 @@
     {
       "declarations": 1,
       "files": [
-        "core/src/interfaces/ILOVE20Token.sol"
-      ],
-      "interfaces": [
-        "ILOVE20TokenErrors"
-      ],
-      "repo": "core",
-      "revert_sites": [
-        "core/src/LOVE20Token.sol:24",
-        "core/src/LOVE20Token.sol:25"
-      ],
-      "selector": "0x53516c3b",
-      "signature": "DependencyNotContract(address)"
-    },
-    {
-      "declarations": 1,
-      "files": [
         "core/src/interfaces/ISubmit.sol"
       ],
       "interfaces": [
@@ -1674,7 +1658,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/LOVE20Token.sol:44"
+        "core/src/LOVE20Token.sol:42"
       ],
       "selector": "0xea058246",
       "signature": "MaxSupplyExceeded(uint256,uint256)"
@@ -1911,7 +1895,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/LOVE20Token.sol:38"
+        "core/src/LOVE20Token.sol:36"
       ],
       "selector": "0x361c31f2",
       "signature": "NotMinter(address)"
@@ -3258,14 +3242,14 @@
     }
   ],
   "summary": {
-    "declarations": 241,
+    "declarations": 240,
     "repos": {
       "action": 107,
-      "core": 89,
+      "core": 88,
       "group-chat": 45,
       "libs": 0
     },
-    "signatures": 201,
-    "unique_signatures": 190
+    "signatures": 200,
+    "unique_signatures": 189
   }
 }
