@@ -12,7 +12,7 @@ executor -> ActionTarget -> Mint -> executor
 
 **事件例外（推举转发）**：`ActionTarget.onProposalSubmitted` 与各 Executor 的同名回调是纯转发，不新增 action 层的领域事件——推举事实由 Core 的 `ProposalSubmitted` 记录，action 层再发一条只会制造两份同义事实。这是本族「写入口必有事件」的唯一例外，登记在此以免被当成遗漏。
 
-成员级结算支持批量：`mintMemberRewards(tokenAddress, actionIds[], rounds[], memberId)` 以平行数组按下标配对，逐元素执行与 `mintMemberReward` 相同的结算，返回按下标对齐的 `(mintAmounts[], burnAmounts[])`。两数组长度不一致回滚 `BatchLengthMismatch(actionIdsLength, roundsLength)`；超过 `MAX_MINT_BATCH_LENGTH`（10）项回滚 `MintBatchTooLarge(count, maxCount)`；任一元素失败整笔回滚（下标对齐、不补空）；空数组在鉴权与形状校验通过后返回空结果、不改状态。上限是防放大的护栏，不是单笔 gas 预算保证——每个元素都会重跑投票行动扫描与收款人分发，成本按元素数叠加（见 [06 的首次 mint 已知边界](06-service-executor.md)）。批量入口同样先鉴权，权限与单条入口一致，由各 Executor 规格固定。
+成员级结算支持批量：`mintMemberRewards(tokenAddress, actionIds[], rounds[], memberId)` 以平行数组按下标配对，逐元素执行与 `mintMemberReward` 相同的结算，返回按下标对齐的 `(mintAmounts[], burnAmounts[])`。两数组长度不一致回滚 `BatchLengthMismatch(actionIdsLength, roundsLength)`；任一元素失败整笔回滚（下标对齐、不补空）；空数组在鉴权通过后返回空结果、不改状态；不设长度上限——成本由调用方自付，区块 gas 为自然上界（与 core `mintGovRewards` 同型）。批量入口同样先鉴权，权限与单条入口一致，由各 Executor 规格固定。
 
 行动级整笔激励无法分配（判据由各 Executor 规格固定，如无可分配源行动、全部验证失败）时，**全链路没有销毁路径**：Mint 只支付、ActionTarget 只路由，两者都不判断「该不该作废」，各 Executor 也不提供销毁入口。该轮激励因此永久停留在未结算状态——`ActionTarget.actionReward` 一直返回 `(理论数量, false)`，Mint 的 `totalRewardReserved` 不释放，后续轮次的 `rewardAvailable` 相应被压低，代币永不铸出。这是有意的取舍：不可分配意味着「本轮没有任何有效分配路径」，属于罕见情形；少发比「误判并销毁本该发给成员的激励」安全，而销毁入口本身是一条 permissionless 的状态变更路径。成员归属的销毁并入 `MemberRewardMinted.burnAmount`，与此无关。
 
@@ -80,7 +80,6 @@ Core 的预留、铸造和取消额度账本见 [Mint](../core/07-mint.md)，不
 | `MemberRewardPoolEmpty(address tokenAddress, uint256 round)` | 成员结算无产出且成因在轮级：轮次未完成验证 / 有效参与总量 / 最终得分总量 / 行动激励为零，本轮没有分配路径 |
 | `MemberRewardRoundedToZero(address tokenAddress, uint256 round, uint256 memberId)` | 成员结算无产出且成因是逐项取整：分子非零但结果向下取整为零 |
 | `ActionNotCreated(tokenAddress, actionId)` | 行动尚未创建（`createdRound == 0`）：群激活、验证者申请与三个 Executor 的成员结算（含批量）都拒绝 |
-| `BatchLengthMismatch(uint256 actionIdsLength, uint256 roundsLength)` / `MintBatchTooLarge(uint256 count, uint256 maxCount)` | 批量结算两数组不等长 / 批量元素数超过 `MAX_MINT_BATCH_LENGTH`（10）；形状错误先于元素错误，长度错误先于逐元素结算 |
 | `RoundNotStarted(uint256 requiredRound, uint256 currentRound)` | 对应阶段的 Round 小于 1：`requiredRound` 恒为 1，`currentRound` 为推导出的 0（`currentVoteRound` 写作 `(1, phase)`，因 `phase < 1` 时 phase 恒为 0，载荷与 `(1, 0)` 等价） |
 | `RoundBeforeActionCreated(uint256 round, uint256 createdRound)` | 成员结算的 `round` 早于行动创建轮（行动已存在），三个 Executor 一致 |
 | `RoundAfterMintWindow(uint256 round, uint256 mintRound)` | 成员结算的 `round` 超过当前铸币轮（仅当铸币阶段已开始且 `mintRound != 0`） |
