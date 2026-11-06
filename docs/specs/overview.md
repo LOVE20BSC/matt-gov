@@ -22,7 +22,7 @@ LOVE20 是基于可验证共识行动的社群铸币协议。它通过 MemberNFT
 
 ## 最小流程
 
-1. `Launch.init` 绑定依赖并创建首个代币，首批代币发送到 Airdrop 合约；空投份额由 LOVE20TKM 销毁活动确定。
+1. `Launch` 构造函数绑定依赖并创建首个代币，首批代币发送到 Airdrop 合约；空投份额由 LOVE20TKM 销毁活动确定。
 2. 用户领取或取得首币后铸造 MemberNFT。
 3. MemberNFT 持有人质押、创建/推举 Proposal 并投票。
 4. Round 结束后，Mint 只准备一次；Target 或成员按冻结结果铸造激励。

@@ -1,6 +1,6 @@
 # Mint
 
-Mint 准备并结算治理和 Proposal 激励，不读取行动验证结果。初始化参数见 [参数表](00-protocol-model.md#初始化参数)，通用权限见 [通用规则](01-common-rules.md)。
+Mint 准备并结算治理和 Proposal 激励，不读取行动验证结果。部署参数见 [参数表](00-protocol-model.md#部署参数)，通用权限见 [通用规则](01-common-rules.md)。
 
 ## 账本与数据来源
 
@@ -265,8 +265,8 @@ launchCredit -= count * threshold
 
 事件与错误定义见 [`IMint.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/IMint.sol)。
 
-- 两项激励比例之和 `<= 1e18`、`proposalRewardMinVoteRatio <= 1e18` 由 DeployCore 广播前校验；四个依赖有代码与 `PHASE_ADDRESS` 非零由 DeployCore 部署后校验；两者均由 21_check 独立复核；`init` 只防重复初始化并缓存入参。`MAX_GOV_BOOST_REWARD_MULTIPLIER` 已删除，`init` selector 随参数表同步收缩。
-- `PHASE_ADDRESS` 在 `init` 时从 Vote 读取一次并缓存，经同名 getter 暴露，供发布前检查脚本核对与 Vote 一致；`VOTE_ADDRESS` 须先完成 init，否则缓存为零，部署 check 会发现并重新部署。轮次结束判定直读缓存的 Phase（`round != 0 && IPhase(PHASE_ADDRESS).currentPhase() > round`），语义与 `Vote.isRoundEnded` 一致，不再经 Vote 二跳。
+- 两项激励比例之和 `<= 1e18`、`proposalRewardMinVoteRatio <= 1e18` 由 DeployCore 广播前校验；四个依赖有代码与 `PHASE_ADDRESS` 非零由 DeployCore 部署后校验；两者均由 21_check 独立复核；构造函数只保存入参。`MAX_GOV_BOOST_REWARD_MULTIPLIER` 已删除。
+- `PHASE_ADDRESS` 是构造参数，由部署脚本从 `Phase` 地址直接传入，经同名 getter 暴露，供发布前检查脚本核对与 Vote 的 `PHASE_ADDRESS()` 一致；轮次结束判定直读 `PHASE_ADDRESS`（`round != 0 && IPhase(PHASE_ADDRESS).currentPhase() > round`），语义与 `Vote.isRoundEnded` 一致，不再经 Vote 二跳。
 - Mint 的内部准备路径只在首次准备时扫描 Vote 本轮有票 Proposal；实现和验收至少覆盖约 300 个 Proposal 的准备交易。准备成功后，`_eligibleProposalVoteAmountByRound[tokenAddress][round]` 只读，不得再次读取 Vote 列表或改写。零额事件行为见[事件](#事件)节。
 - 各项分配向下取整产生的极小舍入余数不单独维护，也不追加结算状态；累计账本只记录实际铸造和明确销毁的额度。
 - 历史来源 `LOVE20TKM/core/src/LOVE20Mint.sol` 只作为行为参考，不替代本文件的账本规则。

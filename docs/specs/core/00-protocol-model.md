@@ -1,4 +1,4 @@
-# 协议模型与初始化参数
+# 协议模型与部署参数
 
 ## 协议模型
 
@@ -16,9 +16,9 @@
 
 Core 不解释具体 Proposal 的业务字段，扩展通过 Target 接入。
 
-## 初始化参数
+## 部署参数
 
-以下为初始化参数总览；各模块文件给出完整构造函数和 `init` ABI。部署配置中的示例值不等于固定值。除 Phase/LOVE20Token 使用构造函数、MemberNFT 费用参数在构造函数固定外，各合约一次性初始化入口使用 `init`；地址绑定与初始化安全见 [通用规则](01-common-rules.md)，首币流程见 [Launch](08-launch.md#初始化和首个代币)。
+以下为部署参数总览；各模块文件给出完整构造函数 ABI。部署配置中的示例值不等于固定值。所有合约都通过构造函数一次性注入依赖和参数，不再保留 `init`；地址绑定与部署安全见 [通用规则](01-common-rules.md#部署与安全)，首币流程见 [Launch](08-launch.md#部署与首个代币)。
 
 可直接用于实现的 ABI 唯一来源是 core 仓库的 [`src/interfaces/`](https://github.com/LOVE20BSC/core/tree/main/src/interfaces)。
 
@@ -35,7 +35,7 @@ Core 不解释具体 Proposal 的业务字段，扩展通过 Target 接入。
 | Submit | `PHASE_ADDRESS`、`STAKE_ADDRESS`、`MEMBER_NFT_ADDRESS` | 时间、质押和身份依赖 |
 | Submit | `submitMinRatio` | 推举门槛，`1e18` 表示 100%，如 `1e16 = 1%` |
 | Vote | `PHASE_ADDRESS`、`STAKE_ADDRESS`、`SUBMIT_ADDRESS`、`MEMBER_NFT_ADDRESS` | 时间、票权、提案和身份依赖 |
-| Mint | `VOTE_ADDRESS`、`SUBMIT_ADDRESS`、`LAUNCH_ADDRESS`、`MEMBER_NFT_ADDRESS` | 投票、提案、发射和身份依赖；BSC 版本已移除原 `STAKE_ADDRESS`（加速数据源改为 Vote 快照）；`PHASE_ADDRESS` 由 `init` 从 `VOTE_ADDRESS` 派生缓存，不重复作为入参 |
+| Mint | `PHASE_ADDRESS`、`VOTE_ADDRESS`、`SUBMIT_ADDRESS`、`LAUNCH_ADDRESS`、`MEMBER_NFT_ADDRESS` | 时间、投票、提案、发射和身份依赖；BSC 版本已移除原 `STAKE_ADDRESS`（加速数据源改为 Vote 快照）；`PHASE_ADDRESS` 由部署脚本直接传入，不再从 Vote 派生 |
 | Mint | `proposalRewardMinVoteRatio` | 提案激励门槛；状态变量和公开 getter 为 `PROPOSAL_REWARD_MIN_VOTE_RATIO`，`1e18` 表示 100%，如 `5e16 = 5%` |
 | Mint | `roundRewardGovRatio`、`roundRewardProposalRatio` | 治理池、提案池占可用供应的比例；状态变量和公开 getter 为 `ROUND_REWARD_GOV_RATIO`、`ROUND_REWARD_PROPOSAL_RATIO`，`1e18` 表示 100%，如 `1e17 = 10%` |
 | Stake | `boostStakeSupplyFactor` | 单人加速质押上限基数 `C` 的已铸造比例因子 `F`；状态变量和公开 getter 为 `BOOST_STAKE_SUPPLY_FACTOR`，默认 `2`，建议 `1..10`（仅建议，不作校验条件） |
@@ -46,16 +46,16 @@ Core 不解释具体 Proposal 的业务字段，扩展通过 Target 接入。
 | Launch | `launchCountThresholdRatio` | 发射次数阈值比例；状态变量和公开 getter 为 `LAUNCH_COUNT_THRESHOLD_RATIO`，`1e18` 精度，如 `1e17 = 10%` |
 | Launch | `maxLaunchCount` | 每社区累计次数上限；状态变量和公开 getter 为 `MAX_LAUNCH_COUNT`，如 `100` |
 | Launch | `tokenSymbolLength` | 子币符号固定 UTF-8 字节长度，汉字占 3 字节；状态变量和公开 getter 为 `TOKEN_SYMBOL_LENGTH`，长度与字符集校验见 [Launch](08-launch.md#普通发射) |
-| Launch | `launchAmount`、`maxSupply` | 首批/最大供应量，`Launch.init` 固定；状态变量和公开 getter 为 `LAUNCH_AMOUNT`、`MAX_SUPPLY`；`0 < launchAmount <= maxSupply` |
+| Launch | `launchAmount`、`maxSupply` | 首批/最大供应量，构造函数固定；状态变量和公开 getter 为 `LAUNCH_AMOUNT`、`MAX_SUPPLY`；`0 < launchAmount <= maxSupply` |
 
-上表的 Launch 行按含义分组，不表示传参顺序；`Launch.init` 只接受一个 `LaunchInitParams`，实参顺序即结构体字段顺序（依赖地址 → 分发目标 → 经济与符号参数 → 供应量 → 首币元数据），参数表中的名字与字段名一致。结构体定义见 [`ILaunch.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/ILaunch.sol)。
+上表的 Launch 行按含义分组，不表示传参顺序；`Launch` 构造函数只接受一个 `LaunchInitParams`，实参顺序即结构体字段顺序（依赖地址 → 分发目标 → 经济与符号参数 → 供应量 → 首币元数据），参数表中的名字与字段名一致。结构体定义见 [`ILaunch.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/ILaunch.sol)。
 
-MemberNFT 的首币地址由 `Launch.init` 在创建首币时同步调用 `MemberNFT.init(tokenAddress)` 绑定，不在部署时传入；公开 getter 保持旧名 `LOVE20_TOKEN_ADDRESS()`。MemberNFT 不保存 Launch 地址。Launch 在 `init` 内创建首币并把地址记录为 `FIRST_TOKEN_ADDRESS`（派生状态、非入参，经同名 getter 公开）；首币身份不能由「父币为根父币」推断，因为根级发射的同级币与首币父币相同。Launch 的首币分发地址、名称、符号和供应量配置统一见 [Launch](08-launch.md)。Pair Factory 由 Launch 与 Stake 共用：Launch 在创建代币时创建或复用 Pair，Stake 只在首次质押时读取该 Pair；Router 只属 Stake，用于父币手续费换币。
+`MemberNFT` 的首币地址在其构造函数中传入，部署脚本从已部署的 `Launch.FIRST_TOKEN_ADDRESS()` 读取真实地址；公开 getter 保持旧名 `LOVE20_TOKEN_ADDRESS()`。MemberNFT 不保存 Launch 地址。Launch 在构造函数内创建首币并把地址记录为 `FIRST_TOKEN_ADDRESS`（派生状态、非入参，经同名 getter 公开）；首币身份不能由「父币为根父币」推断，因为根级发射的同级币与首币父币相同。Launch 的首币分发地址、名称、符号和供应量配置统一见 [Launch](08-launch.md)。Pair Factory 由 Launch 与 Stake 共用：Launch 在创建代币时创建或复用 Pair，Stake 只在首次质押时读取该 Pair；Router 只属 Stake，用于父币手续费换币。
 
 ## 实现约束
 
-- Phase 使用构造参数创建；Core 其他合约先部署，再按依赖顺序调用一次 `init`，依赖后部署的地址通过后续 `init` 绑定。能由入参地址 getter 派生的依赖不重复入参，在 `init` 内读取一次并缓存；派生值非零由 `DeployCore`/`21_check.sh` 校验，被派生依赖须先完成 init（如 Mint 从 Vote 派生 `PHASE_ADDRESS`，Action 层从 Mint 派生各依赖）。
-- 各合约的 `init` 不设调用者限制、不保存部署者地址；只有 `init` 校验初始化状态，其他写入口不重复校验；部署成功与否由发布前检查脚本核对实际绑定结果判定，见 [通用规则](01-common-rules.md#初始化与安全)。
+- 全部 Core 合约都通过构造函数创建；部署顺序固定为 `Phase → Launch → MemberNFT → Stake → Submit → Vote → Mint`。依赖后部署合约的地址由脚本按部署者 nonce 预测（`MemberNFT`、`Vote`、`Mint` 三处前向引用），并在对应合约部署后立即核对。
+- 构造函数不设调用者限制、不保存部署者地址；只保存传入地址和配置，不调用同批部署合约的任何 getter（`Launch` 的第三方 `factory.getPair`/`createPair` 是唯一例外）；不做静态零值校验，相关参数由 `DeployCore`/`21_check.sh` 校验；部署成功与否由发布前检查脚本核对实际绑定结果判定，见 [通用规则](01-common-rules.md#部署与安全)。
 - Mint 在准备时读取 Vote 的冻结结果，按 `proposalRewardMinVoteRatio` 一次性计算并缓存本轮达标 Proposal 总票数；后续 Proposal 激励结算以该缓存为分母，不再重算达标集合。单提案票数与门槛仍按该轮账本现读——该轮必须已结束，二者此后不再变化，现读值等于结算时点值。
 - 参数有效范围和组合限制以各模块规格为准；表中示例值不是默认部署配置。
 - **以 Round 为键的历史查询按载荷分两种口径**，分界是「取该轮的时点值」还是「取该轮的记录集合」，不按模块划分：

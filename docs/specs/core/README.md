@@ -4,7 +4,7 @@ Core 定义治理、统一身份、时间线和基础子币发射。按编号阅
 
 | 文档 | 职责 |
 | --- | --- |
-| [00-protocol-model.md](00-protocol-model.md) | 协议模型、组件与初始化参数 |
+| [00-protocol-model.md](00-protocol-model.md) | 协议模型、组件与部署参数 |
 | [01-common-rules.md](01-common-rules.md) | 主体、编号、精度和安全约束 |
 | [02-member-nft.md](02-member-nft.md) | 身份、名称、铸造费用 |
 | [03-phase.md](03-phase.md) | 时间片、同步观测和动态校准 |
@@ -12,9 +12,9 @@ Core 定义治理、统一身份、时间线和基础子币发射。按编号阅
 | [05-submit.md](05-submit.md) | Proposal 创建、推举与 Submit 回调 |
 | [06-vote.md](06-vote.md) | Proposal 投票、快照与 Vote 回调 |
 | [07-mint.md](07-mint.md) | 激励准备、铸造、销毁 |
-| [08-launch.md](08-launch.md) | Launch.init 首币部署、LOVE20Token 创建、发射次数账本、代币登记与查询 |
+| [08-launch.md](08-launch.md) | Launch 构造函数首币部署、LOVE20Token 创建、发射次数账本、代币登记与查询 |
 | [09-testing.md](09-testing.md) | 验收 |
 
-建议实现顺序：Phase/MemberNFT、Stake、Submit/Vote、Mint、Launch。实现顺序不等于初始化调用顺序，初始化边界见 Launch。
+建议实现顺序：Phase/MemberNFT、Stake、Submit/Vote、Mint、Launch。实现顺序不等于部署顺序，部署顺序固定为 `Phase → Launch → MemberNFT → Stake → Submit → Vote → Mint`，见 Launch。
 
 [组织约束](../../../CONTEXT.md) · [迁移差异](../CHANGES-core.md) · [ABI 接口](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/)

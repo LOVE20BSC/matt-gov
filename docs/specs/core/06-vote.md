@@ -44,7 +44,7 @@ Vote 管理当前治理 Round 的 Proposal 投票和加速快照。Proposal 的�
 
 上述回滚都发生在 `voteAmounts` 循环内，载荷携带逐笔上下文的错误因此能定位到具体 Proposal 或累计值，而不是只报一个批次级错误。
 
-`init` 只防重复初始化（`AlreadyInitialized()`）并保存入参；`PHASE_ADDRESS`、`STAKE_ADDRESS`、`SUBMIT_ADDRESS`、`MEMBER_NFT_ADDRESS` 有代码由 DeployCore 部署后校验、21_check 独立复核。
+构造函数只保存入参，不做静态校验；`PHASE_ADDRESS`、`STAKE_ADDRESS`、`SUBMIT_ADDRESS`、`MEMBER_NFT_ADDRESS` 有代码由 DeployCore 部署后校验、21_check 独立复核。
 
 ## 接口
 
@@ -62,7 +62,6 @@ Vote 管理当前治理 Round 的 Proposal 投票和加速快照。Proposal 的�
 
 | 错误 | 触发条件 |
 | --- | --- |
-| `AlreadyInitialized()` | 重复初始化 |
 | `NotMemberOwner(uint256 memberId)` | `ownerOf(memberId) != msg.sender`；`memberId` 不存在时由 MemberNFT 回滚 `ERC721NonexistentToken` |
 | `NoVotingPower(address tokenAddress, uint256 memberId)` | 本轮票上限为零 |
 | `ProposalIdsEmpty()` | `proposalIds` 为空 |

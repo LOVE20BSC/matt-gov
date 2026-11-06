@@ -93,13 +93,13 @@ Proposal 由合约分配的头部与创建者提供的主体组成，对外以 `
 
 ## 推举
 
-推举门槛沿用旧 Submit：从 Stake 读取当前成员 `validGovVotes(tokenAddress, currentRound, memberId)` 与社区 `totalValidGovVotes(tokenAddress, currentRound)`；成员和社区票数均为正，且 `validGovVotes >= ceil(totalValidGovVotes * SUBMIT_MIN_RATIO / 1e18)`。初始化门槛范围为 `1..1e18`（`1e18` 表示 100%）。
+推举门槛沿用旧 Submit：从 Stake 读取当前成员 `validGovVotes(tokenAddress, currentRound, memberId)` 与社区 `totalValidGovVotes(tokenAddress, currentRound)`；成员和社区票数均为正，且 `validGovVotes >= ceil(totalValidGovVotes * SUBMIT_MIN_RATIO / 1e18)`。部署门槛范围为 `1..1e18`（`1e18` 表示 100%）。
 
 `canSubmit` 实现：`Math.mulDiv` 按全精度计算 `requiredVotes = ceil(totalValidGovVotes * SUBMIT_MIN_RATIO / 1e18)`，`requiredVotes == 0`（社区票数为零）或 `validGovVotes < requiredVotes` 时返回 `false`，否则返回 `true`；`Ceil` 保证门槛不被截断，全精度乘法避免大票数溢出。它只判断票权门槛，不判断本轮成员名额、提案去重或社区推举总数。两个写入口复用同一组读数：社区票数为零时回滚 `NoGovVotes(tokenAddress)`，否则票权不足回滚 `InsufficientSubmitPower(tokenAddress, memberId, validVotes, requiredVotes)`。
 
 调用者必须持有 `memberId`。每个成员每社区每 Round 最多推举一个 Proposal，同一 Proposal 同轮只能被推举一次；两个入口共用这两条约束——`submitNewProposal` 在创建后立即推举，因此同样占用本 Round 的名额，创建不是免额度的旁路。每社区每轮首个成功推举自动调用 `Phase.sync()`；`sync` 已同步时无操作返回、不会回滚，但若失败则按外部调用失败处理，整笔交易回滚。`submit` 推举已有 Proposal 不重复触发创建回调。
 
-每社区每 Round 最多推举 **1,000 个 Proposal**，两个入口在共同推举路径中按已成功推举的记录数检查；达到上限后回滚 `SubmitRoundFull(tokenAddress, round, 1000)`，新 Proposal 的创建及作者索引也一并回滚。上限固定，不增加初始化参数；新一轮、其他社区独立计数，历史累计 Proposal 数不受此限制。名额先到先得，已有推举仍可投票和铸造激励。该限制使 Mint 的单轮有票 Proposal 扫描最多 1,000 项，不限制调用者自行选择的多轮批量铸造大小。
+每社区每 Round 最多推举 **1,000 个 Proposal**，两个入口在共同推举路径中按已成功推举的记录数检查；达到上限后回滚 `SubmitRoundFull(tokenAddress, round, 1000)`，新 Proposal 的创建及作者索引也一并回滚。上限固定，不增加部署参数；新一轮、其他社区独立计数，历史累计 Proposal 数不受此限制。名额先到先得，已有推举仍可投票和铸造激励。该限制使 Mint 的单轮有票 Proposal 扫描最多 1,000 项，不限制调用者自行选择的多轮批量铸造大小。
 
 ## 校验顺序
 
@@ -132,7 +132,7 @@ Proposal 由合约分配的头部与创建者提供的主体组成，对外以 `
 7. 本社区本轮首笔推举时调用 `Phase.sync()`
 8. `Callback` 时回调 `IProposalTarget.onProposalSubmitted`
 
-初始化校验：`0 < submitMinRatio <= 1e18` 由 DeployCore 广播前校验，`PHASE_ADDRESS`、`STAKE_ADDRESS`、`MEMBER_NFT_ADDRESS` 有代码由 DeployCore 部署后校验；两者均由 21_check 独立复核；`init` 只防重复初始化并保存入参。
+构造函数校验：`0 < submitMinRatio <= 1e18` 由 DeployCore 广播前校验，`PHASE_ADDRESS`、`STAKE_ADDRESS`、`MEMBER_NFT_ADDRESS` 有代码由 DeployCore 部署后校验；两者均由 21_check 独立复核；构造函数只保存入参，不做静态校验。
 
 ## 事件与错误
 
@@ -148,7 +148,6 @@ Proposal 由合约分配的头部与创建者提供的主体组成，对外以 `
 
 | 错误 | 触发条件 |
 | --- | --- |
-| `AlreadyInitialized()` | 重复初始化 |
 | `TitleEmpty()` | `title` 为空 |
 | `TitleTooLong(uint256 length, uint256 maxLength)` | `title` 字节数超过 `MAX_TITLE_LENGTH`（1024） |
 | `DetailsTooLong(uint256 length, uint256 maxLength)` | `details` 字节数超过 `MAX_DETAILS_LENGTH`（1024） |

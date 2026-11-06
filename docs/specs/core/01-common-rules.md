@@ -8,7 +8,7 @@
 - Proposal Target 和首批代币 distributor 是明确的地址型角色；群聊权限属于 Group Chat 内部事务，见 [组织上下文](../../../CONTEXT.md)。
 - ERC721 的 `approve`/`setApprovalForAll` 只授予转移权，不授予业务权：所有成员入口一律校验 `ownerOf(memberId) == msg.sender`，被授权方不能代为质押、投票、推举或领取激励。多签或托管合约须以自身地址作为调用者。
 - `memberId` 不存在时，`ownerOf` 直接回滚 `ERC721NonexistentToken(memberId)`，不会落到各合约的 `NotMemberOwner`。该错误对任意调用者可见，但 `memberId` 由 ERC721Enumerable 公开可枚举，不构成信息泄漏；链下按「不存在 → OZ 错误，非持有人 → `NotMemberOwner`」分类。
-- 跨合约读取会把上游错误原样穿透：`Mint.mintProposalReward` 对不存在的提案回滚 `Submit.ProposalNotFound(tokenAddress, proposalId)`，`Stake` 在 `Vote` 未初始化时得到空 revert。链下分类须同时识别本合约错误与上游来源。
+- 跨合约读取会把上游错误原样穿透：`Mint.mintProposalReward` 对不存在的提案回滚 `Submit.ProposalNotFound(tokenAddress, proposalId)`，`Stake` 对无代码或返回空数据的依赖得到空 revert。链下分类须同时识别本合约错误与上游来源。
 - 未由 Launch 登记的代币没有质押入口（`Stake` 的写入口统一 `_checkToken`），因此其治理票权与加速份额恒为 `0`；`Submit`、`Vote` 不对 `tokenAddress` 做登记校验，由这条不变量兜底成 `NoGovVotes` / `NoVotingPower`。
 
 例：Phase 10 申请解锁，等待 5 个 Phase；Phase 12 转移 NFT，仍在 Phase 15 由新持有人提取。
@@ -41,13 +41,14 @@ core 不校验是有意分工：core 无法预知实现集合，且回调是通�
 - 纯除数（手续费结算分母、身份费用除数等）不是比例，保持整数分母并按语义命名。
 - 金额比例分配默认向下取整；发射阈值及明确标为 `ceil` 的式子向上取整。
 
-## 初始化与安全
+## 部署与安全
 
-- 一次性依赖初始化入口统一为 `init`，一律不设调用者限制；合约不保存部署者地址，也不授予部署者特权。成功后依赖地址和初始化参数不可替换，无升级管理员或协议级后门。
-- 初始化状态只由 `init` 维护：`initialized` 初值为 `false`，首次成功调用后置为 `true`，再次调用回滚 `AlreadyInitialized()`；其他写入口不重复校验 `initialized`，未成功初始化的版本不会发布，其失败由各自的权限、参数与存在性校验决定。
-- `init` 只检查初始化状态（`AlreadyInitialized()`）后保存入参；部署期静态参数由 `DeployCore` 广播前校验；依赖代码与派生值由 `DeployCore` 部署后校验、`21_check.sh` 独立复核，不匹配即重新部署，见 dev-standards §5.7。
-- 部署与初始化分开的交易存在被抢先绑定的窗口：部署是否成功由发布前检查脚本核对实际绑定结果判定，逐项核对 `initialized()`、依赖地址和全部初始化常量，任何不一致即重新部署，不能把“部署后立即初始化”当作防抢跑保证。
-- `init` 不发事件：它只固定依赖地址与配置，没有业务对象产生；绑定结果以 `initialized()`、各依赖 getter 与部署 check 为准。`Launch.init` 例外——它创建首币并发 `GenesisTokenCreated`，属于业务事件而不是配置事件。
+- 依赖注入统一走构造函数，不再保留一次性 `init` 入口；构造函数不设调用者限制，合约不保存部署者地址，也不授予部署者特权。部署成功后依赖地址和配置参数不可替换，无升级管理员或协议级后门。
+- 构造函数是硬约定：只保存传入地址与配置，**不得调用同代码仓库、同批部署合约的任何 getter 或函数**。因此地址必须来自部署脚本的预测或既有部署；`Launch` 的 `factory.getPair`/`createPair` 是唯一例外——它调用的是已部署的第三方 UniswapV2 工厂。
+- 构造函数不做静态零值校验；部署期静态参数由 `DeployCore` 广播前校验；依赖代码与派生值由 `DeployCore` 部署后校验、`21_check.sh` 独立复核，不匹配即重新部署，见 dev-standards §5.7。
+- 部署顺序固定为 `Phase → Launch → MemberNFT → Stake → Submit → Vote → Mint`。前向引用只在三处：`MemberNFT`、`Vote`、`Mint`，由脚本按部署者 nonce 预测地址，并在对应合约部署后立即核对；`Stake` 的 `VOTE_ADDRESS()` 也在此一并核对。
+- 部署是否成功由发布前检查脚本核对实际绑定结果判定，逐项核对依赖地址和全部配置常量，任何不一致即重新部署。
+- 构造函数不发事件，但 `Launch` 例外——它在构造期创建首币并发 `GenesisTokenCreated`，属于业务事件而不是配置事件；该事件必须是构造期的最后一条日志。
 - 写操作遵循检查、更新、交互顺序并防重入；失败不能留下半完成状态。`Stake` 是这条规则的有意例外：它不设重入锁，改以「先完成全部校验、再发起外部调用、并以外部调用实际返回的数量记账」保证一致，理由与边界见 [Stake 实现约束](04-stake.md#实现约束)。
 
 ## 编号约束

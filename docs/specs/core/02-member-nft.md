@@ -37,13 +37,13 @@ UTF-8 有效性：拒绝无效起始字节 `0x80-0xC1` 与 `0xF5-0xFF`、过长�
 
 接口见 [`IMemberNFT.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/IMemberNFT.sol)。
 
-`init` 只允许第一次成功调用；公开 `initialized()` 初始为 `false`，成功后为 `true`，后续调用回滚 `AlreadyInitialized()`。首币地址与初始化结果由部署 check 核对，不匹配则重新部署。未初始化时，`mint` 和 `calculateMintCost` 因无法从首币读取数据而回滚。
+`MemberNFT` 的构造函数接收费用参数与首币地址，部署即完成绑定；不再有 `init` 入口，也没有 `initialized` 状态。首币地址与费用参数由部署 check 核对，不匹配则重新部署。首币地址为零或非合约地址时，`mint` 和 `calculateMintCost` 因无法从首币读取数据而回滚。
 
-`init` 无调用者限制，部署与初始化分开的交易存在被抢先绑定错误地址的窗口；对外开放前调用并不能防止抢跑。发布前必须核对初始化状态、首币地址和全部费用参数，错误版本不得发布，需重新部署并核对受影响的依赖；初始化后没有修复或改绑入口。
+构造函数无调用者限制；部署成功即不可替换依赖或费用参数，没有修复或改绑入口，错误版本不得发布，需重新部署并核对受影响的依赖。
 
-首币必须是已部署的合约且 `symbol()` 可读：`init` 无返回值，绑定 EOA 或零地址时调用仍会成功，此后 `mint` 与 `calculateMintCost` 永久回滚。`init` 只写首币地址与初始化状态，不发事件（理由见[通用规则](01-common-rules.md#初始化与安全)），绑定结果以 `initialized()` 与部署 check 为准。
+首币必须是已部署的合约且 `symbol()` 可读：构造函数不校验首币代码，绑定 EOA 或零地址时部署仍会成功，此后 `mint` 与 `calculateMintCost` 永久回滚。构造函数只写首币地址，不发事件（理由见[通用规则](01-common-rules.md#部署与安全)），绑定结果由部署 check 与 21_check 核对。
 
-费用使用首个 LOVE20 代币，计算如下。参数含义见 [初始化参数](00-protocol-model.md#初始化参数)，四个参数均必须大于零，由 DeployCore 在广播前校验；构造器只保存参数，不做静态校验。最大名称长度通过构造参数固定，BSC 部署配置使用 `32`。`init` 只防重复初始化；首币地址与费用参数由 21_check 核对，不匹配则重新部署。
+费用使用首个 LOVE20 代币，计算如下。参数含义见 [部署参数](00-protocol-model.md#部署参数)，四个参数均必须大于零，由 DeployCore 在广播前校验；构造函数只保存参数，不做静态校验。最大名称长度通过构造参数固定，BSC 部署配置使用 `32`。首币地址与费用参数由 21_check 核对，不匹配则重新部署。
 
 ```text
 unmintedSupply = MAX_SUPPLY - totalSupply
@@ -63,11 +63,11 @@ mintCost = byteLength >= bytesThreshold
 
 例：`baseCost = 100`、`bytesThreshold = 7`、`multiplier = 10`；6 字节名花费 `1000`，7 字节及以上花费 `100`。金额均以代币最小单位计。
 
-费用使用 ERC20，入口为 `nonpayable`，不接受原生代币。费用参数在部署时固定；`MemberNFT.init(firstToken)` 由 `Launch.init` 在创建首币时同步调用一次。依赖后部署的合约按“先部署、后 `init`”顺序绑定。
+费用使用 ERC20，入口为 `nonpayable`，不接受原生代币。费用参数在部署时固定；首币地址在 `MemberNFT` 构造函数传入，取自 `Launch.FIRST_TOKEN_ADDRESS()`（此时 `Launch` 已部署并完成首币创建）。依赖后部署的合约按部署顺序预先预测地址注入。
 
 ## 接口
 
-对外接口见 [`IMemberNFT.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/IMemberNFT.sol)。它沿用旧 `LOVE20Group`，仅去除 group 字样重命名；本合约即 Member 本体，标识符不再重复 member。初始化与铸造接口见 [铸造](#铸造)。
+对外接口见 [`IMemberNFT.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/IMemberNFT.sol)。它沿用旧 `LOVE20Group`，仅去除 group 字样重命名；本合约即 Member 本体，标识符不再重复 member。构造参数与铸造接口见 [铸造](#铸造)。
 
 独有函数、事件和错误见 [`IMemberNFT.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/IMemberNFT.sol)；Core 接口继承 `IERC721Enumerable`，实现合约同时继承 `ERC721Enumerable` 和 `IMemberNFT`，由编译器核验接口实现。完整调用 ABI 使用目标合约编译产物，包含 OZ 提供的标准函数、事件和错误；扣费调用的 LOVE20Token 的 ERC20 标准错误由 LOVE20Token ABI 拥有，`SafeERC20FailedOperation` 通过库进入 MemberNFT ABI。
 
@@ -84,7 +84,7 @@ mintCost = byteLength >= bytesThreshold
 | 5 | 费用转账或销毁失败 | `SafeERC20FailedOperation(address)` / ERC20 标准错误 |
 | 6 | `_safeMint` 接收方拒绝 | OZ `ERC721InvalidReceiver(address)` |
 
-`init` 只判 `initialized`（`AlreadyInitialized()`）；未初始化时 `mint` 读零地址的 `symbol()`（名称前缀判定）、`calculateMintCost` 读零地址的 `MAX_SUPPLY()` 与 `totalSupply()`，均取回空数据、ABI 解码失败，以空 revert（0x）结束。
+构造函数不校验首币代码；绑定零地址或 EOA 时，`mint` 读零地址的 `symbol()`（名称前缀判定）、`calculateMintCost` 读零地址的 `MAX_SUPPLY()` 与 `totalSupply()`，均取回空数据、ABI 解码失败，以空 revert（0x）结束。
 
 ### 透传来源
 

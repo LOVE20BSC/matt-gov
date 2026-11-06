@@ -183,7 +183,7 @@ EIP-170 限制部署字节码 ≤ 24,576 字节。超过时：
 
 - **本地所有权**：每个合约/模块在自己的本地接口文件中声明 `I<Name>Errors`（通常是 `src/interfaces/I<Name>Errors.sol`，也可与主接口同文件）；实现文件不声明错误；不得从其他仓导入错误定义。新增合约只新增文件，不改任何既有错误声明。
 - **一条件一错误**：一个 selector 只对应一个条件、一个主体；禁止别名与重载。具体错误名优先于通用字段码，不使用中心 `Field`/错误枚举。
-- **命名**：具体、可读，按 `<Subject><State>` / `Zero<Field>` / `Invalid<Field>` / `<Subject>Exceeded` / `Too<Size>` / `Insufficient*` / `Not<Role>Owner|Operator` / `Already<State>` / `*NotContract` / `*Unavailable` / `*Rejected`。数值上限统一 `*Exceeded`；禁止 `Exceeds...` 前缀、`Exceed<Verb>` 动词式名和 `*LimitReached`；尺寸类统一 `Too<Size>`。合约内必填依赖（含 `init`）只保留 `*NotContract(address)`（字段级或模块级 `DependencyNotContract`；零地址是同一条件），`Zero<Field>` 仅用于非合约参数；部署期静态校验按 §5.7 归部署脚本，不产生合约错误。新增错误禁用 `Only*`、`Must*`、`Cannot*`；`Invalid*` 只用于值本身非法。
+- **命名**：具体、可读，按 `<Subject><State>` / `Zero<Field>` / `Invalid<Field>` / `<Subject>Exceeded` / `Too<Size>` / `Insufficient*` / `Not<Role>Owner|Operator` / `Already<State>` / `*NotContract` / `*Unavailable` / `*Rejected`。数值上限统一 `*Exceeded`；禁止 `Exceeds...` 前缀、`Exceed<Verb>` 动词式名和 `*LimitReached`；尺寸类统一 `Too<Size>`。合约内必填依赖（`init` 或构造函数入参）只保留 `*NotContract(address)`；core 的构造函数注入后不再校验依赖代码，`DependencyNotContract` 已删除，`Zero<Field>` 仅用于非合约参数；部署期静态校验按 §5.7 归部署脚本，不产生合约错误。新增错误禁用 `Only*`、`Must*`、`Cannot*`；`Invalid*` 只用于值本身非法。
 - **载荷**：主体键在前，条件值在后；上限带 `actual/limit`，额度带 `required/available`，外部失败带 `source`；批量带失败元素键或索引；固定大小，禁止字符串与动态数组。
 - **回滚**：禁止裸 `require`、`revert()`、`revert("...")`；`assert` 只用于不可达不变量（L0 Panic，不进错误目录）。
 - **顺序**：鉴权 → 参数 → 存在性 → 状态/资格 → 账本/交互；先命中先回滚。身份解析属于鉴权的一部分；鉴权前不得泄露激活、配置或资格。
@@ -204,10 +204,10 @@ EIP-170 限制部署字节码 ≤ 24,576 字节。超过时：
 
 ### 5.4 `init`
 
-- 一律不设调用者限制；合约不保存部署者地址，也不授予部署者特权；合约侧只有 `init` 判断自身是否已初始化（防重复初始化）。
+- 一律不设调用者限制；合约不保存部署者地址，也不授予部署者特权。优先使用构造函数注入（core 六个合约已全部构造化，无 `init`、无 `initialized`/`AlreadyInitialized`）；仍保留 `init` 的模块（如 `ActionTarget`）由该入口判断自身是否已初始化。
 - 部署是否成功由发布前 check 脚本核对实际绑定结果判定，任何不一致即重新部署；不能把"部署后立即初始化"当作防抢跑保证。
-- **初始化是否完成只在部署阶段校验**：check 脚本逐项核对每个合约的实际绑定与派生结果——依赖地址有代码、派生的配置非零、关键状态等于预期；不一致即重新部署。合约业务逻辑默认**部署期固定的依赖**已完成初始化，运行期不判这些依赖是否初始化、不为其零值或无代码另设分支与错误：这类防御会把部署遗漏变成静默的错误结果，而不是在部署时暴露。调用方入参、可选配置（零值表示不启用）的校验属业务校验，不在此列。
-- **参数尽可能少**：能由入参地址的 getter 派生的依赖，不再作为 `init` 入参；在 `init` 内读取一次并缓存，派生值同样校验非零；被派生依赖须先完成初始化。例：`ActionTarget` 从 `Vote` 派生 `phaseAddress`，`LpExecutor` 从 `Stake` 派生 `memberNFTAddress`、`phaseAddress`、`pairFactoryAddress`。
+- **绑定是否完成只在部署阶段校验**：check 脚本逐项核对每个合约的实际绑定与派生结果——依赖地址有代码、派生的配置非零、关键状态等于预期；不一致即重新部署。合约业务逻辑默认**部署期固定的依赖**已完成绑定，运行期不判这些依赖是否初始化、不为其零值或无代码另设分支与错误：这类防御会把部署遗漏变成静默的错误结果，而不是在部署时暴露。调用方入参、可选配置（零值表示不启用）的校验属业务校验，不在此列。构造函数注入的模块更必须在构造期只保存入参、不调用同批部署合约的 getter，由脚本预测地址并在部署后核对。
+- **参数尽可能少**：能由入参地址的 getter 派生的依赖，不再重复入参；保留 `init` 的模块在 `init` 内读取一次并缓存，派生值同样校验非零，被派生依赖须先完成初始化。例：`ActionTarget` 从 `Vote` 派生 `phaseAddress`，`LpExecutor` 从 `Stake` 派生 `memberNFTAddress`、`phaseAddress`、`pairFactoryAddress`。构造函数注入的模块不能读取同批合约，派生值改由部署脚本计算传入（如 `Mint` 的 `PHASE_ADDRESS`）。
 
 ### 5.5 调用者校验
 

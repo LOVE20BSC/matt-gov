@@ -6,7 +6,7 @@ Phase 维护连续的无语义时间片、同步观测和动态校准，不内�
 
 `ORIGIN_BLOCKS`、`ORIGIN_PHASE_BLOCKS`、`TARGET_SECONDS` 为正数；`ADJUST_THRESHOLD` 使用 `1e18` 精度且在 `(0, 1e18]` 内，`SYNC_OBSERVATION_LIMIT` 为正数。`block.number == ORIGIN_BLOCKS` 时为 Phase 1；不存在有效 Phase 0。`TARGET_SECONDS` 是每个 Phase 的目标自然时长，单位秒，7 天为 `604800`。
 
-构造参数为 `ORIGIN_BLOCKS`、`ORIGIN_PHASE_BLOCKS`、`TARGET_SECONDS`、`ADJUST_THRESHOLD` 和 `SYNC_OBSERVATION_LIMIT`；完整运行时 ABI 见 [`IPhase.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/IPhase.sol)。`SYNC_OBSERVATION_LIMIT` 为正数，用于初始化每轮同步前的快速回溯条数。
+构造参数为 `ORIGIN_BLOCKS`、`ORIGIN_PHASE_BLOCKS`、`TARGET_SECONDS`、`ADJUST_THRESHOLD` 和 `SYNC_OBSERVATION_LIMIT`；完整运行时 ABI 见 [`IPhase.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/IPhase.sol)。`SYNC_OBSERVATION_LIMIT` 为正数，用于每轮同步前快速回溯条数的初始值。
 
 | 接口 | 返回或作用 |
 | --- | --- |
@@ -22,7 +22,7 @@ Phase 维护连续的无语义时间片、同步观测和动态校准，不内�
 
 完整 ABI 见 [`IPhase.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/IPhase.sol)。
 
-`Phase` 本身不提供 `init`。未开始的 Phase 回 `PhaseNotStarted()`；构造参数非零与 `ADJUST_THRESHOLD <= 1e18` 由 DeployCore 在广播前校验，`21_check` 部署后复核，构造器只保存参数；内部索引不变量用 `assert`（Panic）。完整 selector 以接口文件为准。
+`Phase` 本身没有 `init`，只使用构造函数。未开始的 Phase 回 `PhaseNotStarted()`；构造参数非零与 `ADJUST_THRESHOLD <= 1e18` 由 DeployCore 在广播前校验，`21_check` 部署后复核，构造器只保存参数；内部索引不变量用 `assert`（Panic）。完整 selector 以接口文件为准。
 
 ## 同步
 
@@ -71,7 +71,7 @@ Submit 和 Vote 的 `currentRound()` 等于 `Phase.currentPhase()`。创建、�
 
 - 默认从最近观测向前检查最多 `SYNC_OBSERVATION_LIMIT` 条；仍未找到合格观测时，通过 `OrderedHistoryIndex` 二分查找最近的合格观测。
 - 没有合格观测、`elapsedBlocks == 0` 或 `elapsedSeconds == 0` 时只记录观测，不调整参数。
-- 偏差阈值由初始化参数 `ADJUST_THRESHOLD` 提供，按 `1e18` 精度；超过阈值才调整。
+- 偏差阈值由部署参数 `ADJUST_THRESHOLD` 提供，按 `1e18` 精度；超过阈值才调整。
 - 新长度为 `max(1, floor(elapsedBlocks * TARGET_SECONDS / elapsedSeconds))`；已生成 Phase 不回写。
 - `block.number < ORIGIN_BLOCKS` 时 `currentPhase()` 和 `phaseAtBlock(block.number)` 返回 `0`；`phaseInfo(0)` 无效。
 

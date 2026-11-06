@@ -32,7 +32,7 @@ Stake 按 `tokenAddress + memberId` 维护流动性质押和加速质押，不�
 
 ## 流动性质押与手续费
 
-`init` 只校验 `initialized` 状态并固定依赖地址和参数，不设调用者限制；成功后 `initialized` 置为 `true`，再次调用回滚 `AlreadyInitialized()`。固定 `PHASE_ADDRESS`、`MEMBER_NFT_ADDRESS`、`VOTE_ADDRESS`、`LAUNCH_ADDRESS`、`ROUTER_ADDRESS`、`PAIR_FACTORY_ADDRESS`、`PROMISED_WAITING_PHASES_MIN`、`PROMISED_WAITING_PHASES_MAX`、`FEE_SETTLEMENT_RATIO`、`BOOST_STAKE_SUPPLY_FACTOR` 和 `BOOST_STAKE_MULTIPLIER`。所有成员写操作校验当前 NFT 持有人；`VOTE_ADDRESS` 提供本轮投票记录并暴露其已绑定的 Submit，`LAUNCH_ADDRESS` 用于确认代币由 Launch 登记。金额单位为代币最小单位，等待期为 Phase。
+构造函数固定 `PHASE_ADDRESS`、`MEMBER_NFT_ADDRESS`、`VOTE_ADDRESS`、`LAUNCH_ADDRESS`、`ROUTER_ADDRESS`、`PAIR_FACTORY_ADDRESS`、`PROMISED_WAITING_PHASES_MIN`、`PROMISED_WAITING_PHASES_MAX`、`FEE_SETTLEMENT_RATIO`、`BOOST_STAKE_SUPPLY_FACTOR` 和 `BOOST_STAKE_MULTIPLIER`，不设调用者限制，只保存入参、不读取同批部署合约；`VOTE_ADDRESS` 在前序部署中尚未存在时由脚本按 nonce 预测，并在 `Vote` 部署后核对 `Stake.VOTE_ADDRESS()`。
 
 每个社区的唯一 Pair 由 [Launch](08-launch.md) 在发射该代币的同一笔交易内创建或复用；`Stake` 在首次质押时通过 `PAIR_FACTORY_ADDRESS.getPair(tokenAddress, parentTokenAddress)` 读取并保存，为零地址时回滚 `PairMissing(tokenAddress)`。**`Stake` 的所有入口都只接受 Launch 已登记的代币，只读取已登记的 Pair，不创建 Pair**，未登记回滚 `TokenNotRegistered(tokenAddress)`，无 Pair 回滚 `PairMissing(tokenAddress)`。
 
@@ -201,13 +201,9 @@ stakeBoost 通过条件：member.boostShares + amount <= m_i
 
 `tokenAddress` 的有效性统一由 `ILaunch(LAUNCH_ADDRESS).isLOVE20Token(tokenAddress)` 判定；未由 Launch 登记的地址即使实现了 `PARENT_TOKEN_ADDRESS()` 也无效，回滚 `TokenNotRegistered(tokenAddress)`。需要 Pair 的入口再判 `pairAddress[tokenAddress]` 为零地址，回滚 `PairMissing(tokenAddress)`。
 
-### `init`
+### 构造函数
 
-| 顺序 | 条件 | 回滚错误 |
-| --- | --- | --- |
-| 1 | 已初始化 | `AlreadyInitialized()` |
-
-Factory 与 `Router.factory()` 一致、`promisedWaitingPhasesMin > 0`、`0 < feeSettlementRatio <= MAX_FEE_SETTLEMENT_RATIO（2.5e15）`、`min <= max`、`boostStakeSupplyFactor > 0`（建议 1–10，非校验条件）、`boostStakeMultiplier > 0`（建议 1–20，非校验条件）由 DeployCore 广播前校验；六个依赖地址有代码、`LIQUIDITY_TOKEN_EQUIVALENCE_FACTOR == 2` 由 DeployCore 部署后校验；两者均由 21_check 独立复核；`init` 只防重复初始化并保存入参。
+构造函数不做任何静态校验，只保存入参，因此没有回滚条件。Factory 与 `Router.factory()` 一致、`promisedWaitingPhasesMin > 0`、`0 < feeSettlementRatio <= MAX_FEE_SETTLEMENT_RATIO（2.5e15）`、`min <= max`、`boostStakeSupplyFactor > 0`（建议 1–10，非校验条件）、`boostStakeMultiplier > 0`（建议 1–20，非校验条件）由 DeployCore 广播前校验；六个依赖地址有代码、`LIQUIDITY_TOKEN_EQUIVALENCE_FACTOR == 2` 由 DeployCore 部署后校验；两者均由 21_check 独立复核。
 
 ### `stakeLiquidity`
 
@@ -315,7 +311,7 @@ Factory 与 `Router.factory()` 一致、`promisedWaitingPhasesMin > 0`、`0 < fe
 事件与错误定义见 [`IStake.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/IStake.sol)。
 
 - 当前质押余额为 `0` 就表示没有质押；只有 RoundHistory 的历史查询需要区分”本轮没有记录”和”本轮明确归零”，直接沿用旧 RoundHistory 的显式记录语义，不新增额外布尔状态。
-- 流动性写操作先按条件表顺序完成鉴权、参数与存在性校验——校验自身允许读取 Factory、代币合约与 MemberNFT 的只读接口——**再发起会改变资产或记账的外部调用**（转入代币、向 Pair 铸出或退出 LP、经 Router 换币），并以这些调用实际返回的数量记账；不设重入锁，一致性由这一顺序保证（与 [通用规则](01-common-rules.md#初始化与安全)的检查—更新—交互顺序的差别在此）。读取 Pair 状态，在任何除法前处理 `pairTotalSupply == 0`、`currentSqrtKOfLp == 0` 和基准未增长；需要 Router、Pair 或 ERC20 调用时，以外部调用成功返回的实际数量计算并更新 `lastWithdrawableLp`、`lastFeeLp`、`lastSqrtKOfLp`、成员份额和社区总份额。任一步失败全部回滚。BSC 不使用 SL/ST 凭证，所有份额和可提取 LP 直接存入 Stake。
+- 流动性写操作先按条件表顺序完成鉴权、参数与存在性校验——校验自身允许读取 Factory、代币合约与 MemberNFT 的只读接口——**再发起会改变资产或记账的外部调用**（转入代币、向 Pair 铸出或退出 LP、经 Router 换币），并以这些调用实际返回的数量记账；不设重入锁，一致性由这一顺序保证（与 [通用规则](01-common-rules.md#部署与安全)的检查—更新—交互顺序的差别在此）。读取 Pair 状态，在任何除法前处理 `pairTotalSupply == 0`、`currentSqrtKOfLp == 0` 和基准未增长；需要 Router、Pair 或 ERC20 调用时，以外部调用成功返回的实际数量计算并更新 `lastWithdrawableLp`、`lastFeeLp`、`lastSqrtKOfLp`、成员份额和社区总份额。任一步失败全部回滚。BSC 不使用 SL/ST 凭证，所有份额和可提取 LP 直接存入 Stake。
 - 「不设重入锁」的前提是**所有外部调用的接收方都不触发回调**：`tokenAddress` 只能是 Launch 创建的标准 `LOVE20Token`，Pair 是标准 UniswapV2Pair，Router 是部署期固定的可信合约，三者的转账与 `mint`/`burn`/`swap` 都不回调发起方。`withdraw` 在发起任何外部调用之前先 `delete` 成员记录（等待期、流动性份额、加速份额已先读入内存），因此即使存在回调也无法二次提取同一份份额。若将来引入带接收回调的代币标准或替换 Pair 实现，必须先恢复重入锁或补齐完整 CEI。
 - 手续费结算失败（Pair 取回、Router 兑换、销毁或统计更新任一失败）时整笔结算回滚；提取本金前自动结算手续费，手续费结算失败则提取也回滚。
 - 空目标沿用本文件的等待期继承例外；`MemberStake` 和 `TotalStake` 结构体仅用于内部存储，不作为查询返回格式。

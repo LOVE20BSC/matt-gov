@@ -4,6 +4,14 @@
 
 本文档列出 BSC Core 相对于 LOVE20TKM 旧协议的所有变更。保留项直接引用旧代码位置，避免重复描述。
 
+## 依赖构造函数注入（DEP-01，2026-11-07）
+
+六个 core 合约（`Launch`、`MemberNFT`、`Stake`、`Submit`、`Vote`、`Mint`）的 `init` 入口改为构造函数；`initialized` 状态与 `AlreadyInitialized()` 删除。`Mint` 新增 `phaseAddress` 首参，不再从 `Vote.PHASE_ADDRESS()` 派生。`LOVE20Token` 构造函数删除 `minter`/`parentTokenAddress` 的 `code.length` 校验，`DependencyNotContract(address)` 随之从接口、错误注册表和测试中删除。
+
+部署顺序固定为 `Phase → Launch → MemberNFT → Stake → Submit → Vote → Mint`：首币仍由 `Launch` 构造函数创建（构造函数内唯一 CREATE），`MemberNFT` 的首币地址取自已部署的 `Launch.FIRST_TOKEN_ADDRESS()`；`MemberNFT`、`Vote`、`Mint` 三处前向引用由部署脚本按部署者 nonce 预测（+2 / +5 / +6），并在对应合约部署后立即核对，同时核对 `Stake.VOTE_ADDRESS()` 交叉指针。
+
+构造函数硬约定：只保存传入地址与配置，不调用同代码仓库、同批部署合约的任何 getter 或函数；`Launch` 对已部署第三方 `factory.getPair`/`createPair` 是唯一例外。依赖代码与静态参数改由 `DeployCore` 广播前/部署后校验及 `21_check.sh` 复核。`ActionTarget` 的 `init` 与 `action`/`group-chat` 不在本批。
+
 ## 加速激励改版：入口限量，取消输出溢出（2026-11-06）
 
 加速激励的反资本约束从「输出侧截断」改为「质押入口限量」。旧口径在 `Mint` 内按 `voteReward × MAX_GOV_BOOST_REWARD_MULTIPLIER` 截断，超出部分记为 `burnReward` 并销毁；新口径在 `Stake` 存入加速本金时只校验单人上限，`Mint` 按理论份额全额铸出，不再截断、不再销毁、不再释放预留。
@@ -532,9 +540,10 @@ Core 门禁：**446 tests 全绿**；`build --deny warnings`、`lint`、`check_c
 - **达到上限后**：治理激励仍可铸造，但不再增加发射次数
 
 #### 首个代币部署
-- `Launch.init(LaunchInitParams)` 在同一笔初始化交易中写入依赖（含 Pair Factory）、发射和供应量参数，直接创建首个代币、**创建首币 Pair**、设置 `minter`、发送首批代币到 Airdrop，并同步调用 `MemberNFT.init(firstToken)` 完成其初始化
+- `Launch` 构造函数（`LaunchInitParams`）在同一笔部署交易中写入依赖（含 Pair Factory）、发射和供应量参数，直接创建首个代币、**创建首币 Pair**、设置 `minter`、发送首批代币到 Airdrop；登记首币是构造期的最后一步
+- `MemberNFT` 的首币绑定移到其自身构造函数：部署脚本从已部署的 `Launch.FIRST_TOKEN_ADDRESS()` 读取真实地址传入
 - `Launch` 的分发参数与 Proposal 的 `target + targetMode` 对齐：首币固定使用 Airdrop 和 `NoCallback`；普通发射可使用 `NoCallback` 或 `Callback`
-- `Launch.init` 任一步失败则整笔回滚；成功后不得再次初始化或创建第二个首个代币
+- 构造函数任一步失败则整笔回滚（合约未部署）；成功后不可替换依赖，也不存在第二个首个代币
 - Airdrop 来源和 Burn 追溯证据按部署记录保存
 
 #### 符号字符集扩展
