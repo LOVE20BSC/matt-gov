@@ -1,3 +1,4 @@
+> 历史卷标注：本文中关于根父币计数维度与 `2 × MAX_LAUNCH_COUNT` 的描述已被 `dac6d59` 取代；正文保持原样，不再作为当前实现依据。
 # Launch · 状态变量变更审查
 
 > `core/src/Launch.sol`，350 行，`core@0466d67`。

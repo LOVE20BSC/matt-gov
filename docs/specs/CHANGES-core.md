@@ -543,7 +543,7 @@ Core 门禁：**446 tests 全绿**；`build --deny warnings`、`lint`、`check_c
 - **旧**：首币产生整数次数时，同一 `count` 1:1 伴生写入根父币维度的根级次数，并追加一条 `LaunchCountAdded`；根级次数可用于发射与首币平级、父币同为根父币的同级币
 - **新**：删除根级维度，发射次数只记入被发射社区自己的代币维度；每次成功的 `addLaunchCount` 恰好产生 1 条 `LaunchCountAdded`
 - **父币白名单收窄**：`launchToken` 只接受已登记 LOVE20 代币作为父币，根父币回滚 `ParentTokenNotRegistered(ROOT_PARENT_TOKEN_ADDRESS)`；首币不存在同级币
-- **融合与写入**：`mergeLaunchCount` 与 `addLaunchCount` 不再接受根父币，均回滚 `TokenNotRegistered(ROOT_PARENT_TOKEN_ADDRESS)`
+- **融合与写入**：`mergeLaunchCount` 由接受变为拒绝，回滚 `TokenNotRegistered`；`addLaunchCount` 本就不接受外部写入，且不再写根级维度
 - **符号规则**：删除「根级发射取首币符号」的前缀分支，前缀判定统一读取父币自身符号
 - **参数不变**：`ROOT_PARENT_TOKEN_ADDRESS` 保留原值，只作为首币父币与建池报价资产；`LAUNCH_COUNT_THRESHOLD_RATIO`、`MAX_LAUNCH_COUNT` 保留原值与含义（后者本就按代币维度计，取消根级只是去掉一条横向计数轴，不是全局总量减半）
 - **新不变式**：`issuedLaunchCount(ROOT_PARENT_TOKEN_ADDRESS) == 0` 且任意成员 `remainingLaunchCount(ROOT_PARENT_TOKEN_ADDRESS, memberId) == 0`；每个 `TokenLaunched.parentTokenAddress` 必为已登记代币，唯一例外是首币的 `GenesisTokenCreated`
@@ -561,7 +561,7 @@ Core 门禁：**446 tests 全绿**；`build --deny warnings`、`lint`、`check_c
 - **新**：在旧字符集上扩展 CJK 统一表意文字基本区 `U+4E00`–`U+9FFF`（三字节 UTF-8 编码）；首字符为 ASCII `A-Z` 或汉字，其余为 ASCII `A-Z`、`0-9` 或汉字；字节长度口径不变
 
 #### 不迁移的业务
-公平发射募资与认购领取整块不迁移：`contribute`、`withdraw`、`claim`、`claimInfo`、`LaunchInfo` 的其余 10 个字段、`CLAIM_DELAY_BLOCKS` 全部删除。按发射者或募资状态划分的枚举（`childTokensByLauncher*`、`launching*`、`launched*`、`participatedTokens*`）也删除；代币列表与某社区子币列表保留为分页查询（`tokens`、`childTokens`），符号到地址账本保留为 `tokenAddressBySymbol`（子币符号全局唯一，`TokenSymbolAlreadyExists`），代币地址到父币地址保留为 `parentTokenOf`。
+公平发射募资与认购领取整块不迁移：`contribute`、`withdraw`、`claim`、`claimInfo`、`LaunchInfo` 的其余 10 个字段、`CLAIM_DELAY_BLOCKS` 全部删除。按发射者或募资状态划分的枚举（`childTokensByLauncher*`、`launching*`、`launched*`、`participatedTokens*`）也删除；代币列表与某社区子币列表保留为分页查询（`tokens`、`childTokens`），符号到地址账本保留为 `tokenAddressBySymbol`（子币符号全局唯一，`TokenSymbolAlreadyExists`），代币地址到父币地址保留为 `parentToken`。
 
 ### 📍 实现参考
 ```
