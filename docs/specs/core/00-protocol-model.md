@@ -2,7 +2,7 @@
 
 ## 协议模型
 
-每个 LOVE20 代币有一个 `parentTokenAddress`。首个代币的父币为 WETH，WETH 是协议树外根父币（由 Router.WETH() 读取）；普通发射的父币必须是已登记的 LOVE20 代币，根父币不作为可发射父币，因此首币没有同级代币。发射次数只记入被发射社区自己的代币维度，根父币不承载任何发射次数（见 [Launch 的根父币定位](08-launch.md#根父币的定位)）。供应受 `MAX_SUPPLY` 限制，代币和治理状态在链上维护。
+每个 LOVE20 代币有一个 `parentTokenAddress`。首个代币的父币为 WETH，WETH 是协议树外根父币（由 Router.WETH() 读取）；普通发射的父币必须是已登记的 LOVE20 代币。发射次数记入被发射社区自己的代币维度。供应受 `MAX_SUPPLY` 限制，代币和治理状态在链上维护。
 
 | 组件 | 职责 |
 | --- | --- |
@@ -50,7 +50,7 @@ Core 不解释具体 Proposal 的业务字段，扩展通过 Target 接入。
 
 上表的 Launch 行按含义分组，不表示传参顺序；`Launch` 构造函数只接受一个 `LaunchInitParams`，实参顺序即结构体字段顺序（依赖地址 → 分发目标 → 经济与符号参数 → 供应量 → 首币元数据），参数表中的名字与字段名一致。结构体定义见 [`ILaunch.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/ILaunch.sol)。
 
-`MemberNFT` 的首币地址在其构造函数中传入，部署脚本从已部署的 `Launch.FIRST_TOKEN_ADDRESS()` 读取真实地址；公开 getter 保持旧名 `LOVE20_TOKEN_ADDRESS()`。MemberNFT 不保存 Launch 地址。Launch 在构造函数内创建首币并把地址记录为 `FIRST_TOKEN_ADDRESS`（派生状态、非入参，经同名 getter 公开）；首币身份只由该地址判定，根父币不再是可发射父币，不存在同级币。Launch 的首币分发地址、名称、符号和供应量配置统一见 [Launch](08-launch.md)。Pair Factory 由 Launch 与 Stake 共用：Launch 在创建代币时创建或复用 Pair，Stake 只在首次质押时读取该 Pair；Router 只属 Stake，用于父币手续费换币。
+`MemberNFT` 的首币地址在其构造函数中传入，部署脚本从已部署的 `Launch.FIRST_TOKEN_ADDRESS()` 读取真实地址；公开 getter 保持旧名 `LOVE20_TOKEN_ADDRESS()`。MemberNFT 不保存 Launch 地址。Launch 在构造函数内创建首币并把地址记录为 `FIRST_TOKEN_ADDRESS`（派生状态、非入参，经同名 getter 公开）；首币身份只由该地址判定。Launch 的首币分发地址、名称、符号和供应量配置统一见 [Launch](08-launch.md)。Pair Factory 由 Launch 与 Stake 共用：Launch 在创建代币时创建或复用 Pair，Stake 只在首次质押时读取该 Pair；Router 只属 Stake，用于父币手续费换币。
 
 ## 实现约束
 

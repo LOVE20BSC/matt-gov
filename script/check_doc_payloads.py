@@ -15,7 +15,7 @@ value lists (`GroupCapacityExceeded(groupId, actual, limit)`) and names that no
 and `docs/adr/**` are historical records and are skipped.
 
 Usage:
-    ./script/check_doc_payloads.py                 # docs/ + sibling src trees
+    ./script/check_doc_payloads.py                 # docs/ + peer src trees
     ./script/check_doc_payloads.py docs ../core/src ../action/src
 
 Exit code 0 when clean, 1 when a payload or a parameter name differs.

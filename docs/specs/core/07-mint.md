@@ -227,7 +227,7 @@ Mint 保存 `launchCredit[tokenAddress][memberId]`：尚未转换成整数发射
 1. 先判断 `Launch.issuedLaunchCount(tokenAddress) >= Launch.MAX_LAUNCH_COUNT()`；成立则停止，不累计新额度，已有额度保留。
 2. 否则用本次铸造前该社区代币的 `totalSupply` 计算 `threshold`；为 `0` 时停止，不累计、不转换，也不执行除法。当前账本不变式下该分支不可达（能进入此函数时必有 `mintAmount > 0`，从而 `MAX_SUPPLY - totalSupplyBeforeMint >= mintAmount > 0`），规格保留该检查作为防御。
 3. 加入本次实际治理激励，计算完整次数并受剩余社区次数约束，扣除已转换额度；剩余额度保留到下次。
-4. 正数新增次数由 Mint 调用 `Launch.addLaunchCount(tokenAddress, memberId, count)` 增加；Launch 只接受 Mint 调用，`count` 已由本函数按 `MAX_LAUNCH_COUNT - issuedLaunchCount` 削平，正常路径不会越限。次数增加与治理激励铸造整体回滚。次数只记入 `tokenAddress` 自己的维度并发一条 `LaunchCountAdded`，不再产生根级伴生；Mint 不额外调用，也不感知其它计数维度，见 [Launch 的发射次数账本](08-launch.md#发射次数账本)。
+4. 正数新增次数由 Mint 调用 `Launch.addLaunchCount(tokenAddress, memberId, count)` 增加；Launch 只接受 Mint 调用，`count` 已由本函数按 `MAX_LAUNCH_COUNT - issuedLaunchCount` 削平，正常路径不会越限。次数增加与治理激励铸造整体回滚。次数只记入 `tokenAddress` 自己的维度，每次产生次数发一条 `LaunchCountAdded`；Mint 不额外调用，见 [Launch 的发射次数账本](08-launch.md#发射次数账本)。
 
 ```text
 threshold = ceil((MAX_SUPPLY - totalSupplyBeforeMint) * Launch.LAUNCH_COUNT_THRESHOLD_RATIO() / 1e18)

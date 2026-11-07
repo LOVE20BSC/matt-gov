@@ -45,7 +45,7 @@ Launch 负责首币部署、LOVE20Token 创建、基础发射与次数账本。T
 
 ## 代币登记与查询
 
-`isLOVE20Token(tokenAddress)` 是登记状态的唯一判定入口：构造函数登记首币，`launchToken` 登记新创建的子币。对首币与所有由 Launch 创建的子币返回 `true`；对其余任何地址（WETH、EOA、其它合约）返回 `false`，不校验也不回滚。登记只写一次，不提供删除或改写入口。根父币（Router.WETH() 读取）不在登记范围内：`isLOVE20Token(ROOT_PARENT_TOKEN_ADDRESS)` 始终为 `false`，且根父币不再承载任何发射次数（见[根父币的定位](#根父币的定位)）。
+`isLOVE20Token(tokenAddress)` 是登记状态的唯一判定入口：构造函数登记首币，`launchToken` 登记新创建的子币。对首币与所有由 Launch 创建的子币返回 `true`；对其余任何地址（WETH、EOA、其它合约）返回 `false`，不校验也不回滚。登记只写一次，不提供删除或改写入口。根父币（Router.WETH() 读取）不在登记范围内：`isLOVE20Token(ROOT_PARENT_TOKEN_ADDRESS)` 始终为 `false`（见[根父币的用途](#根父币的用途)）。
 
 登记状态记录为「代币地址 → 父币地址」，由 Launch 自己维护：非零即已登记，首币的父币地址是 `ROOT_PARENT_TOKEN_ADDRESS`。`parentToken(tokenAddress)` 是读取入口，`isLOVE20Token` 也用它判定，不读取代币合约的 `PARENT_TOKEN_ADDRESS()`：无关合约同样能实现这个 getter，而 EOA 与非合约地址调用它会回滚，与上面的返回约定冲突。
 
@@ -55,7 +55,7 @@ Launch 维护四个查询账本，都由上述两个入口写入：
 | --- | --- |
 | 创建顺序的已发射代币列表 | `tokens(offset, limit, reverse)` 分页读取；包含首币 |
 | 代币地址到父币地址 | `parentToken(tokenAddress)` 单点读取；未登记地址返回零地址 |
-| `parentTokenAddress` 到子币列表 | `childTokens(parentTokenAddress, offset, limit, reverse)` 分页读取；`childTokens(ROOT_PARENT_TOKEN_ADDRESS)` 只返回首币，不存在其它同级币 |
+| `parentTokenAddress` 到子币列表 | `childTokens(parentTokenAddress, offset, limit, reverse)` 分页读取；`childTokens(ROOT_PARENT_TOKEN_ADDRESS)` 只返回首币 |
 | 符号到代币地址 | `tokenAddressBySymbol(symbol)` 单点读取；首币与子币都登记，因此子币符号全局唯一 |
 
 分页语义与 `Phase.observations` 一致：`offset` 大于或等于总数时返回空数组与真实 `totalCount`，不校验也不回滚；`limit` 大于剩余条数时按剩余条数返回；`reverse` 为 `true` 时按从新到旧返回。未登记过的父币地址返回空数组与 `0`。分页查询都不限制写入条数，链上不提供全量遍历，只按页读取。
@@ -64,37 +64,30 @@ Launch 维护四个查询账本，都由上述两个入口写入：
 
 ## 发射次数账本
 
-Launch 只保存“成员可用整数次数”和“代币累计已产生次数”；次数如何从治理激励产生见 [Mint 的发射额度](07-mint.md#发射额度的生成)。计数维度只有已登记的 LOVE20 代币：每个社区代币各自记账，互不影响。根父币不参与计数，也不接受任何次数写入。
+Launch 只保存“成员可用整数次数”和“代币累计已产生次数”；次数如何从治理激励产生见 [Mint 的发射额度](07-mint.md#发射额度的生成)。计数维度只有已登记的 LOVE20 代币：每个社区代币各自记账，互不影响。
 
 | 账本 | 所属与作用域 |
 | --- | --- |
 | `remainingLaunchCount[tokenAddress][memberId]` | Launch 保存成员可用整数次数 |
 | `issuedLaunchCount[tokenAddress]` | Launch 保存该代币累计已产生次数；消耗与融合都不减少 |
-| `MAX_LAUNCH_COUNT` | 每个代币维度各自的上限；取消根级维度只是去掉一条横向计数轴，不是全局总量减半 |
+| `MAX_LAUNCH_COUNT` | 每个代币维度各自的上限 |
 
-- `remainingLaunchCount` 与 `issuedLaunchCount` 对任意 `tokenAddress`、`memberId` 可查询；未登记的 token 返回 `0`，不校验也不回滚。根父币未登记，因此其两个账本恒为 `0`。
-- `addLaunchCount` 只允许 Mint 调用，其他调用者回滚 `NotMintContract(msg.sender)`。校验顺序固定为鉴权 → 参数 → 存在性 → 账本：`count` 必须大于 `0`，否则回滚 `ZeroCount()`；`tokenAddress` 必须是已登记 LOVE20 代币，否则回滚 `TokenNotRegistered(tokenAddress)`——根父币同样不经过本入口；必须满足 `issuedLaunchCount + count <= MAX_LAUNCH_COUNT`，否则回滚 `LaunchCountLimitExceeded(tokenAddress, count, MAX_LAUNCH_COUNT - issuedLaunchCount)`（载荷为请求量与剩余额度；Mint 已按剩余额度截断，此处是兜底）。上限判断不得依赖加法结果：任何使累计次数超过上限的 `count`（含极端大值）都必须回滚 `LaunchCountLimitExceeded(...)`，不能以算术溢出回滚收场，错误载荷也不得计算 `issuedLaunchCount + count`。
-- 每次成功的 `addLaunchCount` 恰好产生 1 条 `LaunchCountAdded`；不存在同一调用内的第二条伴生事件。
+- `remainingLaunchCount` 与 `issuedLaunchCount` 对任意 `tokenAddress`、`memberId` 可查询；未登记的 token 返回 `0`，不校验也不回滚。
+- `addLaunchCount` 只允许 Mint 调用，其他调用者回滚 `NotMintContract(msg.sender)`。校验顺序固定为鉴权 → 参数 → 存在性 → 账本：`count` 必须大于 `0`，否则回滚 `ZeroCount()`；`tokenAddress` 必须是已登记 LOVE20 代币，否则回滚 `TokenNotRegistered(tokenAddress)`；必须满足 `issuedLaunchCount + count <= MAX_LAUNCH_COUNT`，否则回滚 `LaunchCountLimitExceeded(tokenAddress, count, MAX_LAUNCH_COUNT - issuedLaunchCount)`（载荷为请求量与剩余额度；Mint 已按剩余额度截断，此处是兜底）。上限判断不得依赖加法结果：任何使累计次数超过上限的 `count`（含极端大值）都必须回滚 `LaunchCountLimitExceeded(...)`，不能以算术溢出回滚收场，错误载荷也不得计算 `issuedLaunchCount + count`。
+- 每次成功的 `addLaunchCount` 产生一条 `LaunchCountAdded`。
 - 只增加 `remainingLaunchCount` 与 `issuedLaunchCount`，与治理激励铸造整体回滚；次数被消耗或融合都不释放累计上限。
 - `addLaunchCount`、`mergeLaunchCount` 和 `launchToken` 的失败由各自的权限、参数与存在性校验决定，不存在一次性初始化状态；部署成功的判定见 [通用规则](01-common-rules.md#部署与安全)。
 
-## 根父币的定位
+## 根父币的用途
 
-`ROOT_PARENT_TOKEN_ADDRESS`（Router.WETH() 读取）在取消根级计数后仍保留两个用途：
+`ROOT_PARENT_TOKEN_ADDRESS`（Router.WETH() 读取）用于：
 
 - 首币的父币地址：写入首币的分发地址、`parentToken(FIRST_TOKEN_ADDRESS)`、`childTokens(ROOT_PARENT_TOKEN_ADDRESS)` 的首个元素、首币 `PARENT_TOKEN_ADDRESS` 与 `GenesisTokenCreated.parentTokenAddress`，并作为首币建池的报价资产；
 - 部署期配置项：由 `LaunchInitParams` 传入并在构造函数保存，不新增也不改名。
 
-它不再是发射计数的维度，也不再是 `launchToken` 可接受的父币：
-
-- `launchToken` 的父币白名单只包含已登记的 LOVE20 代币；父币为根父币时回滚 `ParentTokenNotRegistered(ROOT_PARENT_TOKEN_ADDRESS)`，因此不会再创建与首币平级的同级币。
-- `mergeLaunchCount` 与 `addLaunchCount` 同样只接受已登记代币；以根父币为 `tokenAddress` 回滚 `TokenNotRegistered(ROOT_PARENT_TOKEN_ADDRESS)`。
-- 新部署口径的不变式：`issuedLaunchCount(ROOT_PARENT_TOKEN_ADDRESS) == 0` 且对任意 `memberId` 有 `remainingLaunchCount(ROOT_PARENT_TOKEN_ADDRESS, memberId) == 0`；每次 `TokenLaunched` 的 `parentTokenAddress` 必为已登记代币，唯一例外是首币的 `GenesisTokenCreated`。
-- 首币由构造函数创建，不产生发射次数，根级账本从 `0` 开始并保持 `0`；次数消耗与融合都不改变 `issuedLaunchCount`。本设计在部署前落地，不存在需要迁移的历史根级余额，因此不保留永远不可达的根级写入路径。
-
 ## 次数融合
 
-源、目标必须不同且存在，`count > 0`，源次数足够。只校验调用者持有源 NFT，不要求持有目标。成功后原子扣减源次数、增加目标次数；不转移 `launchCredit`，不改变其他质押、投票、发射历史或事件，也不减少目标既有状态。此操作可用于 NFT 场外交易。融合只在已登记代币的维度内进行，根父币维度不接受融合。
+源、目标必须不同且存在，`count > 0`，源次数足够。只校验调用者持有源 NFT，不要求持有目标。成功后原子扣减源次数、增加目标次数；不转移 `launchCredit`，不改变其他质押、投票、发射历史或事件，也不减少目标既有状态。此操作可用于 NFT 场外交易。融合只在已登记代币的维度内进行。
 
 校验顺序固定为鉴权 → 参数 → 存在性 → 账本：先校验调用者持有源 MemberNFT，再校验参数（源与目标不同、`count > 0`），再校验存在性（`tokenAddress` 已登记、目标 `memberId` 存在；源存在性由鉴权覆盖），最后校验源可用次数。
 
@@ -121,7 +114,7 @@ Launch 只保存“成员可用整数次数”和“代币累计已产生次数�
 
 测试网前缀沿用旧实现：先按配置长度校验 `tokenSymbol`，再读取 `parentTokenAddress` 的符号作为前缀判定符号；判定符号前 `TEST_PREFIX_BYTES`（4）个字节等于 `Test` 时给符号加上 `Test` 前缀，然后生成名称。该前缀施加在校验之后，因此测试网子币的**配置长度**可以超出实际符号长度；但施加前缀后的最终符号仍受 `MAX_TOKEN_SYMBOL_LENGTH = 32` 约束，超出即回滚 `TokenSymbolTooLong(length, 32)`。因此测试网要求 `tokenSymbolLength + TEST_PREFIX_BYTES <= MAX_TOKEN_SYMBOL_LENGTH`，部署脚本在配置校验阶段校验该不等式，并在部署后断言两个常量与 `Launch` 一致。首币不施加该前缀。
 
-普通发射的父币必须是已登记 LOVE20 代币，`distributor` 非零；父币为根父币时回滚 `ParentTokenNotRegistered`，因此不存在与首币平级的同级币发射。分发支持 `NoCallback` 和 `Callback` 两种模式。普通发射携带一个 `bytes[] distributorData` 数组；可以为空，不设长度上限，元素内容与编码由 distributor 自行约定：Launch 只原样透传，不遍历、不解析。
+普通发射的父币必须是已登记 LOVE20 代币，`distributor` 非零。分发支持 `NoCallback` 和 `Callback` 两种模式。普通发射携带一个 `bytes[] distributorData` 数组；可以为空，不设长度上限，元素内容与编码由 distributor 自行约定：Launch 只原样透传，不遍历、不解析。
 
 分发回调接口见 [`ILaunchDistributor.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/ILaunchDistributor.sol)。
 
@@ -188,6 +181,6 @@ LOVE20Token 的错误走本地具体错误：零 `initialSupply` 回 `ZeroInitia
 - `MemberNFT` 的首币地址在自身构造函数传入（取自 `Launch.FIRST_TOKEN_ADDRESS()`）；MemberNFT 不保存 Launch 地址，费用代币地址是唯一外部地址依赖。
 - `MINT_ADDRESS` 在构造后不可变更，并作为此后每个 LOVE20Token 的 `MINTER`。升级 Mint 需要连同 `Launch` 一起重部署，已发射代币的 `minter` 不会随之改写。发布检查应同时核对 `Launch.MINT_ADDRESS` 与首币 `MINTER`：二者不一致说明部署引用了不同的 Mint，表现为「能加次数不能铸币」或反之。
 
-旧来源 `LOVE20TKM/core/src/LOVE20Launch.sol`（提交见[旧代码基线](../../repositories.md#旧代码基线)）已逐项核对。BSC 版**保留**的旧行为：`isLOVE20Token` 的登记判定、`tokenSymbol` 的字节长度口径（字符集在本版扩展出汉字，见[普通发射](#普通发射)）、`tokenSymbol + "@" + parentTokenSymbol` 名称拼法与测试网 `Test` 前缀、`launchToken` 的“检查—创建—登记”外部调用骨架、代币列表与某社区子币列表的链上枚举（旧 `tokensCount`/`tokensAtIndex`、`childTokensCount`/`childTokensAtIndex` 改为分页查询）、符号到地址账本（旧 `tokenAddressBySymbol` 与 `TokenSymbolAlreadyExists` 唯一性校验），以及代币地址到父币地址（旧 `LaunchInfo.parentTokenAddress`）。其余整块删除：公平发射募资与认购领取（`contribute`/`withdraw`/`claim`/`claimInfo`）、`LaunchInfo` 的其余 10 个字段、`CLAIM_DELAY_BLOCKS`，以及按发射者或募资状态划分的其余枚举（`childTokensByLauncher*`、`launching*`、`launched*`、`participatedTokens*`）。次数阈值换算、额度余数结转、每代币上限与次数融合都不在旧实现中，属新设计，见 [Mint 的发射额度](07-mint.md#发射额度的生成)。旧实现中的根级（同级）发射与对应计数在本版一并取消：计数只记入被发射社区自己的代币维度。
+旧来源 `LOVE20TKM/core/src/LOVE20Launch.sol`（提交见[旧代码基线](../../repositories.md#旧代码基线)）已逐项核对。BSC 版**保留**的旧行为：`isLOVE20Token` 的登记判定、`tokenSymbol` 的字节长度口径（字符集在本版扩展出汉字，见[普通发射](#普通发射)）、`tokenSymbol + "@" + parentTokenSymbol` 名称拼法与测试网 `Test` 前缀、`launchToken` 的“检查—创建—登记”外部调用骨架、代币列表与某社区子币列表的链上枚举（旧 `tokensCount`/`tokensAtIndex`、`childTokensCount`/`childTokensAtIndex` 改为分页查询）、符号到地址账本（旧 `tokenAddressBySymbol` 与 `TokenSymbolAlreadyExists` 唯一性校验），以及代币地址到父币地址（旧 `LaunchInfo.parentTokenAddress`）。其余整块删除：公平发射募资与认购领取（`contribute`/`withdraw`/`claim`/`claimInfo`）、`LaunchInfo` 的其余 10 个字段、`CLAIM_DELAY_BLOCKS`，以及按发射者或募资状态划分的其余枚举（`childTokensByLauncher*`、`launching*`、`launched*`、`participatedTokens*`）。次数阈值换算、额度余数结转、每代币上限与次数融合都不在旧实现中，属新设计，见 [Mint 的发射额度](07-mint.md#发射额度的生成)。
 
 验收见 [Core 验收](09-testing.md)。

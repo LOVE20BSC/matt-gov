@@ -359,7 +359,7 @@ OZ 5 的标准回滚由固定依赖提供：`IERC721Errors`、`ERC721OutOfBounds
 | `launchCount(tokenAddress, uint256 memberId)` | `remainingLaunchCount(parentTokenAddress, address account)` | 改名+改参（剩余次数 → 累计次数账本） |
 | `enum DistributorMode { NoCallback, Callback }` | 无 | 新增 |
 | `init(LaunchInitParams)` | 无 | 新增（一次完成依赖（含 Pair Factory）、发射参数、供应量配置和首币元数据初始化） |
-| `memberNFTAddress()`、`rootParentTokenAddress()`、`firstTokenAddress()`、`pairFactoryAddress()`、`LAUNCH_RATIO()`、`MAX_LAUNCH_COUNT()`、`LAUNCH_AMOUNT()`、`MAX_SUPPLY()` | 无 | 新增（`pairFactoryAddress()` 承接旧 `ILOVE20TokenFactory.uniswapV2Factory()` 的建池职责；`firstTokenAddress()` 为首币地址，供根级次数伴生与链下识别） |
+| `memberNFTAddress()`、`rootParentTokenAddress()`、`firstTokenAddress()`、`pairFactoryAddress()`、`LAUNCH_RATIO()`、`MAX_LAUNCH_COUNT()`、`LAUNCH_AMOUNT()`、`MAX_SUPPLY()` | 无 | 新增（`pairFactoryAddress()` 承接旧 `ILOVE20TokenFactory.uniswapV2Factory()` 的建池职责；`firstTokenAddress()` 为首币地址，供链下识别） |
 | `initialized()` | 旧实现有 `bool public initialized`（自动 getter 进入合约 ABI，未写进旧接口） | 新增（公开初始化状态，与 `IMemberNFT` 对齐，供发布前检查脚本核对） |
 | `mergeLaunchCount(tokenAddress, sourceMemberId, targetMemberId, count)` | 无 | 新增 |
 | `addLaunchCount(tokenAddress, memberId, count)` | 无 | 新增 |
