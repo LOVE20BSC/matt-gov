@@ -1492,7 +1492,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Launch.sol:311"
+        "core/src/Launch.sol:304"
       ],
       "selector": "0x7c7610b0",
       "signature": "DistributorNotContract(address)"
@@ -1508,7 +1508,7 @@
       "repo": "core",
       "revert_sites": [
         "core/src/Launch.sol:103",
-        "core/src/Launch.sol:165"
+        "core/src/Launch.sol:162"
       ],
       "selector": "0x750e6e06",
       "signature": "InsufficientLaunchCount(uint256,uint256,uint256)"
@@ -1553,7 +1553,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Launch.sol:267"
+        "core/src/Launch.sol:260"
       ],
       "selector": "0x7e279c58",
       "signature": "InvalidTokenSymbolCharacters()"
@@ -1568,7 +1568,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Launch.sol:266"
+        "core/src/Launch.sol:259"
       ],
       "selector": "0x18a4669e",
       "signature": "InvalidTokenSymbolLength(uint256,uint256)"
@@ -1583,7 +1583,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Launch.sol:191"
+        "core/src/Launch.sol:188"
       ],
       "selector": "0x9affae33",
       "signature": "LaunchCountLimitExceeded(address,uint256,uint256)"
@@ -1880,7 +1880,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Launch.sol:254"
+        "core/src/Launch.sol:247"
       ],
       "selector": "0x90fa4b05",
       "signature": "PairCreationFailed(address)"
@@ -2140,7 +2140,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Launch.sol:154",
+        "core/src/Launch.sol:151",
         "core/src/Stake.sol:292"
       ],
       "selector": "0xbbef66e9",
@@ -2292,7 +2292,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Launch.sol:238"
+        "core/src/Launch.sol:231"
       ],
       "selector": "0x0d7673b5",
       "signature": "TokenNameEmpty()"
@@ -2307,7 +2307,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Launch.sol:239"
+        "core/src/Launch.sol:232"
       ],
       "selector": "0x312f5772",
       "signature": "TokenNameTooLong(uint256,uint256)"
@@ -2324,8 +2324,8 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Launch.sol:159",
-        "core/src/Launch.sol:187",
+        "core/src/Launch.sol:156",
+        "core/src/Launch.sol:184",
         "core/src/Stake.sol:554"
       ],
       "selector": "0xddef98d7",
@@ -2341,7 +2341,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Launch.sol:122"
+        "core/src/Launch.sol:119"
       ],
       "selector": "0x98f23aa3",
       "signature": "TokenSymbolAlreadyExists(bytes32)"
@@ -2356,7 +2356,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Launch.sol:242"
+        "core/src/Launch.sol:235"
       ],
       "selector": "0xf09ce013",
       "signature": "TokenSymbolEmpty()"
@@ -2371,7 +2371,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Launch.sol:243"
+        "core/src/Launch.sol:236"
       ],
       "selector": "0xb77a560d",
       "signature": "TokenSymbolTooLong(uint256,uint256)"
@@ -2461,8 +2461,8 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Launch.sol:156",
-        "core/src/Launch.sol:186"
+        "core/src/Launch.sol:153",
+        "core/src/Launch.sol:183"
       ],
       "selector": "0x047b9cec",
       "signature": "ZeroCount()"

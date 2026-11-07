@@ -113,23 +113,23 @@
 - NoCallback 不回调，Callback 成功调用且失败回滚
 - 首币发 `GenesisTokenCreated`（无 launcher）；成员发射发 `TokenLaunched`，并在扣减后发 `LaunchCountConsumed`
 - 首币创建与依赖绑定在构造期一次完成；`launchToken`、`mergeLaunchCount`、`addLaunchCount` 不重复校验部署状态
-- `tokens`/`childTokens` 按创建顺序分页返回且包含首币，`childTokens(ROOT_PARENT_TOKEN_ADDRESS)` 返回首币与根级同级币，`offset` 越界返回空数组与真实总数
+- `tokens`/`childTokens` 按创建顺序分页返回且包含首币，`childTokens(ROOT_PARENT_TOKEN_ADDRESS)` 只返回首币（不存在同级币），`offset` 越界返回空数组与真实总数
 - 施加 `Test` 前缀后的最终符号重复时回滚 `TokenSymbolAlreadyExists(keccak256(bytes(finalSymbol)))`，`tokenAddressBySymbol` 命中已登记符号
 - 子币符号按 UTF-8 字节长度（等于 `TOKEN_SYMBOL_LENGTH`）与字符集校验：首字符为 ASCII `A-Z` 或 CJK 基本区汉字（`U+4E00`–`U+9FFF`），其余为 ASCII `A-Z`、`0-9` 或汉字；长度不符回滚 `InvalidTokenSymbolLength(length, TOKEN_SYMBOL_LENGTH)`，字符集不符回滚 `InvalidTokenSymbolCharacters()`
-- `parentToken` 对首币返回 `ROOT_PARENT_TOKEN_ADDRESS`、对子币（含根级同级币）返回其父币、对未登记地址返回零地址；`isLOVE20Token` 与它一致
+- `parentToken` 对首币返回 `ROOT_PARENT_TOKEN_ADDRESS`、对子币返回其父币、对未登记地址返回零地址；`isLOVE20Token` 与它一致
 
-### 根级次数与同级币发射
-**覆盖要求**：覆盖首币产生整数次数时 1:1 伴生根级次数（同一笔交易、同 `count`、追加一条 `LaunchCountAdded`、不变式 `issuedLaunchCount(ROOT_PARENT_TOKEN_ADDRESS) == issuedLaunchCount(FIRST_TOKEN_ADDRESS)`）、其他代币不伴生、根级发射创建与首币平级且父币为根父币的同级币（消耗根级次数、登记与 `childTokens` 正确、建池、命名取根父币实际符号）、根级次数不足回滚、根级次数融合、`Test` 前缀按首币符号判定，以及 `FIRST_TOKEN_ADDRESS` getter。
+### 发射次数只记入代币维度（根级已停用）
+**覆盖要求**：覆盖首币产生整数次数时只写入首币维度（每次成功写入恰好一条 `LaunchCountAdded`）、根父币维度保持为零（`issuedLaunchCount(ROOT_PARENT_TOKEN_ADDRESS) == 0` 且 `remainingLaunchCount(ROOT_PARENT_TOKEN_ADDRESS, *) == 0`）、`launchToken` 以根父币为父币回滚 `ParentTokenNotRegistered`、`mergeLaunchCount` 以根父币为 `tokenAddress` 回滚 `TokenNotRegistered`、不再产生同级币，以及 `FIRST_TOKEN_ADDRESS` getter。
 
 **测试方式**：
-- 单元测试：`core/test/Launch.t.sol` 的伴生、根级发射、融合与前缀场景
-- 集成测试：`core/test/integration/MintRealIntegration.t.sol` 的治理铸造到根级次数、根级发射链路
-- 验收证据：事件日志显示首币与根父币两条 `LaunchCountAdded`、根级同级币登记与 Pair 创建
+- 单元测试：`core/test/Launch.t.sol` 的计数、根父币拒绝与分页场景
+- 集成测试：`core/test/integration/MintRealIntegration.t.sol` 的治理铸造后根维度保持为零
+- 验收证据：事件日志只出现一条 `LaunchCountAdded`，且没有同级币登记与 Pair 创建
 
 **判定标准**：
-- 首币次数产生时根级次数同 `count` 增加，其他代币产生次数不伴生
-- 根级累计恒等于首币累计且不超 `MAX_LAUNCH_COUNT`
-- 根级发射的父币、登记、`childTokens`、Pair、命名与次数扣减符合规格；Mint 直调 `addLaunchCount` 不能写根父币维度
+- 每次成功 `addLaunchCount` 只增加对应代币维度，根父币维度恒为 `0`
+- 新部署口径下 `issuedLaunchCount(ROOT_PARENT_TOKEN_ADDRESS) == 0`，且任意成员的 `remainingLaunchCount(ROOT_PARENT_TOKEN_ADDRESS, memberId) == 0`
+- 根级发射回滚 `ParentTokenNotRegistered(ROOT_PARENT_TOKEN_ADDRESS)`；根级次数融合回滚 `TokenNotRegistered(ROOT_PARENT_TOKEN_ADDRESS)`；Mint 直调 `addLaunchCount` 不能写根父币维度
 
 ### MemberNFT 转移归属
 **覆盖要求**：覆盖转移前后质押、解锁倒计时、治理激励和行动内部未铸造激励均由当前持有人继续操作；旧持有人不能代铸，历史投票、按 Round 参与历史、已结算激励和事件不回写。

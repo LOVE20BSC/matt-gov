@@ -539,6 +539,16 @@ Core 门禁：**446 tests 全绿**；`build --deny warnings`、`lint`、`check_c
 - **新增**：每个社区最多产生 `MAX_LAUNCH_COUNT` 次发射
 - **达到上限后**：治理激励仍可铸造，但不再增加发射次数
 
+#### 取消根级（同级）发射与根级计数
+- **旧**：首币产生整数次数时，同一 `count` 1:1 伴生写入根父币维度的根级次数，并追加一条 `LaunchCountAdded`；根级次数可用于发射与首币平级、父币同为根父币的同级币
+- **新**：删除根级维度，发射次数只记入被发射社区自己的代币维度；每次成功的 `addLaunchCount` 恰好产生 1 条 `LaunchCountAdded`
+- **父币白名单收窄**：`launchToken` 只接受已登记 LOVE20 代币作为父币，根父币回滚 `ParentTokenNotRegistered(ROOT_PARENT_TOKEN_ADDRESS)`；首币不存在同级币
+- **融合与写入**：`mergeLaunchCount` 与 `addLaunchCount` 不再接受根父币，均回滚 `TokenNotRegistered(ROOT_PARENT_TOKEN_ADDRESS)`
+- **符号规则**：删除「根级发射取首币符号」的前缀分支，前缀判定统一读取父币自身符号
+- **参数不变**：`ROOT_PARENT_TOKEN_ADDRESS` 保留原值，只作为首币父币与建池报价资产；`LAUNCH_COUNT_THRESHOLD_RATIO`、`MAX_LAUNCH_COUNT` 保留原值与含义（后者本就按代币维度计，取消根级只是去掉一条横向计数轴，不是全局总量减半）
+- **新不变式**：`issuedLaunchCount(ROOT_PARENT_TOKEN_ADDRESS) == 0` 且任意成员 `remainingLaunchCount(ROOT_PARENT_TOKEN_ADDRESS, memberId) == 0`；每个 `TokenLaunched.parentTokenAddress` 必为已登记代币，唯一例外是首币的 `GenesisTokenCreated`
+- **部署前落地**：不存在需要迁移的历史根级余额，因此不保留永远不可达的根级代码路径
+
 #### 首个代币部署
 - `Launch` 构造函数（`LaunchInitParams`）在同一笔部署交易中写入依赖（含 Pair Factory）、发射和供应量参数，直接创建首个代币、**创建首币 Pair**、设置 `minter`、发送首批代币到 Airdrop；登记首币是构造期的最后一步
 - `MemberNFT` 的首币绑定移到其自身构造函数：部署脚本从已部署的 `Launch.FIRST_TOKEN_ADDRESS()` 读取真实地址传入
