@@ -27,14 +27,15 @@ jobs:
       - uses: actions/checkout@v4
         with:
           path: matt-gov
+      # check_errors.py resolves selectors with `cast`, so the toolchain has to be
+      # installed even though no Solidity is compiled here.
+      - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: v1.8.1
       # The checkers resolve the workspace root from their own location, so they
       # need the four sibling repos checked out next to matt-gov.
       - run: python3 matt-gov/script/check_doc_payloads.py
       - run: python3 matt-gov/script/check_naming.py
       - run: bash matt-gov/script/check_caller_auth.sh
       - run: python3 matt-gov/script/check_error_tests.py
-      # Pending: python3 matt-gov/script/check_errors.py --check
-      # Blocked by libs/src/OrderedHistoryIndex.sol:10 (InvalidKeyOrder is declared
-      # outside src/interfaces and puts two parameters on one line), which also
-      # leaves matt-gov/registry stale. Enable this step once libs is clean and the
-      # registry has been regenerated from a clean baseline.
+      - run: python3 matt-gov/script/check_errors.py --check
