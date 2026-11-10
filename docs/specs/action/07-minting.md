@@ -47,7 +47,7 @@ Core 的预留、铸造和取消额度账本见 [Mint](../core/07-mint.md)，不
 | `InvalidMinGovRatio(uint256 value)` / `InvalidJoinTokenFactory(address joinToken, address factory)` | LP 最小治理比例超过 `1e18` / 参与代币不是该工厂登记的交易对 |
 | `ZeroMinJoinAmount()` / `InvalidMaxJoinAmount(uint256 minAmount, uint256 maxAmount)` | 群最小加入量为零 / 非零最大加入量低于最小加入量 |
 | `GroupAlreadyActivated(uint256 groupId)` / `GroupNotActive(uint256 groupId)` / `GroupNotExist(uint256 groupId)` / `ZeroGroupId()` | 重复激活 / 在未激活链群上操作 / 群身份不存在 / 群参数缺省（`groupId == 0`，与「群身份不存在」分开） |
-| `DeactivationLockedInActivatedRound(uint256 groupId, uint256 round)` | 在链群激活的同一加入轮停用 |
+| `DeactivationLockedInActivatedRound(uint256 groupId, uint256 round)` | 在链群激活的同一投票轮停用（`round` 为投票轮） |
 | `InsufficientActivationMinGovRatio(uint256 groupId, uint256 required, uint256 actual)` | 群 owner 的治理票占比低于激活下限 |
 | `NoGovVotes(address tokenAddress)` | 激励代币没有全局治理票，无法计算激活下限 |
 | `ZeroParticipationAmount()` | 加入、撤回或 Provider 撤回金额为零 |
