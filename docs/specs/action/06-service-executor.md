@@ -90,7 +90,7 @@ setRecipients 沿用旧 GroupRecipients：只写当前验证 Round，不允许�
 
 配置按 `sourceTokenAddress + groupId` 维护按轮枚举：本轮非空写入登记源行动、显式清空移除，`actionIdsWithRecipients(sourceTokenAddress, groupId, round, offset, limit, reverse)` 分页返回该轮有效的已配置源行动与真实总数（懒继承到不晚于该轮的最近记录；同轮配置更新会重写该轮快照）。该集合是**累计集合**而非本轮集合：跨轮继承的项仍占位并计入上限，单个 `(sourceTokenAddress, groupId)` 最多登记 `MAX_RECIPIENT_ACTIONS_PER_TOKEN_GROUP`（16）个源行动；配满后须先对其中一个已登记行动显式清空（传空表）才能为新行动让位。该集合用 swap-and-pop 删除：同一 `offset` 的返回内容不保证跨调用稳定，`reverse` 也不等于「新到旧」；调用方不得跨调用缓存 `offset`，也不得按「先拉首页再增量补页」拼接。`distribution(sourceTokenAddress, sourceActionId, groupId, round, groupReward)` 对任意金额按同规则试算（逐项向下取整、余数归 owner，100% 不下溢）。
 
-配置比例总和不得超过 `1e18`，超过回滚 `DistributionOverflow(configured, limit)`；正好 100% 合法。金额逐步向下取整：
+配置比例总和不得超过 `1e18`，超过回滚 `DistributionOverflow(configured, limit)`；正好 100% 合法。判据逐项前置：单项大于 `1e18` 时 `configured` 为该单项值，累计超过 `1e18` 时为「已累计 + 本项」，两种情况都不进入 `uint256` 溢出（不产生 `Panic`）。金额逐步向下取整：
 
 ```text
 amount[i] = mulDiv(slice(a, m), ratios[i], 1e18)
@@ -118,7 +118,7 @@ amount[i] = mulDiv(slice(a, m), ratios[i], 1e18)
 
 ## 实现约束
 
-- `DistributionOverflow(configured, limit)` 在配置比例总和超过 `limit`（协议上限 `1e18`）时触发；正好 `1e18` 合法。
+- `DistributionOverflow(configured, limit)` 在配置比例总和超过 `limit`（协议上限 `1e18`）时触发；正好 `1e18` 合法。单项超过 `1e18` 直接以该项为 `configured` 触发，不先累加，因此超大比例不会先冒 `Panic(0x11)`。
 - **协议常量默认不进 ABI**（与 `05-group-action-executor.md` 的编译期常量段一致）；`PRECISION`、`MAX_RECIPIENTS_PER_ACTION` 与 `MAX_RECIPIENT_ACTIONS_PER_TOKEN_GROUP` 例外地以 `public constant` 暴露，只为链下对齐取整精度与配置上限，登记为口径偏差，不改变语义。
 - **`setRecipients` 不设锁**：它只调用只读外部依赖（`IMemberNFT.ownerOf`、ActionTarget / 本合约自身存储），不动钱；若将来加入外呼或资金路径，必须同批加 `nonReentrant`（与 05 的无锁配置入口同口径）。
 - **轮次契约由调用方保证**：`setRecipients` 的 `round` 必须是当前验证轮，由调用方在提取时确认；库与合约都不把 `round` 与 `currentPhase()` 比较，只把它写成按轮快照。链下按已配置轮读取，不要用未来轮。
