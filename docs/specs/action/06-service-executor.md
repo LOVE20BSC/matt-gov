@@ -98,7 +98,7 @@ amount[i] = mulDiv(slice(a, m), ratios[i], 1e18)
 
 各项取整后的总支出不得超过对应预算，`slice` 层与 owner 总量层的舍入余数都归 owner；100% 分配不得下溢。旧版两处双重 floor 曾使「单链群理论激励之和」超过可铸造量，100% 分配时 `mintReward - distributed` 下溢、整笔铸造回滚；本版全部中间量不提前截断，**`Σ 转账 + 销毁 ≤ serviceReward` 为承重不变量**，回归用例见 [Action 验收](08-testing.md)。
 
-逐笔付款由 `RecipientPaid(serviceTokenAddress, round, serviceActionId, groupId, sourceTokenAddress, sourceActionId, recipientId, amount)` 留痕（每个收款人一条）；事件流连同 `MemberRewardMinted` 与服务代币的 `TokenBurned` 可完整还原结算的全部资产变化。
+逐笔付款由 `RecipientPaid(serviceTokenAddress, serviceActionId, round, groupId, sourceTokenAddress, sourceActionId, recipientId, amount)` 留痕（每个收款人一条；前三个字段为 indexed，`round` 在 `serviceActionId` 之后，字段顺序以 `IGroupServiceExecutor.sol` 为准）；事件流连同 `MemberRewardMinted` 与服务代币的 `TokenBurned` 可完整还原结算的全部资产变化。
 
 结算内的事件顺序固定为：写成员账本 → `TokenBurned`（若有销毁）→ 逐笔 `RecipientPaid` → 两笔 `safeTransfer`（owner 余量与验证者份额）→ `MemberRewardMinted` → `ServiceRewardsDistributed`。两条汇总事件都排在明细之后：`ServiceRewardsDistributed` 的 `ownerDistributed` / `ownerRemaining` 依赖分配循环结果，属[事件规范 §3.4 E5](../../event-standards.md#34-批量与顺序)的依赖序逆序；`MemberRewardMinted` 声明的是「已结算」，只有在 burn 与转账完成后才成立，属 §3.4 E6 的结算聚合例外，与 E5 构成同一结算尾部的两条相邻汇总。测试必须断言 `MemberRewardMinted` 晚于最后一条 `RecipientPaid`、且早于 `ServiceRewardsDistributed`。
 
