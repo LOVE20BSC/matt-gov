@@ -4,6 +4,18 @@
 
 > 本文记录迁移当时的新旧对照。标识符回写口径（2026-11-01 定）：「旧 → 新」对照列和记录迁移当时状态的叙述保留旧名，不逐一回写；描述当前 ABI 或当前行为的句子随改名回写（如「轮次轴分层」段里守卫所覆盖的入口名）。当前 ABI 与命名以 `action/src/interfaces/`、[`docs/specs/action/`](action/) 与 [`naming-standards.md`](../naming-standards.md)（§14 进度）为准。
 
+## 群生命周期轮次轴与验证者比例边界（2026-11-10）
+
+本轮把群生命周期的轮次轴统一到投票轮，并收紧服务 Proposal 的验证者比例；**事件字段语义与若干 revert 口径变化，链下解码与错误表须同步**：
+
+- **群生命周期改用投票轮**：`activatedRound` / `deactivatedRound` 由加入轮（`currentPhase - 1`）改为投票轮（`currentPhase()`），`activateGroup` / `deactivateGroup` / `setGroupConfig` 的 `round` 参数与 `GroupActivated` / `GroupDeactivated` / `GroupConfigChanged` 的 `round` 字段同轴改写；`descriptionByRound` 的 `round` 也是投票轮。原因：`activatedRound` 只服务「同一轮不可停用」的相等判定，投票轮与激活事实同源；混用两种轴会让同一个描述历史出现两个键单位。
+- **激活不再要求加入轮已开放**：唯一前置条件是行动已创建（`createdRound != 0`），因此首个可加入轮之前（含创建轮）即可激活；不再经 `currentJoinRound()` 门控（此前 `phase < 2` 会回 `RoundNotStarted(1, 0)`）。停用只在激活当轮被拒，之后任意轮次可停用并全额取回押金——下一轮撤出后群已不激活、任何成员都无法 `join`，代价由撤出者自负。
+- **`publicVerifierRatio` 收为 `(0, 1e18)`**：创建回调对 `== 0` 与 `>= 1e18` 都回滚 `InvalidRatioForPublicVerifier(value)`（此前只拒绝 `> 1e18`）。两侧闭合后，权重非零的成员其可分配分子恒非零，因此删除「分子为零却按取整为零上报」的成员级分类：零额只剩 `verifierWeight == ownerWeight == 0`（`ZeroRewardWeight`）与轮级 `MemberRewardPoolEmpty`。
+- **零分母轮的错误口径**：轮级分母为零时任何已加入成员的角色结算都回滚 `MemberRewardPoolEmpty(tokenAddress, round)`，不再落到成员级 `ZeroRewardWeight`；未按轮加入的成员仍回 `ZeroRewardWeight`（判定次序：加入状态 → 轮级分母 → 成员侧权重）。
+- **LP 加入的行动归属**：`LpExecutor.join` 在参数校验后先判本 Executor 的创建记录，未创建的行动回 `ActionNotCreated(tokenAddress, actionId)`；此前非首次加入分支会走到零地址 join token 的 `safeTransferFrom`，靠 OpenZeppelin 的 `extcodesize` 检查偶然回滚。群行动的 `maxJoinAmount` 对未创建行动返回 `0`，不再对零地址调 `totalSupply()`。
+- 同步：[02](action/02-phase-model.md)（群生命周期旁路家族）、[05](action/05-group-action-executor.md)（激活/停用、描述快照、事件、状态口径、错误行）、[06](action/06-service-executor.md)（比例边界、结算三分）、[07](action/07-minting.md)（错误表与 `ZeroRewardWeight` 定义）、[04](action/04-lp-executor.md)（join 错误行）、[acceptance](../acceptance.md)（验证者撤销口径）；实现与测试在 `action` 仓，错误目录由 `script/check_errors.py` 重新生成。
+- 验收影响：链下若按旧的加入轮语义解码三个群事件的 `round`、按 `descriptionByRound(joinRound)` 读描述快照、或构造 `publicVerifierRatio == 0` / `== 1e18`，都会读到不同结果或直接回滚，需同步升级。
+
 ## ActionTarget 构造注入（2026-11-07）
 
 `ActionTarget.init(address)` 改为 `constructor(address mintAddress)`，与 core 卷 `DEP-01` 同型，**ABI 变化（删除 `init` 与 `initialized()`，删除错误 `AlreadyInitialized()`），旧 ABI 不可复用**：
