@@ -29,7 +29,7 @@ Target Data 是无键数组，按位置读取。第 `0` 项是 ActionTarget 保�
 | `targetData[SLOT_LP_TOKEN]` 为零 | `ZeroJoinTokenAddress()` |
 | `targetData[SLOT_LP_TOKEN]` 不是 `pairFactoryAddress` 登记的交易对 | `InvalidJoinTokenFactory(joinTokenAddress, pairFactoryAddress)` |
 | `minGovRatio > 1e18` | `InvalidMinGovRatio(minGovRatio)` |
-| 调用者不是 memberId 当前持有人 | `NotMemberOwner(memberId)` |
+| 调用者不是 memberId 当前持有人（id 不存在时冒泡 `ERC721NonexistentToken`） | `NotMemberOwner(memberId)` |
 | 加入金额为零，或撤回金额为零 | `ZeroParticipationAmount()` |
 | 撤回金额大于当前余额 | `WithdrawAmountExceeded(amount, joined)` |
 | 首次加入且 `govRatio < minGovRatio` | `InsufficientGovRatio(minGovRatio, govRatio)` |
