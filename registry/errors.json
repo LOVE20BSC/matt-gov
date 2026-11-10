@@ -569,7 +569,7 @@
       "revert_sites": [
         "action/src/GroupActionExecutor.sol:722",
         "action/src/GroupActionExecutor.sol:729",
-        "action/src/GroupServiceExecutor.sol:724",
+        "action/src/GroupServiceExecutor.sol:731",
         "action/src/LpExecutor.sol:505",
         "action/src/LpExecutor.sol:515"
       ],
@@ -587,7 +587,7 @@
       "repo": "action",
       "revert_sites": [
         "action/src/GroupActionExecutor.sol:734",
-        "action/src/GroupServiceExecutor.sol:726",
+        "action/src/GroupServiceExecutor.sol:733",
         "action/src/LpExecutor.sol:527"
       ],
       "selector": "0xd632d7c1",
@@ -1416,7 +1416,7 @@
       ],
       "repo": "action",
       "revert_sites": [
-        "action/src/GroupServiceExecutor.sol:721"
+        "action/src/GroupServiceExecutor.sol:728"
       ],
       "selector": "0x7a448f07",
       "signature": "ZeroRewardWeight(address,uint256,uint256)"
@@ -3125,6 +3125,21 @@
       ],
       "selector": "0xbeffc593",
       "signature": "ZeroVoteWeight(uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "libs/src/OrderedHistoryIndex.sol"
+      ],
+      "interfaces": [
+        "OrderedHistoryIndex"
+      ],
+      "repo": "libs",
+      "revert_sites": [
+        "libs/src/OrderedHistoryIndex.sol:26"
+      ],
+      "selector": "0xc7a2002f",
+      "signature": "InvalidKeyOrder(uint256,uint256)"
     }
   ],
   "generated_by": "matt-gov/script/check_errors.py",
@@ -3190,14 +3205,14 @@
     }
   ],
   "summary": {
-    "declarations": 233,
+    "declarations": 234,
     "repos": {
       "action": 106,
       "core": 82,
       "group-chat": 45,
-      "libs": 0
+      "libs": 1
     },
-    "signatures": 198,
-    "unique_signatures": 188
+    "signatures": 199,
+    "unique_signatures": 189
   }
 }
