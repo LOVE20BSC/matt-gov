@@ -12,7 +12,7 @@ Target Data 是无键数组，按位置读取。第 `0` 项是 ActionTarget 保�
 
 写操作要求调用者持有 memberId；加入/追加金额为正，首次加入满足 `minGovRatio`。LP 从调用者转入 Executor，撤回时转给当前持有人。首次加入时调用 `ActionTarget.registerJoinState`；全额撤回与 `exit` 都调用 `ActionTarget.clearJoinState`；失败全部回滚。激励接口见 [行动铸造](07-minting.md#铸造链路)。
 
-**非首次加入不重复校验行动归属**：`registerJoinState` 只在首次加入调用，后续 `join` 不再经过它，因此不重新判行动是否已创建/已绑定 Executor。该不变量由 ActionTarget「绑定建立后永不删除」承担（见 [ActionTarget 索引](01-action-target.md#round-查询)）；本 Executor 侧的首次判定只读 `isJoined`，不自建副本。
+**每次加入都重判行动归属**：`registerJoinState` 只在首次加入调用，后续 `join` 不再经过它，ActionTarget 的绑定校验因此不为再次加入兜底。若行动不是本 Executor 创建，非首次加入会跳过该回调，直接走到零地址 join token 的 `safeTransferFrom`，只靠 OpenZeppelin 的 `extcodesize` 检查偶然回滚。为此 `join` 在金额校验之后、`currentJoinRound()` 之前先判本 Executor 的创建记录：`createdRound == 0` 回滚 `ActionNotCreated(tokenAddress, actionId)`，首次与非首次加入一视同仁；该记录由创建回调一次写入且不删除，首次认定仍只读 `isJoined`，不自建副本。
 
 **配置写入的唯一性由 ActionTarget 承担**：创建回调对同一 `(tokenAddress, actionId)` 只成功一次（重复回滚 `AlreadyCreated`），因此本 Executor 的 `joinTokenAddress`、比例等配置在每个行动上只写一次，不需要自己的「已配置」状态位。
 

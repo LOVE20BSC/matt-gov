@@ -47,7 +47,7 @@ available = MAX_SUPPLY - totalSupply - reservedAvailable
 
 池值不只依赖「第 R 轮的准备时点」，还依赖**跨轮准备顺序**：`available` 扣除的是累计 `reservedAvailable`，而任意已结束轮次都可准备，所以先准备的轮次拿走 `ratio × available`、后准备的轮次只能在更小的基数上取同比例，第 R 轮与第 R+1 轮的相对份额由两次准备的先后决定。诚实路径上这不构成博弈——早准备让池子更大，对全轮次受益人都占优，任何人都能一次调用完成；只有在全员整整一个 Phase 都不准备的前提下顺序才被推迟，因此按「无许可入口 + 早准备占优」接受，不做跨轮强制排序。
 
-1. 本轮已准备则直接返回，不更新状态，也不发事件；`tokenAddress` 未由 Launch 登记时回滚 `TokenNotRegistered(tokenAddress)`（与 Stake 的写入口同口径，否则任何人可对任意地址写满四个轮次映射）；未结束的 Round 拒绝准备（`round != 0 && Phase.currentPhase() > round`，回滚 `RoundNotEnded(round)`；与 `Vote.isRoundEnded` 语义一致，`round == 0` 一律拒绝）。
+1. 本轮已准备则直接返回，不更新状态，也不发事件。未准备时先判 `tokenAddress` 是否由 Launch 登记，未登记回滚 `TokenNotRegistered(tokenAddress)`（与 Stake 的写入口同口径，否则任何人可对任意地址写满四个轮次映射；该门禁早于 Round 结束判定，由 Mint 本地 `IMintErrors` 声明，selector 与 `ILaunch` 的同名错误一致）；再判 Round 已结束（`round != 0 && Phase.currentPhase() > round`，回滚 `RoundNotEnded(round)`；与 `Vote.isRoundEnded` 语义一致，`round == 0` 一律拒绝）。
 2. 读取 Vote 的冻结结果。若 `totalVoteAmount == 0`，两池和 `eligibleProposalVoteAmount` 记为 0 并标记已准备，累计账本不变。
 3. 否则遍历 Vote 本轮有票 Proposal，按冻结 `totalVoteAmount` 判断每个 Proposal 是否达到阈值，并把达标 Proposal 的票数总和写入 `_eligibleProposalVoteAmountByRound[tokenAddress][round]`。
 4. 用准备前的 `available` 计算两池，并在本步骤唯一一次增加 `totalRewardReserved`。
@@ -107,7 +107,7 @@ if eligibleProposalVoteAmount == 0:
 
 ## 治理结算
 
-只允许成员 NFT 当前持有人为本轮实际投过票的 `memberId` 结算；若该 Round 尚未准备，入口先自动准备。
+只允许成员 NFT 当前持有人为本轮实际投过票的 `memberId` 结算；若该 Round 尚未准备，入口先自动准备。自动准备的第一步是登记门禁，因此未由 Launch 登记的 `tokenAddress` 先回 `TokenNotRegistered(tokenAddress)`，早于 `RoundNotEnded(round)`；已准备轮次不再重复该判定。
 
 校验顺序：
 
@@ -115,6 +115,7 @@ if eligibleProposalVoteAmount == 0:
 | --- | --- |
 | `IMemberNFT(MEMBER_NFT_ADDRESS).ownerOf(memberId) != msg.sender` | `NotMemberOwner(uint256 memberId)` |
 | `recipient == address(0)` | `ZeroRecipientAddress()` |
+| `tokenAddress` 未由 Launch 登记（未准备轮次的自动准备门禁） | `TokenNotRegistered(address tokenAddress)` |
 | `!IVote(VOTE_ADDRESS).isRoundEnded(round)` | `RoundNotEnded(round)` |
 | 已铸造（独立状态位） | `MemberRewardAlreadyMinted(tokenAddress, round, memberId)` |
 | `memberVoteAmount == 0` | `MemberHasNoVote(tokenAddress, round, memberId)` |
@@ -136,7 +137,7 @@ else:
 
 `memberVoteAmount` 为本轮累计投出票数；`voterBoost` 和 `totalVoterBoost` 均取 Vote 的同轮冻结快照，记账时机见 [Vote](06-vote.md#投票和加速快照)。投票后仅追加质押、不再投票，不增加本轮加速权重；NFT 转移不重算快照。两池按固定 50/50 拆分，奇数余量归加速池。`totalVoterBoost == 0` 时整份加速池已在准备时取消，本次不得再计加速额。未投票者即使有加速质押也不能领取治理激励。
 
-批量接口 `mintGovRewards` 先鉴权，再逐轮按上述顺序执行，任一轮失败整笔回滚。空 `rounds` 数组在鉴权通过后允许（返回空数组，无副作用）。轮次数量由调用者自行决定，接口不设数量上限；数量过大导致交易失败及 gas 成本由调用者承担，这是写入批量长度上限规则的明确例外。
+批量接口 `mintGovRewards` 先鉴权，再逐轮按上述顺序执行：每轮都先经过与 `mintGovReward` 相同的 `ZeroRecipientAddress`、自动准备门禁（`TokenNotRegistered` → `RoundNotEnded`）与结算校验；任一轮失败整笔回滚。空 `rounds` 数组在鉴权通过后允许（返回空数组，无副作用）。轮次数量由调用者自行决定，接口不设数量上限；数量过大导致交易失败及 gas 成本由调用者承担，这是写入批量长度上限规则的明确例外。
 
 ### 反资本约束的落点
 
@@ -211,7 +212,7 @@ B_i / V_i ≤ min(C × M / B, 1 / s_i)
 
 `rewardAvailable` 按 `MAX_SUPPLY - totalSupply - reservedAvailable` 计算当前可分配额度；`reservedAvailable` 返回 `totalRewardReserved - totalRewardMinted - totalRewardBurned`。
 
-批量接口 `mintGovRewards` 先鉴权，再按输入顺序执行，结果数组与输入等长；任一 Round 未结束、没有投票记录或已铸造，则整笔回滚。治理激励和发射额度/次数更新也必须原子完成。
+批量接口 `mintGovRewards` 先鉴权，再按输入顺序执行，结果数组与输入等长；任一 Round 的代币未登记、未结束、没有投票记录或已铸造，则整笔回滚。治理激励和发射额度/次数更新也必须原子完成。
 
 ### 透传来源
 

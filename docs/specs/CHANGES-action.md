@@ -10,8 +10,8 @@
 
 - **群生命周期改用投票轮**：`activatedRound` / `deactivatedRound` 由加入轮（`currentPhase - 1`）改为投票轮（`currentPhase()`），`activateGroup` / `deactivateGroup` / `setGroupConfig` 的 `round` 参数与 `GroupActivated` / `GroupDeactivated` / `GroupConfigChanged` 的 `round` 字段同轴改写；`descriptionByRound` 的 `round` 也是投票轮。原因：`activatedRound` 只服务「同一轮不可停用」的相等判定，投票轮与激活事实同源；混用两种轴会让同一个描述历史出现两个键单位。
 - **激活不再要求加入轮已开放**：唯一前置条件是行动已创建（`createdRound != 0`），因此首个可加入轮之前（含创建轮）即可激活；不再经 `currentJoinRound()` 门控（此前 `phase < 2` 会回 `RoundNotStarted(1, 0)`）。停用只在激活当轮被拒，之后任意轮次可停用并全额取回押金——下一轮撤出后群已不激活、任何成员都无法 `join`，代价由撤出者自负。
-- **`publicVerifierRatio` 收为 `(0, 1e18)`**：创建回调对 `== 0` 与 `>= 1e18` 都回滚 `InvalidRatioForPublicVerifier(value)`（此前只拒绝 `> 1e18`）。两侧闭合后，权重非零的成员其可分配分子恒非零，因此删除「分子为零却按取整为零上报」的成员级分类：零额只剩 `verifierWeight == ownerWeight == 0`（`ZeroRewardWeight`）与轮级 `MemberRewardPoolEmpty`。
-- **零分母轮的错误口径**：轮级分母为零时任何已加入成员的角色结算都回滚 `MemberRewardPoolEmpty(tokenAddress, round)`，不再落到成员级 `ZeroRewardWeight`；未按轮加入的成员仍回 `ZeroRewardWeight`（判定次序：加入状态 → 轮级分母 → 成员侧权重）。
+- **`publicVerifierRatio` 收为 `(0, 1e18)`**：创建回调对 `== 0` 与 `>= 1e18` 都回滚 `InvalidRatioForPublicVerifier(value)`（此前只拒绝 `> 1e18`）。两侧闭合后删除「分子为零却按取整为零上报」的成员级分类：零额只剩 `ZeroRewardWeight` 与轮级 `MemberRewardPoolEmpty`（比例边界与结算后果见 [06](action/06-service-executor.md#权重)）。
+- **零分母轮的错误口径**：轮级分母为零时已按轮加入的成员结算回滚 `MemberRewardPoolEmpty(tokenAddress, round)`，未按轮加入的成员仍回 `ZeroRewardWeight`（判定次序见 [06](action/06-service-executor.md#权重)）。
 - **LP 加入的行动归属**：`LpExecutor.join` 在参数校验后先判本 Executor 的创建记录，未创建的行动回 `ActionNotCreated(tokenAddress, actionId)`；此前非首次加入分支会走到零地址 join token 的 `safeTransferFrom`，靠 OpenZeppelin 的 `extcodesize` 检查偶然回滚。群行动的 `maxJoinAmount` 对未创建行动返回 `0`，不再对零地址调 `totalSupply()`。
 - 同步：[02](action/02-phase-model.md)（群生命周期旁路家族）、[05](action/05-group-action-executor.md)（激活/停用、描述快照、事件、状态口径、错误行）、[06](action/06-service-executor.md)（比例边界、结算三分）、[07](action/07-minting.md)（错误表与 `ZeroRewardWeight` 定义）、[04](action/04-lp-executor.md)（join 错误行）、[acceptance](../acceptance.md)（验证者撤销口径）；实现与测试在 `action` 仓，错误目录由 `script/check_errors.py` 重新生成。
 - 验收影响：链下若按旧的加入轮语义解码三个群事件的 `round`、按 `descriptionByRound(joinRound)` 读描述快照、或构造 `publicVerifierRatio == 0` / `== 1e18`，都会读到不同结果或直接回滚，需同步升级。
@@ -84,7 +84,7 @@
 
 ## 轮次轴分层（2026-10-31）
 
-`GroupActionRoundAxis` / `LpRoundAxis` 回归纯换算：只保留 `joinRound` / `verifyRound` / `mintRound` 与 `joinRound` / `mintRound`，不 import 错误接口、不 `revert`。未开始守卫按属主归位：`GroupActionManager.currentJoinRound` 覆盖 `GroupActionJoin` 与 `activateGroup` / `deactivateGroup` / `setGroupConfig`；`GroupActionVerify.currentVerifyRound` 覆盖 GAE / GSE 的 public getter 与验证提交路径。`ExecutorBase` 的 `currentVoteRound` / `currentJoinRound` / `currentMintRound` 仍是 ABI 守卫层，按周期调用 `_joinRound` / `_mintRound`。
+`GroupActionRoundAxis` / `LpRoundAxis` 回归纯换算：只保留 `joinRound` / `verifyRound` / `mintRound` 与 `joinRound` / `mintRound`，不 import 错误接口、不 `revert`。未开始守卫按属主归位：`GroupActionManager.currentJoinRound` 覆盖 `GroupActionJoin` 的 `join` / `withdraw` / `exit` / `removeProviderQuota`（群激活与群配置已改用投票轮 `currentPhase()`，不再经本守卫）；`GroupActionVerify.currentVerifyRound` 覆盖 `GroupActionVerify.submitOriginScores`、GAE / GSE 的 `currentVerifyRound()` public getter 与 GSE `setRecipients` 的轮次实参。`ExecutorBase` 的 `currentVoteRound` / `currentJoinRound` / `currentMintRound` 仍是 ABI 守卫层，按周期调用 `_joinRound` / `_mintRound`。
 
 - ABI 不变：`RoundNotStarted(uint256,uint256)` selector `0xea74f32b`、载荷 `(1, 0)`；错误声明仍只有 `IActionExecutorErrors` 一处，不新增 declarations。
 - 行为不变：两个 helper 都是 `internal`，编译期内联，不产生库间 DELEGATECALL；因内联，GAE / GSE 的 runtime 各增加 53 字节，三个 Executor 仍远低于 24,576。

@@ -13,7 +13,7 @@ Launch 负责首币部署、LOVE20Token 创建、基础发射与次数账本。T
 部署顺序固定为 `Phase → Launch → MemberNFT → Stake → Submit → Vote → Mint`：
 
 1. `Phase` 以构造参数部署。
-2. `Launch` 以 `LaunchInitParams` 部署；构造函数内写入依赖（含 Pair Factory）、发射参数和供应量配置，创建首币、**创建或复用首币的 Pair**、登记首币。构造函数内只允许这一次 CREATE。
+2. `Launch` 以 `LaunchInitParams` 部署；构造函数内写入依赖（含 Pair Factory）、发射参数和供应量配置，按固定顺序创建首币 → 登记首币（`FIRST_TOKEN_ADDRESS` 与四个登记账本）→ **创建或复用首币的 Pair** → 发出 `GenesisTokenCreated`。构造函数内只允许这一次 CREATE。
 3. `MemberNFT` 以构造参数部署，首币地址取自 `Launch.FIRST_TOKEN_ADDRESS()`（真实地址，不使用 `tokens(0)` 查询）；`MemberNFT` 不保存 Launch 地址。
 4. `Stake`、`Submit`、`Vote`、`Mint` 依次构造。`Stake` 构造时 `Vote` 尚未部署，脚本按部署者 nonce 预测 `Vote` 地址，并在 `Vote` 部署后立即核对 `Stake.VOTE_ADDRESS()`；`MemberNFT` 与 `Mint` 的地址同样在部署前预测、部署后核对。构造函数只保存传入地址，不调用同批部署合约的任何 getter；`Launch` 对已部署第三方的 `factory.getPair`/`createPair` 是唯一例外。
 
@@ -153,7 +153,7 @@ distributor 自行实现领取与查询逻辑，`claim(tokenAddress)` 只是建�
 
 | 事件 | 触发入口 | 字段取值 |
 | --- | --- | --- |
-| `GenesisTokenCreated(tokenAddress, parentTokenAddress, distributor, name, symbol)` | 构造函数创建首币 | `tokenAddress` 为首币地址；`parentTokenAddress` 为 `ROOT_PARENT_TOKEN_ADDRESS`；`distributor` 为首批供应接收者；`name` 和 `symbol` 为构造参数原值。无 launcher 字段。构造函数内固定两步：登记（`FIRST_TOKEN_ADDRESS` 与四个登记账本）→ 发射本事件；本事件是构造期的最后一条日志。`MemberNFT` 的首币绑定已移到它自己的构造函数，不产生日志也不回调 |
+| `GenesisTokenCreated(tokenAddress, parentTokenAddress, distributor, name, symbol)` | 构造函数创建首币 | `tokenAddress` 为首币地址；`parentTokenAddress` 为 `ROOT_PARENT_TOKEN_ADDRESS`；`distributor` 为首批供应接收者；`name` 和 `symbol` 为构造参数原值。无 launcher 字段。构造函数内固定三步：登记（`FIRST_TOKEN_ADDRESS` 与四个登记账本）→ 建池/复用 Pair（`_ensurePair`）→ 发射本事件；建池后移使工厂回调重入时读到的账本已经一致，本事件是构造期的最后一条日志。`MemberNFT` 的首币绑定已移到它自己的构造函数，不产生日志也不回调 |
 | `TokenLaunched(tokenAddress, parentTokenAddress, launcherMemberId, distributor, distributorMode, name, symbol)` | `launchToken` 每次成功发射 | `tokenAddress` 为新创建的代币地址；`parentTokenAddress` 为本次已登记的父币；`launcherMemberId` 为本次 `memberId`；`distributor` 为首批供应接收者；`distributorMode` 为本次分发模式；`name` 和 `symbol` 与最终部署的 LOVE20Token 完全一致（子币为加 `Test` 前缀后的最终值）。发出时机在代币创建、首批供应到账、代币登记与次数扣减之后，先于 distributor 回调 |
 | `LaunchCountAdded(tokenAddress, memberId, count, issuedCount, memberRemaining)` | `addLaunchCount` | `tokenAddress` 为本次写入的已登记代币账本；`count` 为本次新增次数；`issuedCount` 为该代币累计已产生次数（后置值）；`memberRemaining` 为该成员在该代币账本的可用余额（后置值）。一次成功写入恰好一条 |
 | `LaunchCountMerged(tokenAddress, sourceMemberId, targetMemberId, count, sourceRemaining, targetRemaining)` | `mergeLaunchCount` | `count` 为本次融合转移的次数；`sourceRemaining` / `targetRemaining` 为融合后源、目标成员的可用余额 |

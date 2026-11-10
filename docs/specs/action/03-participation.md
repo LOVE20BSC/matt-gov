@@ -44,7 +44,7 @@ Provider 额度接口见 [`IGroupActionJoin.sol`](https://github.com/LOVE20BSC/a
 
 额度入口按三态分开：`groupId == 0` 报 `ZeroGroupId()`（参数缺省），群非零但身份不存在报 `GroupNotExist(groupId)`；两者不再归一，链下可据此区分「漏传参数」与「群已被删除」。`removeProviderQuota` 的空 `memberIds` 在群存在时是空操作。
 
-**错误落点（加入）**：行动尚未创建时，`join` 首先判定群身份/激活状态，对外回 `GroupNotActive(groupId)`，而不是 `ActionNotCreated(tokenAddress, actionId)`——群身份挂在行动上，行动未创建时群也不存在。这是有意的错误落点，链下按 `GroupNotActive` 处理即可；`ActionNotCreated` 只由成员结算、群激活与验证者申请路径报出。
+**错误落点（加入）**：行动尚未创建时，`join` 首先判定群身份/激活状态，对外回 `GroupNotActive(groupId)`，而不是 `ActionNotCreated(tokenAddress, actionId)`——群身份挂在行动上，行动未创建时群也不存在。这是有意的错误落点，链下按 `GroupNotActive` 处理即可；GroupAction 侧的 `ActionNotCreated` 只由成员结算、群激活与验证者申请路径报出（LP 与服务 `join` 另有本执行器侧的创建记录判定）。
 
 `withdrawProviderQuota` 金额须满足 `0 < amount <= 该链群内该 Provider 的可用额度（授权 − 已用）`，不影响任何参与量、自有或其他 Provider 账本。Provider 身份不授予成员 `exit` 权限，也不授予成员管理 Provider 额度的权限。历史零值按 RoundHistory 记录；无历史额度返回 0，空名单返回等长空数组。`providerQuotas` 按标准分页返回某 Provider 在某个链群的授权表（成员、授权额度、已使用额度与真实总数）：授权额度只由 Provider 动作变动——授予追加、`removeProviderQuota` 清零、`withdrawProviderQuota` 减去撤回的未使用额度；已使用额度取该成员在当前所属链群的已投入量（成员已不在该链群时为 0），可用额度 = 授权额度 − 已使用额度；名单保留到授权额度归零。`providerAmountsByMemberId` 按标准分页返回某成员在 `round` 轮有余额的来源及其金额（RoundHistory 懒继承：无记录继承最近历史）；成员在某轮的参与记录由 `joinInfo` 返回（`JoinInfo`：`joinedRound`、`groupId`、`ownAmount`、`providerAmount`）；聚合总量 `joinedAmount` 只由基座 `joinedAmountByMemberId` 给出，`joinInfo` 不重复计算。
 

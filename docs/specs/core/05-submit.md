@@ -103,17 +103,17 @@ Proposal 由合约分配的头部与创建者提供的主体组成，对外以 `
 
 ## 校验顺序
 
-两个入口都先完成鉴权（`memberId` 存在且调用者为当前持有人），再按下列顺序校验；非持有人只拿到鉴权错误。
+两个入口都先完成鉴权（`memberId` 存在且调用者为当前持有人），再按下列顺序校验；非持有人只拿到鉴权错误。两者都遵循「鉴权 → 参数/存在性 → 门槛/资格 → 本轮名额 → 账本写入 → 事件 → 外部调用」的分层（见 [错误与回滚标准](../../error-standards.md#五失败契约)），本轮名额判定必须在任何创建或推举写入之前。
 
-`submitNewProposal` 的创建段与推举段在同一笔内依次执行，任一步回滚整笔。名额检查排在创建段之后：创建写入与 `ProposalCreated` 日志都随回滚撤销，两个入口报出的错误种类与先后不受这一步位置影响。按下列顺序校验：
+`submitNewProposal` 的创建段与推举段在同一笔内依次执行，任一步回滚整笔。按下列顺序校验：
 
 1. **鉴权**：`memberId` 存在且 `ownerOf(memberId) == msg.sender`（鉴权 modifier；不存在由 MemberNFT 回滚，非持有人回滚 `NotMemberOwner(memberId)`）
 2. **参数校验**：`title` 非空（`TitleEmpty()`）、`target` 非零（`ZeroTargetAddress()`）、`targetMode` 合法（枚举范围内且 `Callback` 时 `target.code.length > 0`，否则 `CallbackTargetNotContract(target)`）
 3. **门槛**：社区票数为零回 `NoGovVotes(tokenAddress)`；否则 `canSubmit(tokenAddress, memberId)`（`InsufficientSubmitPower(tokenAddress, memberId, validVotes, requiredVotes)`）
-4. 分配 `proposalId`，写入 `ProposalInfo` 与作者索引
-5. 发出 `ProposalCreated` 事件
-6. **本轮名额**：同一成员同社区同 Round 尚未推举过（`MemberAlreadySubmitted(tokenAddress, round, memberId)`）
-7. 检查社区本 Round 已推举数小于 1,000（`SubmitRoundFull(tokenAddress, round, 1000)`），然后写入三处推举状态：推举记录列表（供 `submitInfos`）、按 `proposalId` 的推举者（供 `isSubmitted` 与 `submitterIdByProposalId`）、按 `submitterId` 的反查（供 `proposalIdBySubmitterId`）
+4. **本轮名额**：同一成员同社区同 Round 尚未推举过（`MemberAlreadySubmitted(tokenAddress, round, memberId)`），且社区本 Round 已推举数小于 1,000（`SubmitRoundFull(tokenAddress, round, 1000)`）
+5. 分配 `proposalId`，写入 `ProposalInfo` 与作者索引
+6. 发出 `ProposalCreated` 事件
+7. 写入三处推举状态：推举记录列表（供 `submitInfos`）、按 `proposalId` 的推举者（供 `isSubmitted` 与 `submitterIdByProposalId`）、按 `submitterId` 的反查（供 `proposalIdBySubmitterId`）
 8. 发出 `ProposalSubmitted` 事件
 9. 本社区本轮首笔推举时调用 `Phase.sync()`
 10. `Callback` 时回调 `IProposalTarget.onProposalCreated`
@@ -126,11 +126,12 @@ Proposal 由合约分配的头部与创建者提供的主体组成，对外以 `
 1. **鉴权**：`memberId` 存在且 `ownerOf(memberId) == msg.sender`（鉴权 modifier）
 2. **存在性**：`proposalId` 存在（`ProposalNotFound(tokenAddress, proposalId)`）
 3. **门槛**：社区票数为零回 `NoGovVotes(tokenAddress)`；否则 `canSubmit(tokenAddress, memberId)`（`InsufficientSubmitPower(tokenAddress, memberId, validVotes, requiredVotes)`）
-4. **去重与总数**：先判同一 Proposal 同轮是否已推举（`ProposalAlreadySubmitted(tokenAddress, round, proposalId)`）、再判同一成员同社区同轮是否已推举其他 Proposal（`MemberAlreadySubmitted(tokenAddress, round, memberId)`），最后检查社区本 Round 已推举数小于 1,000（`SubmitRoundFull(tokenAddress, round, 1000)`）
-5. 写入三处状态：推举记录列表、按 `proposalId` 的推举者、按 `submitterId` 的反查
-6. 发出 `ProposalSubmitted` 事件
-7. 本社区本轮首笔推举时调用 `Phase.sync()`
-8. `Callback` 时回调 `IProposalTarget.onProposalSubmitted`
+4. **提案去重**：同一 Proposal 同轮尚未推举（`ProposalAlreadySubmitted(tokenAddress, round, proposalId)`）
+5. **本轮名额**：同一成员同社区同 Round 尚未推举其他 Proposal（`MemberAlreadySubmitted(tokenAddress, round, memberId)`），且社区本 Round 已推举数小于 1,000（`SubmitRoundFull(tokenAddress, round, 1000)`）
+6. 写入三处状态：推举记录列表、按 `proposalId` 的推举者、按 `submitterId` 的反查
+7. 发出 `ProposalSubmitted` 事件
+8. 本社区本轮首笔推举时调用 `Phase.sync()`
+9. `Callback` 时回调 `IProposalTarget.onProposalSubmitted`
 
 构造函数校验：`0 < submitMinRatio <= 1e18` 由 DeployCore 广播前校验，`PHASE_ADDRESS`、`STAKE_ADDRESS`、`MEMBER_NFT_ADDRESS` 有代码由 DeployCore 部署后校验；两者均由 21_check 独立复核；构造函数只保存入参，不做静态校验。
 
