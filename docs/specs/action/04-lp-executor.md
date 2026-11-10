@@ -35,7 +35,7 @@ Target Data 是无键数组，按位置读取。第 `0` 项是 ActionTarget 保�
 | 首次加入且 `govRatio < minGovRatio` | `InsufficientGovRatio(minGovRatio, govRatio)` |
 | `exit` 时该成员没有加入记录 | `NotJoined(tokenAddress, actionId, memberId)` |
 | 加入轮低于该行动创建轮 | `JoinNotOpen(tokenAddress, actionId, currentRound, createdRound)`（ActionTarget 抛出） |
-| 成员结算时行动未创建（`createdRound == 0`） | `ActionNotCreated(tokenAddress, actionId)`（**仅结算路径**；`join` 路径在未创建行动上由 ActionTarget 回 `UnauthorizedExecutor(tokenAddress, actionId)`） |
+| 行动未创建（`createdRound == 0`） | `ActionNotCreated(tokenAddress, actionId)`：`join` 在参数校验之后、轮次之前先判本 Executor 的创建记录；成员结算同判 |
 | 结算轮次低于该行动创建轮（行动已创建） | `RoundBeforeActionCreated(round, createdRound)` |
 | 结算轮次大于当前铸币轮（铸币阶段未开始时任何轮次都不在有效阶段） | `RoundAfterMintWindow(round, mintRound)` |
 | 同一成员同一轮重复结算 | `RewardAlreadyMinted(tokenAddress, actionId, memberId, round)` |
