@@ -172,7 +172,7 @@ Group Chat 门禁：**148 tests 全绿**；`build --deny warnings`、`lint`、`c
 
 - **改名**：合约 `GroupBanList` → `GroupChatBanList`；接口同名改名；错误 `GroupBanListAddressHasNoCode` 保留原名（selector 不变）
 - **改参**：`banBySenderIds` / `unbanBySenderIds` 各增 `uint256 operatorId`
-- **新增**：`isSenderIdBannedBatch(uint256,uint256[])`；错误 `NotGroupOperator(uint256,uint256)`
+- **新增**：`isSenderIdBannedBatch(uint256,uint256[])`；错误 `NotGroupOperator(uint256,uint256)`。该入口与 `senderIdBanDetails` 同键同值，属 dev-standards §4.3(6) 的第二条读取路径，故记录实测差额：3 个 id 时 `isSenderIdBannedBatch` 9,993 gas、`senderIdBanDetails` 28,971 gas，省约 19k（每 id 约 6.3k），差额来自省去两个 `BanOperatorState` 冷 SLOAD 与两段数组分配；测量方式为在同一 ban 名单上用 `gasleft()` 前后夹逼（`testT141` 锁定「批量读必须更便宜」这一方向）
 - **删除**：地址名单一整套（`banBySenderAddresses` / `unbanBySenderAddresses` / `banBySenders` / `unbanBySenders` / `isAddressBanned` / `addressBanDetails` / `addressBanList(Count)` / `isBanned(uint256,uint256,address)`）、错误 `TargetAddressZero` / `SenderPairLengthMismatch`、事件 `SetAddressBan`
 
 ### GroupChatDelegate（原 `IGroupDelegate`）
