@@ -105,14 +105,14 @@ Proposal 由合约分配的头部与创建者提供的主体组成，对外以 `
 
 两个入口都先完成鉴权（`memberId` 存在且调用者为当前持有人），再按下列顺序校验；非持有人只拿到鉴权错误。
 
-`submitNewProposal` 的创建段与推举段在同一笔内依次执行，任一步回滚整笔：
+`submitNewProposal` 的创建段与推举段在同一笔内依次执行，任一步回滚整笔。名额检查排在创建段之后：创建写入与 `ProposalCreated` 日志都随回滚撤销，两个入口报出的错误种类与先后不受这一步位置影响。按下列顺序校验：
 
 1. **鉴权**：`memberId` 存在且 `ownerOf(memberId) == msg.sender`（鉴权 modifier；不存在由 MemberNFT 回滚，非持有人回滚 `NotMemberOwner(memberId)`）
 2. **参数校验**：`title` 非空（`TitleEmpty()`）、`target` 非零（`ZeroTargetAddress()`）、`targetMode` 合法（枚举范围内且 `Callback` 时 `target.code.length > 0`，否则 `CallbackTargetNotContract(target)`）
 3. **门槛**：社区票数为零回 `NoGovVotes(tokenAddress)`；否则 `canSubmit(tokenAddress, memberId)`（`InsufficientSubmitPower(tokenAddress, memberId, validVotes, requiredVotes)`）
-4. **本轮名额**：同一成员同社区同 Round 尚未推举过（`MemberAlreadySubmitted(tokenAddress, round, memberId)`）
-5. 分配 `proposalId`，写入 `ProposalInfo` 与作者索引
-6. 发出 `ProposalCreated` 事件
+4. 分配 `proposalId`，写入 `ProposalInfo` 与作者索引
+5. 发出 `ProposalCreated` 事件
+6. **本轮名额**：同一成员同社区同 Round 尚未推举过（`MemberAlreadySubmitted(tokenAddress, round, memberId)`）
 7. 检查社区本 Round 已推举数小于 1,000（`SubmitRoundFull(tokenAddress, round, 1000)`），然后写入三处推举状态：推举记录列表（供 `submitInfos`）、按 `proposalId` 的推举者（供 `isSubmitted` 与 `submitterIdByProposalId`）、按 `submitterId` 的反查（供 `proposalIdBySubmitterId`）
 8. 发出 `ProposalSubmitted` 事件
 9. 本社区本轮首笔推举时调用 `Phase.sync()`

@@ -9,12 +9,12 @@ Mint 准备并结算治理和 Proposal 激励，不读取行动验证结果。�
 | `totalRewardReserved` | 每个 token 的累计预留总额，包含后来铸造或销毁的额度 |
 | `totalRewardMinted` | 每个 token 的累计已铸造激励 |
 | `totalRewardBurned` | 每个 token 的累计已取消预留额度；不铸造该部分代币 |
-| `govReward` / `proposalReward` | 每个 token、Round 准备后冻结的完整治理池 / Proposal 池 |
+| `govReward` / `proposalReward` | 每个 token、Round 准备后冻结的完整治理池 / Proposal 池。**这是取消前的全额，不是可支付额**：加速池或 Proposal 池在准备阶段被取消时，对应额度已计入 `totalRewardBurned`，但这两个 getter 仍返回取消前的值；需要净可领取额的下游必须自行按 `totalVoterBoost == 0` / `eligibleProposalVoteAmount == 0` 扣减 |
 | `totalVoteAmount` | Vote 的本轮 `totalVoteAmount(tokenAddress, round)` |
 | `voterBoost` | 成员本轮在 Vote 的加速快照，`voterBoost(tokenAddress, round, memberId)` |
 | `totalVoterBoost` | 本轮全局加速快照，`totalVoterBoost(tokenAddress, round)` |
 | `eligibleProposalVoteAmount` | Mint 准备时按 Vote 冻结结果计算并缓存的本轮所有达标 Proposal 票数之和 |
-| `launchCredit` | 每个 token、成员尚未转换为发射次数的治理激励额度，见[发射额度的生成](#发射额度的生成) |
+| `launchCredit` | 每个 token、成员尚未转换为发射次数的治理激励额度，见[发射额度的生成](#发射额度的生成)。累加不单独发事件：`count == 0` 的累加与被 `MAX_LAUNCH_COUNT` 削平后留下的余额只能通过 `launchCredit()` 轮询，链下不要试图仅凭事件重建 |
 
 Proposal 达标条件（链上查询通过 `isProposalIdWithReward(tokenAddress, round, proposalId)`）：
 
@@ -35,6 +35,8 @@ available = MAX_SUPPLY - totalSupply - reservedAvailable
 
 `reservedAvailable` 是尚未结算的额度，不能再次分配。三个累计账本与本轮池值不能混用。
 
+`MAX_SUPPLY` 约束的是**任一时刻的在售供应**，不是累计发行量：`LOVE20Token.burn` 无许可，任何人销毁自己的余额都会抬高 `MAX_SUPPLY − totalSupply`，未来轮次据此重新预留；因此 `totalRewardMinted` 可以超过 `MAX_SUPPLY`，把两者直接比较的判断都是错的。
+
 各项向下取整产生的余数是明确的永久保留量：继续计入 `reservedAvailable`，不进入后续轮次池，也不单独铸造或销毁；该保留量属于供应上限内的协议保留额度。
 
 ## 准备一次
@@ -42,6 +44,8 @@ available = MAX_SUPPLY - totalSupply - reservedAvailable
 完整 ABI 见 [`IMint.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/IMint.sol)。
 
 准备由两种方式触发：调用无许可入口 `prepareRewardIfNeeded(tokenAddress, round)`，或首次调用治理 / Proposal 铸造入口时由 Mint 内部自动准备。两个路径复用同一实现，池子算法只有一份。`tokenAddress` 与 `round` 是唯一的定位参数，调用者不能指定收款地址、成员或金额，因此该入口符合 [通用规则](01-common-rules.md#无许可入口) 的无许可判据：它只把一个已经成立的轮次状态（轮次结束）推进为「池子已冻结」。此前定池只能由领取者触发；补上该入口后，任何地址都可以在第一个领取者之前中立地定池。池值仍按准备时点的 `rewardAvailable` 计算，首次准备的时点仍决定池子大小，但已不再只由领取权持有人掌握。同一 `(tokenAddress, round)` 幂等，重复调用直接返回；未结束的 Round 拒绝准备。
+
+池值不只依赖「第 R 轮的准备时点」，还依赖**跨轮准备顺序**：`available` 扣除的是累计 `reservedAvailable`，而任意已结束轮次都可准备，所以先准备的轮次拿走 `ratio × available`、后准备的轮次只能在更小的基数上取同比例，第 R 轮与第 R+1 轮的相对份额由两次准备的先后决定。诚实路径上这不构成博弈——早准备让池子更大，对全轮次受益人都占优，任何人都能一次调用完成；只有在全员整整一个 Phase 都不准备的前提下顺序才被推迟，因此按「无许可入口 + 早准备占优」接受，不做跨轮强制排序。
 
 1. 本轮已准备则直接返回，不更新状态，也不发事件；`tokenAddress` 未由 Launch 登记时回滚 `TokenNotRegistered(tokenAddress)`（与 Stake 的写入口同口径，否则任何人可对任意地址写满四个轮次映射）；未结束的 Round 拒绝准备（`round != 0 && Phase.currentPhase() > round`，回滚 `RoundNotEnded(round)`；与 `Vote.isRoundEnded` 语义一致，`round == 0` 一律拒绝）。
 2. 读取 Vote 的冻结结果。若 `totalVoteAmount == 0`，两池和 `eligibleProposalVoteAmount` 记为 0 并标记已准备，累计账本不变。

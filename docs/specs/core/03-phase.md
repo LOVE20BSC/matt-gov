@@ -75,4 +75,6 @@ Submit 和 Vote 的 `currentRound()` 等于 `Phase.currentPhase()`。创建、�
 - 新长度为 `max(1, floor(elapsedBlocks * TARGET_SECONDS / elapsedSeconds))`；已生成 Phase 不回写。
 - `block.number < ORIGIN_BLOCKS` 时 `currentPhase()` 和 `phaseAtBlock(block.number)` 返回 `0`；`phaseInfo(0)` 无效。
 
+`newPhaseBlocks = max(1, observed)` 没有上界钳制，但可达放大有物理上界：`observed = floor(elapsedBlocks × TARGET_SECONDS / elapsedSeconds)`，而 `elapsedSeconds` 只能来自真实出块间隔，所以 `observed ≤ TARGET_SECONDS / 出块间隔下界`，即最多把段长拉到「按当前出块速度算出的正确值」，量级上界是 `TARGET_SECONDS` 个区块。构造「大量区块只占 1 秒」的窗口只能靠伪造时间戳（本地 `vm.warp` 可造出 1001×），链上不可达，按该倍数定级会高估风险；若要彻底消除，可加一条显式上限，但那属于偏离本规格的加固而非修正。
+
 验收见 [Core 验收](09-testing.md)。

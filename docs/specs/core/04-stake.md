@@ -53,7 +53,7 @@ sharesMinted = totalLiquidityShares == 0 or lastWithdrawableLp == 0
     : floor(totalLiquidityShares * lpMinted / lastWithdrawableLp)
 ```
 
-`lastWithdrawableLp == 0` 表示既有份额的可提取基准已被全部重分类为手续费，此时新存入按自身的 `lpMinted` 计份额；该零基准分支沿用旧 `LOVE20SLToken`，避免除零回滚。
+`lastWithdrawableLp == 0` 表示既有份额的可提取基准已被全部重分类为手续费，此时新存入按自身的 `lpMinted` 计份额；该零基准分支沿用旧 `LOVE20SLToken`，避免除零回滚。此时既有份额并未清零，它们对新存入的 LP 仍占 `S0 / (S0 + L1)` 的份额（`S0` 为存量份额、`L1` 为新存入的 LP），即新存入者会被这批「零基准份额」分走一部分；进入该分支要求 √K 相对基线增长到把全部可提取 LP 都归入手续费：`currentSqrtK > lastWithdrawableLp × lastSqrtKOfLp`，即需要把池子的 √K 放大 `W` 倍（`W` 为可提取 LP 量级）。在池价不变的比例模型下这要一笔约 `(W − 1)` 倍池价值的捐赠，成本远高于可瓜分的额度，因此作为已知边界保留而不加固。
 
 手续费重分类公式（必须在份额铸造之前执行）：
 
@@ -99,13 +99,13 @@ FEE_SETTLEMENT_RATIO <= 池费率
 
 夹子往返成本为两倍池费；只要 `FEE_SETTLEMENT_RATIO <= 池费率`，成交价偏离低于一个池费，现货价移动（约为两倍比例）也不超过两倍池费，往返无利可图。部署期上界 `2.5e15`（0.25%，低于池费率；该值是源码常量，参数文件里因指数写法只收整数尾数而写成 `25e14`）。取值高于该上界会静默放大夹子敞口，由部署脚本在广播前拒绝。
 
-单笔量过小、无法让 Pair 两侧都产出非零数量时（`pair.burn` 会回滚 `INSUFFICIENT_LIQUIDITY_BURNED`），本次不结算也不消耗本 Phase 的额度。取出后在 Router 上的父币→代币兑换受同一约束：换算结果为零时 Pair 同样回滚（`UniswapV2: INSUFFICIENT_OUTPUT_AMOUNT`），而这一支排在销毁之后，回滚会把 `settleFees` 与依赖它的 `withdraw` 一起带走（代币储备处于 `_canBurn` 允许的下界约 400 wei 时必然发生）。因此在销毁前按销毁后的储备与恒定 0.3% 池费率预演该兑换，预测输出为零时同样跳过本次结算、不消耗本 Phase 额度；预演只依赖已在规格中固定的 canonical V2 前提（见下段「池费率」），误判方向只会让手续费留在账本里等下一次。`feeLp < settlementUnit` 时同样跳过；不足一个单位的手续费 LP 留在合约（仍是池中 LP），等手续费 LP 或社区质押份额增长到满足条件后继续释放；`settlementUnit` 向下取整为零时无法释放。
+单笔量过小、无法让 Pair 两侧都产出非零数量时（`pair.burn` 会回滚 `INSUFFICIENT_LIQUIDITY_BURNED`），本次不结算也不消耗本 Phase 的额度。取出后在 Router 上的父币→代币兑换受同一约束：换算结果为零时 Pair 同样回滚（`UniswapV2: INSUFFICIENT_OUTPUT_AMOUNT`），而这一支排在销毁之后，回滚会把 `settleFees` 与依赖它的 `withdraw` 一起带走（代币储备处于 `_canBurn` 允许的下界约 400 wei 时必然发生）。因此在销毁前按销毁后的储备与恒定 0.3% 池费率预演该兑换，预测输出为零时同样跳过本次结算、不消耗本 Phase 额度；预演只依赖下文「`FEE_SETTLEMENT_RATIO <= 池费率`」那条已被部署期固定的 canonical V2 前提，误判方向只会让手续费留在账本里等下一次。`feeLp < settlementUnit` 时同样跳过；不足一个单位的手续费 LP 留在合约（仍是池中 LP），等手续费 LP 或社区质押份额增长到满足条件后继续释放；`settlementUnit` 向下取整为零时无法释放。
 
 达到门槛且本 Phase 未结算时，从 Pair 取回 `processedFeeLp` 对应双币：
 
 1. 社区代币直接销毁
 2. 父币按固定路径 `[parentTokenAddress, tokenAddress]` 经 Router 换成社区代币后销毁
-3. 最小输出量按同笔交易的当前 Pair 储备现算，不接受调用方传入。它的作用是拒绝调用方指定路径与最小量、并保证同笔内一致，**不是** MEV 防护——报价是在同笔内、在当时的储备上读出的，跨交易夹子不受其影响，跨交易面由上面两条约束处理
+3. 最小输出量按同笔交易的当前 Pair 储备现算，不接受调用方传入；截止时间取 `block.timestamp`。二者的作用是拒绝调用方指定路径、最小量与截止时间，并保证兑换与报价在同一笔内一致，**不是** MEV 防护——报价是在同笔内、在当时的储备上读出的，跨交易夹子不受其影响；跨交易面只由上面两条约束与「`FEE_SETTLEMENT_RATIO <= 池费率`」共同处理。这条语义是明确的取舍：结算方是协议自身，没有可参照的独立报价源，任何由调用方传入的最小量都会被夹子反向利用
 4. 更新 `totalBurnedToken` 和 `totalParentTokenBurned`（换币前父币数量）
 5. 未处理的 `feeLp - processedFeeLp` 保留为待结算手续费，下个 Phase 继续
 
