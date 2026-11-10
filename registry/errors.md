@@ -174,36 +174,36 @@ Rows are grouped by repo + signature; interfaces list every local declaration si
 | group-chat | `ActionNotExist(address,uint256)` | `0x9c0f73f0` | `ITokenActionScopeManagerBaseErrors` | 1 | `group-chat/src/managers/TokenActionScopeManagerBase.sol:137`, `group-chat/src/managers/TokenActionScopeManagerBase.sol:140` |
 | group-chat | `AdminIdsLimitExceeded(uint256,uint256,uint256)` | `0x2ffd6226` | `IGroupAdminErrors` | 1 | `group-chat/src/GroupAdmin.sol:168` |
 | group-chat | `AlreadyManaged(uint256)` | `0xcd0d3eb5` | `IManagerBaseErrors` | 1 | `group-chat/src/managers/ManagerBase.sol:108` |
-| group-chat | `BanRejected(uint256,uint256,address)` | `0x8b4c2330` | `IGroupChatErrors` | 1 | `group-chat/src/GroupChat.sol:773` |
-| group-chat | `BanSourceFailed(uint256,address)` | `0x0200c8c5` | `IGroupChatErrors` | 1 | `group-chat/src/GroupChat.sol:779` |
-| group-chat | `BanVoteWeightSourceUnavailable(uint256,address)` | `0x76befc7f` | `IGovVotedBanSourceErrors` | 1 | `group-chat/src/sources/ban/GovVotedBanSource.sol:369`, `group-chat/src/sources/ban/GovVotedBanSource.sol:381`, `group-chat/src/sources/ban/GovVotedBanSource.sol:389` |
+| group-chat | `BanRejected(uint256,uint256,address)` | `0x8b4c2330` | `IGroupChatErrors` | 1 | `group-chat/src/GroupChat.sol:764` |
+| group-chat | `BanSourceFailed(uint256,address)` | `0x0200c8c5` | `IGroupChatErrors` | 1 | `group-chat/src/GroupChat.sol:770` |
+| group-chat | `BanVoteWeightSourceUnavailable(uint256,address)` | `0x76befc7f` | `IGovVotedBanSourceErrors` | 1 | `group-chat/src/sources/ban/GovVotedBanSource.sol:356`, `group-chat/src/sources/ban/GovVotedBanSource.sol:368`, `group-chat/src/sources/ban/GovVotedBanSource.sol:376` |
 | group-chat | `ChatAlreadyActivated(uint256)` | `0x7dd7c968` | `IGroupChatErrors` | 1 | `group-chat/src/GroupChat.sol:126` |
-| group-chat | `ChatNotActivated(uint256)` | `0xba67ced4` | `IGroupChatErrors` | 1 | `group-chat/src/GroupChat.sol:710` |
+| group-chat | `ChatNotActivated(uint256)` | `0xba67ced4` | `IGroupChatErrors` | 1 | `group-chat/src/GroupChat.sol:701` |
 | group-chat | `ContentEmpty()` | `0x85a5c617` | `IGroupChatErrors` | 1 | `group-chat/src/GroupChat.sol:238` |
 | group-chat | `ContentTooLong(uint256,uint256)` | `0x9f588bb4` | `IGroupChatErrors` | 1 | `group-chat/src/GroupChat.sol:241` |
-| group-chat | `DuplicateMemberId(uint256)` | `0x1a494813` | `IGroupAdminErrors`, `IGroupChatBanListErrors`, `IGroupChatErrors`, `IGroupMemberErrors` | 4 | `group-chat/src/GroupAdmin.sol:144`, `group-chat/src/GroupChat.sol:854`, `group-chat/src/GroupChatBanList.sol:113`, `group-chat/src/GroupMember.sol:76` |
-| group-chat | `GroupNotExist(uint256)` | `0xfeddf96a` | `IGovVotedBanSourceErrors`, `IGroupAdminErrors`, `IGroupChatBanListErrors`, `IGroupChatErrors`, `IGroupMemberErrors` | 5 | `group-chat/src/GroupAdmin.sol:198`, `group-chat/src/GroupChat.sol:826`, `group-chat/src/GroupChatBanList.sol:149`, `group-chat/src/GroupMember.sol:95`, `group-chat/src/sources/ban/GovVotedBanSource.sol:366` |
+| group-chat | `DuplicateMemberId(uint256)` | `0x1a494813` | `IGroupAdminErrors`, `IGroupChatBanListErrors`, `IGroupChatErrors`, `IGroupMemberErrors` | 4 | `group-chat/src/GroupAdmin.sol:144`, `group-chat/src/GroupChat.sol:845`, `group-chat/src/GroupChatBanList.sol:113`, `group-chat/src/GroupMember.sol:76` |
+| group-chat | `GroupNotExist(uint256)` | `0xfeddf96a` | `IGovVotedBanSourceErrors`, `IGroupAdminErrors`, `IGroupChatBanListErrors`, `IGroupChatErrors`, `IGroupMemberErrors` | 5 | `group-chat/src/GroupAdmin.sol:198`, `group-chat/src/GroupChat.sol:817`, `group-chat/src/GroupChatBanList.sol:149`, `group-chat/src/GroupMember.sol:95`, `group-chat/src/sources/ban/GovVotedBanSource.sol:353` |
 | group-chat | `ManagerGroupNameUnavailable()` | `0x4a6464df` | `IManagerBaseErrors` | 1 | `group-chat/src/managers/ManagerBase.sol:149` |
-| group-chat | `MentionAllUnauthorized(uint256,uint256)` | `0x340c79cd` | `IGroupChatErrors` | 1 | `group-chat/src/GroupChat.sol:721` |
+| group-chat | `MentionAllUnauthorized(uint256,uint256)` | `0x340c79cd` | `IGroupChatErrors` | 1 | `group-chat/src/GroupChat.sol:712` |
 | group-chat | `MessageNotFound(uint256,uint256)` | `0xf90c4bc6` | `IGroupChatErrors` | 1 | `group-chat/src/GroupChat.sol:384` |
 | group-chat | `NotGroupOperator(uint256,uint256)` | `0x20e5d297` | `IGroupAdminErrors`, `IGroupChatBanListErrors`, `IGroupChatErrors`, `IGroupMemberErrors` | 4 | `group-chat/src/GroupAdmin.sol:190`, `group-chat/src/GroupChat.sol:110`, `group-chat/src/GroupChatBanList.sol:152`, `group-chat/src/GroupMember.sol:98` |
 | group-chat | `NotGroupOwner(uint256)` | `0x54a55079` | `IGroupChatErrors` | 1 | `group-chat/src/GroupChat.sol:99` |
-| group-chat | `NotMemberOwner(uint256)` | `0x33393244` | `IGovVotedBanSourceErrors`, `IGroupChatErrors` | 2 | `group-chat/src/GroupChat.sol:92`, `group-chat/src/sources/ban/GovVotedBanSource.sol:175` |
-| group-chat | `PluginNotContract(address)` | `0x54752274` | `IGroupChatErrors` | 1 | `group-chat/src/GroupChat.sol:838` |
+| group-chat | `NotMemberOwner(uint256)` | `0x33393244` | `IGovVotedBanSourceErrors`, `IGroupChatErrors` | 2 | `group-chat/src/GroupChat.sol:92`, `group-chat/src/sources/ban/GovVotedBanSource.sol:166` |
+| group-chat | `PluginNotContract(address)` | `0x54752274` | `IGroupChatErrors` | 1 | `group-chat/src/GroupChat.sol:829` |
 | group-chat | `PostingNotAllowed(uint256)` | `0x27dcd12b` | `IGroupChatErrors` | 1 | `group-chat/src/GroupChat.sol:234` |
-| group-chat | `QuotedMessageNotFound(uint256,uint256)` | `0xaeb2440f` | `IGroupChatErrors` | 1 | `group-chat/src/GroupChat.sol:960` |
+| group-chat | `QuotedMessageNotFound(uint256,uint256)` | `0xaeb2440f` | `IGroupChatErrors` | 1 | `group-chat/src/GroupChat.sol:948` |
 | group-chat | `Reentrant()` | `0xed3ba6a6` | `IGroupChatErrors` | 1 | `group-chat/src/GroupChat.sol:83` |
 | group-chat | `RoundNotStarted(uint256,uint256)` | `0xea74f32b` | `IGroupChatErrors` | 1 | `group-chat/src/GroupChat.sol:376` |
-| group-chat | `ScopeRejected(uint256,uint256,address)` | `0x425c5f1a` | `IGroupChatErrors` | 1 | `group-chat/src/GroupChat.sol:770` |
-| group-chat | `ScopeSourceFailed(uint256,address)` | `0x3b5866a6` | `IGroupChatErrors` | 1 | `group-chat/src/GroupChat.sol:776` |
-| group-chat | `SourceNotContract(address)` | `0x05dbf84e` | `IGroupChatErrors` | 1 | `group-chat/src/GroupChat.sol:832` |
-| group-chat | `TokenNotLOVE20(address)` | `0x518fd31e` | `IManagerBaseErrors` | 1 | `group-chat/src/managers/TokenManagerBase.sol:44` |
-| group-chat | `TooManyMentionedSenderIds(uint256,uint256)` | `0x3f1035e9` | `IGroupChatErrors` | 1 | `group-chat/src/GroupChat.sol:847` |
+| group-chat | `ScopeRejected(uint256,uint256,address)` | `0x425c5f1a` | `IGroupChatErrors` | 1 | `group-chat/src/GroupChat.sol:761` |
+| group-chat | `ScopeSourceFailed(uint256,address)` | `0x3b5866a6` | `IGroupChatErrors` | 1 | `group-chat/src/GroupChat.sol:767` |
+| group-chat | `SourceNotContract(address)` | `0x05dbf84e` | `IGroupChatErrors` | 1 | `group-chat/src/GroupChat.sol:823` |
+| group-chat | `TokenNotLOVE20(address)` | `0x518fd31e` | `IManagerBaseErrors` | 1 | `group-chat/src/managers/TokenManagerBase.sol:42` |
+| group-chat | `TooManyMentionedSenderIds(uint256,uint256)` | `0x3f1035e9` | `IGroupChatErrors` | 1 | `group-chat/src/GroupChat.sol:838` |
 | group-chat | `UnexpectedManagerERC721Received(address,address,uint256)` | `0x4cf3a76b` | `IManagerBaseErrors` | 1 | `group-chat/src/managers/ManagerBase.sol:77` |
-| group-chat | `VoteNotFound(uint256,uint256,uint256)` | `0x4f90f748` | `IGovVotedBanSourceErrors` | 1 | `group-chat/src/sources/ban/GovVotedBanSource.sol:229`, `group-chat/src/sources/ban/GovVotedBanSource.sol:258` |
-| group-chat | `VoteUnchanged(uint256,uint256,uint256)` | `0x96c2cbe9` | `IGovVotedBanSourceErrors` | 1 | `group-chat/src/sources/ban/GovVotedBanSource.sol:182` |
-| group-chat | `ZeroTargetSenderId()` | `0x16f52684` | `IGovVotedBanSourceErrors`, `IGroupChatBanListErrors` | 2 | `group-chat/src/GroupChatBanList.sol:142`, `group-chat/src/sources/ban/GovVotedBanSource.sol:420` |
-| group-chat | `ZeroVoteWeight(uint256,uint256)` | `0xbeffc593` | `IGovVotedBanSourceErrors` | 1 | `group-chat/src/sources/ban/GovVotedBanSource.sol:194` |
+| group-chat | `VoteNotFound(uint256,uint256,uint256)` | `0x4f90f748` | `IGovVotedBanSourceErrors` | 1 | `group-chat/src/sources/ban/GovVotedBanSource.sol:217`, `group-chat/src/sources/ban/GovVotedBanSource.sol:244` |
+| group-chat | `VoteUnchanged(uint256,uint256,uint256)` | `0x96c2cbe9` | `IGovVotedBanSourceErrors` | 1 | `group-chat/src/sources/ban/GovVotedBanSource.sol:173` |
+| group-chat | `ZeroTargetSenderId()` | `0x16f52684` | `IGovVotedBanSourceErrors`, `IGroupChatBanListErrors` | 2 | `group-chat/src/GroupChatBanList.sol:142`, `group-chat/src/sources/ban/GovVotedBanSource.sol:407` |
+| group-chat | `ZeroVoteWeight(uint256,uint256)` | `0xbeffc593` | `IGovVotedBanSourceErrors` | 1 | `group-chat/src/sources/ban/GovVotedBanSource.sol:185` |
 | libs | `InvalidKeyOrder(uint256,uint256)` | `0xc7a2002f` | `IOrderedHistoryIndexErrors` | 1 | `libs/src/OrderedHistoryIndex.sol:26` |
 
 Total: 235 declarations, 189 unique signatures.
