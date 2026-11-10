@@ -99,7 +99,7 @@ FEE_SETTLEMENT_RATIO <= 池费率
 
 夹子往返成本为两倍池费；只要 `FEE_SETTLEMENT_RATIO <= 池费率`，成交价偏离低于一个池费，现货价移动（约为两倍比例）也不超过两倍池费，往返无利可图。部署期上界 `2.5e15`（0.25%，低于池费率；该值是源码常量，参数文件里因指数写法只收整数尾数而写成 `25e14`）。取值高于该上界会静默放大夹子敞口，由部署脚本在广播前拒绝。
 
-单笔量过小、无法让 Pair 两侧都产出非零数量时（`pair.burn` 会回滚 `INSUFFICIENT_LIQUIDITY_BURNED`），本次不结算也不消耗本 Phase 的额度。取出后在 Router 上的父币→代币兑换受同一约束：换算结果为零时 Pair 同样回滚（`UniswapV2: INSUFFICIENT_OUTPUT_AMOUNT`），而这一支排在销毁之后，回滚会把 `settleFees` 与依赖它的 `withdraw` 一起带走（代币储备处于 `_canBurn` 允许的下界约 400 wei 时必然发生）。因此在销毁前按销毁后的储备与恒定 0.3% 池费率预演该兑换，预测输出为零时同样跳过本次结算、不消耗本 Phase 额度；预演只依赖下文「`FEE_SETTLEMENT_RATIO <= 池费率`」那条已被部署期固定的 canonical V2 前提，误判方向只会让手续费留在账本里等下一次。`feeLp < settlementUnit` 时同样跳过；不足一个单位的手续费 LP 留在合约（仍是池中 LP），等手续费 LP 或社区质押份额增长到满足条件后继续释放；`settlementUnit` 向下取整为零时无法释放。
+单笔量过小、无法让 Pair 两侧都产出非零数量时（`pair.burn` 会回滚 `INSUFFICIENT_LIQUIDITY_BURNED`），本次不结算也不消耗本 Phase 的额度。取出后在 Router 上的父币→代币兑换**不在** `_canBurn` 的早退覆盖范围内：换算结果为零时 Pair 同样回滚（`UniswapV2: INSUFFICIENT_OUTPUT_AMOUNT`），而这一支排在销毁之后，回滚会把 `settleFees` 与依赖它的 `withdraw` 一起带走。该窗口的边界是 Pair 的代币储备落在约 400–402 wei：更低时 `_canBurn` 先行跳过，更高时兑换取整后非零；此时任何地址往该池补入若干个 wei 的流动性即可离开窗口。为它引入池费率假设做销毁前预演，会换来「假设失配则永久静默停止销毁」的新失败模式，代价大于收益，因此作为已知边界保留，不在结算路径上预演。`feeLp < settlementUnit` 时同样跳过；不足一个单位的手续费 LP 留在合约（仍是池中 LP），等手续费 LP 或社区质押份额增长到满足条件后继续释放；`settlementUnit` 向下取整为零时无法释放。
 
 达到门槛且本 Phase 未结算时，从 Pair 取回 `processedFeeLp` 对应双币：
 
