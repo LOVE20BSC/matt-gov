@@ -30,8 +30,10 @@
 | `periphery` | 跨仓库调用与外围适配 | `core`、`action` | 规划中 |
 | `script` | 部署、地址和发布脚本 | 各可部署业务仓库 | 规划中 |
 | `love20-anvil` | 本地区块链集成测试编排 | `core`、`action`、`group-chat`、`batch-transfer` | 规划中 |
-| `docs` | 面向用户和开发者的协议文档 | 各业务仓库 | 规划中 |
+| `docs` | BSC 版协议对外公开文档 | 各业务仓库 | 活跃；公开仓库与文档站已启用 |
 | `batch-transfer` | 独立批量转账工具 | 无 | 规划中 |
+
+`docs` 是公开仓库 [LOVE20BSC/docs](https://github.com/LOVE20BSC/docs)，文档站入口为 [love20bsc.github.io/docs](https://love20bsc.github.io/docs/)。它只收录定稿的对外内容；协议行为与合约接口仍分别以 `matt-gov/docs/specs` 和 `core/src/interfaces` 为准。
 
 `launch` 本阶段暂不创建。`core` 负责基础子币发射流程，包括发射次数账本、次数融合、次数消耗和子币创建；公平发射后的复杂分配机制未来需求明确后再另建独立代码库。
 
