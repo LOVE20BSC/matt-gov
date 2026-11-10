@@ -31,7 +31,7 @@ jobs:
       # need the four sibling repos checked out next to matt-gov.
       - run: python3 matt-gov/script/check_doc_payloads.py
       - run: python3 matt-gov/script/check_naming.py
-      - run: python3 matt-gov/script/check_caller_auth.sh
+      - run: bash matt-gov/script/check_caller_auth.sh
       - run: python3 matt-gov/script/check_error_tests.py
       # Pending: python3 matt-gov/script/check_errors.py --check
       # Blocked by libs/src/OrderedHistoryIndex.sol:10 (InvalidKeyOrder is declared
