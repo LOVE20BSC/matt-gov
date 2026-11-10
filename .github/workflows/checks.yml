@@ -35,7 +35,7 @@ jobs:
       # The checkers resolve the workspace root from their own location, so they
       # need the four sibling repos checked out next to matt-gov.
       - run: python3 matt-gov/script/check_doc_payloads.py
-      - run: python3 matt-gov/script/check_naming.py
+      - run: python3 matt-gov/script/check_naming.py --check
       - run: bash matt-gov/script/check_caller_auth.sh
       - run: python3 matt-gov/script/check_error_tests.py
       - run: python3 matt-gov/script/check_errors.py --check
