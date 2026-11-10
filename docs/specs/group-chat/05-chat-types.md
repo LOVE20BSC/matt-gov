@@ -36,7 +36,7 @@ supportWeight > opposeWeight * 10
 supportWeight * 1e18 >= totalVoteWeight * 3e15
 ```
 
-同时满足才进入黑名单，保留严格比较、0.3% 门槛及无变化/无投票记录的处理：重复投票（方向与权重都未变）回 `VoteUnchanged(groupId, targetSenderId, voterId)`，不做名单同步（source 不可用时先回 `BanVoteWeightSourceUnavailable`）。同票重投不结算权重漂移；该 target 上任何投票/撤票/刷新都会按实时分母重算名单，本票权重的唯一改口入口是 `refreshVoteByTargetSenderId`。撤票或刷新找不到记录回 `VoteNotFound(groupId, targetSenderId, voterId)`；若 source 不可用，先回 `BanVoteWeightSourceUnavailable`，记录存在性检查在其后。投票权重为 0 回 `ZeroVoteWeight(groupId, voterId)`。`minSupportToOpposeMultiplier > 0` 与 `banThresholdRatio <= 1e18`（0 合法）是部署期静态不变量，由部署脚本在广播前校验（dev-standards §5.7）。投票/撤票/刷新后同步目标名单；`isBanned` 读取已结算名单，不全量扫描重算。
+同时满足才进入黑名单，保留严格比较、0.3% 门槛及无变化/无投票记录的处理：重复投票（方向与权重都未变）回 `VoteUnchanged(groupId, targetSenderId, voterId)`，不做名单同步（source 不可用时先回 `BanVoteWeightSourceUnavailable`）。方向相同但权重已变的重复投票按实时权重重新结算并发 `SenderBanVoteCast`；「不结算权重漂移」指的是权重未变的情形。该 target 上任何投票/撤票/刷新都会按实时分母重算名单；无需重新投票即可刷新本票权重的入口是 `refreshVoteByTargetSenderId`。撤票或刷新找不到记录回 `VoteNotFound(groupId, targetSenderId, voterId)`；若 source 不可用，先回 `BanVoteWeightSourceUnavailable`，记录存在性检查在其后。投票权重为 0 回 `ZeroVoteWeight(groupId, voterId)`。`minSupportToOpposeMultiplier > 0` 与 `banThresholdRatio <= 1e18`（0 合法）是部署期静态不变量，由部署脚本在广播前校验（dev-standards §5.7）。投票/撤票/刷新后同步目标名单；`isBanned` 读取已结算名单，不全量扫描重算。
 
 不设版本字段：每次已结算变更都由 `SenderBanVoteCast` / `SenderBanVoteCleared` / `GovSenderBanChanged` 携带完整事实，链下缓存按事件失效即可。
 

@@ -238,7 +238,7 @@ ERC-20 / ERC-721 标准事件保持不变，不进入本规范正文。`AddHolde
 | action.recipients | 根键 → sourceActionId → round → groupId → 新表 → 旧表 | `RecipientsChanged` |
 | action.service | 根键 → serviceActionId → round → 对象链（groupId 或 actionTokenAddress）→ 源链/角色 → 数值 | `RecipientPaid`、`ServiceRewardsDistributed` |
 | gc.management | 根键 → 对象标识（id 或对象地址）→ actor id → actor 地址 → 新值组 → 旧值组 | `AdminChanged`、`MemberStatusChanged`、`AdminSenderBanChanged`、`GroupChatActivated`、`PostingAllowedChanged`、`ScopeSourceChanged`、`BanSourceChanged`、`BeforePostPluginChanged`、`AfterPostPluginChanged` |
-| gc.ban-vote | 根键 → targetSenderId → voterId → 布尔 → 数值 | `SenderBanVoteCast`、`GovSenderBanChanged` |
+| gc.ban-vote | 根键 → targetSenderId → voterId → 布尔 → 数值 | `SenderBanVoteCast`、`SenderBanVoteCleared`、`GovSenderBanChanged` |
 | gc.message | 根键 → messageId → senderId → sender → round → 引用 messageId → 数值/布尔 → content | `MessagePosted`、`SenderMentioned` |
 | gc.plugin | 根键 → messageId → round → pluginAddress → 错误指纹 | `AfterPostPluginFailed` |
 | gc.link | 根键 → 对象 id → actor | `TokenGroupActivated`、`TokenActionGroupActivated` |

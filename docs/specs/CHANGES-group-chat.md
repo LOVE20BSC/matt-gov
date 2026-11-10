@@ -200,7 +200,7 @@ Group Chat 门禁：**148 tests 全绿**；`build --deny warnings`、`lint`、`c
 | `IBanVoteWeightSource` | `voteWeightOf(uint256,address)` → `voteWeight(uint256,uint256)`（2026-10-30 去 `Of` 后缀） |
 | `IGroupJoinScopeSource` | `GROUP_JOIN_ADDRESS()` → `GROUP_ACTION_EXECUTOR_ADDRESS()`；成员判定改 `IGroupActionIndexes.isGroupMember(groupId, senderId)` |
 | `IAdminBanSource` / `IGroupMemberScope` | 不变 |
-| `IGovVotedBanSource` | `voteBySenderId(uint256,uint256,bool)` → `(uint256,uint256,uint256,bool)`（显式 `voterId`），`clear` / `refresh` 同理；新增错误 `NotMemberOwner(uint256)`（写入/撤票校验 voter 当前持有人），旧 `SenderNotMemberOwner(uint256)` 已删除；删除地址投票一整套（`voteBySenderAddress` / `voteBySender` 及其 clear/refresh、`voteWeightsBySenderAddressesByVoter` / `voteStatusBySenderAddress(es)` / `isAddressBanned(es)` / `votedSenderAddresses*` / `votersBySenderAddress*`、事件 `SetAddressBanVote` / `SetAddressBan`、错误 `TargetAddressZero`）与单条 `isSenderIdBanned` |
+| `IGovVotedBanSource` | `voteBySenderId(uint256,uint256,bool)` → `(uint256,uint256,uint256,bool)`（显式 `voterId`），`clear` / `refresh` 同理；新增错误 `NotMemberOwner(uint256)`（写入/撤票校验 voter 当前持有人），旧 `SenderNotMemberOwner(uint256)` 已删除；删除地址投票一整套（`voteBySenderAddress` / `voteBySender` 及其 clear/refresh、`voteWeightsBySenderAddressesByVoter` / `voteStatusBySenderAddress(es)` / `isAddressBanned(es)` / `votedSenderAddresses*` / `votersBySenderAddress*`、事件 `SetAddressBanVote` / `SetAddressBan`、错误 `TargetAddressZero`）与单条 `isSenderIdBanned`；`MIN_SUPPORT_TO_OPPOSE_RATIO()` 改名为 `MIN_SUPPORT_TO_OPPOSE_MULTIPLIER()`（`Ratio` 只保留给 1e18 定点比例，10 倍是纯倍数；本条为 breaking ABI 改名，selector 变化） |
 
 ### 插件与来源（`plugins/`）
 
