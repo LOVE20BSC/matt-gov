@@ -11,7 +11,7 @@
 | 符号 | 含义 |
 | --- | --- |
 | `A[a]` | 源 GroupAction a 的行动层分配总额，即 `generatedActionReward` 返回的 proposalReward；按群切片 floor 后其和不超过 `A[a]` |
-| `r` / `publicVerifierRatio` | 服务 Proposal 绑定的公共验证者比例，`1e18` 精度；各源行动统一取该值（不再由验证者在申请时自报） |
+| `r` / `publicVerifierRatio` | 服务 Proposal 绑定的公共验证者比例，`1e18` 精度，取值严格位于 `(0, 1e18)`；各源行动统一取该值（不再由验证者在申请时自报） |
 | `totalGroupActionReward` | `actionTokenAddress` 社区本轮全部 GroupAction 的 `A[a]` 之和，即本服务轮次的分母 |
 | `publicVerifierId[a]` | 行动 a 在目标轮锁定的公共验证者 verifierId |
 | `m` | 结算主体 memberId；作为群 owner 时也是 groupId |
