@@ -101,6 +101,8 @@ openBlock = verifyPhaseStartBlock + openOffset
 
 首个有效验证批次永久锁定验证者 MemberNFT；NFT 转移后新持有人续验，不能由未经授权的验证者接管。需完成目标 Round 的全部 Group 验证；无验证者入榜或锁定者失联、未完成时，行动层激励为零，底层 Proposal 激励仍可独立铸造或销毁。`generatedActionRewardByGroupId` 与一切行动层分配查询按轮次读取，目标轮未完成验证时返回 0，不因部分批次已计入而返回正值；GroupService 与 GroupAction 阶段划分相同，其读取的轮次已经完成验证，正常不会命中该分支。相关验收见 [组织验收](../../acceptance.md#公共验证者与-round-历史)。
 
+**验证者信任模型（接受的取舍）**：原始分是验证者的自由裁量输入，合约只约束 `0 ≤ originScore ≤ 100`（`ScoreLimitExceeded`）与累计游标，不提供回避（验证者可以为自己所在的群打分）、交叉复核、挑战期或事后罚没；押金只担保「持有当前申请」，撤销即全额退款（见上文「验证者押金」），因此验证者不承担验证期间的被罚没风险。对失信或作恶验证者的约束**全部落在治理层**：验证资格来自每一轮的治理投票与排名（`rankedApplicationIds` / `topVerifiers`），治理者按轮重新投票——出现问题的验证者在**后续轮次**不再获得足够票数即失去排名与锁定资格。当轮一旦锁定无法替换（`lockedVerifierId` 无超时、无接管，见上段），因此单轮内无法事后纠正：本轮行动层激励可能被独占（把其他群打 0）或因全 0 得分而永久停留未结算（无销毁路径，见 [统一铸造链路](07-minting.md#铸造链路)）。这是有意接受的取舍，不是实现缺陷；**前提是治理投票逐轮有效**——验证者若作恶而下一轮仍被投回榜首，同一验证者可连续轮次独占激励。可观测性由链上留痕承担：`VerifierApplicationSubmitted`、`ApplicationVoteRecorded`、`VerifierLocked`、`OriginScoresSubmitted`（带逐项 `scores[]`、`totalFinalScore`、`verifiedGroupCount`、`roundVerified`）与 `topVerifiers` / `voteAmountsByVerifierIds` 查询足以复原每位验证者每一轮的打分；链下要求治理投票前读取这些事件与查询，不得只按申请说明投票。
+
 ## 行动激励
 
 公共验证者按同一规则记录原始分和最终分。每条冻结成员记录只计入一次，不允许对同一份参与量重复评分。
