@@ -104,7 +104,7 @@ burnReward = theoreticalReward - mintReward
 - `deduction()` 的三个返回值不足以自校验（缺 `phaseStartBlock` / `phaseBlocks`），链下不得用它反推加入流水；需要逐笔核对时只能读两个日志数组。
 - `memberReward` 把「行动未创建 / 轮次早于创建 / 超过铸币窗口 / 无有效参与」四种情形压成同一个 `(0, 0, false)`；需要区分原因时只能试算 `mintMemberReward` 的 revert。
 - `totalEffectiveAmount == 0` 与「激励为零」都归 `MemberRewardPoolEmpty`，两者都不可通过重试解决；前者在铸币阶段到达后每次尝试都会重新枚举，成本可重复支付。
-- 成员结算没有销毁面：`MemberRewardMinted.burnAmount` 恒为 `0`，且没有对应状态槽。
+- 成员结算**有**销毁面：治理上限生效时 `burnAmount = theoreticalReward − mintAmount`，数量写入 `_burnedRewardByMemberId[tokenAddress][actionId][round][memberId]`，并在同一笔内调用行动代币的 `Token.burn`；`govRatioMultiplier = 0`（上限关闭）或 `cap` 未绑定该成员时为 `0`。纯销毁（`mintAmount = 0`、`burnAmount > 0`）仍置位已结算，`memberReward` 回该 `burnAmount`。没有销毁面的是 `GroupActionExecutor`（见 [销毁面](07-minting.md#销毁面)）。
 
 ## 错误卷补记（2026-11，X-09）
 

@@ -91,4 +91,4 @@ Target Data 的项数、每项位置与编码由各 Executor 在自己的规格�
 
 ## 销毁面
 
-三个 Executor 共用 `MemberRewardMinted` 事件，但只有 `GroupServiceExecutor` 有真实销毁：治理上限触发时 `burnAmount = ownerBurned`，并把数量写入 `ownerBurnedByMemberId`。`GroupActionExecutor` 与 `LpExecutor` 没有销毁路径，`burnAmount` 恒为 `0`；`GroupActionStorage` 不再有对应状态槽（`memberBurnedReward` 已删除），因此 GroupAction 的 `memberReward` 直接返回字面量 `0`，不读任何存储。共享 schema 不因此改变，索引方按字段取 0 处理即可。
+三个 Executor 共用 `MemberRewardMinted` 事件，其中 `GroupServiceExecutor` 与 `LpExecutor` 有真实销毁：GroupService 在治理上限触发时 `burnAmount = ownerBurned`，并把数量写入 `ownerBurnedByMemberId`；LP 在治理上限生效时 `burnAmount = theoreticalReward − mintAmount`，并把数量写入 `burnedRewardByMemberId`，上限关闭或未绑定该成员时为 `0`。两者都在同一笔结算内直接调用行动代币的 `Token.burn`。只有 `GroupActionExecutor` 没有销毁路径，`burnAmount` 恒为 `0`；`GroupActionStorage` 没有对应状态槽（`memberBurnedReward` 已删除），因此 GroupAction 的 `memberReward` 直接返回字面量 `0`，不读任何存储。共享 schema 不因此改变，索引方只需对 GroupAction 按字段取 0 处理，LP 与 GroupService 的 `burnAmount` 必须与行动代币的 `TokenBurned` 一起对账。
