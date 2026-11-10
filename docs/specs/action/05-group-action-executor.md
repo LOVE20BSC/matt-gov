@@ -170,7 +170,7 @@ Executor 是单例，全部逻辑落在一个地址上会超过 EIP-170 的 24,5
 | --- | --- | --- | --- |
 | `GroupActionVerify` | `IGroupActionVerify.sol`（`is IVerificationInfo`） | `GroupVerify.sol` | 验证提交与连续游标、扣分写入（满分免写）与位置化已验证推导、`finalScore`/`totalFinalScore` 汇总、验证者申请/撤销（含押金划转与退还）与排名查询、验证信息查询、投票回调的票数记账、投票名册与排名 |
 | `GroupActionJoin` | `IGroupActionJoin.sol` | `GroupJoin.sol` | `join`、`withdraw`、`exit`、Provider 额度五件、Round 历史读写、参与索引与归属计数维护、成员验证信息值写入、`joinInfo`、`joinedAmountByGroupId` |
-| `GroupActionManager` | `IGroupActionManager.sol` | `GroupManager.sol` | `activateGroup`、`deactivateGroup`、`setGroupConfig`、`groupState`，以及创建回调写入行动配置、验证信息模板与创建轮；群集合/质押/描述快照查询（`activeGroupIds` 族、`staked` 族、`tokenAddressesByGroupId`、`actionIdsWithActiveGroups`、`descriptionByRound`、`hasActiveGroups`、`maxJoinAmount`——实现即在此；沿用旧 GroupManager 口径（`hasActiveGroups` 判定成员自身作为链群主体在社区是否存在激活行动），按当前加入轮读取行动票占比与 joinToken 当前 `totalSupply`）；推举回调当前只校验调用者，无状态写入 |
+| `GroupActionManager` | `IGroupActionManager.sol` | `GroupManager.sol` | `activateGroup`、`deactivateGroup`、`setGroupConfig`、`groupState`，以及创建回调写入行动配置、验证信息模板与创建轮；群集合/质押/描述快照查询（`activeGroupIds` 族、`staked` 族、`tokenAddressesByGroupId`、`actionIdsWithActiveGroups`、`descriptionByRound`、`hasActiveGroups`、`maxJoinAmount`——实现即在此；沿用旧 GroupManager 口径（`hasActiveGroups` 判定成员自身作为链群主体在社区是否存在激活行动），按当前加入轮读取行动票占比与 joinToken 当前 `totalSupply`；本 Executor 未创建该行动（无 `joinTokenAddress` 记录）时返回 `0`，不发起 `totalSupply` 外呼）；推举回调当前只校验调用者，无状态写入 |
 
 成员级激励铸造不单独成库：它只有约 1.6KB，且成员结算三件（`mintMemberReward`/`mintMemberRewards`/`memberReward`）声明在基座 `IActionExecutor`，留在 Executor 实现即可，也省掉每笔结算的跨库开销。
 
