@@ -1,0 +1,40 @@
+name: Checks
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  governance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: LOVE20BSC/core
+          path: core
+      - uses: actions/checkout@v4
+        with:
+          repository: LOVE20BSC/action
+          path: action
+      - uses: actions/checkout@v4
+        with:
+          repository: LOVE20BSC/group-chat
+          path: group-chat
+      - uses: actions/checkout@v4
+        with:
+          repository: LOVE20BSC/libs
+          path: libs
+      - uses: actions/checkout@v4
+        with:
+          path: matt-gov
+      # The checkers resolve the workspace root from their own location, so they
+      # need the four sibling repos checked out next to matt-gov.
+      - run: python3 matt-gov/script/check_doc_payloads.py
+      - run: python3 matt-gov/script/check_naming.py
+      - run: python3 matt-gov/script/check_caller_auth.sh
+      - run: python3 matt-gov/script/check_error_tests.py
+      # Pending: python3 matt-gov/script/check_errors.py --check
+      # Blocked by libs/src/OrderedHistoryIndex.sol:10 (InvalidKeyOrder is declared
+      # outside src/interfaces and puts two parameters on one line), which also
+      # leaves matt-gov/registry stale. Enable this step once libs is clean and the
+      # registry has been regenerated from a clean baseline.
