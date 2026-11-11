@@ -12,7 +12,7 @@ Token Manager 与 Action Manager 的接口分别见 [`ITokenScopeManagerBase.sol
 
 保留旧 BaseManager 的激活交易：
 
-1. 校验 LOVE20 token、存在的 Proposal 及未重复激活，生成唯一名称；名称规则见下节，最多 8 次重试，长度读取 MemberNFT 配置。名称空间下限 `MAX_NAME_LENGTH ≥ bytes(TYPE_CODE()).length + 9` 字节（类型码 + 1 字节分隔符 + 4 位十六进制随机后缀 + 4 字节 Test 前缀；当前四类 2 字节类型码即 11）是部署期不变量。广播前 Manager 尚未部署，部署脚本按「当前最长类型码 2 字节」预检 `MAX_NAME_LENGTH ≥ 11`，该假设由 `testT181` 对四个已部署 Manager 的实际 `TYPE_CODE()` 反向锁定（不一致即测试失败）；`21_check.sh` 部署后按每个 Manager 的 `TYPE_CODE()` 独立复核。8 次重试仍取不到可用名称回 `ManagerGroupNameUnavailable()`；该错误无载荷，`_mintNonce` 已推进，重试会换候选名。名称算术只有一处减法：无 payload 分支的 `MAX_NAME_LENGTH - bytes(TYPE_CODE()).length - 1 - (Test 前缀 ? 4 : 0)`。它下溢的条件是 `MAX_NAME_LENGTH ≤ bytes(TYPE_CODE()).length`（普通）或 `≤ bytes(TYPE_CODE()).length + 4`（Test），2 字节类型码即 **2 / 6**，而非 11；11 这个下限保证的是随机后缀至少 4 位，破坏后（7–10）不 panic，而是随机串退化为 0–3 位、候选名趋同，重复激活回 `ManagerGroupNameUnavailable()`。真正触达下溢仍属不可达部署不变量违反，表现为 `Panic(0x11)`，不映射为自定义错误。
+1. 校验 LOVE20 token、存在的 Proposal 及未重复激活，生成唯一名称；名称规则见下节，最多 8 次重试，长度读取 MemberNFT 配置。名称空间下限 `MAX_NAME_LENGTH ≥ bytes(TYPE_CODE()).length + 5` 字节（类型码 + 1 字节分隔符 + 4 位十六进制随机后缀；当前四类 2 字节类型码即 7）是部署期不变量。广播前 Manager 尚未部署，部署脚本按「当前最长类型码 2 字节」预检 `MAX_NAME_LENGTH ≥ 7`，该假设由 `testT181` 对四个已部署 Manager 的实际 `TYPE_CODE()` 反向锁定（不一致即测试失败）；`21_check.sh` 部署后按每个 Manager 的 `TYPE_CODE()` 独立复核。8 次重试仍取不到可用名称回 `ManagerGroupNameUnavailable()`；该错误无载荷，`_mintNonce` 已推进，重试会换候选名。名称算术只有一处减法：无 payload 分支的 `MAX_NAME_LENGTH - bytes(TYPE_CODE()).length - 1`。它下溢的条件是 `MAX_NAME_LENGTH ≤ bytes(TYPE_CODE()).length`（2 字节类型码即 2），而非 7；7 这个下限保证的是随机后缀至少 4 位，破坏后（3–6）不 panic，而是随机串退化为 0–3 位、候选名趋同，重复激活回 `ManagerGroupNameUnavailable()`。真正触达下溢仍属不可达部署不变量违反，表现为 `Panic(0x11)`，不映射为自定义错误。
 2. Manager 计算铸造费用，从激活者 msg.sender 转入首币并按需授权 MemberNFT；零费用不转账。付款/授权失败分两类：token 自己 revert 时**错误原样冒泡**（OZ 5.5 的 `SafeERC20` 对 revert 不包装，实测回 token 的 `Error("ALLOWANCE")` 一类），调用成功但返回非 `true` 时才回 `SafeERC20FailedOperation(token)`；Manager 信任 MemberNFT 定价确定性，实付与报价一致由测试保障（`testT161` 走真实 MemberNFT 路径断言实际扣减 == `calculateMintCost` 报价），链上不再断言；非 LOVE20 token 回 `TokenNotLOVE20(tokenAddress)`。
 3. Manager 铸造并持有 NFT，以其 memberId 为 groupId 记录业务映射；scope 使用 Manager 自身，其他槽位使用构造时固定的模块，然后激活同一个 GroupChat 合约。
 4. 任一步失败整体回滚，付款、NFT、映射和激活不能半完成；激活者只是付费者，不因付费获得 Chat 管理权。
@@ -29,21 +29,16 @@ Token Manager 与 Action Manager 的接口分别见 [`ITokenScopeManagerBase.sol
 - `payload`：token 类为清洗后的 `symbol()`；action 类为 `symbol()_actionId`，`symbol()` 清洗后为空时只用 actionId。`symbol()` 先清洗为 ASCII 字母数字与 CJK（U+4E00-U+9FFF），其他字符丢弃；清洗后为空且无 action 时没有 payload。
 - 整段 payload 连同 4 位十六进制随机后缀放得下时：`type_payload_<4 位 hex>`，payload 原样保留。
 - 放不下时：payload 整段丢弃（不哈希、不截断），名称为 `type_<随机串>`，随机串填满剩余字节。
-- 随机后缀：有 payload 时固定 4 位十六进制；无 payload 时填满 `MAX_NAME_LENGTH - typeCode.length - 1 - testPrefix` 位。
+- 随机后缀：有 payload 时固定 4 位十六进制；无 payload 时填满 `MAX_NAME_LENGTH - typeCode.length - 1` 位。
 - 4 位 hex 后缀只用于同 stem 消歧；定向抢占与后缀长度无关，占满 4 hex 空间需 65,536 次 mint，这是已知取舍。打包前被抢注不在 8 次重试覆盖范围，重试只处理「名称已存在」。
 
-32 字节、6 位 actionId 下 payload 最大长度：
+32 字节、6 位 actionId 下 payload 最大长度：token 类 24 字节 symbol；action 类 17 字节 symbol + 6 位 actionId。
 
-| Manager | 正常 | Test 模式 |
-| --- | --- | --- |
-| token 类 | 24 字节 symbol | 20 字节 symbol |
-| action 类 | 17 字节 symbol + 6 位 actionId | 13 字节 symbol + 6 位 actionId |
-
-示例：`tm_ABCD_1a2b`、`am_ABCD_42_1a2b`；symbol 超长时 `tm_<29 位 hex>`、`am_<29 位 hex>`；Test 模式超长时 `Testtm_<25 位 hex>`。中文 symbol 整段放得下时保留，放不下时整段丢弃，不切 UTF-8。
+示例：`tm_ABCD_1a2b`、`am_ABCD_42_1a2b`；symbol 超长时 `tm_<29 位 hex>`、`am_<29 位 hex>`。中文 symbol 整段放得下时保留，放不下时整段丢弃，不切 UTF-8。
 
 部署建议把 `MAX_NAME_LENGTH` 保持在 32–64；payload 丢弃时的随机串长度随 `MAX_NAME_LENGTH` 线性增长。
 
-名称的 Test 前缀按 MemberNFT 的 `LOVE20_TOKEN_ADDRESS` 符号判定；该地址由部署 check 保证已初始化，Manager 不判断其是否为零地址或无代码。
+名称按生成结果原样传给 MemberNFT，不因首币符号改写；MemberNFT 保存原始名称，仅把 ASCII 小写形式用于查重。
 
 构造期依赖代码、参数与地址关系的静态校验由部署脚本在广播前完成（dev-standards §5.7）；Manager 构造期不重复校验三个 immutable 依赖的代码与零地址。托管映射在 NFT 铸造后写入；协议内 MemberNFT 不可升级，依赖替换属部署信任边界。托管群的 `BAN_SOURCE_ADDRESS`、`BEFORE_POST_PLUGIN_ADDRESS`、`AFTER_POST_PLUGIN_ADDRESS` 还必须在广播前人工核对接口；托管群 owner 是 Manager 且无配置转发，`beforePostPlugin` 误配会让该 Manager 名下所有群永久无法发言。`onERC721Received` 收到非协议 NFT 合约或非零 `from` 时回 `UnexpectedManagerERC721Received(operator, from, tokenId)`；payload 不含 `msg.sender`，实际调用地址可从 tx 读取，登记为已知边界。正常路径下 MemberNFT 的 `ERC721NonexistentToken`、名称错误与 `calculateMintCost` 溢出不会出现，属透传面，由 [事件与错误](07-events-errors.md) 统一登记。
 

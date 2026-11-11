@@ -37,11 +37,11 @@ UTF-8 有效性：拒绝无效起始字节 `0x80-0xC1` 与 `0xF5-0xFF`、过长�
 
 接口见 [`IMemberNFT.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/IMemberNFT.sol)。
 
-`MemberNFT` 的构造函数接收费用参数与首币地址，部署即完成绑定；不再有 `init` 入口，也没有 `initialized` 状态。首币地址与费用参数由部署 check 核对，不匹配则重新部署。首币地址为零或非合约地址时，`mint` 和 `calculateMintCost` 因无法从首币读取数据而回滚。
+`MemberNFT` 的构造函数接收费用参数与首币地址，部署即完成绑定；不再有 `init` 入口，也没有 `initialized` 状态。首币地址与费用参数由部署 check 核对，不匹配则重新部署。首币地址为零或非合约地址时，`mint`（名称校验通过后）和 `calculateMintCost` 因无法从首币读取数据而回滚。
 
 构造函数无调用者限制；部署成功即不可替换依赖或费用参数，没有修复或改绑入口，错误版本不得发布，需重新部署并核对受影响的依赖。
 
-首币必须是已部署的合约且 `symbol()` 可读：构造函数不校验首币代码，绑定 EOA 或零地址时部署仍会成功，此后 `mint` 与 `calculateMintCost` 永久回滚。构造函数只写首币地址，不发事件（理由见[通用规则](01-common-rules.md#部署与安全)），绑定结果由部署 check 与 21_check 核对。
+首币必须是已部署的合约且 `MAX_SUPPLY()` 与 `totalSupply()` 可读：构造函数不校验首币代码，绑定 EOA 或零地址时部署仍会成功，此后 `mint` 与 `calculateMintCost` 永久回滚。构造函数只写首币地址，不发事件（理由见[通用规则](01-common-rules.md#部署与安全)），绑定结果由部署 check 与 21_check 核对。
 
 费用使用首个 LOVE20 代币，计算如下。参数含义见 [部署参数](00-protocol-model.md#部署参数)，四个参数均必须大于零，由 DeployCore 在广播前校验；构造函数只保存参数，不做静态校验。最大名称长度通过构造参数固定，BSC 部署配置使用 `32`。首币地址与费用参数由 21_check 核对，不匹配则重新部署。
 
@@ -57,9 +57,9 @@ mintCost = byteLength >= bytesThreshold
 
 `MemberMinted` 同时携带本次销毁量 `cost` 与销毁后的累计 `totalBurnedForMint`（后置值，`mintCost == 0` 时不变）：该聚合量只在铸造时改变，单条日志即可与 `totalBurnedForMint()` 对账，口径与 `Stake.FeesSettled.totalBurnedToken` 一致。`name` 与 `normalizedName` 均受 `maxNameLength` 约束，长度不变。
 
-首币符号前 4 个字节为 `Test` 时，若名称长度不足 4 字节或前 4 个字节不是 `Test`，铸造前自动加 `Test` 前缀；前缀计入 `byteLength`、参与名称校验与费用计算，并作为存储名称。
+名称按入参原样校验、计费与存储，合约不因首币符号对名称做改写。
 
-沿用旧查询行为：`calculateMintCost` 只按传入名称的字节数计费，不补 `Test` 前缀，也不校验名称合法性或唯一性。测试币场景中，调用方应先按上述规则补前缀再询价；例如铸造 `abc` 的对应报价应查询 `Testabc`。`memberId(name)`、`isNameUsed` 仅做 ASCII 小写规范化，也需传入最终存储名称。
+沿用旧查询行为：`calculateMintCost` 只按传入名称的字节数计费，不校验名称合法性或唯一性；报价与实际铸造费用使用同一个名称。`memberId(name)`、`isNameUsed` 仅做 ASCII 小写规范化，传入铸造时使用的名称即可。
 
 例：`baseCost = 100`、`bytesThreshold = 7`、`multiplier = 10`；6 字节名花费 `1000`，7 字节及以上花费 `100`。金额均以代币最小单位计。
 
@@ -77,14 +77,14 @@ mintCost = byteLength >= bytesThreshold
 
 | 顺序 | 条件 | 回滚错误 |
 | --- | --- | --- |
-| 1 | 名称（已加 `Test` 前缀）为空 | `NameEmpty()` |
-| 2 | 名称超过 `MAX_NAME_LENGTH` | `NameTooLong(length, maxLength)`，`length` 为前缀后字节数 |
+| 1 | 名称为空 | `NameEmpty()` |
+| 2 | 名称超过 `MAX_NAME_LENGTH` | `NameTooLong(length, maxLength)`，`length` 为名称字节数 |
 | 3 | 名称含禁止字符或非法 UTF-8 | `NameInvalidCharacters()` |
 | 4 | 规范化名称已存在 | `NameAlreadyExists(existingId)` |
 | 5 | 费用转账或销毁失败 | `SafeERC20FailedOperation(address)` / ERC20 标准错误 |
 | 6 | `_safeMint` 接收方拒绝 | OZ `ERC721InvalidReceiver(address)` |
 
-构造函数不校验首币代码；绑定零地址或 EOA 时，`mint` 读零地址的 `symbol()`（名称前缀判定）、`calculateMintCost` 读零地址的 `MAX_SUPPLY()` 与 `totalSupply()`，均取回空数据、ABI 解码失败，以空 revert（0x）结束。
+构造函数不校验首币代码；名称通过本地校验后，绑定零地址或 EOA 时 `mint` 内的费用计算与 `calculateMintCost` 读零地址的 `MAX_SUPPLY()` 与 `totalSupply()`，取回空数据、ABI 解码失败，以空 revert（0x）结束。
 
 ### 透传来源
 

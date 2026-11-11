@@ -13,11 +13,12 @@
 | 消息 | 提及、mentionAll、引用、ID | 规则和索引一致 |
 | 查询 | Round、sender、mention、分页 | 空值、越界与 reverse 符合标准分页契约，越界和 `limit = 0` 都返回真实 totalCount；单条缺失消息回 `MessageNotFound(groupId, messageId)`；swap-and-pop 集合的 `reverse` 按「当前存储顺序」而非插入序，对应 `testT123B_banListReverseWalksCurrentStorageOrder`、`testT135B_votedSenderIdsReverseWalksCurrentStorageOrder`、`testT135C_votersBySenderIdReverseWalksCurrentStorageOrder`，`memberIds` 见 `testT133B_adminCanAddAndRemoveMemberIds` |
 | 预检查 | `canPost` 原因枚举 | 返回 `PostRejectionReason`，缺失 sender 为 `SenderNotExist`，不以 selector 作数据 |
-| 部署期 | 构造参数与依赖绑定 | 依赖有代码、`Phase.ORIGIN_PHASE_BLOCKS() > 0`、`MAX_NAME_LENGTH` 名称空间下限（广播前按「当前最长类型码 2 字节 + 9」预检 11，`testT181` 锁定该假设与四个 Manager 的实际 `TYPE_CODE()` 一致）、MemberNFT 根代币与 `LOVE20_TOKEN_ADDRESS` 一致、`ActionTarget` 根绑定及 submit/vote/stake/launch 与 core 一致，均由部署脚本广播前校验；`21_check.sh` 部署后按各 Manager 的 `TYPE_CODE()` 复核名称空间、复核 `MAX_CONTENT_LENGTH` / `MAX_MENTIONED_SENDER_IDS` 非零及其余绑定，失败时一键入口回滚地址文件；广播前校验失败则不广播 |
+| 部署期 | 构造参数与依赖绑定 | 依赖有代码、`Phase.ORIGIN_PHASE_BLOCKS() > 0`、`MAX_NAME_LENGTH` 名称空间下限（广播前按「当前最长类型码 2 字节 + 5」预检 7，`testT181` 锁定该假设与四个 Manager 的实际 `TYPE_CODE()` 一致）、MemberNFT 根代币与 `LOVE20_TOKEN_ADDRESS` 一致、`ActionTarget` 根绑定及 submit/vote/stake/launch 与 core 一致，均由部署脚本广播前校验；`21_check.sh` 部署后按各 Manager 的 `TYPE_CODE()` 复核名称空间、复核 `MAX_CONTENT_LENGTH` / `MAX_MENTIONED_SENDER_IDS` 非零及其余绑定，失败时一键入口回滚地址文件；广播前校验失败则不广播 |
 | 查询 | Phase 重新标定后的历史消息 Round | 旧消息 round 与分轮索引不变，新帖按新参数计算（`testT050B`） |
 | 类型 | 五类资格和黑名单权重 | 使用对应 memberId 和快照来源 |
 | 群组 | 成员名单、Executor 归属、forceClearJoinState | 最后关系退出才失去归属；forceClearJoinState 只清 ActionTarget 注册表，不改群归属与 Executor 仓位 |
 | Manager | 激活付款、费用不一致、NFT 接收、重复激活 | 调用者支付，Manager 持有；失败整体回滚；一个 Manager 管理多个 Chat；构造参数与依赖由部署脚本校验，合约不检查 |
+| Manager | 首币符号以 `Test` 开头时的群名 | 名称按生成结果原样铸造，长度预算与查重不受首币符号影响；对应 `TypedManagersTest.testT115_tokenMainManagerIgnoresFirstTokenSymbol`、`testT120_firstTokenSymbolDoesNotChangeNameBudget`、`testT125_actionPayloadBoundary`、`testT128_tokenManagerIgnoresFirstTokenSymbolAtMinimumNameLength` |
 | Manager | 转出 NFT、approve、重配、付费者接管 | 不新增这些入口，普通 owner Chat 不受此限制 |
 | 权限边界 | 配置/管理员仅 owner，成员/黑名单 owner 或 admin | 配置与管理员入口拒绝 admin；成员与人工黑名单接受有效 admin；发言豁免 scope/ban 仅 owner；mentionAll 接受 owner 与 admin |
 | 黑名单 | 当前行动 Vote Round、全社区分母、权重归零刷新 | 不使用创建 Round；保留 settledWeight、改票/撤票/刷新；未翻名单时只有投票事件；撤票与刷新归零发 `SenderBanVoteCleared`（`prevSupportBan`/`prevSettledWeight`），不再用 `settledWeight=0` 的 `SenderBanVoteCast` |

@@ -15,6 +15,7 @@
 | [MemberNFT](02-member-nft.md) | NFT 转移、名称 32 bytes 边界、短名费用 | 新持有人控制未结算权益，历史不变；名称与费用符合模块规则 |
 | MemberNFT | `MemberMinted` 的增量与累计锚点：连续两次铸造、费用为零 | 同一事件内 `cost`（本次销毁量）与 `totalBurnedForMint`（后置累计）取值可区分，且累计值等于两次费用之和与链上 getter；对应 `MemberNFTTest.testMemberMintedAndTransferEvents`、`testMintReentrancyInterleavesEventsButKeepsFacts` |
 | MemberNFT | 持有人枚举分页：自转账、转出全部、再转入、`offset` 越界 | 自转账不移除，余额归零后移除，位置按 swap-and-pop 重排；`holders` 按页返回且越界返回空数组与真实总数 |
+| MemberNFT | 首币符号以 `Test` 开头时的名称 | 名称按入参原样存储、计费与查询，合约不改写；带前缀的名称只有显式传入才会出现；对应 `MemberNFTTest.testNameIsStoredAsSubmittedWhenFirstTokenSymbolStartsWithTest` |
 | [Phase](03-phase.md) | 空阶段、首个推举同步、偏差在/超过 `ADJUST_THRESHOLD` | 时间继续推进，按部署阈值校准，不改历史 |
 | Phase | 任意地址先同步、同轮跨社区重复、下轮再同步 | 每个投票轮只记录一次；重复无操作、不阻塞 Submit；下轮重新允许 |
 | Phase | `PhaseSynchronized` 段长快照：非调整轮、调整轮、跳过空 Phase 的相邻两次同步、段长钳到 `1` 的同长度重写 | 每次有效同步恰一条日志；`currentPhaseBlocks` 恒等于 `phaseInfo(phase)` 的段长；调整轮的 `nextPhaseBlocks` 等于 `phaseInfo(phase + 1)` 的段长且与本轮返回值一致；相邻两次同步满足 `e2.currentPhaseBlocks == e1.nextPhaseBlocks`，中间空 Phase 不影响；`nextPhaseBlocks == currentPhaseBlocks` 时仍可能写入过等长段，`adjusted` 只能取自返回值；对应 `PhaseTest.testPhaseSynchronizedCarriesSegmentSnapshot`、`testSyncRecordsOncePerPhaseAndAdjustsNextPhase`、`testAdjacentSyncsChainSegmentLengths` 与 `testClampedAdjustmentWritesAnEqualSegment` |
