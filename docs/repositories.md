@@ -27,11 +27,11 @@
 | `group-chat` | 群聊业务 | `action`（`core`、`libs`、OpenZeppelin 经 `action` 传递） | 活跃；群聊业务已实现并提交 |
 | `interface-test` | BSC 前端开发、集成和验收 | `core`、`action`、`group-chat` | 规划中；日常修改入口 |
 | `interface` | BSC 前端正式发布 | 验收后的 `interface-test` | 规划中；只接受人工同步 |
-| `periphery` | 跨仓库调用与外围适配 | `core`、`action` | 规划中 |
+| `periphery` | 跨仓库调用与外围适配：依赖协议已部署合约、可随时替换的聚合查看与便捷交互 | `core` | 规划中 |
 | `script` | 部署、地址和发布脚本 | 各可部署业务仓库 | 规划中 |
-| `love20-anvil` | 本地区块链集成测试编排 | `core`、`action`、`group-chat`、`batch-transfer` | 规划中 |
+| `love20-anvil` | 本地区块链集成测试编排 | `core`、`action`、`group-chat`、`tools` | 规划中 |
 | `docs` | BSC 版协议对外公开文档 | 各业务仓库 | 活跃；公开仓库与文档站已启用 |
-| `batch-transfer` | 独立批量转账工具 | 无 | 规划中 |
+| `tools` | 不依赖协议部署合约、功能单一的独立工具合约 | 无（外部 DEX 接口在仓内自声明） | 活跃；`BatchTransfer`、`UniswapV2Zap` 已迁移并通过测试 |
 
 `docs` 是公开仓库 [LOVE20BSC/docs](https://github.com/LOVE20BSC/docs)，文档站入口为 [love20bsc.github.io/docs](https://love20bsc.github.io/docs/)。它只收录定稿的对外内容；协议行为与合约接口仍分别以 `matt-gov/docs/specs` 和 `core/src/interfaces` 为准。
 
@@ -39,6 +39,20 @@
 
 `compatibility` 只保存外部依赖兼容性测试、参考实现夹具、目标网络地址清单和测试证据，不提供生产合约，也不作为 `core` 的运行时依赖。它验证接口和实际状态/数值行为，尤其是 WETH、Uniswap V2 兼容 DEX（如 PancakeSwap）的 Factory/Pair/Router 与 Uniswap V2 参考实现的差异；测试通过后才允许把对应外部地址用于 BSC 部署。
 
-旧 `LOVE20TKM/extension`、`LOVE20TKM/extension-group` 的业务迁入 `action`；旧 `LOVE20TKM/extension-lp` 仅迁移 V2 LP 业务，重写为 `action` 内的 LP 行动执行合约，V1 LP 实现及旧 LP 工厂不迁移。`burn`、未部署的 `chat` 和外部 `v2-periphery` 不在本组织清单中。Burn 业务合约不迁移到 LOVE20BSC 组织，但其空投合约（`Airdrop.sol`）必须在 Burn 活动结束后由旧 [`LOVE20TKM/burn`](https://github.com/LOVE20TKM/burn) 代码库单独部署到 BSC，作为首个代币 `distributor` 的外部依赖；部署记录必须公开指向 [`Airdrop.sol`](https://github.com/LOVE20TKM/burn/blob/main/src/Airdrop.sol)、[`DeployAirdrop.s.sol`](https://github.com/LOVE20TKM/burn/blob/main/script/DeployAirdrop.s.sol)、[`airdrop-design.md`](https://github.com/LOVE20TKM/burn/blob/main/docs/airdrop-design.md)，并记录实际使用的 Burn 提交、来源区块、Merkle Root 和已部署 Airdrop 地址。
+### 外围仓库的划分规则
+
+新增合约归属哪个仓库，按它**是否依赖协议已部署的合约**判断，这条规则决定仓库边界而不是按合约功能命名：
+
+| 类别 | 判据 | 依赖 | 例子 |
+| --- | --- | --- | --- |
+| `periphery` | 依赖协议已部署的合约，可随时替换，提供聚合查看或便捷交互 | `core` | viewer、hub |
+| `tools` | **不**依赖协议已部署的合约，功能单一 | 无 | `UniswapV2Zap`、`BatchTransfer` |
+| 业务库 | 功能复杂、多合约协作，一库一仓 | `core`、`action` | `group-chat` |
+
+判据的关键后果：`tools` 的合约**不随协议升级而返工**，所以先建、先稳定；`periphery` 的合约读取协议状态，必须等它依赖的接口定稿后再建。「可随时重新部署」不构成归入外围的理由——读写协议状态的合约即便能重新部署，旧地址仍然在写协议状态，这类合约按普通协议组件处理，不按外围处理。
+
+`tools` 内各工具互相独立，因此**不设全仓统一的一键部署入口**：一个全局入口要么重复部署先前已部署的工具，要么无法覆盖后来新增的工具，两种结果都是错的。每个工具自带 `one_click_deploy_<tool>.sh` 与自己的参数文件、地址文件、`NN_*_<tool>.sh` 步骤脚本，编号在仓内按工具分段（`11`/`21`/`31`、`12`/`22`/`32`）。
+
+旧 `LOVE20TKM/extension`、`LOVE20TKM/extension-group` 的业务迁入 `action`；旧 `LOVE20TKM/extension-lp` 仅迁移 V2 LP 业务，重写为 `action` 内的 LP 行动执行合约，V1 LP 实现及旧 LP 工厂不迁移。`burn`、未部署的 `chat` 和外部 `v2-periphery` 不在本组织清单中。首币的 `distributor` 为本仓库的 `core/src/distributor/AirdropDistributor.sol`。首币空投的份额数据来源于旧 `LOVE20TKM/burn` 记录在链上的销毁活动结果（来源链 ID、来源区块、来源地址与份额快照）；部署记录必须公开记录实际使用的来源链、来源区块、Merkle Root 与首币地址，使任何人可独立复算。
 
 旧 `LOVE20TKM/group` 仓库中已部署且仍需要的 `LOVE20Group` 只迁移合约级实现，并入 `core` 后重命名为 `MemberNFT`；旧 `LOVE20Group` 是成员身份 NFT，不是“群”的 NFT，改名即为消除该误解——链群以 `groupId` 为业务标识，不存在第二套 GroupNFT 身份。`GroupDefaults` 属于地址到默认 NFT 的便利映射，BSC 版不迁移、不部署；不新增独立的 `group` 代码库。旧 `GroupDelegate` 不进入 `core`，也不进入 BSC 版：群聊授权只认 NFT 当前持有人，代理需求留给上层托管合约，见 [ADR-005](adr/005-remove-group-chat-delegation.md)。
