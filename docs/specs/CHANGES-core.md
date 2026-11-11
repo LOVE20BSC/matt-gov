@@ -4,6 +4,52 @@
 
 本文档列出 BSC Core 相对于 LOVE20TKM 旧协议的所有变更。保留项直接引用旧代码位置，避免重复描述。
 
+## 首币 distributor 改为本仓 AirdropDistributor（2026-11-12）
+
+首币的 `distributor` 由「外部部署的旧 Burn `Airdrop`」改为本仓库的 `core/src/distributor/AirdropDistributor.sol`。本文第 7 节「首个代币部署」与文末勾选清单里的「发送首批代币到 Airdrop」「首币固定使用 Airdrop」「首个代币通过 Airdrop 合约分发」是**迁移当时**的记录，保留原貌不回写；当前口径以本节与 [AirdropDistributor 规格](core/10-airdrop-distributor.md) 为准。决策全文见 [ADR](../adr/2026-11-12-genesis-distributor-becomes-airdrop-distributor.md)。
+
+**范围为 ABI 与部署形态，不改首币的创建路径**：首币仍由 `Launch` 构造函数创建、仍固定 `NoCallback`（构造函数不调回调），首批供应仍直接铸给 `distributor`。
+
+| 项 | 迁移当时 | 现在 |
+| --- | --- | --- |
+| 首币 `distributor` 来源 | 旧 `LOVE20TKM/burn` 的 `Airdrop.sol`，活动结束后单独部署 | 本仓库 `core/src/distributor/AirdropDistributor.sol` |
+| 首币配置写入 | 外部合约部署时传入 | `AirdropDistributor` 构造函数内完成，无需 `Launch` 回调 |
+| 份额分母 | `totalShare` 构造参数，只校验 `0 < totalShare <= 1e18` | `TOTAL_SHARE` 编译期常量 `1e18`，不可配置 |
+| 份额总和 | 只校验 `Σ <= 1e18`（上限） | 链下生成器归一化到 `Σ == 1e18`（恒等） |
+| 部署顺序 | `Phase → Launch → …` | `Phase → AirdropDistributor → Launch → …`（后续各合约 nonce 偏移 +1） |
+| 领取分页查询 | 无 | `airdropInfos(offset, limit, reverse)` |
+
+新增 `core/src/distributor/AirdropDistributor.sol` 与 `core/src/interfaces/distributor/IAirdropDistributor.sol`；`ILaunchDistributor.sol` 迁入 `src/interfaces/distributor/`。错误按 local-first 在本模块 `IAirdropDistributorErrors` 声明 11 个（`NotLaunchContract`、`InvalidDistributorDataCount`、`InvalidDistributorDataLength`、`TokenAlreadyConfigured`、`ZeroMerkleRoot`、`ClaimDelayRoundsExceeded`、`ClaimRoundNotReached`、`TokenNotConfigured`、`AirdropAlreadyClaimed`、`ShareExceedsRemaining`、`InvalidProof`），事件在 `IAirdropDistributorEvents` 声明 2 个（`AirdropConfigured`、`AirdropClaimed`），归入事件规范新增的 `core.distributor` 族。
+
+### 份额归一化到精确 1e18
+
+「配满 100%」由三段独立事实串成，缺一段都不成立：
+
+1. 链下生成器 `normalizeShares()`：`normalized[i] = floor(shares[i] × 1e18 ÷ rawTotal)`，把 `1e18 − Σnormalized` 的尾差补给本批份额最大的地址（并列取索引最小者）。`floor` 只丢尘埃，尾差不超过 `地址数 − 1` wei，补给后 `Σ == 1e18` 精确相等。
+2. 链下 `_build()` 断言 `Σnormalized == 1e18` 且每个 `normalized[i] > 0`；归一化在**叶子构建之前**完成，叶子哈希、快照 JSON 份额与 Merkle Root 三者基于同一份数组。
+3. 链上 `TOTAL_SHARE` 是编译期 `constant`，不进构造函数、不是部署参数，发射者与部署脚本都无法传入错误分母。
+
+只做到 `Σ <= 1e18` 不够：`1e18 − Σ` 的差额会永久留在合约里，任何地址都领不到，而链上没有任何手段发现。旧 Burn 生成器正是上限校验，故同批修改其链下工具（只改快照脚本与文档，不改其生产合约）。归一化改变快照生成规则：历史快照若不满足 `Σ == 1e18`，`ValidateAirdropSnapshot` 会拒绝。
+
+### 零份额的链上链下双层拒绝
+
+归一化用 `floor`，极小份额可能被截断为 `0`。若树中存在零份额叶子且链上不做显式拒绝，该地址会走到「证明通过 → `amount == 0` → 置领取标记 → 转出 0 代币」，即**领取成功却什么也没拿到，并永久失去该批资格**。两层同时拒绝：
+
+- **链下**：`_build()` 对 `normalized[i] == 0` 直接 revert，不产出含零份额叶子的快照。
+- **链上**：`claim` 第 5 步显式 `if (share == 0) revert InvalidProof();`，位置在 `ShareExceedsRemaining` 与 merkle 校验之前。链上不依赖链下保证——树可能是发射者自行构造的。不新增 `ZeroShare` 之类的 selector，与 merkle 失败共用 `InvalidProof()`。
+
+`claim` 的校验顺序固定为 存在性 → 状态 → 参数 → 账本 → 资格 → 外部，共 6 层判定、12 步执行；无 `only*` modifier，`claimer` 取自 `msg.sender`，只能给自己领。第 8 步算出的 `amount` 不做零值检查：`TOTAL_SHARE = 1e18`、`share >= 1`（由第 5 步保证）、`LAUNCH_AMOUNT >= 1e18` 且 `claim` 维持 `balanceOf(this) >= remainingShare`，故 `amount >= 1`。`LAUNCH_AMOUNT >= TOTAL_SHARE` 因此成为承重约束，由部署脚本在广播前校验。
+
+### launch 仓库仍不创建
+
+独立 `launch` 仓库本阶段仍不创建，[仓库清单](../repositories.md) 的分阶段结论不变。`AirdropDistributor` 归 `core`：它与 `Launch` 的发射流程共用同一次回调与同一条非零 distributor 校验，`Launch` 是它唯一的配置来源，为单个合约新建代码库会引入跨仓依赖与双份 CI。
+
+### 同步范围
+
+`core` 的 `src/distributor/`、`src/interfaces/distributor/`、`src/Launch.sol` 的 import、`script/deploy/`（地址预测偏移整体 +1、新增 `GENESIS_AIRDROP_MERKLE_ROOT` 与 `GENESIS_AIRDROP_CLAIM_DELAY_ROUNDS`、删除 `DISTRIBUTOR_ADDRESS`、`LAUNCH_AMOUNT >= TOTAL_SHARE` 的广播前校验）、`script/network/*/core.params`、`21_check.sh`、`31_verify.sh`、部署 `README.md`、事件基线 `script/events/`；`matt-gov` 的 `docs/specs/core/08-launch.md`、新规格 `docs/specs/core/10-airdrop-distributor.md`、`docs/specs/core/01-common-rules.md`（构造函数可发业务事件的第二处例外）、`docs/event-standards.md`（`core.distributor` 族与对象模型）、`docs/repositories.md`、`docs/review-guide.md`、`docs/acceptance.md`、本文件；旧 `LOVE20TKM/burn` 只改链下快照工具与 `docs/airdrop-design.md`，不改其生产合约。
+
+首币地址由部署脚本按 `computeCreateAddress(launchAddress, 1)` 预测，并在 `Launch` 部署后核对。本文第 7 节的「发送首批代币到 Airdrop」等表述与本文档开头「迁移当时的新旧对照」声明一致，属于历史记录。
+
 ## 依赖构造函数注入（DEP-01，2026-11-07）
 
 六个 core 合约（`Launch`、`MemberNFT`、`Stake`、`Submit`、`Vote`、`Mint`）的 `init` 入口改为构造函数；`initialized` 状态与 `AlreadyInitialized()` 删除。`Mint` 新增 `phaseAddress` 首参，不再从 `Vote.PHASE_ADDRESS()` 派生。`LOVE20Token` 构造函数删除 `minter`/`parentTokenAddress` 的 `code.length` 校验，`DependencyNotContract(address)` 随之从接口、错误注册表和测试中删除。

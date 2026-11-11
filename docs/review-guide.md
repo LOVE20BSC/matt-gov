@@ -158,7 +158,7 @@ rg -n 'core\.md|action\.md|group-chat\.md|launchFirstToken|initializeGenesis|TOD
 
 1. `MemberNFT.mint` → 费用计算 → NFT 铸造；
 2. `Vote` → Mint 首次领取时自动准备 → 治理/Proposal 激励铸造；
-3. `Launch.init` → 首个代币 → Airdrop → 首币 Pair；`Stake` 在首次质押时读取该 Pair；
+3. `Launch.init` → 首个代币 → AirdropDistributor → 首币 Pair；`Stake` 在首次质押时读取该 Pair；
 4. 一条 Action 加入/退出/验证/铸造流程；
 5. 一条 Group Chat 发言和黑名单流程。
 
@@ -252,7 +252,7 @@ LOVE20TKM/<repo>/<path>[#<function-or-symbol>]
 
 - [ ] `LOVE20TKM` 只读约束在迁移流程、脚本和验收中一致
 - [ ] 旧组织地址、存储和历史状态没有被误写成 BSC 运行时依赖
-- [ ] Burn 的 Airdrop 仅作为外部 distributor，来源、部署和地址证据明确
+- [ ] 首币 distributor 为本仓 `AirdropDistributor`，空投数据来源（来源链、来源区块、Merkle Root、首币地址）可追溯且可独立复算
 - [ ] `interface-test` 是前端开发入口，`interface` 只在验收后人工同步
 - [ ] `launch` 未被错误创建为独立代码库
 

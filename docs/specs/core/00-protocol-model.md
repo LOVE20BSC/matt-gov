@@ -54,7 +54,7 @@ Core 不解释具体 Proposal 的业务字段，扩展通过 Target 接入。
 
 ## 实现约束
 
-- 全部 Core 合约都通过构造函数创建；部署顺序固定为 `Phase → Launch → MemberNFT → Stake → Submit → Vote → Mint`。依赖后部署合约的地址由脚本按部署者 nonce 预测（`MemberNFT`、`Vote`、`Mint` 三处前向引用），并在对应合约部署后立即核对。
+- 全部 Core 合约都通过构造函数创建；部署顺序固定为 `Phase → AirdropDistributor → Launch → MemberNFT → Stake → Submit → Vote → Mint`。依赖后部署合约的地址由脚本按部署者 nonce 预测（`AirdropDistributor`、`MemberNFT`、`Vote`、`Mint` 四处前向引用），并在对应合约部署后立即核对。
 - 构造函数不设调用者限制、不保存部署者地址；只保存传入地址和配置，不调用同批部署合约的任何 getter（`Launch` 的第三方 `factory.getPair`/`createPair` 是唯一例外）；不做静态零值校验，相关参数由 `DeployCore`/`21_check.sh` 校验；部署成功与否由发布前检查脚本核对实际绑定结果判定，见 [通用规则](01-common-rules.md#部署与安全)。
 - Mint 在准备时读取 Vote 的冻结结果，按 `proposalRewardMinVoteRatio` 一次性计算并缓存本轮达标 Proposal 总票数；后续 Proposal 激励结算以该缓存为分母，不再重算达标集合。单提案票数与门槛仍按该轮账本现读——该轮必须已结束，二者此后不再变化，现读值等于结算时点值。
 - 参数有效范围和组合限制以各模块规格为准；表中示例值不是默认部署配置。

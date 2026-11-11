@@ -14,7 +14,7 @@
 | `LOVE20TKM/extension-lp` | `e05c8770aa2ecbd63d0bc685b560bb41634d8875` |
 | `LOVE20TKM/group` | `2eb6d6c8d48bf6dd382efa5887124a2c3c722fd9` |
 | `LOVE20TKM/group-chat` | `ce21ea8f29b3750421876ae649fa7d919fe42cff` |
-| `LOVE20TKM/burn` | `a7f9aefe7194feaf1582acaa0c9dbffee7026391` |
+| `LOVE20TKM/burn` | `b26fd9c6d0a5554feca50274c642b1516d9e02a5` |
 
 | 仓库 | 定位 | 主要依赖 | 当前状态 |
 | --- | --- | --- | --- |

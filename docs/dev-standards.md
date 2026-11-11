@@ -210,7 +210,7 @@ EIP-170 限制部署字节码 ≤ 24,576 字节。超过时：
 - 部署是否成功由发布前 check 脚本核对实际绑定结果判定，任何不一致即重新部署；不能把"部署后立即初始化"当作防抢跑保证。
 - **绑定是否完成只在部署阶段校验**：check 脚本逐项核对每个合约的实际绑定与派生结果——依赖地址有代码、派生的配置非零、关键状态等于预期；不一致即重新部署。合约业务逻辑默认**部署期固定的依赖**已完成绑定，运行期不判这些依赖是否初始化、不为其零值或无代码另设分支与错误：这类防御会把部署遗漏变成静默的错误结果，而不是在部署时暴露。调用方入参、可选配置（零值表示不启用）的校验属业务校验，不在此列。构造函数注入的模块更必须在构造期只保存入参、不调用同批部署合约的 getter，由脚本预测地址并在部署后核对；第三方已部署合约（如 UniswapV2 Factory 的 `getPair`/`createPair`）与自身 `new` 不在此限。
 - **参数尽可能少**：能由入参地址的 getter 派生的依赖，不再重复入参；派生值在构造期读取一次并缓存，被派生依赖须先完成部署。例：`ActionTarget` 从 `Mint` 派生 `vote`/`submit`/`memberNFT`/`phase`，`LpExecutor` 从 `Stake` 派生 `memberNFTAddress`、`phaseAddress`、`pairFactoryAddress`。构造函数注入的模块不能读取同批合约，同批派生值改由部署脚本计算传入（如 `Mint` 的 `PHASE_ADDRESS`）。
-- **同仓预测 vs 跨仓既有地址**：同仓同批部署需要 CREATE 地址预测时，构造期只保存脚本预测的地址并在部署后核对；跨仓且部署时已落地的依赖，构造期可直接读取其 getter 派生（如 `ActionTarget` 从 `Mint` 读取 `VOTE_ADDRESS`/`SUBMIT_ADDRESS`/`MEMBER_NFT_ADDRESS`/`PHASE_ADDRESS`），部署脚本在广播前复核派生结果并写入地址记录。core 的固定部署全序为 `Phase → Launch → MemberNFT → Stake → Submit → Vote → Mint`。
+- **同仓预测 vs 跨仓既有地址**：同仓同批部署需要 CREATE 地址预测时，构造期只保存脚本预测的地址并在部署后核对；跨仓且部署时已落地的依赖，构造期可直接读取其 getter 派生（如 `ActionTarget` 从 `Mint` 读取 `VOTE_ADDRESS`/`SUBMIT_ADDRESS`/`MEMBER_NFT_ADDRESS`/`PHASE_ADDRESS`），部署脚本在广播前复核派生结果并写入地址记录。core 的固定部署全序为 `Phase → AirdropDistributor → Launch → MemberNFT → Stake → Submit → Vote → Mint`；`AirdropDistributor` 同时是「预测 `Launch` 地址」与「预测 `Launch` 内部第一笔 CREATE 地址」的例证（首币地址 = `computeCreateAddress(launchAddress, 1)`）。
 
 ### 5.5 调用者校验
 

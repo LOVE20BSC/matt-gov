@@ -10,12 +10,13 @@ Launch 负责首币部署、LOVE20Token 创建、基础发射与次数账本。T
 
 完整 ABI 见 [`ILaunch.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/ILaunch.sol)。
 
-部署顺序固定为 `Phase → Launch → MemberNFT → Stake → Submit → Vote → Mint`：
+部署顺序固定为 `Phase → AirdropDistributor → Launch → MemberNFT → Stake → Submit → Vote → Mint`：
 
 1. `Phase` 以构造参数部署。
-2. `Launch` 以 `LaunchInitParams` 部署；构造函数内写入依赖（含 Pair Factory）、发射参数和供应量配置，按固定顺序创建首币 → 登记首币（`FIRST_TOKEN_ADDRESS` 与四个登记账本）→ **创建或复用首币的 Pair** → 发出 `GenesisTokenCreated`。构造函数内只允许这一次 CREATE。
-3. `MemberNFT` 以构造参数部署，首币地址取自 `Launch.FIRST_TOKEN_ADDRESS()`（真实地址，不使用 `tokens(0)` 查询）；`MemberNFT` 不保存 Launch 地址。
-4. `Stake`、`Submit`、`Vote`、`Mint` 依次构造。`Stake` 构造时 `Vote` 尚未部署，脚本按部署者 nonce 预测 `Vote` 地址，并在 `Vote` 部署后立即核对 `Stake.VOTE_ADDRESS()`；`MemberNFT` 与 `Mint` 的地址同样在部署前预测、部署后核对。构造函数只保存传入地址，不调用同批部署合约的任何 getter；`Launch` 对已部署第三方的 `factory.getPair`/`createPair` 是唯一例外。
+2. `AirdropDistributor` 以构造参数部署，接收脚本预测的 `Launch` 地址、已部署的 `Phase` 地址、脚本预测的首币地址，以及首币的 Merkle Root 与领取延迟轮数；首币的完整分发配置在它自己的构造函数内一次写入，见 [AirdropDistributor](10-airdrop-distributor.md)。
+3. `Launch` 以 `LaunchInitParams` 部署；构造函数内写入依赖（含 Pair Factory）、发射参数和供应量配置，按固定顺序创建首币 → 登记首币（`FIRST_TOKEN_ADDRESS` 与四个登记账本）→ **创建或复用首币的 Pair** → 发出 `GenesisTokenCreated`。构造函数内只允许这一次 CREATE，因此首币地址按 `computeCreateAddress(launchAddress, 1)` 预测；`Launch` 的 `distributor` 就是这个 `AirdropDistributor`，部署后核对首币地址与预测值一致。
+4. `MemberNFT` 以构造参数部署，首币地址取自 `Launch.FIRST_TOKEN_ADDRESS()`（真实地址，不使用 `tokens(0)` 查询）；`MemberNFT` 不保存 Launch 地址。
+5. `Stake`、`Submit`、`Vote`、`Mint` 依次构造。`Stake` 构造时 `Vote` 尚未部署，脚本按部署者 nonce 预测 `Vote` 地址，并在 `Vote` 部署后立即核对 `Stake.VOTE_ADDRESS()`；`MemberNFT` 与 `Mint` 的地址同样在部署前预测、部署后核对。构造函数只保存传入地址，不调用同批部署合约的任何 getter；`Launch` 对已部署第三方的 `factory.getPair`/`createPair` 是唯一例外。
 
 `Launch` 构造函数不保存或校验部署者地址；成功部署即完成配置，无需后续初始化交易。部署是否成功由发布前检查脚本判定——逐项核对依赖地址、首币名称与符号、首币分发地址、发射参数、供应量配置和首币登记结果，任何不一致即重新部署。
 
@@ -33,7 +34,7 @@ Launch 负责首币部署、LOVE20Token 创建、基础发射与次数账本。T
 
 首币符号不套用 `TOKEN_SYMBOL_LENGTH` 校验：旧实现的第一个代币走 `tokensCount() == 0` 分支，跳过符号校验与测试网 `Test` 前缀（名称仍按 `tokenSymbol + "@" + parentTokenSymbol` 拼接）；BSC 版由构造参数直接给定首币名称和符号，因此首币符号长度可以与配置的子币符号长度不同。
 
-首币 `distributor` 为 Burn 活动结束后由旧 `LOVE20TKM/burn` 来源单独部署的 Airdrop；Burn 业务不迁移。旧仓库只读，来源提交、来源区块、Merkle Root、部署地址及公开源码证据见 [仓库清单](../../repositories.md)。不能把部署外部 Airdrop 误写为改造旧仓库。
+首币 `distributor` 为本仓库的 [`AirdropDistributor`](10-airdrop-distributor.md)，在 `Launch` 之前部署并把预测的首币地址、Merkle Root 与领取延迟传入其构造函数；`Launch` 构造函数只把首批供应铸给该地址，不调用它的回调。首币空投的份额数据来源于旧 `LOVE20TKM/burn` 记录在链上的销毁活动结果（来源链 ID、来源区块、来源地址与份额快照）；Burn 业务不迁移，旧仓库只读，`AirdropDistributor` 也不引用它的合约代码。部署记录必须公开记录实际使用的来源链、来源区块、Merkle Root 与首币地址，使任何人可独立复算，见 [仓库清单](../../repositories.md)。
 
 ### 透传来源
 
@@ -41,7 +42,7 @@ Launch 负责首币部署、LOVE20Token 创建、基础发射与次数账本。T
 | --- | --- | --- |
 | `LOVE20Token` 构造函数 | `ZeroInitialSupply()`、`MaxSupplyBelowInitialSupply(uint256,uint256)`、`ZeroDistributorAddress()` | 构造函数创建首币与 `launchToken` 创建子币都会经过；Launch 不重复声明 |
 | `IMemberNFT.ownerOf` | `ERC721NonexistentToken(uint256)` | `onlyMemberOwner` 与 `mergeLaunchCount` 的目标存在性 |
-| `ILaunchDistributor.onTokenLaunched` | 任意 revert data | `Callback` 模式；失败整笔回滚 |
+| `ILaunchDistributor.onTokenLaunched` | 任意 revert data（不转译、原样冒泡） | `Callback` 模式；distributor 由发射者自选，属不可信输入。首币 distributor 是本仓库的 `AirdropDistributor`，其 `NotLaunchContract`、`InvalidDistributorDataCount`、`InvalidDistributorDataLength`、`TokenAlreadyConfigured`、`ZeroMerkleRoot`、`ClaimDelayRoundsExceeded` 在 `Callback` 模式下同样原样冒泡 |
 
 ## 代币登记与查询
 
@@ -116,15 +117,15 @@ Launch 只保存“成员可用整数次数”和“代币累计已产生次数�
 
 普通发射的父币必须是已登记 LOVE20 代币，`distributor` 非零。分发支持 `NoCallback` 和 `Callback` 两种模式。普通发射携带一个 `bytes[] distributorData` 数组；可以为空，不设长度上限，元素内容与编码由 distributor 自行约定：Launch 只原样透传，不遍历、不解析。
 
-分发回调接口见 [`ILaunchDistributor.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/ILaunchDistributor.sol)。
+分发回调接口见 [`ILaunchDistributor.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/distributor/ILaunchDistributor.sol)。
 
-`NoCallback` 不调用回调，且忽略 `distributorData`（不校验是否为空）；`Callback` 要求 `distributor` 为合约并调用 `onTokenLaunched`，原样透传 `distributorData`，回调失败则整笔发射回滚。首币使用旧 Burn `Airdrop`，固定采用 `NoCallback`；普通发射才可选择 `Callback`。
+`NoCallback` 不调用回调，且忽略 `distributorData`（不校验是否为空）；`Callback` 要求 `distributor` 为合约并调用 `onTokenLaunched`，原样透传 `distributorData`，回调失败则整笔发射回滚。首币的 distributor 是本仓库的 `AirdropDistributor`，固定在构造函数内完成配置，因此首币仍采用 `NoCallback`——Launch 构造函数不调回调；只有普通发射才可选择 `Callback`，例如把子币首批供应交给一个 `AirdropDistributor` 实例时。
 
 回调仅由 Launch 调用，发生于代币创建、首批供应到账、代币登记与次数扣减之后；`TokenLaunched.launcherMemberId` 取本次 `memberId`。distributor 校验调用方并防止同一 token 重复处理；Launch 不开放额外的补触发回调入口。两种模式均允许非零合约接收，EOA 仅允许 NoCallback。
 
 回调可重入 `launchToken`：外层账本（次数递减、代币列表、父币映射、符号映射、子币列表）在回调前已封账，重入等价于同一交易内连续发射两次，两次都消耗该成员在对应父币维度的剩余次数。distributor 若需拒绝重入应自行加锁，不能依赖 Launch。
 
-distributor 自行实现领取与查询逻辑，`claim(tokenAddress)` 只是建议接口，不是协议必需 ABI。发射者负责选择分发目标，承担其失败和 Gas 耗尽风险。
+distributor 自行实现领取与查询逻辑；`ILaunchDistributor` 只规定 `onTokenLaunched`，协议不要求 distributor 提供任何领取入口。本仓库的 [`AirdropDistributor`](10-airdrop-distributor.md) 提供了具体的领取与查询 ABI，属于该模块自己的约定，不构成对所有 distributor 的协议要求。发射者负责选择分发目标，承担其失败和 Gas 耗尽风险。
 
 校验顺序固定为鉴权 → 参数 → 存在性 → 账本 → 扣减 → 最终符号唯一性：先校验调用者持有 `memberId`，再校验参数（`tokenSymbol`、`distributor` 与分发模式），再校验存在性（`parentTokenAddress` 为已登记 LOVE20 代币；`memberId` 存在性由鉴权覆盖），再校验账本余量并扣减次数，最后按施加 `Test` 前缀后的最终符号校验唯一性。唯一性校验必须排在父币存在性校验之后：最终符号要先读取已登记父币的符号才能得到。
 

@@ -100,12 +100,12 @@
 - 次数融合不携带 `launchCredit`
 
 ### 子币发射分发边界
-**覆盖要求**：覆盖首个代币由 `Launch` 构造函数（`LaunchInitParams` 构造参数）一次性创建、使用 WETH 且不带分发数据、不消耗发射次数、首币创建后无重复创建入口、普通发射社区与 `parentTokenAddress` 一致、非零 `distributor`、普通发射的 `NoCallback`/`Callback` 两种分发模式、普通发射的 `distributorData` 可空且原样透传、`NoCallback` 下 `distributorData` 被忽略、Callback 回调失败回滚、首币固定使用 Airdrop 与 `NoCallback`、首币含名称和符号的 `GenesisTokenCreated` 事件，以及代币列表与子币列表分页查询、符号唯一性与符号字符集（ASCII 与 CJK 基本区汉字、非法 UTF-8 拒绝）。
+**覆盖要求**：覆盖首个代币由 `Launch` 构造函数（`LaunchInitParams` 构造参数）一次性创建、使用 WETH 且不带分发数据、不消耗发射次数、首币创建后无重复创建入口、普通发射社区与 `parentTokenAddress` 一致、非零 `distributor`、普通发射的 `NoCallback`/`Callback` 两种分发模式、普通发射的 `distributorData` 可空且原样透传、`NoCallback` 下 `distributorData` 被忽略、Callback 回调失败回滚、首币 distributor 为本仓 `AirdropDistributor` 且固定 `NoCallback`、首币含名称和符号的 `GenesisTokenCreated` 事件，以及代币列表与子币列表分页查询、符号唯一性与符号字符集（ASCII 与 CJK 基本区汉字、非法 UTF-8 拒绝）。
 
 **测试方式**：
 - 单元测试：`core/test/Launch.t.sol` 的首个代币启动、普通发射场景
 - 单元测试：`core/test/Launch.t.sol` 的构造期首币创建和事件场景
-- 验收证据：首个代币部署与 Airdrop 集成日志
+- 验收证据：首个代币部署与 `AirdropDistributor` 配置日志（来源链、来源区块、Merkle Root 与首币地址）
 
 **判定标准**：
 - `core` 只部署 Launch 一条代币创建路径；`ILaunch` 不暴露独立创建入口，LOVE20Token 仅由 Launch 内部部署
@@ -117,6 +117,24 @@
 - 施加 `Test` 前缀后的最终符号重复时回滚 `TokenSymbolAlreadyExists(keccak256(bytes(finalSymbol)))`，`tokenAddressBySymbol` 命中已登记符号
 - 子币符号按 UTF-8 字节长度（等于 `TOKEN_SYMBOL_LENGTH`）与字符集校验：首字符为 ASCII `A-Z` 或 CJK 基本区汉字（`U+4E00`–`U+9FFF`），其余为 ASCII `A-Z`、`0-9` 或汉字；长度不符回滚 `InvalidTokenSymbolLength(length, TOKEN_SYMBOL_LENGTH)`，字符集不符回滚 `InvalidTokenSymbolCharacters()`
 - `parentToken` 对首币返回 `ROOT_PARENT_TOKEN_ADDRESS`、对子币返回其父币、对未登记地址返回零地址；`isLOVE20Token` 与它一致
+
+### 首币空投分发
+**覆盖要求**：覆盖 `AirdropDistributor` 的构造配置（`TOTAL_SHARE = 1e18`、`MAX_CLAIM_DELAY_ROUNDS = 1000`、首币在构造期完成配置）、回调数据形状（`distributorData` 恰好 1 元素、恰好 64 字节）、回调鉴权、配置拒绝（零根、延迟超上限、同一 token 二次配置）、轮次夹取（`currentPhase() == 0` 时 `baseRound = 1`）、`claimDelayRounds` 为 `0` 当轮可领与为 `1` 下一轮可领、`claim` 的六层失败契约与优先级、零份额的链上链下双层拒绝、按剩余份额的比例分配与最后一人清空余额、`claimableAmount` 预检与 `claim` 返回一致、`AirdropConfigured` / `AirdropClaimed` 的字段与 indexed 布局，以及 `airdropInfos` 的分页语义与「不设独立计数入口」。
+
+**测试方式**：
+- 单元测试：`core/test/AirdropDistributor.t.sol` 的配置、领取与比例分配场景
+- 单元测试：`core/test/AirdropDistributorEdgeCases.t.sol` 的形状、鉴权、轮次与失败优先级
+- 单元测试：`core/test/AirdropDistributorEvents.t.sol` 的两个事件字段与折叠
+- 验收证据：Merkle 快照（来源链、来源区块、Merkle Root、首币地址）与 `Σleaves == 1e18` 的独立复算记录
+
+**判定标准**：
+- 首币在 `AirdropDistributor` 构造期即完成配置，`Launch` 构造函数不调用回调；首币与子币的 Root、起始轮次、`claimedShare` 相互独立
+- 非 `LAUNCH_ADDRESS` 调用 `onTokenLaunched` 回滚 `NotLaunchContract(caller)`；形状错误先于解码，回滚 `InvalidDistributorDataCount` / `InvalidDistributorDataLength`
+- `claim` 的校验顺序固定为 存在性 → 状态 → 参数 → 账本 → 资格 → 外部，先命中先回滚；`share == 0` 由链上**显式**回滚 `InvalidProof()`，位置在 `ShareExceedsRemaining` 与证明校验之前，不依赖链下生成器，也不出现「领取成功但拿到 0 代币并失去资格」的静默结果
+- `claim` 不设调用者限制（`claimer` 即 `msg.sender`，只能给自己领）；第 8 步算出的 `amount` 不做零值检查，第 9 步写状态先于第 10 步转账；转账失败透传 OZ `SafeERC20FailedOperation`，错误全集为 5 个自有 selector + 该透传错误
+- `amount = floor(balanceOf(this) × share ÷ remainingShare)`；全部份额领完后合约余额为零，且每个人累计所得不超过其份额比例
+- `AirdropClaimed` 五个字段逐个正确，`remainingShare` 是扣除本次后的值；`airdropInfos` 含首币、`offset` 越界返回空数组与真实 `totalCount`
+- 快照生成器保证 `Σleaves == 1e18` 精确相等；链上没有 Root 更新、暂停或取回入口
 
 ### 发射次数按社区代币维度记账
 **覆盖要求**：覆盖首币产生整数次数时只写入首币自身的维度、每次产生次数发一条 `LaunchCountAdded`、每个已登记代币的累计次数各自受 `MAX_LAUNCH_COUNT` 约束，以及 `FIRST_TOKEN_ADDRESS` getter。

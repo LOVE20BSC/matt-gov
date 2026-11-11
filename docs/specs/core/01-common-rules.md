@@ -46,9 +46,9 @@ core 不校验是有意分工：core 无法预知实现集合，且回调是通�
 - 依赖注入统一走构造函数，不再保留一次性 `init` 入口；构造函数不设调用者限制，合约不保存部署者地址，也不授予部署者特权。部署成功后依赖地址和配置参数不可替换，无升级管理员或协议级后门。
 - 构造函数是硬约定：只保存传入地址与配置，**不得调用同代码仓库、同批部署合约的任何 getter 或函数**。因此地址必须来自部署脚本的预测或既有部署；`Launch` 的 `factory.getPair`/`createPair` 是唯一例外——它调用的是已部署的第三方 UniswapV2 工厂。
 - 构造函数不做静态零值校验；部署期静态参数由 `DeployCore` 广播前校验；依赖代码与派生值由 `DeployCore` 部署后校验、`21_check.sh` 独立复核，不匹配即重新部署，见 dev-standards §5.7。
-- 部署顺序固定为 `Phase → Launch → MemberNFT → Stake → Submit → Vote → Mint`。前向引用只在三处：`MemberNFT`、`Vote`、`Mint`，由脚本按部署者 nonce 预测地址，并在对应合约部署后立即核对；`Stake` 的 `VOTE_ADDRESS()` 也在此一并核对。
+- 部署顺序固定为 `Phase → AirdropDistributor → Launch → MemberNFT → Stake → Submit → Vote → Mint`。前向引用只在四处：`AirdropDistributor` 构造期需要 `Launch` 及其首币地址（首币地址本身是 `Launch` 的第一笔 CREATE，按 `computeCreateAddress(launchAddress, 1)` 预测）、`MemberNFT`、`Vote`、`Mint`，由脚本按部署者 nonce 预测地址，并在对应合约部署后立即核对；`Stake` 的 `VOTE_ADDRESS()` 也在此一并核对。
 - 部署是否成功由发布前检查脚本核对实际绑定结果判定，逐项核对依赖地址和全部配置常量，任何不一致即重新部署。
-- 构造函数不发**配置**事件，也不发任何以自身名义宣告初始化完成的事件；`Launch` 构造期创建首币是唯一例外，它的日志序列是业务日志——首币构造发 `TokenMinted`、工厂建池发 `PairCreated`、最后 `Launch` 发 `GenesisTokenCreated`，其中 `GenesisTokenCreated` 必须是构造期的最后一条日志。
+- 构造函数不发**配置**事件，也不发任何以自身名义宣告初始化完成的事件；两处已登记例外都是「构造期即成立的业务事实」，不是初始化完成宣告：`Launch` 构造期创建首币的日志序列（首币构造发 `TokenMinted`、工厂建池发 `PairCreated`、最后 `Launch` 发 `GenesisTokenCreated`，其中 `GenesisTokenCreated` 必须是构造期的最后一条日志），以及 `AirdropDistributor` 构造期为首币写入分发配置后发出的 `AirdropConfigured`——首币固定 `NoCallback`，`Launch` 不会回调它，首币的配置只能在它自己的构造函数内完成，若此时不发事件则该配置没有其它事件覆盖。新增第三处必须先在此登记。
 - 写操作遵循检查、更新、交互顺序并防重入；失败不能留下半完成状态。`Stake` 是这条规则的有意例外：它不设重入锁，改以「先完成全部校验、再发起外部调用、并以外部调用实际返回的数量记账」保证一致，理由与边界见 [Stake 实现约束](04-stake.md#实现约束)。
 
 ## 编号约束
