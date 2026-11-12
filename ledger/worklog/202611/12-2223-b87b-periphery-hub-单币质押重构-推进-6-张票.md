@@ -1,7 +1,7 @@
 # 20261112-2223-b87b-periphery-hub-单币质押重构-推进-6-张票: periphery Hub 单币质押重构：推进 6 张票
 
 - **Tags**: 跨仓重构, periphery, Stake, ABI, 事件族
-- **Status**: doing · 2026-11-12 22:23:00 · @tester · 47d39b07-9d74-4077-8a12-8ab9280ea25d
+- **Status**: doing · 2026-11-12 22:27:06 · @tester · 47d39b07-9d74-4077-8a12-8ab9280ea25d
 - **Created**: 2026-11-12 22:23:00 · @tester · 47d39b07-9d74-4077-8a12-8ab9280ea25d
 
 <!-- Header lines are maintained by the script, fixed order: Tags → Status → Created → Sealed.
@@ -34,3 +34,4 @@
 <!-- Maintained by the script: appended by new / claim / set / release / log / close. Do not edit.
      Backfill with: progress log --id 20261112-2223-b87b-periphery-hub-单币质押重构-推进-6-张票 --note "...". -->
 - 2026-11-12 22:23:00 · new · @tester · 47d39b07-9d74-4077-8a12-8ab9280ea25d · created and claimed
+- 2026-11-12 22:27:06 · log · @tester · 47d39b07-9d74-4077-8a12-8ab9280ea25d · 基线全绿：core/tools forge build --deny warnings、tools 109 测试、matt-gov 五个 checker 全过。发现票据集两处缺口：anvil/script/SeedFlow.s.sol 实调旧 6 参 stakeLiquidity（票据 06 断言 anvil 无需改动不成立）；action 两处集成测试用 SLIPPAGE_100_PERCENT（lib/core 为 pin 子模块，本次不破）
