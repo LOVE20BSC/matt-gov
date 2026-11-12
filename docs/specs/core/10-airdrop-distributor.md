@@ -48,7 +48,7 @@ AirdropDistributor 是首币与普通发射共用的可选 distributor：接收�
 
 ## 状态
 
-按 `tokenAddress` 保存，全部为 `internal` 映射，对外只经同名 getter 读取。
+按 `tokenAddress` 保存，全部为 `internal` 映射。对外不按字段逐个开 getter：整套字段经 `airdropInfo(tokenAddress)` 一次读出，单地址维度另有 `isClaimed` / `claimedAmount`。
 
 | 状态 | 键 | 值 |
 | --- | --- | --- |
@@ -166,9 +166,9 @@ leafHash(msg.sender, share) = keccak256(bytes.concat(keccak256(abi.encode(msg.se
 | 6 | 账本 | `share > remaining` | `ShareExceedsRemaining(uint256 share, uint256 remainingShare)` |
 | 7 | 资格 | `proof` 与 `leafHash(claimer, share)` 不匹配 | `InvalidProof()` |
 | 8 | — | `amount = Math.mulDiv(balanceOf(this), share, remaining)`（**不做 `amount == 0` 检查**，见下） | — |
-| 9 | — | 写状态（CEI）：领取标记 → 已领金额 → `totalClaimedShare` | — |
+| 9 | — | 写状态（CEI，四笔）：领取标记 → 该 `claimer` 已领金额 → `totalClaimedShare` → `totalClaimedAmount` | — |
 | 10 | 外部 | `safeTransfer(claimer, amount)` 失败 | `SafeERC20FailedOperation(address token)`，OZ 透传，不在本合约自有错误内 |
-| 11 | — | 发 `AirdropClaimed`，`totalRemainingShare` 为**领取后**的 `remaining - share` | — |
+| 11 | — | 发 `AirdropClaimed`，其 `remainingShare` 字段为**领取后**的 `remaining - share` | — |
 | 12 | — | `return amount` | — |
 
 顺序固定为「存在性 → 状态 → 参数 → 账本 → 资格 → 外部」，先命中先回滚，同一入口内不重排。
@@ -186,7 +186,7 @@ leafHash(msg.sender, share) = keccak256(bytes.concat(keccak256(abi.encode(msg.se
 
 资产只从本合约流向 `msg.sender`，没有其他去向：`claim` 不接收代币、不产生授权、不向任何第三方地址转账。写操作遵循「检查 → 更新 → 交互」：第 9 步全部状态写入完成后才执行第 10 步转账，转账成功后第 11 步发事件，失败则整笔回滚、状态与代币都不改变。
 
-`AirdropClaimed` 的 `tokenAddress`、`claimer` 带 `indexed`；`share` 是本次消耗的份额；`amount` 是本次实际转出的代币数量；`totalRemainingShare` 是**扣除本次份额后**的剩余份额，使索引器按日志顺序折叠即得下一个 `totalRemainingShare`，无须回算——首条日志的 `totalRemainingShare` 加上它自己的 `share` 等于 `TOTAL_SHARE`，其后每条加上前一条的 `totalRemainingShare` 也成立。
+`AirdropClaimed` 的 `tokenAddress`、`claimer` 带 `indexed`；`share` 是本次消耗的份额；`amount` 是本次实际转出的代币数量；`remainingShare` 是**扣除本次份额后**的剩余份额，使索引器按日志顺序折叠即得下一个 `remainingShare`，无须回算——首条日志的 `remainingShare` 加上它自己的 `share` 等于 `TOTAL_SHARE`，其后每条加上前一条的 `remainingShare` 也成立。事件字段名保持 `remainingShare`，不随结构体字段改名为 `totalRemainingShare`；两者语义相同（都是该 token 的全量剩余份额），但事件是既有 ABI，不因结构体重命名而变。
 
 ### 为什么不需要 amount == 0 检查
 
@@ -252,7 +252,7 @@ leafHash(msg.sender, share) = keccak256(bytes.concat(keccak256(abi.encode(msg.se
 
 | 入口 | 作用域 | 不存在时的行为 |
 | --- | --- | --- |
-| `airdropInfo(tokenAddress)` | 单条 | 返回该批完整 `AirdropInfo`（8 字段）；未配置的 token 返回全零结构体与空 `snapshotUri`，不回滚 |
+| `airdropInfo(tokenAddress)` | 单条 | 返回该批完整 `AirdropInfo`（8 字段）；未配置的 token 返回全零结构体与空 `snapshotUri`，不回滚。注意此时 `totalRemainingShare` 是 `0` 而不是 `TOTAL_SHARE`——`0` 是已配置状态下**不可能出现**的值（已配置且无人领取时它是 `1e18`），前端必须先用 `merkleRoot != 0` 判断「是否已配置」，不能只看 `totalRemainingShare` |
 | `isClaimed(tokenAddress, claimer)` | 单点 | 未领取或未配置返回 `false` |
 | `claimedAmount(tokenAddress, claimer)` | 单点 | 未领取或未配置返回 `0` |
 | `TOTAL_SHARE()` / `MAX_CLAIM_DELAY_ROUNDS()` / `MAX_SNAPSHOT_URI_BYTES()` | 常量 | — |
@@ -312,7 +312,7 @@ totalClaimedAmount + remainingAmount   == 该代币的初始首批供应量   //
 
 `remainingAmount` 是查询时点的实时值，不是快照时的首批供应量：已被领取的部分已转出合约，剩余量就是尚未领取的资产。领取进度需要对照 `totalRemainingShare` 读，不能用余额单独推断——链下快照 `Σleaves` 与 `1e18` 的差会直接体现为两者的不成比例。
 
-`AirdropInfo` 是 ABI 只读记录（`<X>Info`），承载查询结果，不是存储结构；合约内的存储是七个按 `tokenAddress`（及 `claimer`）索引的映射加一个只追加的 `address[]` 列表。`snapshotUri` 作为第 7 字段追加在末尾，使既有 6 字段的语义与下标不变；它虽是 `string`，但有 256 字节链上硬上限，见 [常量](#常量) 与 [event-standards §6.8](../../event-standards.md#68-动态字段上限)。
+`AirdropInfo` 是 ABI 只读记录（`<X>Info`），承载查询结果，不是存储结构；合约内的存储是八个按 `tokenAddress`（及 `claimer`）索引的映射加一个只追加的 `address[]` 列表。`snapshotUri` 是第 8 字段（也是唯一变长字段）；它虽是 `string`，但有 256 字节链上硬上限，见 [常量](#常量) 与 [event-standards §6.8](../../event-standards.md#68-动态字段上限)。
 
 ## 外部调用
 
