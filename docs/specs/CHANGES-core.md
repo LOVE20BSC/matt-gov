@@ -597,7 +597,7 @@ Core 门禁：**446 tests 全绿**；`build --deny warnings`、`lint`、`check_c
 - **新**：在旧字符集上扩展 CJK 统一表意文字基本区 `U+4E00`–`U+9FFF`（三字节 UTF-8 编码）；首字符为 ASCII `A-Z` 或汉字，其余为 ASCII `A-Z`、`0-9` 或汉字；字节长度口径不变
 
 #### 不迁移的业务
-公平发射募资与认购领取整块不迁移：`contribute`、`withdraw`、`claim`、`claimInfo`、`LaunchInfo` 的其余 10 个字段、`CLAIM_DELAY_BLOCKS` 全部删除。按发射者或募资状态划分的枚举（`childTokensByLauncher*`、`launching*`、`launched*`、`participatedTokens*`）也删除；代币列表与某社区子币列表保留为分页查询（`tokens`、`childTokens`），符号到地址账本保留为 `tokenAddressBySymbol`（子币符号全局唯一，`TokenSymbolAlreadyExists`），代币地址到父币地址保留为 `parentToken`。
+公平发射募资与认购领取整块不迁移：`contribute`、`withdraw`、`claim`、`claimInfo`、`LaunchInfo` 的其余 10 个字段、`CLAIM_DELAY_BLOCKS` 全部删除。按发射者或募资状态划分的枚举（`childTokensByLauncher*`、`launching*`、`launched*`、`participatedTokens*`）也删除；代币列表与某社区子币列表保留为分页查询（`tokens`、`childTokens`），符号到地址账本保留为 `tokenAddressBySymbol`（子币符号全局唯一，`TokenSymbolAlreadyExists`），代币地址到父币地址保留为 `parentToken`。后续按 frontend/indexer 需求新增了按 `distributor` 聚合的链上分页查询 `tokensByDistributor`（含首币）；它按首批供应接收地址聚合，与上述「按发射者」枚举不是同一维度，也不恢复被删除的募资状态枚举，决策见 [ADR](../adr/2026-11-12-distributor-token-list-onchain.md)。
 
 ### 📍 实现参考
 ```

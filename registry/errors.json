@@ -1540,7 +1540,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Launch.sol:309"
+        "core/src/Launch.sol:321"
       ],
       "selector": "0x7c7610b0",
       "signature": "DistributorNotContract(address)"
@@ -1555,8 +1555,8 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Launch.sol:105",
-        "core/src/Launch.sol:165"
+        "core/src/Launch.sol:108",
+        "core/src/Launch.sol:169"
       ],
       "selector": "0x750e6e06",
       "signature": "InsufficientLaunchCount(uint256,uint256,uint256)"
@@ -1647,7 +1647,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Launch.sol:265"
+        "core/src/Launch.sol:277"
       ],
       "selector": "0x7e279c58",
       "signature": "InvalidTokenSymbolCharacters()"
@@ -1662,7 +1662,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Launch.sol:264"
+        "core/src/Launch.sol:276"
       ],
       "selector": "0x18a4669e",
       "signature": "InvalidTokenSymbolLength(uint256,uint256)"
@@ -1677,7 +1677,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Launch.sol:191"
+        "core/src/Launch.sol:195"
       ],
       "selector": "0x9affae33",
       "signature": "LaunchCountLimitExceeded(address,uint256,uint256)"
@@ -2005,7 +2005,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Launch.sol:252"
+        "core/src/Launch.sol:264"
       ],
       "selector": "0x90fa4b05",
       "signature": "PairCreationFailed(address)"
@@ -2035,7 +2035,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Launch.sol:101"
+        "core/src/Launch.sol:104"
       ],
       "selector": "0x7201021d",
       "signature": "ParentTokenNotRegistered(address)"
@@ -2310,7 +2310,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Launch.sol:154",
+        "core/src/Launch.sol:158",
         "core/src/Stake.sol:292"
       ],
       "selector": "0xbbef66e9",
@@ -2477,7 +2477,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Launch.sol:234"
+        "core/src/Launch.sol:246"
       ],
       "selector": "0x0d7673b5",
       "signature": "TokenNameEmpty()"
@@ -2492,7 +2492,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Launch.sol:235"
+        "core/src/Launch.sol:247"
       ],
       "selector": "0x312f5772",
       "signature": "TokenNameTooLong(uint256,uint256)"
@@ -2527,8 +2527,8 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Launch.sol:159",
-        "core/src/Launch.sol:187",
+        "core/src/Launch.sol:163",
+        "core/src/Launch.sol:191",
         "core/src/Mint.sol:107",
         "core/src/Stake.sol:561"
       ],
@@ -2545,7 +2545,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Launch.sol:121"
+        "core/src/Launch.sol:124"
       ],
       "selector": "0x98f23aa3",
       "signature": "TokenSymbolAlreadyExists(bytes32)"
@@ -2560,7 +2560,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Launch.sol:238"
+        "core/src/Launch.sol:250"
       ],
       "selector": "0xf09ce013",
       "signature": "TokenSymbolEmpty()"
@@ -2575,7 +2575,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Launch.sol:239"
+        "core/src/Launch.sol:251"
       ],
       "selector": "0xb77a560d",
       "signature": "TokenSymbolTooLong(uint256,uint256)"
@@ -2665,8 +2665,8 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Launch.sol:156",
-        "core/src/Launch.sol:186"
+        "core/src/Launch.sol:160",
+        "core/src/Launch.sol:190"
       ],
       "selector": "0x047b9cec",
       "signature": "ZeroCount()"
@@ -2684,7 +2684,7 @@
       "repo": "core",
       "revert_sites": [
         "core/src/LOVE20Token.sol:24",
-        "core/src/Launch.sol:97"
+        "core/src/Launch.sol:100"
       ],
       "selector": "0x71702079",
       "signature": "ZeroDistributorAddress()"

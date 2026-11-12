@@ -14,7 +14,7 @@ Launch 负责首币部署、LOVE20Token 创建、基础发射与次数账本。T
 
 1. `Phase` 以构造参数部署。
 2. `AirdropDistributor` 以构造参数部署，接收脚本预测的 `Launch` 地址、已部署的 `Phase` 地址、脚本预测的首币地址，以及首币的 Merkle Root 与领取延迟轮数；首币的完整分发配置在它自己的构造函数内一次写入，见 [AirdropDistributor](10-airdrop-distributor.md)。
-3. `Launch` 以 `LaunchInitParams` 部署；构造函数内写入依赖（含 Pair Factory）、发射参数和供应量配置，按固定顺序创建首币 → 登记首币（`FIRST_TOKEN_ADDRESS` 与四个登记账本）→ **创建或复用首币的 Pair** → 发出 `GenesisTokenCreated`。构造函数内只允许这一次 CREATE，因此首币地址按 `computeCreateAddress(launchAddress, 1)` 预测；`Launch` 的 `distributor` 就是这个 `AirdropDistributor`，部署后核对首币地址与预测值一致。
+3. `Launch` 以 `LaunchInitParams` 部署；构造函数内写入依赖（含 Pair Factory）、发射参数和供应量配置，按固定顺序创建首币 → 登记首币（`FIRST_TOKEN_ADDRESS` 与五个登记账本）→ **创建或复用首币的 Pair** → 发出 `GenesisTokenCreated`。构造函数内只允许这一次 CREATE，因此首币地址按 `computeCreateAddress(launchAddress, 1)` 预测；`Launch` 的 `distributor` 就是这个 `AirdropDistributor`，部署后核对首币地址与预测值一致。
 4. `MemberNFT` 以构造参数部署，首币地址取自 `Launch.FIRST_TOKEN_ADDRESS()`（真实地址，不使用 `tokens(0)` 查询）；`MemberNFT` 不保存 Launch 地址。
 5. `Stake`、`Submit`、`Vote`、`Mint` 依次构造。`Stake` 构造时 `Vote` 尚未部署，脚本按部署者 nonce 预测 `Vote` 地址，并在 `Vote` 部署后立即核对 `Stake.VOTE_ADDRESS()`；`MemberNFT` 与 `Mint` 的地址同样在部署前预测、部署后核对。构造函数只保存传入地址，不调用同批部署合约的任何 getter；`Launch` 对已部署第三方的 `factory.getPair`/`createPair` 是唯一例外。
 
@@ -50,16 +50,21 @@ Launch 负责首币部署、LOVE20Token 创建、基础发射与次数账本。T
 
 登记状态记录为「代币地址 → 父币地址」，由 Launch 自己维护：非零即已登记，首币的父币地址是 `ROOT_PARENT_TOKEN_ADDRESS`。`parentToken(tokenAddress)` 是读取入口，`isLOVE20Token` 也用它判定，不读取代币合约的 `PARENT_TOKEN_ADDRESS()`：无关合约同样能实现这个 getter，而 EOA 与非合约地址调用它会回滚，与上面的返回约定冲突。
 
-Launch 维护四个查询账本，都由上述两个入口写入：
+Launch 维护五个查询账本，都由上述两个入口写入：
 
 | 账本 | 作用 |
 | --- | --- |
 | 创建顺序的已发射代币列表 | `tokens(offset, limit, reverse)` 分页读取；包含首币 |
 | 代币地址到父币地址 | `parentToken(tokenAddress)` 单点读取；未登记地址返回零地址 |
 | `parentTokenAddress` 到子币列表 | `childTokens(parentTokenAddress, offset, limit, reverse)` 分页读取；`childTokens(ROOT_PARENT_TOKEN_ADDRESS)` 只返回首币 |
+| `distributor` 到已发射代币列表 | `tokensByDistributor(distributor, offset, limit, reverse)` 分页读取；按该地址接收首批供应的代币聚合，包含首币 |
 | 符号到代币地址 | `tokenAddressBySymbol(symbol)` 单点读取；首币与子币都登记，因此子币符号全局唯一 |
 
-分页语义与 `Phase.observations` 一致：`offset` 大于或等于总数时返回空数组与真实 `totalCount`，不校验也不回滚；`limit` 大于剩余条数时按剩余条数返回；`reverse` 为 `true` 时按从新到旧返回。未登记过的父币地址返回空数组与 `0`。分页查询都不限制写入条数，链上不提供全量遍历，只按页读取。
+`distributor` 是发射者显式指定的首批供应接收地址（可为 EOA 或合约），不是发射者身份、不是 `launcherMemberId`，也不等同于 `AirdropDistributor` 自己维护的配置列表。索引严格取构造函数或 `launchToken` 的 `distributor` 入参：首币取 `LaunchInitParams.distributor`，子币取发射参数；两种分发模式都计入。`tokensByDistributor` 与其余发射账本在同一批次写入，因此 `Callback` 模式回调与重入发射时读到的列表和 `tokens` 一致。零地址与从未作为 distributor 使用过的地址都是普通空键，返回空数组与 `0`。该聚合是链上索引的一处例外，理由见 [ADR](../../adr/2026-11-12-distributor-token-list-onchain.md)。
+
+分页语义与 `Phase.observations` 一致：`offset` 大于或等于总数时返回空数组与真实 `totalCount`，不校验也不回滚；`limit` 大于剩余条数时按剩余条数返回；`limit = 0` 只返回真实总数、用于取基数，不另设计数入口；`reverse` 为 `true` 时按从新到旧返回。未登记过的父币地址、未知的 `distributor` 都返回空数组与 `0`。分页查询都不限制写入条数，链上不提供全量遍历，只按页读取。
+
+`tokensByDistributor` 的账本从合约部署时的构造函数开始写入，不提供对历史发射记录的回填入口：协议没有合约升级通道，已部署实例不自动获得该视图，需重部署。
 
 子币符号必须全局唯一：`launchToken` 用施加 `Test` 前缀后的最终符号查询 `tokenAddressBySymbol`，已存在则回滚 `TokenSymbolAlreadyExists(keccak256(bytes(finalSymbol)))`；首币符号在构造登记时不需要冲突校验。
 
@@ -123,7 +128,7 @@ Launch 只保存“成员可用整数次数”和“代币累计已产生次数�
 
 回调仅由 Launch 调用，发生于代币创建、首批供应到账、代币登记与次数扣减之后；`TokenLaunched.launcherMemberId` 取本次 `memberId`。distributor 校验调用方并防止同一 token 重复处理；Launch 不开放额外的补触发回调入口。两种模式均允许非零合约接收，EOA 仅允许 NoCallback。
 
-回调可重入 `launchToken`：外层账本（次数递减、代币列表、父币映射、符号映射、子币列表）在回调前已封账，重入等价于同一交易内连续发射两次，两次都消耗该成员在对应父币维度的剩余次数。distributor 若需拒绝重入应自行加锁，不能依赖 Launch。
+回调可重入 `launchToken`：外层账本（次数递减、代币列表、父币映射、符号映射、子币列表、distributor 代币列表）在回调前已封账，重入等价于同一交易内连续发射两次，两次都消耗该成员在对应父币维度的剩余次数。distributor 若需拒绝重入应自行加锁，不能依赖 Launch。
 
 distributor 自行实现领取与查询逻辑；`ILaunchDistributor` 只规定 `onTokenLaunched`，协议不要求 distributor 提供任何领取入口。本仓库的 [`AirdropDistributor`](10-airdrop-distributor.md) 提供了具体的领取与查询 ABI，属于该模块自己的约定，不构成对所有 distributor 的协议要求：它还允许子币发射者在发射后登记快照 URI（发现提示，不参与领取判定），其 URI 鉴权从 `ILaunch.MEMBER_NFT_ADDRESS()` 派生 MemberNFT 地址并按 `ownerOf` 实时判定当前 `launcherMemberId` 持有人，不新增本合约构造参数或回调数据字段。发射者负责选择分发目标，承担其失败和 Gas 耗尽风险。
 
@@ -154,7 +159,7 @@ distributor 自行实现领取与查询逻辑；`ILaunchDistributor` 只规定 `
 
 | 事件 | 触发入口 | 字段取值 |
 | --- | --- | --- |
-| `GenesisTokenCreated(tokenAddress, parentTokenAddress, distributor, name, symbol)` | 构造函数创建首币 | `tokenAddress` 为首币地址；`parentTokenAddress` 为 `ROOT_PARENT_TOKEN_ADDRESS`；`distributor` 为首批供应接收者；`name` 和 `symbol` 为构造参数原值。无 launcher 字段。构造函数内固定三步：登记（`FIRST_TOKEN_ADDRESS` 与四个登记账本）→ 建池/复用 Pair（`_ensurePair`）→ 发射本事件；建池后移使工厂回调重入时读到的账本已经一致，本事件是构造期的最后一条日志。`MemberNFT` 的首币绑定已移到它自己的构造函数，不产生日志也不回调 |
+| `GenesisTokenCreated(tokenAddress, parentTokenAddress, distributor, name, symbol)` | 构造函数创建首币 | `tokenAddress` 为首币地址；`parentTokenAddress` 为 `ROOT_PARENT_TOKEN_ADDRESS`；`distributor` 为首批供应接收者；`name` 和 `symbol` 为构造参数原值。无 launcher 字段。构造函数内固定三步：登记（`FIRST_TOKEN_ADDRESS` 与五个登记账本）→ 建池/复用 Pair（`_ensurePair`）→ 发射本事件；建池后移使工厂回调重入时读到的账本已经一致，本事件是构造期的最后一条日志。`MemberNFT` 的首币绑定已移到它自己的构造函数，不产生日志也不回调 |
 | `TokenLaunched(tokenAddress, parentTokenAddress, launcherMemberId, distributor, distributorMode, name, symbol)` | `launchToken` 每次成功发射 | `tokenAddress` 为新创建的代币地址；`parentTokenAddress` 为本次已登记的父币；`launcherMemberId` 为本次 `memberId`；`distributor` 为首批供应接收者；`distributorMode` 为本次分发模式；`name` 和 `symbol` 与最终部署的 LOVE20Token 完全一致（子币为加 `Test` 前缀后的最终值）。发出时机在代币创建、首批供应到账、代币登记与次数扣减之后，先于 distributor 回调 |
 | `LaunchCountAdded(tokenAddress, memberId, count, issuedCount, memberRemaining)` | `addLaunchCount` | `tokenAddress` 为本次写入的已登记代币账本；`count` 为本次新增次数；`issuedCount` 为该代币累计已产生次数（后置值）；`memberRemaining` 为该成员在该代币账本的可用余额（后置值）。一次成功写入恰好一条 |
 | `LaunchCountMerged(tokenAddress, sourceMemberId, targetMemberId, count, sourceRemaining, targetRemaining)` | `mergeLaunchCount` | `count` 为本次融合转移的次数；`sourceRemaining` / `targetRemaining` 为融合后源、目标成员的可用余额 |
@@ -164,7 +169,7 @@ distributor 自行实现领取与查询逻辑；`ILaunchDistributor` 只规定 `
 
 - 首币由构造函数发出 `GenesisTokenCreated`（无 launcher 字段）；普通发射由 `launchToken` 发出 `TokenLaunched`；构造函数、`launchToken`、`addLaunchCount`、`mergeLaunchCount` 之外的入口不产生上述事件。
 - `GenesisTokenCreated` 与 `TokenLaunched` 同时记录创建所需的代币元数据；不再另发旧 `ILOVE20TokenFactory` 的 `TokenCreate`。
-- 链上查询覆盖全部已发射代币、某社区的子币列表和符号到地址（见 [代币登记与查询](#代币登记与查询)）；按成员聚合的发射历史由 `TokenLaunched` 的 `launcherMemberId` 链下索引，首币不进入该索引。
+- 链上查询覆盖全部已发射代币、某社区的子币列表、按 `distributor` 聚合的代币列表和符号到地址（见 [代币登记与查询](#代币登记与查询)）；按成员聚合的发射历史仍由 `TokenLaunched` 的 `launcherMemberId` 链下索引，首币不进入该索引。按 distributor 聚合是链上索引的一处例外，见 [ADR](../../adr/2026-11-12-distributor-token-list-onchain.md)。
 
 ## LOVE20Token 创建
 
