@@ -27,12 +27,12 @@
 - 新建 `core/src/distributor/AirdropDistributor.sol` 与 `core/src/interfaces/distributor/IAirdropDistributor.sol`；`ILaunchDistributor.sol` 迁入 `src/interfaces/distributor/`。错误按 local-first 在本模块的 `IAirdropDistributorErrors` 声明（11 个），事件在 `IAirdropDistributorEvents` 声明（2 个）。
 - 首币由 `AirdropDistributor` 的构造函数完成配置：`(launchAddress, phaseAddress, genesisTokenAddress, genesisMerkleRoot, genesisClaimDelayRounds)`。部署顺序变为 `Phase → AirdropDistributor → Launch → MemberNFT → Stake → Submit → Vote → Mint`，首币地址由部署脚本按 `computeCreateAddress(launchAddress, 1)` 预测。`Launch` 构造函数不调用回调，首币仍固定 `NoCallback`。
 - `TOTAL_SHARE = 1e18` 是编译期常量，不可按部署配置。份额分母统一，`claimableAmount` 与 `claim` 的分配公式对每个代币相同。
-- 领取按剩余份额比例分配：`amount = floor(balanceOf(this) × share ÷ remainingShare)`，`remainingShare = TOTAL_SHARE - claimedShare`。最后一名份额恰为 `remainingShare` 的领取者清空合约余额。
+- 领取按剩余份额比例分配：`amount = floor(balanceOf(this) × share ÷ remainingShare)`，`remainingShare = TOTAL_SHARE - claimedShare`。最后一名份额恰为 `totalRemainingShare` 的领取者清空合约余额。
 - `claim` 的校验顺序固定为 存在性 → 状态 → 参数 → 账本 → 资格，共六层；其中 `share == 0` 是**显式拒绝**（回滚 `InvalidProof()`），位置在 `ShareExceedsRemaining` 与证明校验之前。零份额是链上链下双保险：链下生成器在 `_build()` 断言 `normalized[i] > 0` 拒绝产出零份额快照，链上仍独立拒绝，不依赖链下。
 - 叶子格式与 Burn 快照生成器逐字节兼容：`keccak256(bytes.concat(keccak256(abi.encode(claimer, share))))`，节点按字节序排序后哈希，与 OpenZeppelin `MerkleProof` 的排序证明一致。旧 `LOVE20TKM/burn` 只作为**链上数据来源**（销毁活动结果）与**链下快照生成器工具**被引用，不再作为合约依赖；`Airdrop.sol`、`DeployAirdrop.s.sol`、`airdrop-design.md` 三个链接从规格中删除。
 - 链下生成器补上归一化：先算 `rawTotal = Σshares`，再 `normalized[i] = floor(shares[i] × 1e18 ÷ rawTotal)`，把余数补给最大份额地址（并列取索引最小者），并断言 `Σnormalized == 1e18`。归一化必须在叶子构建之前完成，否则叶子哈希、JSON 份额与 Merkle Root 三者会不一致。「配满 100%」因此由三段独立事实串成：链下补尾差使 `Σ == 1e18`、`_build()` 断言 `Σ == 1e18` 且每个 `normalized[i] > 0`、链上 `TOTAL_SHARE` 是 `constant` 使发射者无法传入错误分母。
 - `claimDelayRounds` 的语义写死为 `claimableFromRound = baseRound + claimDelayRounds`，其中 `baseRound = currentPhase() == 0 ? 1 : currentPhase()`；`delay = 0` 当轮可领。夹取的理由是 `Phase` 在 `ORIGIN_BLOCKS` 之前返回 `0`，而 `0` 不是有效轮次。
-- 新增分页查询 `airdropInfos(offset, limit, reverse)`，返回 `AirdropInfo[]`（6 个字段：`tokenAddress` / `merkleRoot` / `claimableFromRound` / `claimedShare` / `remainingShare` / `contractBalance`）与 `totalCount`，使前端与索引器不必自己维护配置列表。语义与 `Phase.observations`、`Launch.tokens` 一致；不设独立计数入口，`airdropInfos(0, 0, false)` 即取基数。合约内新增只追加的 `_tokenAddresses` 列表作为分页数据源。
+- 新增分页查询 `airdropInfos(offset, limit, reverse)`，返回 `AirdropInfo[]`（6 个字段：`tokenAddress` / `merkleRoot` / `claimableFromRound` / `totalClaimedShare` / `totalRemainingShare` / `remainingAmount`）与 `totalCount`，使前端与索引器不必自己维护配置列表。语义与 `Phase.observations`、`Launch.tokens` 一致；不设独立计数入口，`airdropInfos(0, 0, false)` 即取基数。合约内新增只追加的 `_tokenAddresses` 列表作为分页数据源。
 - 独立 `launch` 仓库本阶段仍不创建（`repositories.md` 的分阶段结论不变）。`AirdropDistributor` 归 `core`，理由是它与 `Launch` 的发射流程共用同一次回调、同一条非零 distributor 校验，且只有 214 行、远低于 24576 B 体积上限。
 
 ### 被否决的方案
@@ -67,7 +67,7 @@
 
 ## 后续：快照 URI 能力
 
-本决策落地后追加了「让子币发射者把 Merkle 快照 JSON 的 URL 登记到链上」的能力，使前端只读 `AirdropDistributor` 配置即可发现各子币快照、无需前端开发者手工整合（前端去中心化）。改动落在同一合约与接口，不新增构造参数：`MEMBER_NFT_ADDRESS` 从 `ILaunch(LAUNCH_ADDRESS).MEMBER_NFT_ADDRESS()` 派生（getter 已存在），URI 鉴权按 `IMemberNFT.ownerOf(launcherMemberId) == msg.sender` 实时判定，权限随 MemberNFT 转手；`launcherMemberId` 由 `onTokenLaunched` 回调第三个参数透传、配置期一次写定，创世币记为 `0`。新增 `AirdropInfo` 第 7 字段 `snapshotUri`、`MAX_SNAPSHOT_URI_BYTES = 256` 常量、`AirdropSnapshotUriUpdated` 事件与 3 个错误（`SnapshotUriEmpty`、`SnapshotUriTooLong`、`NotSnapshotUriUpdater`），错误与事件都只增不改。
+本决策落地后追加了「让子币发射者把 Merkle 快照 JSON 的 URL 登记到链上」的能力，使前端只读 `AirdropDistributor` 配置即可发现各子币快照、无需前端开发者手工整合（前端去中心化）。改动落在同一合约与接口，不新增构造参数：`MEMBER_NFT_ADDRESS` 从 `ILaunch(LAUNCH_ADDRESS).MEMBER_NFT_ADDRESS()` 派生（getter 已存在），URI 鉴权按 `IMemberNFT.ownerOf(launcherMemberId) == msg.sender` 实时判定，权限随 MemberNFT 转手；`launcherMemberId` 由 `onTokenLaunched` 回调第三个参数透传、配置期一次写定，创世币记为 `0`。新增 `AirdropInfo` 字段 `snapshotUri`、`MAX_SNAPSHOT_URI_BYTES = 256` 常量、`AirdropSnapshotUriUpdated` 事件与 3 个错误（`SnapshotUriEmpty`、`SnapshotUriTooLong`、`NotSnapshotUriUpdater`），错误与事件都只增不改。
 
 **核心取舍：链上不校验 URI 指向的 Merkle 文件内容。** `snapshotUri` 是**发现提示（hint），不是授权**：Merkle Root 在配置后不可变，领取资格只由 `proof` 对链上 Root 的校验决定，链上既读不到链下文件、也不应把「谁能领多少」交给一个可改口的 URL。因此：
 
@@ -76,6 +76,20 @@
 - 代价是安全模型依赖前端正确实现这道校验；规格与验收把它写成明文前置条件，不靠链上兜底。这是「链上最小化 + 链下可独立复算」既有路线（Root 不可变、无管理员、无取回）的延续，不是新开的信任假设。
 
 创世币 `launcherMemberId = 0`，因 `MemberNFT._nextTokenId = 1` 使 `memberId 0` 永不铸造，故创世 URI 永久为空且无人可设——刻意设计，首币快照仍由部署记录公开举证，不依赖某个发射者。`onlySnapshotUriUpdater` modifier 第一行是 `TokenNotConfigured` 存在性检查、第二行起才是鉴权：若把鉴权放最前，未配置 token 会先落到 `ownerOf(0)` 抛 OZ `ERC721NonexistentToken`，掩盖 `TokenNotConfigured`；modifier 整体仍是函数体第一道判定，满足 dev-standards §5.5。
+
+## 后续：单点 getter 收敛为 `airdropInfo`
+
+同日的第二次 ABI 调整，同样是冻结前窗口内完成：删除了按 token 的单点 getter（原 `merkleRootByTokenAddress`、`claimableFromRoundByTokenAddress`、`claimedShareByTokenAddress`、`remainingShareByTokenAddress`、`snapshotUriByTokenAddress`、`launcherMemberIdByTokenAddress`），改为一个 `airdropInfo(address tokenAddress) returns (AirdropInfo)`，`AirdropInfo` 扩为 8 字段：`tokenAddress`、`merkleRoot`、`claimableFromRound`、`totalClaimedShare`、`totalRemainingShare`、`totalClaimedAmount`、`remainingAmount`、`snapshotUri`。
+
+理由有两层。其一是命名合规：`tokenAddress` 是**作用域键**，[命名规范](../../naming-standards.md) §7.3 明写「定位不是筛选，不进名字」，`ByTokenAddress` 后缀在全仓其它模块没有先例，是本模块自己造的孤例（`isClaimedByTokenAddressByClaimer`、`claimedAmountByTokenAddressByClaimer` 同理去掉 `ByClaimer`，因为两把键的取值入口按 §7.7 也不需要写出来）。其二是减少读取路径：`airdropInfo` 与分页的 `airdropInfos` 构成 §7.6 允许的单复数对，前端要知道某一个币的全部配置只需一次调用，不必串 6 个单点 getter。
+
+`total` 前缀的依据是 §7.4「可加量总和用 `total` 前缀」：它限定的语义是「社区级总和」，而本协议的社区维度就是 token——`Stake._totalValidGovVotesAdded[tokenAddress]` 早已按 token 索引并用 `total` 前缀。加 `total` 也让「全体累计」与「单个地址累计」在名字上分开：`totalClaimedShare` 是全体，`claimedAmount(token, claimer)` 是单地址。
+
+新增的 `totalClaimedAmount` 需要一个新的存储映射 `_totalClaimedAmountByTokenAddress`，在 `claim` 的 CEI 写状态段与份额一起累加。它带来的收益是分页可直接对账：`totalClaimedAmount + remainingAmount` 等于该币首批供应量，`totalClaimedShare + totalRemainingShare` 等于 `TOTAL_SHARE`。代价是一次额外的 SSTORE。
+
+`launcherMemberId` 不再暴露，也不进 `AirdropInfo`：前端判断「URI 还能不能更新」看 `updateSnapshotUri` 是否回滚 `NotSnapshotUriUpdater` 即可，无需读状态。
+
+`airdropInfo` 对未配置的 token 返回全零结构体而不回滚（与 `airdropInfos` 越界不回滚一致）；`_buildAirdropInfo` 在 `balanceOf` 前加 `extcodesize` 判断，因为创世币在 `AirdropDistributor` 构造期还不存在（由后部署的 `Launch` 创建），直接外部调用会因目标无代码而 revert，而 Solidity 的 `try/catch` 拦不住这种情况。
 
 ## 关联
 

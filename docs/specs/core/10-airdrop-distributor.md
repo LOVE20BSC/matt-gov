@@ -54,7 +54,7 @@ AirdropDistributor 是首币与普通发射共用的可选 distributor：接收�
 | --- | --- | --- |
 | Merkle Root | `tokenAddress` | 该批快照的根；零值表示未配置，是「是否已配置」的唯一判据 |
 | 可领取起始轮次 | `tokenAddress` | `claimableFromRound`，单位 Phase，配置时一次写定 |
-| 已领份额 | `tokenAddress` | `claimedShare`，累计被成功领取消耗的份额 |
+| 已领份额 | `tokenAddress` | `totalClaimedShare`，累计被成功领取消耗的份额 |
 | 领取标记 | `tokenAddress` + `claimer` | 是否已领取该代币 |
 | 已领金额 | `tokenAddress` + `claimer` | 该地址成功领取时实际转出的代币数量（与 `AirdropClaimed.amount` 同值） |
 | 快照 URI | `tokenAddress` | `snapshotUri`，快照 JSON 的发现提示 URL；默认空串，仅由 `updateSnapshotUri` 写入，每次更新发事件（含旧值） |
@@ -62,7 +62,7 @@ AirdropDistributor 是首币与普通发射共用的可选 distributor：接收�
 
 另有一个按配置顺序追加的 `tokenAddress` 列表，供 `airdropInfos` 分页读取；首币是首个元素。列表只追加，不删除、不重排。
 
-`launcherMemberId` 与 Root、起始轮次一样在配置时一次写定，此后没有第二写入点：`_configure` 的第四个参数由 `onTokenLaunched` 的 `launcherMemberId` 透传，构造函数为首币传 `0`。`snapshotUri` 是唯一可反复写入的状态，可由 `_launcherMemberIdByTokenAddress[tokenAddress]` 对应的 `MemberNFT.ownerOf` 当前持有人更新；它不参与任何领取判定。`claimedShare` 只增不减；领取标记与已领金额只会由「未领取」变为「已领取」。
+`launcherMemberId` 与 Root、起始轮次一样在配置时一次写定，此后没有第二写入点：`_configure` 的第四个参数由 `onTokenLaunched` 的 `launcherMemberId` 透传，构造函数为首币传 `0`。`snapshotUri` 是唯一可反复写入的状态，可由该 token 记录里的 `launcherMemberId` 对应的 `MemberNFT.ownerOf` 当前持有人更新；它不参与任何领取判定。`totalClaimedShare` 只增不减；领取标记与已领金额只会由「未领取」变为「已领取」。
 
 ## 份额与金额
 
@@ -72,11 +72,11 @@ amount = floor(balanceOf(this) × share ÷ remainingShare)
 ```
 
 - `share` 是快照叶子中该地址的份额，最小单位为 `1e18` 分之一（`TOTAL_SHARE` 为 `1e18` 时，份额 `1e16` 表示 1%）。
-- `remainingShare` 是**配置时点起算的剩余份额**，不是剩余资产比例；未领取时等于 `TOTAL_SHARE`。
+- `totalRemainingShare` 是**配置时点起算的剩余份额**，不是剩余资产比例；未领取时等于 `TOTAL_SHARE`。
 - `amount` 按合约在领取时点的实际余额计算，用 `Math.mulDiv` 取 512 位中间结果后向下取整，不溢出、不先除后乘。
-- 分母不为零：`claimedShare` 只在成功领取时增加，且每次成功领取都满足 `share <= remainingShare`，因此 `claimedShare < TOTAL_SHARE` 恒成立。
-- 按剩余份额分配使后领取者按剩余资产的比例分享：最后一名份额恰为 `remainingShare` 的领取者得到 `balanceOf(this)` 全部，合约余额清零。
-- 公式本身不假设 `Σleaves == 1e18`，那是链下的责任：分母恒为 `1e18`，若叶子份额之和不足，差额无人可领；若超出，先领取者按比例分走资产，后领取者在 `remainingShare` 耗尽后无法领取。
+- 分母不为零：`totalClaimedShare` 只在成功领取时增加，且每次成功领取都满足 `share <= remainingShare`，因此 `claimedShare < TOTAL_SHARE` 恒成立。
+- 按剩余份额分配使后领取者按剩余资产的比例分享：最后一名份额恰为 `totalRemainingShare` 的领取者得到 `balanceOf(this)` 全部，合约余额清零。
+- 公式本身不假设 `Σleaves == 1e18`，那是链下的责任：分母恒为 `1e18`，若叶子份额之和不足，差额无人可领；若超出，先领取者按比例分走资产，后领取者在 `totalRemainingShare` 耗尽后无法领取。
 
 例如某一批快照只有两个叶子，份额为 `6e17` 与 `4e17`，配置时合约余额 `1000`（代币最小单位）。第一人领取 `floor(1000 × 6e17 ÷ 1e18) = 600`，此后余额 `400`、`remainingShare = 4e17`；第二人领取 `floor(400 × 4e17 ÷ 4e17) = 400`，余额归零。若顺序相反，第一人得 `400`、第二人得 `600`：两人各自占本批总额的比例不变，且都不超过自己份额对应的比例。
 
@@ -158,17 +158,17 @@ leafHash(msg.sender, share) = keccak256(bytes.concat(keccak256(abi.encode(msg.se
 
 | # | 层 | 判定 | 失败错误 |
 | --- | --- | --- | --- |
-| 1 | 存在 | `merkleRootByTokenAddress(tokenAddress) == bytes32(0)` | `TokenNotConfigured(address tokenAddress)` |
+| 1 | 存在 | `airdropInfo(tokenAddress).merkleRoot == bytes32(0)` | `TokenNotConfigured(address tokenAddress)` |
 | 2 | 状态 | `currentPhase() < claimableFromRound` | `ClaimRoundNotReached(address tokenAddress, uint256 currentRound, uint256 claimableFromRound)` |
 | 3 | 状态 | 该 `(tokenAddress, claimer)` 已领取 | `AirdropAlreadyClaimed(address tokenAddress, address claimer)` |
-| 4 | — | 计算 `remaining = remainingShareByTokenAddress(tokenAddress)`（无判定） | — |
+| 4 | — | 计算 `remaining = TOTAL_SHARE - totalClaimedShare`（无判定） | — |
 | 5 | 参数 | `share == 0` | `InvalidProof()` |
 | 6 | 账本 | `share > remaining` | `ShareExceedsRemaining(uint256 share, uint256 remainingShare)` |
 | 7 | 资格 | `proof` 与 `leafHash(claimer, share)` 不匹配 | `InvalidProof()` |
 | 8 | — | `amount = Math.mulDiv(balanceOf(this), share, remaining)`（**不做 `amount == 0` 检查**，见下） | — |
-| 9 | — | 写状态（CEI）：领取标记 → 已领金额 → `claimedShare` | — |
+| 9 | — | 写状态（CEI）：领取标记 → 已领金额 → `totalClaimedShare` | — |
 | 10 | 外部 | `safeTransfer(claimer, amount)` 失败 | `SafeERC20FailedOperation(address token)`，OZ 透传，不在本合约自有错误内 |
-| 11 | — | 发 `AirdropClaimed`，`remainingShare` 为**领取后**的 `remaining - share` | — |
+| 11 | — | 发 `AirdropClaimed`，`totalRemainingShare` 为**领取后**的 `remaining - share` | — |
 | 12 | — | `return amount` | — |
 
 顺序固定为「存在性 → 状态 → 参数 → 账本 → 资格 → 外部」，先命中先回滚，同一入口内不重排。
@@ -186,7 +186,7 @@ leafHash(msg.sender, share) = keccak256(bytes.concat(keccak256(abi.encode(msg.se
 
 资产只从本合约流向 `msg.sender`，没有其他去向：`claim` 不接收代币、不产生授权、不向任何第三方地址转账。写操作遵循「检查 → 更新 → 交互」：第 9 步全部状态写入完成后才执行第 10 步转账，转账成功后第 11 步发事件，失败则整笔回滚、状态与代币都不改变。
 
-`AirdropClaimed` 的 `tokenAddress`、`claimer` 带 `indexed`；`share` 是本次消耗的份额；`amount` 是本次实际转出的代币数量；`remainingShare` 是**扣除本次份额后**的剩余份额，使索引器按日志顺序折叠即得下一个 `remainingShare`，无须回算——首条日志的 `remainingShare` 加上它自己的 `share` 等于 `TOTAL_SHARE`，其后每条加上前一条的 `remainingShare` 也成立。
+`AirdropClaimed` 的 `tokenAddress`、`claimer` 带 `indexed`；`share` 是本次消耗的份额；`amount` 是本次实际转出的代币数量；`totalRemainingShare` 是**扣除本次份额后**的剩余份额，使索引器按日志顺序折叠即得下一个 `totalRemainingShare`，无须回算——首条日志的 `totalRemainingShare` 加上它自己的 `share` 等于 `TOTAL_SHARE`，其后每条加上前一条的 `totalRemainingShare` 也成立。
 
 ### 为什么不需要 amount == 0 检查
 
@@ -195,7 +195,7 @@ leafHash(msg.sender, share) = keccak256(bytes.concat(keccak256(abi.encode(msg.se
 **前提一：`claim` 始终维持 `balanceOf(this) >= remainingShare`。**
 
 - 初始时 `balanceOf(this) == LAUNCH_AMOUNT`、`remainingShare == TOTAL_SHARE == 1e18`，而 `LAUNCH_AMOUNT >= 1e18` 由部署脚本在广播前校验；
-- 归纳：成功领取要求 `share <= remainingShare`，转账后余额为 `balanceOf − floor(balanceOf × share ÷ remainingShare)`，去掉 `floor` 得下界 `balanceOf − balanceOf × share ÷ remainingShare = balanceOf × (remainingShare − share) ÷ remainingShare`，再由 `balanceOf >= remainingShare` 得该式 `>= remainingShare − share`，即新的余额仍不小于新的 `remainingShare`。
+- 归纳：成功领取要求 `share <= remainingShare`，转账后余额为 `balanceOf − floor(balanceOf × share ÷ remainingShare)`，去掉 `floor` 得下界 `balanceOf − balanceOf × share ÷ remainingShare = balanceOf × (remainingShare − share) ÷ remainingShare`，再由 `balanceOf >= remainingShare` 得该式 `>= remainingShare − share`，即新的余额仍不小于新的 `totalRemainingShare`。
 
 **前提二：成功领取必有 `share >= 1`。** 由第 5 步显式拒绝 `share == 0` 直接给出。注意这里**不**依赖「链下树没有零份额叶子」这一链下假设——加固后链上自己就排除了。
 
@@ -211,7 +211,7 @@ leafHash(msg.sender, share) = keccak256(bytes.concat(keccak256(abi.encode(msg.se
 
 1. **LOVE20Token 没有转账钩子**：`LOVE20Token` 是标准 ERC20，没有 ERC777、`_update` 回调或可配置的转移钩子，`safeTransfer` 不会把控制权交还给任何第三方代码。
 2. **配置入口唯一且只写一次**：`onTokenLaunched` 只接受 `LAUNCH_ADDRESS`，同一 token 第二次配置回滚 `TokenAlreadyConfigured`；`claim` 不写 Root 与起始轮次。领取期间没有可以改写配置的路径。
-3. **CEI**：`claim` 先写全部状态（领取标记、已领金额、`claimedShare`），再转账，最后发事件；即使存在未预见的回调，重复进入时已命中 `AirdropAlreadyClaimed`。
+3. **CEI**：`claim` 先写全部状态（领取标记、已领金额、`totalClaimedShare`），再转账，最后发事件；即使存在未预见的回调，重复进入时已命中 `AirdropAlreadyClaimed`。
 
 任一条前提被破坏（例如未来把 `tokenAddress` 换成带转移钩子的代币、或新增配置写入入口）都必须同时重新评估本条，不能只改一处。
 
@@ -224,7 +224,7 @@ leafHash(msg.sender, share) = keccak256(bytes.concat(keccak256(abi.encode(msg.se
 按 [错误与回滚标准](../../error-standards.md#五失败契约) 的编号列表形态，逐条 层 → 条件 → 错误：
 
 ```text
-1. 存在  merkleRootByTokenAddress(tokenAddress) == bytes32(0) → TokenNotConfigured(address tokenAddress)
+1. 存在  airdropInfo(tokenAddress).merkleRoot == bytes32(0) → TokenNotConfigured(address tokenAddress)
 2. 鉴权  launcherMemberId == 0                               → NotSnapshotUriUpdater(address caller, uint256 launcherMemberId)（载荷为 (msg.sender, 0)）
 3. 鉴权  IMemberNFT(ILaunch(LAUNCH_ADDRESS).MEMBER_NFT_ADDRESS()).ownerOf(launcherMemberId) != msg.sender
                                                             → NotSnapshotUriUpdater(address caller, uint256 launcherMemberId)
@@ -252,18 +252,15 @@ leafHash(msg.sender, share) = keccak256(bytes.concat(keccak256(abi.encode(msg.se
 
 | 入口 | 作用域 | 不存在时的行为 |
 | --- | --- | --- |
-| `merkleRootByTokenAddress(tokenAddress)` | 单点 | 未配置返回零值 |
-| `claimableFromRoundByTokenAddress(tokenAddress)` | 单点 | 未配置返回 `0` |
-| `claimedShareByTokenAddress(tokenAddress)` | 单点 | 未配置返回 `0` |
-| `isClaimedByTokenAddressByClaimer(tokenAddress, claimer)` | 单点 | 未领取或未配置返回 `false` |
-| `claimedAmountByTokenAddressByClaimer(tokenAddress, claimer)` | 单点 | 未领取或未配置返回 `0` |
-| `remainingShareByTokenAddress(tokenAddress)` | 单点 | 未配置返回 `TOTAL_SHARE` |
-| `snapshotUriByTokenAddress(tokenAddress)` | 单点 | 未配置或未更新返回空串 `""` |
-| `launcherMemberIdByTokenAddress(tokenAddress)` | 单点 | 未配置返回 `0`；创世币恒为 `0`（表示该币永久不可更新） |
+| `airdropInfo(tokenAddress)` | 单条 | 返回该批完整 `AirdropInfo`（8 字段）；未配置的 token 返回全零结构体与空 `snapshotUri`，不回滚 |
+| `isClaimed(tokenAddress, claimer)` | 单点 | 未领取或未配置返回 `false` |
+| `claimedAmount(tokenAddress, claimer)` | 单点 | 未领取或未配置返回 `0` |
 | `TOTAL_SHARE()` / `MAX_CLAIM_DELAY_ROUNDS()` / `MAX_SNAPSHOT_URI_BYTES()` | 常量 | — |
 | `leafHash(claimer, share)` | 纯函数 | — |
 
-单点查询都不校验、不回滚：对任意地址返回零值（或 `false`、空串），调用方自行区分「未配置」与「配置了但尚未领取/尚未更新」。判据是 `merkleRootByTokenAddress(tokenAddress) != bytes32(0)`；`launcherMemberIdByTokenAddress(tokenAddress) == 0` 表示创世币或该币不可更新，前端据此判断是否展示 URI 更新入口。
+按 `tokenAddress` 的其余字段不单独开 getter，全部经 `airdropInfo(tokenAddress)` 一次取回——`tokenAddress` 是作用域键（定位而不是筛选），按[命名规范](../../naming-standards.md) §7.3 不进函数名；`airdropInfo` 与分页的 `airdropInfos` 构成 §7.6 允许的单复数对。调用方要判断某个 token 是否已配置，读 `airdropInfo(tokenAddress).merkleRoot != bytes32(0)`。
+
+`launcherMemberId` 没有 getter，也不在 `AirdropInfo` 里：前端判断「这个币的 URI 还能不能更新」不看读接口，而是看 `updateSnapshotUri` 是否回滚 `NotSnapshotUriUpdater`（创世币回滚时载荷里的 `launcherMemberId` 为 `0`）。
 
 ### claimableAmount
 
@@ -271,7 +268,7 @@ leafHash(msg.sender, share) = keccak256(bytes.concat(keccak256(abi.encode(msg.se
 
 依次判定，任一不满足即返回 `0`，不校验也不回滚：
 
-1. `merkleRootByTokenAddress(tokenAddress) == bytes32(0)`；
+1. `airdropInfo(tokenAddress).merkleRoot == bytes32(0)`；
 2. `currentPhase() < claimableFromRound`；
 3. 该 `(tokenAddress, claimer)` 已领取；
 4. `share == 0 || share > remainingShare`（与 `claim` 的第 5、6 步合并为一次判定，短路顺序与写版一致）；
@@ -281,7 +278,7 @@ leafHash(msg.sender, share) = keccak256(bytes.concat(keccak256(abi.encode(msg.se
 
 - **不能以返回 `0` 判断「无资格」**：`0` 同时表示「未配置」「未到轮次」「已领过」「份额非法」「证明不对」和「确实算出来是 0」六种情形，只读接口无法区分。需要原因时必须读各 getter 或直接模拟 `claim`。这与 Burn 原设计对只读预检的警告一致。
 - 与 `claim` 的唯一语义差异是失败表达：写版按失败原因回滚不同错误，只读版一律 `return 0`；两者对「现在能不能领、能领多少」的结论一致。
-- 返回值是**查询时点**的值，不是对下一笔交易的承诺：同批其他地址先领取会同时改变 `balanceOf(this)` 与 `remainingShare`，`amount` 随之变化。前端不得把预检结果当作可签名的数额，必须以交易内实际发生的 `AirdropClaimed.amount` 为准。
+- 返回值是**查询时点**的值，不是对下一笔交易的承诺：同批其他地址先领取会同时改变 `balanceOf(this)` 与 `totalRemainingShare`，`amount` 随之变化。前端不得把预检结果当作可签名的数额，必须以交易内实际发生的 `AirdropClaimed.amount` 为准。
 
 ### 分页查询
 
@@ -292,10 +289,20 @@ leafHash(msg.sender, share) = keccak256(bytes.concat(keccak256(abi.encode(msg.se
 | `tokenAddress` | 该批快照所属代币 |
 | `merkleRoot` | 配置时写入的根 |
 | `claimableFromRound` | 配置时算出的起始轮次 |
-| `claimedShare` | 当前已领份额（后置累计值） |
-| `remainingShare` | `TOTAL_SHARE - claimedShare`（当前值） |
-| `contractBalance` | 该代币在本合约的当前余额 `balanceOf(this)`，逐元素读取 |
-| `snapshotUri` | 该代币当前登记的快照 URI（第 7 字段，追加在末尾，既有 6 字段顺序不变）；默认空串 |
+| `totalClaimedShare` | 当前已领份额（后置累计值） |
+| `totalRemainingShare` | `TOTAL_SHARE - totalClaimedShare`（当前值） |
+| `totalClaimedAmount` | 该代币累计已实际转出的代币数量（由 `claim` 累加） |
+| `remainingAmount` | 该代币在本合约的当前余额 `balanceOf(this)`，逐元素读取 |
+| `snapshotUri` | 该代币当前登记的快照 URI；默认空串 |
+
+两个恒等式把四个数值锁在一起，链下可直接对账：
+
+```text
+totalClaimedShare + totalRemainingShare == TOTAL_SHARE            // 份额账本
+totalClaimedAmount + remainingAmount   == 该代币的初始首批供应量   // 金额账本
+```
+
+份额一侧恒等式由 `TOTAL_SHARE` 是常量保证。金额一侧的前提是该代币从`Launch` 收到的首批供应量之外再无转入：任何人都能向本合约 `transfer` 任意代币，误转会抬高 `remainingAmount` 而不改变 `totalClaimedAmount`，两条恒等式就此不等——这是链下需要留意的口径，不是合约缺陷（合约没有取回入口，误转无法撤销）。
 
 分页语义与 `Phase.observations`、`Launch.tokens` 一致：`offset` 大于或等于 `totalCount` 时返回空数组与真实 `totalCount`，不校验也不回滚；`limit` 大于剩余条数时按剩余条数返回；`reverse` 为 `true` 时从新到旧返回。列表按配置顺序追加（首币是第一个元素、构造函数里的首币配置即首次 `push`），`reverse = true` 时按插入的逆序返回，配合 `offset` 即可从最新配置向前翻页。
 
@@ -303,7 +310,7 @@ leafHash(msg.sender, share) = keccak256(bytes.concat(keccak256(abi.encode(msg.se
 
 `limit` 由调用方决定，合约不设死上限——这是分页语义的一部分，不额外开一个受限入口。代价是每页每个元素都要读一次 `balanceOf`（外部调用），所以 `limit` 同时决定一次 `eth_call` 的成本：配置数量大时前端应分页读取，不要用一次大 `limit` 拉全量，否则可能撞上节点的 gas 上限而不可调用。
 
-`contractBalance` 是查询时点的实时值，不是快照时的首批供应量：已被领取的部分已转出合约，剩余量就是尚未领取的资产。领取进度需要对照 `remainingShare` 读，不能用余额单独推断——链下快照 `Σleaves` 与 `1e18` 的差会直接体现为两者的不成比例。
+`remainingAmount` 是查询时点的实时值，不是快照时的首批供应量：已被领取的部分已转出合约，剩余量就是尚未领取的资产。领取进度需要对照 `totalRemainingShare` 读，不能用余额单独推断——链下快照 `Σleaves` 与 `1e18` 的差会直接体现为两者的不成比例。
 
 `AirdropInfo` 是 ABI 只读记录（`<X>Info`），承载查询结果，不是存储结构；合约内的存储是七个按 `tokenAddress`（及 `claimer`）索引的映射加一个只追加的 `address[]` 列表。`snapshotUri` 作为第 7 字段追加在末尾，使既有 6 字段的语义与下标不变；它虽是 `string`，但有 256 字节链上硬上限，见 [常量](#常量) 与 [event-standards §6.8](../../event-standards.md#68-动态字段上限)。
 
@@ -332,7 +339,7 @@ leafHash(msg.sender, share) = keccak256(bytes.concat(keccak256(abi.encode(msg.se
 ## 边界与风险
 
 - **Root 填错即资产锁死**：`merkleRoot` 在配置后不可更新，也没有取回入口。填错、或漏掉应得地址，该批首批供应里对应的份额将永久留在合约中，任何人无法取出。这是有意的设计取舍：可更新的 Root 等于把「谁能领多少」交给一个可以改口的中心角色。分发前必须以只读预检逐条核对。
-- **链上无法验证 `Σleaves == 1e18`**：合约只有分母常量，看不到叶子集合。若链下快照份额之和小于 `1e18`，差额部分无人可领，余额永远留在合约里；若大于 `1e18`，先领取者按比例分走资产，后领取者在 `remainingShare` 耗尽后回滚 `ShareExceedsRemaining`，其应得份额拿不到。唯一防线是链下生成器的归一化与公开快照的独立复算。
+- **链上无法验证 `Σleaves == 1e18`**：合约只有分母常量，看不到叶子集合。若链下快照份额之和小于 `1e18`，差额部分无人可领，余额永远留在合约里；若大于 `1e18`，先领取者按比例分走资产，后领取者在 `totalRemainingShare` 耗尽后回滚 `ShareExceedsRemaining`，其应得份额拿不到。唯一防线是链下生成器的归一化与公开快照的独立复算。
 - **金额随领取顺序变化**：`amount` 按剩余份额比例计算，同一地址在不同时点领取得到的数量不同。这不是缺陷而是设计：按剩余额分配使任何人都无法通过抢先领取占取超过自身份额比例的资产，也让最后一人清空余额。对账以 `AirdropClaimed.amount` 为准。
 - **无管理员、无暂停、无取回入口**：没有 owner、admin、pause、rescue、upgrade，也没有改变 Root 或截止时间的入口。部署后合约行为只由代码与快照决定。
 - **`NoCallback` 模式下把本合约设为子币 distributor 会锁死首批供应**：普通发射允许 `NoCallback`，此时 `Launch` 不调用回调，本合约不会为该子币写入任何配置；而 `LOVE20Token` 构造函数已把整批首批供应铸给 distributor 地址，本合约又没有取回入口。结果就是这批代币永久留在合约里、任何地址都无法领取（`claim` 恒回滚 `TokenNotConfigured`）。本合约唯一合法的子币接入方式是 `Callback` 模式并传入 64 字节配置。发射入口与前端必须在把 distributor 设为本合约时强制 `Callback`；`Launch` 本身不检查这种组合，因为它不知道 distributor 的业务语义。

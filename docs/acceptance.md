@@ -119,7 +119,7 @@
 - `parentToken` 对首币返回 `ROOT_PARENT_TOKEN_ADDRESS`、对子币返回其父币、对未登记地址返回零地址；`isLOVE20Token` 与它一致
 
 ### 首币空投分发
-**覆盖要求**：覆盖 `AirdropDistributor` 的构造配置（`TOTAL_SHARE = 1e18`、`MAX_CLAIM_DELAY_ROUNDS = 1000`、`MAX_SNAPSHOT_URI_BYTES = 256`、首币在构造期完成配置）、回调数据形状（`distributorData` 恰好 1 元素、恰好 64 字节）、回调鉴权、配置拒绝（零根、延迟超上限、同一 token 二次配置）、轮次夹取（`currentPhase() == 0` 时 `baseRound = 1`）、`claimDelayRounds` 为 `0` 当轮可领与为 `1` 下一轮可领、`claim` 的六层失败契约与优先级、零份额的链上链下双层拒绝、按剩余份额的比例分配与最后一人清空余额、`claimableAmount` 预检与 `claim` 返回一致、`AirdropConfigured` / `AirdropClaimed` 的字段与 indexed 布局，以及 `airdropInfos` 的分页语义与「不设独立计数入口」。URI 能力另覆盖：`updateSnapshotUri` 的校验顺序与错误集合（存在性 → 鉴权 → 参数）、创世币 `launcherMemberId = 0` 永久不可更新、发射者更新成功与非发射者拒绝、NFT 转手后权限随 `ownerOf` 实时跟随、长度 256/257 边界与空 URI、`AirdropSnapshotUriUpdated` 三字段（含旧值），以及 URI 设置前后 `claim` 的金额与状态完全一致；并核对 `snapshotUri` 作为 `AirdropInfo` 第 7 字段、`snapshotUriByTokenAddress` / `launcherMemberIdByTokenAddress` 两个单点 getter。
+**覆盖要求**：覆盖 `AirdropDistributor` 的构造配置（`TOTAL_SHARE = 1e18`、`MAX_CLAIM_DELAY_ROUNDS = 1000`、`MAX_SNAPSHOT_URI_BYTES = 256`、首币在构造期完成配置）、回调数据形状（`distributorData` 恰好 1 元素、恰好 64 字节）、回调鉴权、配置拒绝（零根、延迟超上限、同一 token 二次配置）、轮次夹取（`currentPhase() == 0` 时 `baseRound = 1`）、`claimDelayRounds` 为 `0` 当轮可领与为 `1` 下一轮可领、`claim` 的六层失败契约与优先级、零份额的链上链下双层拒绝、按剩余份额的比例分配与最后一人清空余额、`claimableAmount` 预检与 `claim` 返回一致、`AirdropConfigured` / `AirdropClaimed` 的字段与 indexed 布局，以及 `airdropInfos` 的分页语义与「不设独立计数入口」。URI 能力另覆盖：`updateSnapshotUri` 的校验顺序与错误集合（存在性 → 鉴权 → 参数）、创世币 `launcherMemberId = 0` 永久不可更新、发射者更新成功与非发射者拒绝、NFT 转手后权限随 `ownerOf` 实时跟随、长度 256/257 边界与空 URI、`AirdropSnapshotUriUpdated` 三字段（含旧值），以及 URI 设置前后 `claim` 的金额与状态完全一致；并核对 `snapshotUri` 作为 `AirdropInfo` 第 7 字段、`airdropInfo` / （无公开 getter） 两个单点 getter。
 
 **测试方式**：
 - 单元测试：`core/test/AirdropDistributor.t.sol` 的配置、领取、比例分配与 URI 更新场景
@@ -128,12 +128,12 @@
 - 验收证据：Merkle 快照（来源链、来源区块、Merkle Root、首币地址）与 `Σleaves == 1e18` 的独立复算记录；前端从 `snapshotUri` `fetch` 后重建 root 与链上 `merkleRoot` 一致的校验日志
 
 **判定标准**：
-- 首币在 `AirdropDistributor` 构造期即完成配置，`Launch` 构造函数不调用回调；首币与子币的 Root、起始轮次、`claimedShare` 相互独立
+- 首币在 `AirdropDistributor` 构造期即完成配置，`Launch` 构造函数不调用回调；首币与子币的 Root、起始轮次、`totalClaimedShare` 相互独立
 - 非 `LAUNCH_ADDRESS` 调用 `onTokenLaunched` 回滚 `NotLaunchContract(caller)`；形状错误先于解码，回滚 `InvalidDistributorDataCount` / `InvalidDistributorDataLength`
 - `claim` 的校验顺序固定为 存在性 → 状态 → 参数 → 账本 → 资格 → 外部，先命中先回滚；`share == 0` 由链上**显式**回滚 `InvalidProof()`，位置在 `ShareExceedsRemaining` 与证明校验之前，不依赖链下生成器，也不出现「领取成功但拿到 0 代币并失去资格」的静默结果
 - `claim` 不设调用者限制（`claimer` 即 `msg.sender`，只能给自己领）；第 8 步算出的 `amount` 不做零值检查，第 9 步写状态先于第 10 步转账；转账失败透传 OZ `SafeERC20FailedOperation`，`claim` 的错误全集为 5 个自有 selector + 该透传错误
 - `amount = floor(balanceOf(this) × share ÷ remainingShare)`；全部份额领完后合约余额为零，且每个人累计所得不超过其份额比例
-- `AirdropClaimed` 五个字段逐个正确，`remainingShare` 是扣除本次后的值；`airdropInfos` 含首币、`offset` 越界返回空数组与真实 `totalCount`，且第 7 字段 `snapshotUri` 与单点 getter 一致
+- `AirdropClaimed` 五个字段逐个正确，`totalRemainingShare` 是扣除本次后的值；`airdropInfos` 含首币、`offset` 越界返回空数组与真实 `totalCount`，且第 7 字段 `snapshotUri` 与单点 getter 一致
 - URI 是**发现提示、不是授权**：链上不校验 URI 指向的文件内容与 Root 匹配，也不因 URI 改变调整领取逻辑；设置 URI 前后 `claim` 的金额、状态与事件完全一致。前端必须 `fetch(uri)` → 重建 Merkle 树 → 断言 `Σleaves == 1e18` 且重建 root == 链上 `merkleRoot` → 不匹配则提交前拦截、不展示可领数量；`snapshotUri` 受 256 字节链上上限约束，两个 string 事件字段同界
 - `updateSnapshotUri` 的鉴权写在 `onlySnapshotUriUpdater` modifier 且是函数体第一道判定；modifier 第一行是 `TokenNotConfigured` 存在性检查、第二行起才是鉴权，未配置 token 不得落到 `ownerOf(0)` 的 OZ `ERC721NonexistentToken`；`launcherMemberId == 0`（创世币）直接回 `NotSnapshotUriUpdater(caller, 0)`，权限随 MemberNFT 转手实时读 `ownerOf`、不缓存地址
 - 快照生成器保证 `Σleaves == 1e18` 精确相等；链上没有 Root 更新、暂停或取回入口
