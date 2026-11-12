@@ -20,6 +20,8 @@
 
 **首币的 `distributor` 由「外部部署的旧 Burn Airdrop」改为本仓库的 `core/src/distributor/AirdropDistributor.sol`；`TOTAL_SHARE` 不用构造参数，硬编码为编译期常量 `1e18`，链下快照生成器必须把份额归一化到精确 `1e18`；独立 `launch` 仓库本阶段仍不创建。**
 
+> 补充（同日）：本决策落地后追加了「快照 URI」能力，见 [后续：快照 URI 能力](#后续快照-uri-能力)。错误数由 11 增至 14、事件数由 2 增至 3，均只增不改。
+
 具体后果：
 
 - 新建 `core/src/distributor/AirdropDistributor.sol` 与 `core/src/interfaces/distributor/IAirdropDistributor.sol`；`ILaunchDistributor.sol` 迁入 `src/interfaces/distributor/`。错误按 local-first 在本模块的 `IAirdropDistributorErrors` 声明（11 个），事件在 `IAirdropDistributorEvents` 声明（2 个）。
@@ -62,6 +64,18 @@
 2. **`TOTAL_SHARE` 不再可配置**。若将来出现「份额分母不同于 1e18」的需求，只能改源码并重新部署 `AirdropDistributor`。当前无此需求。
 3. **链下生成器必须改**。旧生成器只做 `Σ <= 1e18` 的上限校验，归一化补丁改变了快照生成规则；历史快照若未归一化，`ValidateAirdropSnapshot` 会直接拒绝。已授权修改旧 `LOVE20TKM/burn` 的链下工具（只改脚本与文档，不改其生产合约）。
 4. **`claimer` 命名已按名词表收敛**。首轮实现曾写作 `claimerAddress`，与 `naming-standards.md` §10「角色与流向地址保留角色名（`recipient`、`distributor`、`owner`）」冲突；该字段是 actor 而非实体地址，不带 `Address` 后缀。已在 ABI 冻结前统一改为 `claimer`，同步改 `ByClaimerAddress` → `ByClaimer`。
+
+## 后续：快照 URI 能力
+
+本决策落地后追加了「让子币发射者把 Merkle 快照 JSON 的 URL 登记到链上」的能力，使前端只读 `AirdropDistributor` 配置即可发现各子币快照、无需前端开发者手工整合（前端去中心化）。改动落在同一合约与接口，不新增构造参数：`MEMBER_NFT_ADDRESS` 从 `ILaunch(LAUNCH_ADDRESS).MEMBER_NFT_ADDRESS()` 派生（getter 已存在），URI 鉴权按 `IMemberNFT.ownerOf(launcherMemberId) == msg.sender` 实时判定，权限随 MemberNFT 转手；`launcherMemberId` 由 `onTokenLaunched` 回调第三个参数透传、配置期一次写定，创世币记为 `0`。新增 `AirdropInfo` 第 7 字段 `snapshotUri`、`MAX_SNAPSHOT_URI_BYTES = 256` 常量、`AirdropSnapshotUriUpdated` 事件与 3 个错误（`SnapshotUriEmpty`、`SnapshotUriTooLong`、`NotSnapshotUriUpdater`），错误与事件都只增不改。
+
+**核心取舍：链上不校验 URI 指向的 Merkle 文件内容。** `snapshotUri` 是**发现提示（hint），不是授权**：Merkle Root 在配置后不可变，领取资格只由 `proof` 对链上 Root 的校验决定，链上既读不到链下文件、也不应把「谁能领多少」交给一个可改口的 URL。因此：
+
+- 链上不 `fetch`、不校验文件内容与 Root 是否匹配，也不因 URI 改变而调整任何领取逻辑。若链上要做这件事，只能由调用方把整份快照或树数据传进合约，代价是把链下可独立完成、可反复复算的校验搬上链，且 Root 不可变的前提下这种校验对领取结果没有增益。
+- 校验责任明确落在前端：`fetch(uri)` → 重建 Merkle 树 → 断言 `Σleaves == 1e18` 且重建 root == 链上 `merkleRoot` → 不匹配则**提交前拦截、不展示可领数量**。这把 URI 失效（错文件、被改成钓鱼站、失联）的最坏结果限定为「前端找不到数据」，不可能让任何人多领或少领，也不会产生错误的可领数量诱导。
+- 代价是安全模型依赖前端正确实现这道校验；规格与验收把它写成明文前置条件，不靠链上兜底。这是「链上最小化 + 链下可独立复算」既有路线（Root 不可变、无管理员、无取回）的延续，不是新开的信任假设。
+
+创世币 `launcherMemberId = 0`，因 `MemberNFT._nextTokenId = 1` 使 `memberId 0` 永不铸造，故创世 URI 永久为空且无人可设——刻意设计，首币快照仍由部署记录公开举证，不依赖某个发射者。`onlySnapshotUriUpdater` modifier 第一行是 `TokenNotConfigured` 存在性检查、第二行起才是鉴权：若把鉴权放最前，未配置 token 会先落到 `ownerOf(0)` 抛 OZ `ERC721NonexistentToken`，掩盖 `TokenNotConfigured`；modifier 整体仍是函数体第一道判定，满足 dev-standards §5.5。
 
 ## 关联
 

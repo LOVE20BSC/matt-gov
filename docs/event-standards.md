@@ -228,7 +228,7 @@ ERC-20 / ERC-721 标准事件保持不变，不进入本规范正文。`AddHolde
 | core.phase | 对象 id → 数值（当前段长 → 下一段长） | `PhaseSynchronized` |
 | core.stake | 根键 → round → memberId 链（0–2 个）→ 数值 | `LiquidityStaked`、`BoostStaked`、`Unstaked`、`StakeWithdrawn`、`FeesSettled`、`FeeReclassified`、`StakesMerged` |
 | core.proposal | 根键 → round → 对象/actor id 链（1–2 个）→ 地址 → 枚举 → bytes → 文本 | `ProposalCreated`、`ProposalSubmitted`、`VoteCast` |
-| core.distributor | 根键 → 对象/角色地址或配置值 → 数值 | `AirdropConfigured`、`AirdropClaimed` |
+| core.distributor | 根键 → 对象/角色地址或配置值 → 数值 | `AirdropConfigured`、`AirdropClaimed`、`AirdropSnapshotUriUpdated` |
 | action.registry | 根键 → actionId → round → executor | `ActionRegistered` |
 | action.config | 根键 → actionId → 配置地址 → 配置数值 → 文本数组 | `GroupActionCreated`、`ServiceActionCreated`、`LpActionCreated` |
 | action.group | 根键 → actionId → round → groupId → 配置值 → 旧值 | `GroupActivated`、`GroupDeactivated`、`GroupConfigChanged` |
@@ -331,6 +331,9 @@ v1 基线：
 | `GroupActionJoined.verificationValues` | ≤16 项，每项 ≤1024 字节 |
 | `OriginScoresSubmitted.scores` | ≤`MAX_VERIFICATION_BATCH`（100） |
 | `VerifierApplicationSubmitted.description` | ≤1024 字节 |
+| `AirdropSnapshotUriUpdated.snapshotUri` / `prevSnapshotUri` | 各 ≤256 字节（`MAX_SNAPSHOT_URI_BYTES = 256`） |
+
+新值在 `updateSnapshotUri` 写入/emit 前按 `bytes(snapshotUri).length` 校验，旧值为上一次同样受该上限约束的存储值，两个 `string` 字段同界。
 
 无界字段不得进入事件。确实无法加上限的文本属于元数据，必须列入「不承诺重建」的窄名单，不得静默遗漏。
 
@@ -382,7 +385,7 @@ v1 基线：
 | Proposal | 创建、提交 | `ProposalCreated`、`ProposalSubmitted` |
 | Vote | 投票 | `VoteCast` |
 | RewardRound | 准备奖池、gov 奖励、提案奖励、取消池燃烧 | `RewardPrepared`、`GovRewardMinted`、`ProposalRewardMinted`、`RewardBurned` |
-| AirdropConfig | 配置快照、按份额领取 | `AirdropConfigured`、`AirdropClaimed` |
+| AirdropConfig | 配置快照、按份额领取、快照 URI 更新 | `AirdropConfigured`、`AirdropClaimed`、`AirdropSnapshotUriUpdated` |
 
 `MemberNFT` 的 `_safeMint` 回调先于 `MemberMinted`（E3），因此：
 

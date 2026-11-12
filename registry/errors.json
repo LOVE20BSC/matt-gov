@@ -1449,7 +1449,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/distributor/AirdropDistributor.sol:83"
+        "core/src/distributor/AirdropDistributor.sol:101"
       ],
       "selector": "0x3349f079",
       "signature": "AirdropAlreadyClaimed(address,address)"
@@ -1495,7 +1495,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/distributor/AirdropDistributor.sol:198"
+        "core/src/distributor/AirdropDistributor.sol:246"
       ],
       "selector": "0x4e25c8d7",
       "signature": "ClaimDelayRoundsExceeded(uint256,uint256)"
@@ -1510,7 +1510,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/distributor/AirdropDistributor.sol:79"
+        "core/src/distributor/AirdropDistributor.sol:97"
       ],
       "selector": "0xff978a22",
       "signature": "ClaimRoundNotReached(address,uint256,uint256)"
@@ -1586,7 +1586,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/distributor/AirdropDistributor.sol:60"
+        "core/src/distributor/AirdropDistributor.sol:78"
       ],
       "selector": "0x3ea8b6a5",
       "signature": "InvalidDistributorDataCount(uint256,uint256)"
@@ -1601,7 +1601,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/distributor/AirdropDistributor.sol:61"
+        "core/src/distributor/AirdropDistributor.sol:79"
       ],
       "selector": "0xecd41092",
       "signature": "InvalidDistributorDataLength(uint256,uint256)"
@@ -1631,8 +1631,8 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/distributor/AirdropDistributor.sol:87",
-        "core/src/distributor/AirdropDistributor.sol:90"
+        "core/src/distributor/AirdropDistributor.sol:105",
+        "core/src/distributor/AirdropDistributor.sol:108"
       ],
       "selector": "0x09bde339",
       "signature": "InvalidProof()"
@@ -1902,7 +1902,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/distributor/AirdropDistributor.sol:36"
+        "core/src/distributor/AirdropDistributor.sol:43"
       ],
       "selector": "0x78654bfe",
       "signature": "NotLaunchContract(address)"
@@ -1978,6 +1978,22 @@
       ],
       "selector": "0xc157502b",
       "signature": "NotProposalTarget(address,address)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/distributor/IAirdropDistributor.sol"
+      ],
+      "interfaces": [
+        "IAirdropDistributorErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/distributor/AirdropDistributor.sol:50",
+        "core/src/distributor/AirdropDistributor.sol:53"
+      ],
+      "selector": "0x52ed8447",
+      "signature": "NotSnapshotUriUpdater(address,uint256)"
     },
     {
       "declarations": 1,
@@ -2232,7 +2248,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/distributor/AirdropDistributor.sol:88"
+        "core/src/distributor/AirdropDistributor.sol:106"
       ],
       "selector": "0x079c232c",
       "signature": "ShareExceedsRemaining(uint256,uint256)"
@@ -2251,6 +2267,36 @@
       ],
       "selector": "0x71c4efed",
       "signature": "SlippageExceeded(uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/distributor/IAirdropDistributor.sol"
+      ],
+      "interfaces": [
+        "IAirdropDistributorErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/distributor/AirdropDistributor.sol:133"
+      ],
+      "selector": "0xdd461fc3",
+      "signature": "SnapshotUriEmpty()"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/distributor/IAirdropDistributor.sol"
+      ],
+      "interfaces": [
+        "IAirdropDistributorErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/distributor/AirdropDistributor.sol:134"
+      ],
+      "selector": "0xf2f9c2c9",
+      "signature": "SnapshotUriTooLong(uint256,uint256)"
     },
     {
       "declarations": 2,
@@ -2416,7 +2462,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/distributor/AirdropDistributor.sol:195"
+        "core/src/distributor/AirdropDistributor.sol:243"
       ],
       "selector": "0x54d67cef",
       "signature": "TokenAlreadyConfigured(address)"
@@ -2461,7 +2507,8 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/distributor/AirdropDistributor.sol:74"
+        "core/src/distributor/AirdropDistributor.sol:48",
+        "core/src/distributor/AirdropDistributor.sol:92"
       ],
       "selector": "0xa5be5e0f",
       "signature": "TokenNotConfigured(address)"
@@ -2682,7 +2729,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/distributor/AirdropDistributor.sol:196"
+        "core/src/distributor/AirdropDistributor.sol:244"
       ],
       "selector": "0x9266ee62",
       "signature": "ZeroMerkleRoot()"
@@ -3323,10 +3370,10 @@
       ],
       "repo": "tools",
       "revert_sites": [
-        "tools/src/UniswapV2Zap.sol:214",
-        "tools/src/UniswapV2Zap.sol:215",
-        "tools/src/UniswapV2Zap.sol:330",
-        "tools/src/UniswapV2Zap.sol:332"
+        "tools/src/UniswapV2Zap.sol:271",
+        "tools/src/UniswapV2Zap.sol:272",
+        "tools/src/UniswapV2Zap.sol:392",
+        "tools/src/UniswapV2Zap.sol:394"
       ],
       "selector": "0xb97c056b",
       "signature": "AmountExceeded(uint256,uint256)"
@@ -3341,7 +3388,7 @@
       ],
       "repo": "tools",
       "revert_sites": [
-        "tools/src/BatchTransfer.sol:102"
+        "tools/src/BatchTransfer.sol:105"
       ],
       "selector": "0xfa5dbe08",
       "signature": "ArrayLengthMismatch(uint256,uint256)"
@@ -3356,7 +3403,7 @@
       ],
       "repo": "tools",
       "revert_sites": [
-        "tools/src/BatchTransfer.sol:145"
+        "tools/src/BatchTransfer.sol:152"
       ],
       "selector": "0xa4d60177",
       "signature": "ERC20AllowanceQueryFailed(address,address,address,bytes32,uint256)"
@@ -3371,7 +3418,7 @@
       ],
       "repo": "tools",
       "revert_sites": [
-        "tools/src/BatchTransfer.sol:130"
+        "tools/src/BatchTransfer.sol:137"
       ],
       "selector": "0x649527fb",
       "signature": "ERC20BalanceQueryFailed(address,address,bytes32,uint256)"
@@ -3386,7 +3433,7 @@
       ],
       "repo": "tools",
       "revert_sites": [
-        "tools/src/BatchTransfer.sol:55"
+        "tools/src/BatchTransfer.sol:58"
       ],
       "selector": "0x9cb4340e",
       "signature": "ERC20InsufficientAllowance(address,address,address,uint256,uint256)"
@@ -3401,7 +3448,7 @@
       ],
       "repo": "tools",
       "revert_sites": [
-        "tools/src/BatchTransfer.sol:50"
+        "tools/src/BatchTransfer.sol:53"
       ],
       "selector": "0xac083e30",
       "signature": "ERC20InsufficientBalance(address,address,uint256,uint256)"
@@ -3416,7 +3463,7 @@
       ],
       "repo": "tools",
       "revert_sites": [
-        "tools/src/BatchTransfer.sol:164"
+        "tools/src/BatchTransfer.sol:182"
       ],
       "selector": "0x7ebea543",
       "signature": "ERC20InvalidReturn(address,uint256,address,uint256,bytes32,uint256)"
@@ -3431,7 +3478,7 @@
       ],
       "repo": "tools",
       "revert_sites": [
-        "tools/src/BatchTransfer.sol:159"
+        "tools/src/BatchTransfer.sol:177"
       ],
       "selector": "0x9184d70c",
       "signature": "ERC20TransferFailed(address,uint256,address,uint256,bytes32,uint256)"
@@ -3446,7 +3493,7 @@
       ],
       "repo": "tools",
       "revert_sites": [
-        "tools/src/BatchTransfer.sol:99"
+        "tools/src/BatchTransfer.sol:102"
       ],
       "selector": "0xc2e5347d",
       "signature": "EmptyBatch()"
@@ -3461,7 +3508,7 @@
       ],
       "repo": "tools",
       "revert_sites": [
-        "tools/src/UniswapV2Zap.sol:439"
+        "tools/src/UniswapV2Zap.sol:501"
       ],
       "selector": "0x5c6d7b73",
       "signature": "IdenticalTokens()"
@@ -3476,7 +3523,7 @@
       ],
       "repo": "tools",
       "revert_sites": [
-        "tools/src/UniswapV2Zap.sol:221"
+        "tools/src/UniswapV2Zap.sol:278"
       ],
       "selector": "0xe57902cd",
       "signature": "InsufficientInitialLiquidity()"
@@ -3491,7 +3538,7 @@
       ],
       "repo": "tools",
       "revert_sites": [
-        "tools/src/UniswapV2Zap.sol:329"
+        "tools/src/UniswapV2Zap.sol:391"
       ],
       "selector": "0xbb55fd27",
       "signature": "InsufficientLiquidity()"
@@ -3506,7 +3553,7 @@
       ],
       "repo": "tools",
       "revert_sites": [
-        "tools/src/UniswapV2Zap.sol:272"
+        "tools/src/UniswapV2Zap.sol:329"
       ],
       "selector": "0xd1d731c8",
       "signature": "LiquidityMintedZero()"
@@ -3521,7 +3568,7 @@
       ],
       "repo": "tools",
       "revert_sites": [
-        "tools/src/UniswapV2Zap.sol:465"
+        "tools/src/UniswapV2Zap.sol:534"
       ],
       "selector": "0x8520d710",
       "signature": "NativeRefundFailed()"
@@ -3536,7 +3583,7 @@
       ],
       "repo": "tools",
       "revert_sites": [
-        "tools/src/UniswapV2Zap.sol:41"
+        "tools/src/UniswapV2Zap.sol:63"
       ],
       "selector": "0x37668688",
       "signature": "NativeTokenNotAccepted()"
@@ -3551,7 +3598,7 @@
       ],
       "repo": "tools",
       "revert_sites": [
-        "tools/src/BatchTransfer.sol:29"
+        "tools/src/BatchTransfer.sol:30"
       ],
       "selector": "0xdbe37f79",
       "signature": "NativeTransferFailed(uint256,address,uint256,bytes32,uint256)"
@@ -3566,7 +3613,7 @@
       ],
       "repo": "tools",
       "revert_sites": [
-        "tools/src/BatchTransfer.sol:18"
+        "tools/src/BatchTransfer.sol:19"
       ],
       "selector": "0xbc760cfe",
       "signature": "NativeValueMismatch(uint256,uint256)"
@@ -3581,7 +3628,7 @@
       ],
       "repo": "tools",
       "revert_sites": [
-        "tools/src/UniswapV2Zap.sol:266"
+        "tools/src/UniswapV2Zap.sol:323"
       ],
       "selector": "0x0b930eaa",
       "signature": "OptimalAmountZero()"
@@ -3596,8 +3643,8 @@
       ],
       "repo": "tools",
       "revert_sites": [
-        "tools/src/UniswapV2Zap.sol:152",
-        "tools/src/UniswapV2Zap.sol:219"
+        "tools/src/UniswapV2Zap.sol:209",
+        "tools/src/UniswapV2Zap.sol:276"
       ],
       "selector": "0xa569b1a1",
       "signature": "PairMissingOrEmpty()"
@@ -3612,7 +3659,7 @@
       ],
       "repo": "tools",
       "revert_sites": [
-        "tools/src/UniswapV2Zap.sol:177"
+        "tools/src/UniswapV2Zap.sol:234"
       ],
       "selector": "0x71c4efed",
       "signature": "SlippageExceeded(uint256,uint256)"
@@ -3627,8 +3674,8 @@
       ],
       "repo": "tools",
       "revert_sites": [
-        "tools/src/UniswapV2Zap.sol:243",
-        "tools/src/UniswapV2Zap.sol:256"
+        "tools/src/UniswapV2Zap.sol:300",
+        "tools/src/UniswapV2Zap.sol:313"
       ],
       "selector": "0x5273e2e8",
       "signature": "SwapOutputZero()"
@@ -3643,7 +3690,7 @@
       ],
       "repo": "tools",
       "revert_sites": [
-        "tools/src/BatchTransfer.sol:120"
+        "tools/src/BatchTransfer.sol:127"
       ],
       "selector": "0x18aca2db",
       "signature": "TokenNotContract(address)"
@@ -3658,8 +3705,8 @@
       ],
       "repo": "tools",
       "revert_sites": [
-        "tools/src/UniswapV2Zap.sol:140",
-        "tools/src/UniswapV2Zap.sol:91"
+        "tools/src/UniswapV2Zap.sol:134",
+        "tools/src/UniswapV2Zap.sol:197"
       ],
       "selector": "0x4a3d191b",
       "signature": "WrappedNativeTokenNotAccepted()"
@@ -3674,7 +3721,7 @@
       ],
       "repo": "tools",
       "revert_sites": [
-        "tools/src/BatchTransfer.sol:112"
+        "tools/src/BatchTransfer.sol:115"
       ],
       "selector": "0x9af70448",
       "signature": "ZeroAmount(uint256)"
@@ -3689,10 +3736,25 @@
       ],
       "repo": "tools",
       "revert_sites": [
-        "tools/src/UniswapV2Zap.sol:36"
+        "tools/src/UniswapV2Zap.sol:58"
       ],
       "selector": "0x00821e6f",
       "signature": "ZeroFactory()"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "tools/src/interfaces/IBatchTransfer.sol"
+      ],
+      "interfaces": [
+        "IBatchTransferErrors"
+      ],
+      "repo": "tools",
+      "revert_sites": [
+        "tools/src/BatchTransfer.sol:122"
+      ],
+      "selector": "0x3e267f95",
+      "signature": "ZeroGasLimit()"
     },
     {
       "declarations": 1,
@@ -3704,10 +3766,10 @@
       ],
       "repo": "tools",
       "revert_sites": [
-        "tools/src/UniswapV2Zap.sol:129",
-        "tools/src/UniswapV2Zap.sol:141",
-        "tools/src/UniswapV2Zap.sol:52",
-        "tools/src/UniswapV2Zap.sol:93"
+        "tools/src/UniswapV2Zap.sol:136",
+        "tools/src/UniswapV2Zap.sol:186",
+        "tools/src/UniswapV2Zap.sol:198",
+        "tools/src/UniswapV2Zap.sol:74"
       ],
       "selector": "0x2896991c",
       "signature": "ZeroInputAmounts()"
@@ -3722,7 +3784,7 @@
       ],
       "repo": "tools",
       "revert_sites": [
-        "tools/src/BatchTransfer.sol:108"
+        "tools/src/BatchTransfer.sol:111"
       ],
       "selector": "0xef28bd44",
       "signature": "ZeroRecipient(uint256)"
@@ -3737,8 +3799,8 @@
       ],
       "repo": "tools",
       "revert_sites": [
-        "tools/src/UniswapV2Zap.sol:51",
-        "tools/src/UniswapV2Zap.sol:92"
+        "tools/src/UniswapV2Zap.sol:135",
+        "tools/src/UniswapV2Zap.sol:73"
       ],
       "selector": "0xceef9857",
       "signature": "ZeroRecipientAddress()"
@@ -3753,7 +3815,7 @@
       ],
       "repo": "tools",
       "revert_sites": [
-        "tools/src/UniswapV2Zap.sol:30"
+        "tools/src/UniswapV2Zap.sol:52"
       ],
       "selector": "0x920d9292",
       "signature": "ZeroRouter()"
@@ -3768,8 +3830,8 @@
       ],
       "repo": "tools",
       "revert_sites": [
-        "tools/src/UniswapV2Zap.sol:139",
-        "tools/src/UniswapV2Zap.sol:90"
+        "tools/src/UniswapV2Zap.sol:133",
+        "tools/src/UniswapV2Zap.sol:196"
       ],
       "selector": "0xad1991f5",
       "signature": "ZeroToken()"
@@ -3784,7 +3846,7 @@
       ],
       "repo": "tools",
       "revert_sites": [
-        "tools/src/UniswapV2Zap.sol:437"
+        "tools/src/UniswapV2Zap.sol:499"
       ],
       "selector": "0xa82c9674",
       "signature": "ZeroTokenA()"
@@ -3799,7 +3861,7 @@
       ],
       "repo": "tools",
       "revert_sites": [
-        "tools/src/UniswapV2Zap.sol:438"
+        "tools/src/UniswapV2Zap.sol:500"
       ],
       "selector": "0xb2a93375",
       "signature": "ZeroTokenB()"
@@ -3814,7 +3876,7 @@
       ],
       "repo": "tools",
       "revert_sites": [
-        "tools/src/UniswapV2Zap.sol:37"
+        "tools/src/UniswapV2Zap.sol:59"
       ],
       "selector": "0xe5e356d3",
       "signature": "ZeroWrappedNativeToken()"
@@ -3897,15 +3959,15 @@
     }
   ],
   "summary": {
-    "declarations": 279,
+    "declarations": 283,
     "repos": {
       "action": 106,
-      "core": 94,
+      "core": 97,
       "group-chat": 45,
       "libs": 1,
-      "tools": 33
+      "tools": 34
     },
-    "signatures": 243,
-    "unique_signatures": 231
+    "signatures": 247,
+    "unique_signatures": 235
   }
 }

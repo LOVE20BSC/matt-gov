@@ -82,6 +82,12 @@
 | AirdropDistributor | 「配满 100%」的三段论证：补尾差、断言、编译期常量 | `normalizeShares()` 把尾差补给最大份额地址后 `Σ == 1e18`；`_build()` 断言 `Σ == 1e18` 且每个 `normalized[i] > 0`；`TOTAL_SHARE` 是 `public constant`、不进构造函数，`TOTAL_SHARE() == 1e18` 无法被部署配置改写 |
 | AirdropDistributor | `airdropInfos` 不设独立计数入口 | `airdropInfos(0, 0, false)` 返回空数组与真实 `totalCount`；不另设 `airdropCount()`；`limit` 超剩余按剩余返回、`offset` 越界不回滚、`reverse` 按插入逆序返回 |
 | AirdropDistributor | `AirdropClaimed` 的载荷与 `airdropInfos` 分页 | 五个字段逐个断言，`tokenAddress` / `claimer` 的 topic 位置可过滤；`airdropInfos` 按配置顺序分页、含首币，`offset` 越界返回空数组与真实 `totalCount`，`reverse` 时从新到旧；`contractBalance` 是查询时点余额 |
+| AirdropDistributor | 快照 URI 常量与创世币不可更新 | `MAX_SNAPSHOT_URI_BYTES() == 256`；创世币 `launcherMemberIdByTokenAddress == 0`、`snapshotUriByTokenAddress == ""`；任何调用者（含 deployer）调 `updateSnapshotUri(首币, uri)` 均回滚 `NotSnapshotUriUpdater(caller, 0)`，且不会落到 `ownerOf(0)` 的 OZ `ERC721NonexistentToken` |
+| AirdropDistributor | 发射者更新 URI 与事件旧值 | 普通发射子币的 `launcherMemberIdByTokenAddress` 等于发射者 `memberId`；发射者本人 `updateSnapshotUri` 成功，单点 getter 返回新值、`airdropInfos` 该 token 的 `snapshotUri` 同步、发 `AirdropSnapshotUriUpdated(token, uri, "")`；二次更新事件的 `prevSnapshotUri` 等于第一次的 uri，每次更新恰好一条 |
+| AirdropDistributor | URI 更新的鉴权优先级与非发射者拒绝 | 未配置 token 在 modifier 第一行回滚 `TokenNotConfigured(tokenAddress)`（先于鉴权）；非发射者调回滚 `NotSnapshotUriUpdater(bob, aliceMemberId)`；`launcherMemberId == 0` 直接拒绝，不读 `ownerOf(0)` |
+| AirdropDistributor | NFT 转手后权限跟随 | 把发射者 MemberNFT 转给新持有人后，旧持有人调 `updateSnapshotUri` 回滚 `NotSnapshotUriUpdater`，新持有人调成功；证明鉴权实时读 `ownerOf`、不缓存旧地址 |
+| AirdropDistributor | URI 长度 256/257 边界与空 URI | `snapshotUri == ""` 回滚 `SnapshotUriEmpty()`；长度 257 回滚 `SnapshotUriTooLong(257, 256)`；长度恰好 256 成功，超过上限不截断；GitHub Pages 形态 URL（约 60 字节）登记成功 |
+| AirdropDistributor | `AirdropSnapshotUriUpdated` 事件载荷与 URI 不影响领取 | 三字段逐个断言（`tokenAddress` 为唯一 indexed、`snapshotUri` 与 `prevSnapshotUri` 两个 string 不 indexed 且可区分）；设置 URI 前后 `claim` 的 `amount`、状态与 `AirdropClaimed` 完全一致，证明 URI 纯发现提示、无授权作用 |
 
 ProposalDoS 压力测试把 `SUBMIT_MIN_RATIO` 设为 `1`：成员逐个入池时，后加入者的票权占全局票权的比例远低于 1%，而该测试只度量每轮 1,000 个提案的准备成本，不验证门槛语义。门槛本身由 `Submit` 的专项用例覆盖。
 

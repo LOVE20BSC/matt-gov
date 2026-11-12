@@ -125,7 +125,7 @@ Launch 只保存“成员可用整数次数”和“代币累计已产生次数�
 
 回调可重入 `launchToken`：外层账本（次数递减、代币列表、父币映射、符号映射、子币列表）在回调前已封账，重入等价于同一交易内连续发射两次，两次都消耗该成员在对应父币维度的剩余次数。distributor 若需拒绝重入应自行加锁，不能依赖 Launch。
 
-distributor 自行实现领取与查询逻辑；`ILaunchDistributor` 只规定 `onTokenLaunched`，协议不要求 distributor 提供任何领取入口。本仓库的 [`AirdropDistributor`](10-airdrop-distributor.md) 提供了具体的领取与查询 ABI，属于该模块自己的约定，不构成对所有 distributor 的协议要求。发射者负责选择分发目标，承担其失败和 Gas 耗尽风险。
+distributor 自行实现领取与查询逻辑；`ILaunchDistributor` 只规定 `onTokenLaunched`，协议不要求 distributor 提供任何领取入口。本仓库的 [`AirdropDistributor`](10-airdrop-distributor.md) 提供了具体的领取与查询 ABI，属于该模块自己的约定，不构成对所有 distributor 的协议要求：它还允许子币发射者在发射后登记快照 URI（发现提示，不参与领取判定），其 URI 鉴权从 `ILaunch.MEMBER_NFT_ADDRESS()` 派生 MemberNFT 地址并按 `ownerOf` 实时判定当前 `launcherMemberId` 持有人，不新增本合约构造参数或回调数据字段。发射者负责选择分发目标，承担其失败和 Gas 耗尽风险。
 
 校验顺序固定为鉴权 → 参数 → 存在性 → 账本 → 扣减 → 最终符号唯一性：先校验调用者持有 `memberId`，再校验参数（`tokenSymbol`、`distributor` 与分发模式），再校验存在性（`parentTokenAddress` 为已登记 LOVE20 代币；`memberId` 存在性由鉴权覆盖），再校验账本余量并扣减次数，最后按施加 `Test` 前缀后的最终符号校验唯一性。唯一性校验必须排在父币存在性校验之后：最终符号要先读取已登记父币的符号才能得到。
 
