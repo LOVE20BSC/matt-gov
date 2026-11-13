@@ -44,7 +44,7 @@ BSC 版需要一个「单笔完成流动性质押」的便捷入口：用户只�
 ### 二、core 侧改动
 
 1. **`stakeLiquidity` / `stakeBoost` 放宽鉴权**：只调用 `ownerOf(memberId)` 校验存在（沿用 `mergeStake` 的写法），**不比较 `msg.sender`**。判据是「单向增加不损害目标资产」；`unstake` / `withdraw` / `mergeStake` 源侧仍收紧。
-2. **等待期约束**：当该 memberId 已有质押（`liquidityShares != 0 || boostShares != 0`，与 `_mergeIntoTarget` 的 `targetHadPosition` 同判据）时，非 owner 调用必须沿用现有 `promisedWaitingPhases`，不得改写；空仓位允许自由指定（含 MAX）。理由：实际交互中首次质押仍由 owner 经 Hub 完成，强制降为 MIN 会逼出「质押 + 调整等待期」两步，拿真实用户成本去防一个已有补救的骚扰。
+2. **等待期约束**：当该 memberId 已有质押（`liquidityShares != 0 || boostShares != 0`，与 `_mergeIntoTarget` 的 `targetHadPosition` 同判据）时，非 owner 调用必须沿用现有 `promisedWaitingPhases`，不得改写；空仓位允许自由指定（含 MAX）。下调回滚 `PromisedWaitingPhasesDecreased`，非持有人改写回滚独立的 `PromisedWaitingPhasesRewritten(tokenAddress, memberId, requested, current)`——两条判据不同，按错误标准「一条件一错误」不共用 selector。**该约束对中间合约同样成立**：Hub 代用户调用时 `msg.sender` 是 Hub，永不等于 NFT 持有人，因此经 Hub 无法为已有仓位提升等待期；要提升须由持有人直接调 `Stake.stakeLiquidity`，Hub 不提供这条路径。理由：实际交互中首次质押仍由 owner 经 Hub 完成，强制降为 MIN 会逼出「质押 + 调整等待期」两步，拿真实用户成本去防一个已有补救的骚扰。
 3. **删除 `slippage`**：`stakeLiquidity` 不再承担滑点职责，只按 Pair 储备把收到的两种币尽可能放进流动性质押，放不下的留在调用者手里。价格保护完全交给 Hub 的 `tokenAmountMin` / `parentTokenAmountMin`（全链路终点口径）。
    - Hub 以**调用前后自身余额差**取 Stake 实际拉走的量，做 `prepared − remaining >= Min` 的事后校验，不在 Hub 里复刻折算公式。
    - 这是 [CHANGES-core.md](../specs/CHANGES-core.md) 所记「旧 Hub 折算与滑点并入 core」的一次反转：periphery 回归后职责还回去，但边界更清楚（core 只折算 + 记账，Hub 管价格与路由）。**该反转只写本 ADR，不写进 `CHANGES-core.md`**——后者只记录与 `LOVE20TKM/core` 的最终差异。

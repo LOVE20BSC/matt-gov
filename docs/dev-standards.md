@@ -225,6 +225,7 @@ EIP-170 限制部署字节码 ≤ 24,576 字节。超过时：
 - 多个 modifier 时 `nonReentrant` 必须最左（`non-reentrant-not-first` 强制），鉴权紧随其后。
 - 判定值函数体还要用（owner 快照、事件）时仍写 modifier，函数体再读一次；多分支判定可委托给 `_is<X>()` 布尔谓词（`_isOperator`、`_isBoundExecutor`），错误仍在 modifier 里抛。业务状态校验（如 `activated`）不进鉴权判定，作为函数体首条紧跟其后。
 - 无调用者限制的写函数在规格里写明，不靠「没挂 modifier」隐式表达。只读函数不适用；`init` 见 5.4。
+- **判定里含 `msg.sender`、但属于业务校验而非鉴权的**：`script/check_caller_auth.py` 会把它当作调用者校验报错。两者必须区分——鉴权判「谁可以调」，业务校验判「入参是否合法」，后者不拦调用者。这类函数须以 `_is*` 谓词承载 `msg.sender` 部分；若因要与入参同处一次判定而无法拆出，则在 `check_caller_auth.py` 的 `BUSINESS_CALLER_CHECKS` 登记，条目必须写明**具体业务规则**与**为什么不能搬进 modifier**，且只豁免该一个函数（不豁免文件）。现登记：`core/src/Stake.sol:_checkPromisedWaitingPhasesNotRewritten`（等待期改写规则：判据同时依赖调用者与成员仓位，任何地址都可调用 `stakeLiquidity` / `stakeBoost`，本函数不构成入口限制）。规则若改动须同步更新该条目。
 
 ### 5.6 复用
 
@@ -275,7 +276,7 @@ script/
   - 判据与各仓结论的出处见 [ADR 2026-11-13](adr/2026-11-13-periphery-hub-single-token-staking.md)；`periphery`、`tools` 属未冻结一类，`core`、`action`、`group-chat`、`dex` 的结论由各自验收给出，不按名单预先钉死。
 - **步骤脚本只做自己那一步、互不调用**（`11_deploy.sh` 不得调用 `21_check.sh`）；顺序编排与失败处理（如校验失败不得覆盖上次已保存的地址）只放在 `one_click_deploy.sh` 一类入口脚本里。
 - **步骤脚本自包含**：统一 `<step>.sh <network>` 一种调用形态，网络目录校验、配置存在性检查、文件载入、链 ID 核对都在步骤内完成；不依赖调用方预载环境，也没有文件互相 source。入口脚本不 source 任何文件，只做编排。共享 `00_init.sh` 一类的环境初始化文件不再单设，其职责并入 `11_deploy.sh`。
-- **参数载入器只有 `params.sh` 一份**：每个步骤 `source` 它，由它提供三件事——`params_load`（`1e17`/`1_000_000` 的词法展开）、`params_unset_all`（按文件里出现的键清掉调用方继承值）、`params_require_keys` / `params_require_values`（按文件断言必填键）。四个仓各持一份**逐字节相同**的副本：每仓都要能独立部署，文件无法共享，改动须一次改四处，并由仓内回归测试用 sha256 钉住，漂移即失败。
+- **参数载入器只有 `params.sh` 一份**：每个步骤 `source` 它，由它提供三件事——`params_load`（`1e17`/`1_000_000` 的词法展开）、`params_unset_all`（按文件里出现的键清掉调用方继承值）、`params_require_keys` / `params_require_values`（按文件断言必填键）。`core`、`action`、`group-chat`、`dex`、`tools`、`periphery` 六仓各持一份**逐字节相同**的副本：每仓都要能独立部署，文件无法共享，改动须一次改六处，并由仓内回归测试用 sha256 钉住，漂移即失败。
 - **步骤编号**：deploy 步骤以 `1` 开头、check 以 `2` 开头、verify 以 `3` 开头，第二位为模块序号——`1x` 部署、`2x` 校验、`3x` 验证同属模块 `x`（如 `dex`：WETH 模块 `11_deploy_weth`/`21_check_weth`/`31_verify_weth`，UniswapV2 模块 `12_deploy_uniswapv2`/`22_check_uniswapv2`/`32_verify`；单模块仓库即 `11`/`21`/`31`）。无可验证合约的模块不设 verify 步骤。
 - 新增合约/模块 = 一套自包含脚本（`one_click_deploy_<x>.sh` + 自己的步骤脚本 + 自己的参数文件），各模块的部署输入互不要求存在——部署模块 A 不会因模块 B 的参数缺失或变动而失败。
 - **账户签名统一走 keystore**：`.account` 是必需文件，提供 `KEYSTORE_ACCOUNT` 与 `ACCOUNT_ADDRESS`；不按链 ID 提供 `--unlocked` 回退，本地链与公共网络同一签名路径。

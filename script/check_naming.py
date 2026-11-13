@@ -18,7 +18,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-REPOS = ("core", "action", "group-chat", "libs", "tools")
+REPOS = ("core", "action", "group-chat", "libs", "tools", "periphery")
 BASELINE = ROOT / "matt-gov" / "registry" / "naming-baseline.txt"
 
 # Interface-mandated names: EIP-721/20/165 and the Uniswap V2 surface.

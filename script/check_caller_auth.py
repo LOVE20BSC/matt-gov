@@ -44,10 +44,10 @@ EXEMPT = {"onERC721Received"}
 # the file's caller-check coverage for that one function only.
 BUSINESS_CALLER_CHECKS = {
     "core/src/Stake.sol:_checkPromisedWaitingPhasesNotRewritten": (
-        "phase 6.3 no-slippage change: promisedWaitingPhases may only be raised by the NFT holder. "
-        "This is not 'who may call' (anybody may call stakeLiquidity/stakeBoost); it is a condition on "
-        "the INPUT value whose verdict depends on the caller. The external callable never gates on it, "
-        "so it cannot move into a modifier only*."
+        "promisedWaitingPhases may only be changed by the NFT holder once a position exists. This is not "
+        "'who may call' (anybody may call stakeLiquidity/stakeBoost); it is a condition on the INPUT value "
+        "whose verdict depends on the caller. The external callable never gates on it, so it cannot move "
+        "into a modifier only*. Registered in dev-standards 5.5."
     ),
 }
 

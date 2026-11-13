@@ -224,16 +224,19 @@ stakeBoost 通过条件：member.boostShares + amount <= m_i
 | 6 | 存在性 | 首次质押时 Pair 为零地址 | `PairMissing(tokenAddress)` |
 | 7 | 业务 | 当前 Phase 为 `0` | `StakeNotStarted()` |
 | 8 | 业务 | 已申请解锁 | `UnstakeAlreadyRequested(tokenAddress, memberId)` |
-| 9 | 业务 | `promisedWaitingPhases` 小于已有值（含：已有仓位且调用者非持有人时的「必须沿用」） | `PromisedWaitingPhasesDecreased(promisedWaitingPhases, member.promisedWaitingPhases)` |
-| 10 | 业务 | Pair 铸出的 LP 数量为零 | `ZeroLiquidityMinted()` |
+| 9 | 业务 | `promisedWaitingPhases` 小于已有值 | `PromisedWaitingPhasesDecreased(promisedWaitingPhases, member.promisedWaitingPhases)` |
+| 10 | 业务 | 已有仓位且调用者非持有人，`promisedWaitingPhases` 不等于已有值（含上调） | `PromisedWaitingPhasesRewritten(tokenAddress, memberId, promisedWaitingPhases, member.promisedWaitingPhases)` |
+| 11 | 业务 | Pair 铸出的 LP 数量为零 | `ZeroLiquidityMinted()` |
 
 第 4 行取代原表第 1 行的 `NotMemberOwner`：判据由「持有该 NFT」放宽为「该 `memberId` 存在」，位置随之从 modifier 层（最前）落到存在性层（参数之后），符合 [开发规范 §5.5](../../dev-standards.md#55-调用者校验)「鉴权 → 参数 → 存在性 → 业务 → 账本」。**这带来一处刻意的错误优先级变化**：不存在的 `memberId` + 非法参数，现在先回滚参数错误、再回滚 `ERC721NonexistentToken`，而旧表是鉴权错误优先。理由是本入口已无鉴权面，没有「非授权方不能探测内部状态」这条约束要守；`memberId` 本身由 ERC721Enumerable 公开可枚举，不构成信息泄漏。
 
 第 6 行在首次质押时读取 Factory 登记的 Pair 并保存；该入口不创建 Pair，未登记即回滚。
 
-第 9 行同时承担等待期约束的两个方向：**所有**调用者都不能下调 `promisedWaitingPhases`；**非持有人**在已有仓位时也不能上调（必须精确等于现有值，上调同样命中本行）。空仓位没有这条上限，非持有人可以自由指定到 `MAX`。
+第 9、10 行是等待期约束的两个方向：**所有**调用者都不能下调（第 9 行）；**非持有人**在已有仓位时也不能上调或改成任何别的值，必须精确等于现有值（第 10 行）。两者用两个错误——下调是「变小」，非持有人改写是「不许改」，条件、主体与可诊断性都不同，按[错误标准 §二](../../error-standards.md)「一条件一错误」不共用一个 selector。空仓位没有这条上限，非持有人可以自由指定到 `MAX`。
 
-本入口**没有**滑点类拒绝条件：`slippage` 参数、`SLIPPAGE_PRECISION` 常量、`_checkSlippage` 守卫与 `SlippageExceeded` 错误已删除，折算出的剩余不转账、留在调用者手里，不构成回滚（原表第 10 行随之删除，原第 11 行前移为第 10 行）。
+**这条约束对任何中间合约同样成立，包括 `periphery` 的 `LOVE20Hub`**：Hub 代用户调 `stakeLiquidity` 时 `msg.sender` 是 Hub 自己，永远不等于 NFT 持有人，因此经 Hub 对**已有仓位**的二次质押只能**精确沿用**当前等待期，无法借 Hub 提升；要提升等待期，须由持有人**直接调用** `Stake.stakeLiquidity`。Hub 侧据此不提供提升入口，前端应先读 `memberStake(tokenAddress, memberId).promisedWaitingPhases` 原样回填。空仓位不受此限，经 Hub 可自由指定（含 `MAX`）。
+
+本入口**没有**滑点类拒绝条件：`slippage` 参数、`SLIPPAGE_PRECISION` 常量、`_checkSlippage` 守卫与 `SlippageExceeded` 错误已删除，折算出的剩余不转账、留在调用者手里，不构成回滚。第 10 行是本次新增：它由原第 9 行的复合条件拆出，见上。
 
 ### `stakeBoost`
 
@@ -248,14 +251,15 @@ stakeBoost 通过条件：member.boostShares + amount <= m_i
 | 5 | 业务 | 当前 Phase 为 `0` | `StakeNotStarted()` |
 | 6 | 业务 | 已申请解锁 | `UnstakeAlreadyRequested(tokenAddress, memberId)` |
 | 7 | 业务 | 无流动性质押 | `NoStakedLiquidity(tokenAddress, memberId)` |
-| 8 | 业务 | `promisedWaitingPhases` 小于已有值（含：已有仓位且调用者非持有人时的「必须沿用」） | `PromisedWaitingPhasesDecreased(promisedWaitingPhases, member.promisedWaitingPhases)` |
-| 9 | 业务 | 追加后超过该成员的单人上限 `m_i` | `BoostCapExceeded(tokenAddress, memberId, boostAmount, memberRemaining)` |
+| 8 | 业务 | `promisedWaitingPhases` 小于已有值 | `PromisedWaitingPhasesDecreased(promisedWaitingPhases, member.promisedWaitingPhases)` |
+| 9 | 业务 | 已有仓位且调用者非持有人，`promisedWaitingPhases` 不等于已有值（含上调） | `PromisedWaitingPhasesRewritten(tokenAddress, memberId, promisedWaitingPhases, member.promisedWaitingPhases)` |
+| 10 | 业务 | 追加后超过该成员的单人上限 `m_i` | `BoostCapExceeded(tokenAddress, memberId, boostAmount, memberRemaining)` |
 
 第 3 行取代原表第 1 行的 `NotMemberOwner`，位置从 modifier 层落到存在性层，与 `stakeLiquidity` 同口径。
 
-第 8 行与 `stakeLiquidity` 同口径：非持有人在该 `memberId` 已有仓位时只能沿用现有等待期。`stakeBoost` 的前提是已有流动性质押（第 7 行），因此「非持有人 + 空仓位」这一组合在本入口不可达——非持有人调 `stakeBoost` 时仓位必然非空，等待期必然只能沿用。
+第 8、9 行与 `stakeLiquidity` 同口径：非持有人在该 `memberId` 已有仓位时只能沿用现有等待期（改任何别的值命中第 9 行）。`stakeBoost` 的前提是已有流动性质押（第 7 行），因此「非持有人 + 空仓位」这一组合在本入口不可达——非持有人调 `stakeBoost` 时仓位必然非空，等待期必然只能沿用。
 
-第 9 行在同一轮按当前 `T`、`totalSupply / MAX_SUPPLY`、`v_i / V` 现算；`allowed` 是当前剩余额度，已超限的祖父头寸对应 `0`。社区层面没有聚合校验，也没有对应的回滚错误。
+第 10 行在同一轮按当前 `T`、`totalSupply / MAX_SUPPLY`、`v_i / V` 现算；`allowed` 是当前剩余额度，已超限的祖父头寸对应 `0`。社区层面没有聚合校验，也没有对应的回滚错误。
 
 ### `unstake`
 
@@ -339,7 +343,7 @@ stakeBoost 通过条件：member.boostShares + amount <= m_i
 - 空目标沿用本文件的等待期继承例外；`MemberStake` 和 `TotalStake` 结构体仅用于内部存储，不作为查询返回格式。
 - `memberId == 0` 与不存在的 `memberId` 同走 `MemberNFT.ownerOf`，由 OpenZeppelin 抛出 `ERC721NonexistentToken`；Stake 不声明 `InvalidMemberId()`，与 `Launch` 的既有实现一致。
 - 鉴权 modifier 只有 `onlyMemberOwner` 一个，用在 `unstake`、`withdraw`、`mergeStake` 的源侧；`stakeLiquidity`、`stakeBoost` 与 `mergeStake` 的目标侧不走 modifier，改为在函数体内按 `// forge-lint: disable-next-item(unused-return)` + `IMemberNFT(MEMBER_NFT_ADDRESS).ownerOf(memberId);` 只验存在。**不得为放宽鉴权而给 modifier 加布尔开关**——两个鉴权面的判据不同（`!= msg.sender` 回滚 vs 只验存在），混进一个 modifier 会让「谁可以调」在阅读时不可见（[开发规范 §5.5](../../dev-standards.md#55-调用者校验)）。
-- **等待期约束在写点判定，不在 modifier 里**：判据同时依赖 `msg.sender` 与成员仓位的读写，属于业务校验而非调用者校验。统一实现为「该 `memberId` 的 NFT 持有人不是 `msg.sender`，且成员仓位非空（`liquidityShares != 0 || boostShares != 0`）时，入参 `promisedWaitingPhases` 必须等于 `member.promisedWaitingPhases`」，命中即回滚 `PromisedWaitingPhasesDecreased`，与原有单调不减约束共用同一行拒绝条件。
+- **等待期约束在写点判定，不在 modifier 里**：判据同时依赖 `msg.sender` 与成员仓位的读写，属于业务校验而非调用者校验。统一实现为「该 `memberId` 的 NFT 持有人不是 `msg.sender`，且成员仓位非空（`liquidityShares != 0 || boostShares != 0`）时，入参 `promisedWaitingPhases` 必须等于 `member.promisedWaitingPhases`」，命中即回滚 `PromisedWaitingPhasesRewritten`；下调仍回滚 `PromisedWaitingPhasesDecreased`，两者是两行拒绝条件。
 - 治理票的**原始乘积**为 `liquidityShares × promisedWaitingPhases`，只用于在写点计算增量；对外可查的是轮次账本 `validGovVotes(round, memberId)`，申请解锁当轮记 `0`。`stakeLiquidity`、`stakeBoost` 提升等待期、`unstake`、`mergeStake` 四处写点必须同时更新成员账本与社区的 `Added` / `Removed`，使 `totalValidGovVotes(round)` 恒等于该轮全体成员 `validGovVotes` 之和。加速份额同构，但**只在社区净额变化时**写社区账本：`mergeStake` 的加速搬迁只在成员之间移动，净额为零，不写 `Added` / `Removed`（各记一笔等额会把 `total` 抬成两倍）。
 - `memberStake()` 和 `totalStake()` 返回的 `tokenAmountForLiquidity` / `parentTokenAmountForLiquidity` 以及 `withdrawableLp` / `feeLp` 都是查询时根据当前 Pair 状态现算的值，不是直接读取存储的历史基准。加速上限不读这些现算值，只读本金台账 `_totalLiquidityTokenAmount`。
 - `memberStake(tokenAddress, memberId)` 返回 `(liquidityShares, boostShares, promisedWaitingPhases, unlockRequestPhase, tokenAmountForLiquidity, parentTokenAmountForLiquidity, firstGovVoteRound)`，`totalStake(tokenAddress)` 返回 `(totalLiquidityShares, totalLp, withdrawableLp, feeLp, totalBoostShares, tokenAmountForLiquidity, parentTokenAmountForLiquidity, firstGovVoteRound)`。两个 `firstGovVoteRound` 的口径见[状态](#状态)表：成员级随 `withdraw` 归零、社区级永不重置。两者都**不**由 `stakeBoost` 写入——加速质押本身不产生治理票，也不改变流动性质押份额。

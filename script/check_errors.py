@@ -22,7 +22,7 @@ from collections import defaultdict
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-REPOS = ("core", "action", "group-chat", "libs", "tools")
+REPOS = ("core", "action", "group-chat", "libs", "tools", "periphery")
 REGISTRY = ROOT / "matt-gov" / "registry"
 JSON_PATH = REGISTRY / "errors.json"
 MD_PATH = REGISTRY / "errors.md"
