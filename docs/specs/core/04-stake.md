@@ -47,7 +47,7 @@ tokenAmountOptimal      = floor(parentTokenAmountDesired * reserveToken / reserv
 
 先算父币方向；该值不超过期望值时入池 `(期望代币量, 折算父币量)`，否则改算代币方向并入池 `(折算代币量, 期望父币量)`。折算保留一侧全额、削减另一侧，因此只可能一侧有剩余，或比例一致时两侧都无剩余。折算只是**纯比例计算**，不含任何容差、上限或回滚：比例失衡不 revert，只是静默少押、剩余留在自己钱包——资产无损，但少了偏离提醒。价格保护完全交给调用方自己指定的最小量（`periphery` 的 `LOVE20Hub` 用 `tokenAmountMin` / `parentTokenAmountMin` 在调用前做全链路终点口径的事后校验，不在 core 内复刻）。Pair 任一侧储备为零时不做折算，直接采用期望数量。Pair 铸出的 LP 数量为零时回滚 `ZeroLiquidityMinted()`；该分支保留给“返回 0 而不是回滚”的 V2 兼容 Pair，参考实现会先以 `INSUFFICIENT_LIQUIDITY_MINTED` 回滚。添加 LP 成功后按 LP 数量计份额，并按实际转入的社区代币数量增加本金台账 `totalLiquidityTokenAmount[tokenAddress]`；提取时移除 LP 并返还双币，同时按 `floor(liquidityShares × T / totalLiquidityShares)` 扣减该台账。
 
-`stakeLiquidity` 与 `stakeBoost` **不要求调用者持有该 `memberId` 的 NFT**，只调用 `ownerOf(memberId)` 校验存在（见[通用规则 · 无许可增项](01-common-rules.md#无许可增项)）。任一地址都可以为任意已存在的 `memberId` 增加质押，`_pull` 从 `msg.sender` 拉币。**已有仓位的等待期不可被第三方改写**：当该 `memberId` 已有质押（`liquidityShares != 0 || boostShares != 0`，与 `mergeStake` 的 `targetHadPosition` 同判据）且调用者不是该 NFT 的持有人时，传入的 `promisedWaitingPhases` 必须等于现有值，否则按下面的顺序回滚；空仓位允许调用者自由指定（含 `MAX`）。
+`stakeLiquidity` 与 `stakeBoost` **不要求调用者持有该 `memberId` 的 NFT**，只调用 `ownerOf(memberId)` 校验存在（见[通用规则 · 无许可增项](01-common-rules.md#无许可增项)）。任一地址都可以为任意已存在的 `memberId` 增加质押，`_pull` 从 `msg.sender` 拉币。**已写入的等待期不可被第三方改写**：调用者不是该 NFT 持有人时，只要该成员记录的 `promisedWaitingPhases` 已非零，传入值就必须等于现有值，否则按下面的顺序回滚；未写过（`== 0`）的记录允许调用者自由指定（含 `MAX`）。判据是等待期本身，与 `mergeStake` 判空的 `targetHadPosition`（按份额）是两个不同的判据，各自服务于自己的规则。
 
 份额铸造公式（必须在手续费重分类之后计算）：
 
@@ -225,18 +225,18 @@ stakeBoost 通过条件：member.boostShares + amount <= m_i
 | 7 | 业务 | 当前 Phase 为 `0` | `StakeNotStarted()` |
 | 8 | 业务 | 已申请解锁 | `UnstakeAlreadyRequested(tokenAddress, memberId)` |
 | 9 | 业务 | `promisedWaitingPhases` 小于已有值 | `PromisedWaitingPhasesDecreased(promisedWaitingPhases, member.promisedWaitingPhases)` |
-| 10 | 业务 | 已有仓位且调用者非持有人，`promisedWaitingPhases` 不等于已有值（含上调） | `PromisedWaitingPhasesRewritten(tokenAddress, memberId, promisedWaitingPhases, member.promisedWaitingPhases)` |
+| 10 | 业务 | 调用者非持有人，`member.promisedWaitingPhases != 0`（该记录被写过），且入参不等于已有值（含上调） | `PromisedWaitingPhasesRewritten(tokenAddress, memberId, promisedWaitingPhases, member.promisedWaitingPhases)` |
 | 11 | 业务 | Pair 铸出的 LP 数量为零 | `ZeroLiquidityMinted()` |
 
 第 4 行取代原表第 1 行的 `NotMemberOwner`：判据由「持有该 NFT」放宽为「该 `memberId` 存在」，位置随之从 modifier 层（最前）落到存在性层（参数之后），符合 [开发规范 §5.5](../../dev-standards.md#55-调用者校验)「鉴权 → 参数 → 存在性 → 业务 → 账本」。**这带来一处刻意的错误优先级变化**：不存在的 `memberId` + 非法参数，现在先回滚参数错误、再回滚 `ERC721NonexistentToken`，而旧表是鉴权错误优先。理由是本入口已无鉴权面，没有「非授权方不能探测内部状态」这条约束要守；`memberId` 本身由 ERC721Enumerable 公开可枚举，不构成信息泄漏。
 
 第 6 行在首次质押时读取 Factory 登记的 Pair 并保存；该入口不创建 Pair，未登记即回滚。
 
-第 9、10 行是等待期约束的两个方向：**所有**调用者都不能下调（第 9 行）；**非持有人**在已有仓位时也不能上调或改成任何别的值，必须精确等于现有值（第 10 行）。两者用两个错误——下调是「变小」，非持有人改写是「不许改」，条件、主体与可诊断性都不同，按[错误标准 §二](../../error-standards.md)「一条件一错误」不共用一个 selector。空仓位没有这条上限，非持有人可以自由指定到 `MAX`。
+第 9、10 行是等待期约束的两个方向：**所有**调用者都不能下调（第 9 行）；**非持有人**在该记录已写过等待期时也不能上调或改成任何别的值，必须精确等于现有值（第 10 行）。两者用两个错误——下调是「变小」，非持有人改写是「不许改」，条件、主体与可诊断性都不同，按[错误标准 §二](../../error-standards.md)「一条件一错误」不共用一个 selector。**「未写过」的判据是 `member.promisedWaitingPhases == 0` 本身，不是份额余额**：该字段为 `0` 表示这条成员记录从未写入过等待期，非持有人可以自由指定到 `MAX`；一旦非零，非持有人即不得再改写（上调、下调都算，下调优先命中第 9 行）。`PROMISED_WAITING_PHASES_MIN > 0` 由 `DeployCore` 在广播前校验，因此「写入即非零」成立，`0` 不会是一个合法的已写入值。
 
 **「空仓位」的判据是份额而非等待期**：`liquidityShares == 0 && boostShares == 0`，**不是** `promisedWaitingPhases == 0`。两者在当前实现里等价，因为成员记录只在 `withdraw`（整个 `delete`）与 `mergeStake` 的源侧（同样 `delete`）被清空，而 `_creditLiquidity` 写入等待期时必然同时写入至少一份份额：份额公式 `floor(totalLiquidityShares × lpMinted / lastWithdrawableLp)` 的下界由不变量 `lastWithdrawableLp <= totalLiquidityShares` 保证，该不变量又由「两者在 `_creditLiquidity` 同步增长、重分类只降低 `lastWithdrawableLp`」归纳成立，因此 `liquiditySharesAdded >= lpMinted > 0`（`lpMinted == 0` 已回滚 `ZeroLiquidityMinted()`）。按份额判定是**承重**的：若哪天份额增量可以取整为零，一笔 dust 质押就会把等待期写到一条空记录上，钉死真实持有人首次质押的等待期。该等价性由 `StakeInvariant.t.sol` 的 `invariant_EmptyPositionHasNoWaitingPeriod` 与 `invariant_WithdrawableLpNeverExceedsShareTotal` 守护。
 
-**这条约束对任何中间合约同样成立，包括 `periphery` 的 `LOVE20Hub`**：Hub 代用户调 `stakeLiquidity` 时 `msg.sender` 是 Hub 自己，永远不等于 NFT 持有人，因此经 Hub 对**已有仓位**的二次质押只能**精确沿用**当前等待期，无法借 Hub 提升；要提升等待期，须由持有人**直接调用** `Stake.stakeLiquidity`。Hub 侧据此不提供提升入口，前端应先读 `memberStake(tokenAddress, memberId).promisedWaitingPhases` 原样回填。空仓位不受此限，经 Hub 可自由指定（含 `MAX`）。
+**这条约束对任何中间合约同样成立，包括 `periphery` 的 `LOVE20Hub`**：Hub 代用户调 `stakeLiquidity` 时 `msg.sender` 是 Hub 自己，永远不等于 NFT 持有人，因此经 Hub 对**已写入等待期**的成员二次质押只能**精确沿用**当前值，无法借 Hub 提升；要提升等待期，须由持有人**直接调用** `Stake.stakeLiquidity`。Hub 侧据此不提供提升入口，前端应先读 `memberStake(tokenAddress, memberId).promisedWaitingPhases` 原样回填。未写过的记录不受此限，经 Hub 可自由指定（含 `MAX`）。
 
 本入口**没有**滑点类拒绝条件：`slippage` 参数、`SLIPPAGE_PRECISION` 常量、`_checkSlippage` 守卫与 `SlippageExceeded` 错误已删除，折算出的剩余不转账、留在调用者手里，不构成回滚。第 10 行是本次新增：它由原第 9 行的复合条件拆出，见上。
 
@@ -254,12 +254,12 @@ stakeBoost 通过条件：member.boostShares + amount <= m_i
 | 6 | 业务 | 已申请解锁 | `UnstakeAlreadyRequested(tokenAddress, memberId)` |
 | 7 | 业务 | 无流动性质押 | `NoStakedLiquidity(tokenAddress, memberId)` |
 | 8 | 业务 | `promisedWaitingPhases` 小于已有值 | `PromisedWaitingPhasesDecreased(promisedWaitingPhases, member.promisedWaitingPhases)` |
-| 9 | 业务 | 已有仓位且调用者非持有人，`promisedWaitingPhases` 不等于已有值（含上调） | `PromisedWaitingPhasesRewritten(tokenAddress, memberId, promisedWaitingPhases, member.promisedWaitingPhases)` |
+| 9 | 业务 | 调用者非持有人，`member.promisedWaitingPhases != 0`，且入参不等于已有值（含上调） | `PromisedWaitingPhasesRewritten(tokenAddress, memberId, promisedWaitingPhases, member.promisedWaitingPhases)` |
 | 10 | 业务 | 追加后超过该成员的单人上限 `m_i` | `BoostCapExceeded(tokenAddress, memberId, boostAmount, memberRemaining)` |
 
 第 3 行取代原表第 1 行的 `NotMemberOwner`，位置从 modifier 层落到存在性层，与 `stakeLiquidity` 同口径。
 
-第 8、9 行与 `stakeLiquidity` 同口径：非持有人在该 `memberId` 已有仓位时只能沿用现有等待期（改任何别的值命中第 9 行）。`stakeBoost` 的前提是已有流动性质押（第 7 行），因此「非持有人 + 空仓位」这一组合在本入口不可达——非持有人调 `stakeBoost` 时仓位必然非空，等待期必然只能沿用。
+第 8、9 行与 `stakeLiquidity` 同口径：非持有人在该记录已写过等待期时只能沿用现有值（改任何别的值命中第 9 行）。`stakeBoost` 的前提是已有流动性质押（第 7 行），因此「非持有人 + 空仓位」这一组合在本入口不可达——非持有人调 `stakeBoost` 时仓位必然非空，等待期必然只能沿用。
 
 第 10 行在同一轮按当前 `T`、`totalSupply / MAX_SUPPLY`、`v_i / V` 现算；`allowed` 是当前剩余额度，已超限的祖父头寸对应 `0`。社区层面没有聚合校验，也没有对应的回滚错误。
 
