@@ -12,6 +12,13 @@ Rules from dev-standards 5.5:
    must be applied to at least one entry in the same file: when the
    implementation body moves behind `delegatecall`, the library modifier is the
    whole auth surface, and an unattached one means an entry silently lost it.
+4. An `_is*` predicate is exempt (it is the sanctioned home for a delegated
+   check). A predicate whose name does NOT start with `_is` but whose `msg.sender`
+   comparison is a *business* rule rather than an auth gate must not silently
+   pass either: name it `_is*` when the `msg.sender` part is genuinely a
+   predicate, or record it below in `BUSINESS_CALLER_CHECKS` with the reason.
+   The allowlist is deliberately explicit: relaxing the rule for a whole file
+   would let a future real auth check slip through unnoticed.
 
 The checker validates caller-check placement and modifier shape. It does not
 prove every write entry has an auth source, nor that a modifier is free of
@@ -30,6 +37,19 @@ import sys
 
 SKIP_DIRS = {"lib", "interfaces"}
 EXEMPT = {"onERC721Received"}
+
+# Functions whose `msg.sender` comparison is a business rule, not an auth gate.
+# Key is "<path as found by the checker>:<function name>"; the value must say
+# which business rule it is. Adding an entry here is a deliberate act: it removes
+# the file's caller-check coverage for that one function only.
+BUSINESS_CALLER_CHECKS = {
+    "core/src/Stake.sol:_checkPromisedWaitingPhasesNotRewritten": (
+        "phase 6.3 no-slippage change: promisedWaitingPhases may only be raised by the NFT holder. "
+        "This is not 'who may call' (anybody may call stakeLiquidity/stakeBoost); it is a condition on "
+        "the INPUT value whose verdict depends on the caller. The external callable never gates on it, "
+        "so it cannot move into a modifier only*."
+    ),
+}
 
 DECL = re.compile(r"\b(modifier|function)\s+(\w+)")
 LIBRARY_DECL = re.compile(r"\blibrary\s+\w+")
@@ -145,6 +165,11 @@ def check_modifier(name, body):
     return None
 
 
+def allowlisted(path, name):
+    """True when this function is a registered business caller check (see BUSINESS_CALLER_CHECKS)."""
+    return f"{path}:{name}" in BUSINESS_CALLER_CHECKS
+
+
 def check_file(path):
     text = clean(path.read_text())
     violations = []
@@ -165,7 +190,7 @@ def check_file(path):
             continue
         if name.startswith("_is"):
             continue
-        if CALLER_CMP.search(body) or CALLER_LOOKUP.search(body):
+        if (CALLER_CMP.search(body) or CALLER_LOOKUP.search(body)) and not allowlisted(path, name):
             violations.append(
                 (path, line, f"function {name}", "caller check must move into a modifier only*")
             )

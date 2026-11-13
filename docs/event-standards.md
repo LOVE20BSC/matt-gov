@@ -45,6 +45,7 @@
 - 快照型事件携带对象在该时点的整组取值，不适用上一条：`AdminChanged` 携带整组新快照（哪怕只改一项），`PhaseSynchronized` 同时给出 `phase` 与 `phase + 1` 的段长（未调整时两者相等）。「哪些字段变了」由消费方与前一快照逐字段比较得出，不靠字段缺席表达。
 - 涉及累计值时可以携带发射时点的累计值（总量、余额、累计奖励等）；该值必须等于按日志顺序折叠出的结果，且不得替代增量字段。
 - 一个聚合量被多个事件改变时（例如 `Stake` 的治理票总量、加速份额总量），**每个改变点都应当携带后置总量**；只在一部分改变点携带属于族内漂移，消费方无法判断字段缺失是「没变」还是「没记」。只在单个事件上变化的聚合量（如 `Stake.totalBurnedToken`）同样在改变它的事件上携带总量，使该维度有可直接对账的锚点。
+- **族内漂移按槽位语义判定，不按「同族字段集合必须完全相同」判定**。同一族的事实若需要不同的角色或旧值，允许在族表给定的槽位序列内增减字段：`core.stake` 的 `LiquidityStaked` / `BoostStaked` 带 `caller` / `memberOwner` / `prevPromisedWaitingPhases`，而 `Unstaked` / `StakeWithdrawn` / `StakesMerged` 不带，是因为只有前两者会改变等待期、也只有它们需要回答「谁发起的这一笔、写的是谁的仓位」；后者的持仓归属已由鉴权与 `memberId` 唯一确定。判断标准是「该字段承载的事实是否属于本事件」，而不是「同族其它事件有没有这个字段」。
 - 同一金额出现在两条事件中不构成重复表达，前提是两条事件描述的是不同事实、且各自需要该金额：`GovRewardMinted.burnReward` 与同笔 `RewardBurned(BoostOverflow).amount` 同值，前者给出成员归属（`RewardBurned` 不带 `memberId`），后者记全局销毁账本。此类跨事件冗余必须在模块规格中登记理由。
 - 父事件可以携带其子事实的**条数锚点**（`MessagePosted.mentionedSenderCount` = 紧随其后、同 `messageId` 的 `SenderMentioned` 条数）：消费者无须依赖「下一条同类父事件之前」的区间约定即可确定子事实清单长度。该值必须等于按日志顺序折叠出的条数，属有意冗余，须在模块规格与 §8.1 恒等对清单登记。
 - 同一事实不得由多条事件重复表达；同一状态维度的不同迁移可以拆成不同事件类（例如 `Activated` 与 `Deactivated`）。
@@ -226,7 +227,7 @@ ERC-20 / ERC-721 标准事件保持不变，不进入本规范正文。`AddHolde
 | core.member | 对象 id → 角色 → 数值 → 文本 | `MemberMinted` |
 | core.round | 根键 → round → 对象 id → 角色 → 数值 → 枚举 | `RewardPrepared`、`GovRewardMinted`、`ProposalRewardMinted`、`RewardBurned` |
 | core.phase | 对象 id → 数值（当前段长 → 下一段长） | `PhaseSynchronized` |
-| core.stake | 根键 → round → memberId 链（0–2 个）→ 数值 | `LiquidityStaked`、`BoostStaked`、`Unstaked`、`StakeWithdrawn`、`FeesSettled`、`FeeReclassified`、`StakesMerged` |
+| core.stake | 根键 → round → memberId 链（0–2 个）→ 角色地址（`caller` → `memberOwner`）→ 数值（单字段维度的 `prev*` 紧邻其新值；整条源记录迁移的旧值组排在数值之后） | `LiquidityStaked`、`BoostStaked`、`Unstaked`、`StakeWithdrawn`、`FeesSettled`、`FeeReclassified`、`StakesMerged` |
 | core.proposal | 根键 → round → 对象/actor id 链（1–2 个）→ 地址 → 枚举 → bytes → 文本 | `ProposalCreated`、`ProposalSubmitted`、`VoteCast` |
 | core.distributor | 根键 → 对象/角色地址或配置值 → 数值 | `AirdropConfigured`、`AirdropClaimed`、`AirdropSnapshotUriUpdated` |
 | action.registry | 根键 → actionId → round → executor | `ActionRegistered` |
@@ -243,12 +244,25 @@ ERC-20 / ERC-721 标准事件保持不变，不进入本规范正文。`AddHolde
 | gc.message | 根键 → messageId → senderId → sender → round → 引用 messageId → 数值/布尔 → content | `MessagePosted`、`SenderMentioned` |
 | gc.plugin | 根键 → messageId → round → pluginAddress → 错误指纹 | `AfterPostPluginFailed` |
 | gc.link | 根键 → 对象 id → actor | `TokenGroupActivated`、`TokenActionGroupActivated` |
+| periphery.hub | 根键 → 主对象（`memberId` 或 `to`）→ actor → 数值 | `HubLiquidityStakedWithToken`、`HubLiquidityStakedWithNative`、`HubLiquidityAddedWithToken`、`HubLiquidityAddedWithNative` |
 
 槽位序列是「允许的顺序」，事件可以省略某槽（例如 `GroupActionExited` 无金额、`GovSenderBanChanged` 无 voterId），但不得插入表外槽位或调整相对顺序。新增事件必须先归入某一族并在此表登记，否则 `check-events.py` 报错。
+
+族内漂移的判定按**槽位语义**而不是按字段是否出现：`core.stake` 的「角色地址」槽在 `LiquidityStaked` / `BoostStaked` 上是 `caller` → `memberOwner` 两个字段，在 `Unstaked` / `StakeWithdrawn` / `StakesMerged` / `FeesSettled` / `FeeReclassified` 上没有该槽——两者的差别是「该事实是否需要记录直接调用者与归属快照」，不是同一族内字段顺序不一致。
+
+`prev*` 旧值在该槽内有两种合规形状，按「旧值属于哪个维度」择一：**单字段维度**紧邻其新值之后（`LiquidityStaked` / `BoostStaked` 的 `promisedWaitingPhases` → `prevPromisedWaitingPhases`，与 `AirdropSnapshotUriUpdated` 的 `snapshotUri` → `prevSnapshotUri` 同形）；**整条源记录迁移**把旧值收成一组放在后置状态之后（`StakesMerged` 的 `prevSourceGovVotes` → `prevSourcePromisedWaitingPhases`）。`StakesMerged` 的目标前置等待期**不单列字段**：空仓时恒为 `0`、非空仓时恒等于 `targetPromisedWaitingPhases`，属 §6.7「旧值由新值恒等可推时可以省略」。只有 `LiquidityStaked` / `BoostStaked` 会改变 `promisedWaitingPhases`，所以只有这两条带 `prevPromisedWaitingPhases`——`unstake` / `withdraw` 只读或随记录删除。
 
 配置地址型事件把**新地址**放在「对象标识（对象地址）」槽，actor 排在其后（`ScopeSourceChanged` / `BanSourceChanged` 的 `sourceAddress`、`BeforePostPluginChanged` / `AfterPostPluginChanged` 的 `pluginAddress`）；布尔型配置事件仍是 actor 地址 → 新值（`PostingAllowedChanged`）。两种形状都在族表允许的槽内，不是族内漂移。
 
 「对象/actor id 链」槽只固定「在地址之前」，不固定两者的先后：`ProposalCreated` 是对象（`proposalId`）→ actor（`authorId`），`ProposalSubmitted` / `VoteCast` 是 actor（`submitterId` / `voterId`）→ 对象（`proposalId`）；前者对象优先、后者 actor 优先，都合规。
+
+**`periphery.hub` 族**是外围 `LOVE20Hub` 自建的事件族，与 `core.stake` 分属两层，同一笔交易用 tx hash 串起：
+
+- 三个 indexed 槽固定为根键 `tokenAddress` → 主对象 → actor `caller`，与 `core.stake` 的优先级一致（§6.3）。主对象在质押事实里是 `memberId`，在组 LP 事实里是接收方 `to`——组 LP 不产生质押记账，故该事件的第二槽让给该事实实际需要的对象键。
+- 只记录 Hub 这一层的**编排事实**：`preparedTokenAmount` / `preparedParentTokenAmount` / `remainingTokenAmount` / `remainingParentTokenAmount` 用同族前缀写法。**不复制 core 的份额、票权、等待期与各种 `total*`**——那些由 `LiquidityStaked` / `BoostStaked` 提供，两处各记一遍即构成 §3.1 的族内漂移与双份对账源。
+- 派生量不补字段：`prepared − remaining` 恒等于 core 的实际入池量，写成验收断言而不是加派生字段（§6.9）。
+- 不加 `inputTokenSymbol`（§6.6：机器可读的值不得用 `string`，资产标识一律用 address）、不加路由 / Router 地址（不可变部署参数不进事件，§3.2；单币场景 path 可推导，多跳路由单发子事件，不预留空字段）。
+- **事件名已随建仓定稿**（`periphery/src/interfaces/ILOVE20Hub.sol`）：`Hub` 前缀即域，`LiquidityStaked` / `LiquidityAdded` 为完成时态的事实句，`WithToken` / `WithNative` 限定资金形态，与入口函数一一对应。`caller` 占第三个 indexed 槽；`memberOwner` **不进 Hub 事件**——Hub 层不复制归属快照，core `LiquidityStaked.memberOwner` 已提供，同 tx hash 可联立。
 
 成员级后置累计票数写 `voteAmountTotal`，轮级总量写 `totalVoteAmount`：`total*` 前缀按 `dev-standards.md` §5.2 保留给社区级聚合，成员级累计沿用 `action` 已冻结的 `ApplicationVoteRecorded.voteAmountTotal` 词形；两者是不同维度，不是同一字段的两种写法。
 
@@ -270,6 +284,7 @@ ERC-20 / ERC-721 标准事件保持不变，不进入本规范正文。`AddHolde
 - actor 与主对象 id 应当 indexed；同组事件必须在迁移中对齐（`VerifierLocked`、`StakesMerged`）。
 - `gc.management` 族的 actor 在只剩一个槽时按「对象标识形态」择一：对象标识是 **id** 时第三个槽给 actor **地址**（`AdminChanged`、`MemberStatusChanged`、`AdminSenderBanChanged`）；对象标识是**地址**时第三个槽给 actor **id**（`ScopeSourceChanged`、`BanSourceChanged`、`BeforePostPluginChanged`、`AfterPostPluginChanged`）；对象只有根键时 id 与地址都 indexed（`PostingAllowedChanged`、`GroupChatActivated`；后者的 `ownerId` 是 actor id 且恒等于 `groupId`）。这样每个事件至少提供一个对象键和一个 actor 的可过滤形式——钱包按地址订阅、协议按 id 对账各取所需。
 - **已登记的三槽取舍**：`ApplicationVoteRecorded` 的三个槽被 `tokenAddress` / `actionId` / `applicationId` 占满，`voterId` 与 `verifierId` 降为 payload；它不与同族前 6 条「actor indexed」对齐，是槽位优先级的结果，不是漂移。`RecipientsChanged` / `RecipientPaid` 的三个槽被 `sourceTokenAddress` / `sourceActionId` / `groupId` 占满，`recipientIds`（动态数组，禁止 indexed）与 `recipientId` 不能作为 topic；按收款人检索必须从 payload 建链下索引，不改为可过滤而牺牲对象键。
+- **`core.stake` 的 `caller` / `memberOwner` 不占 indexed 槽**：`LiquidityStaked` / `BoostStaked` 的三个槽已被 `tokenAddress`（根键）/ `round`（纪元键）/ `memberId`（主对象 id）占满，按上面的优先级 `caller` 与 `memberOwner` 落 payload。它们的用途是**在事件流内自包含地还原调用链**（回填 `memberId` 与 `tx.from` 之间缺失的那一层），属于「拿到这条日志后现看」而非「按地址订阅」，与钱包按 actor 地址过滤的需求不同——后者已有 core 的 `memberId` 可先定位到人。同族的 `StakesMerged` 把 `round` 降为 payload 换得 `sourceMemberId` / `targetMemberId` 两个槽，是因为它的两个成员 id 都是主对象；两条规则一致：**主对象键优先于纪元键，纪元键优先于 actor 地址**。
 
 ### 6.4 角色词表
 
@@ -353,6 +368,10 @@ v1 基线：
 
 以下字段**不承诺**由事件流重建，已登记为窄名单，不得视为遗漏：`JoinStateRegistered` 的持有人集合顺序（只保证集合相等）、`OriginScoresSubmitted.scores[]` 与 `memberId` 的逐项绑定（只保证同批同轮）、`ProviderQuotaRemoved` 的已用额度没有后置锚点（由 `ProviderQuotaAdded` 增量折叠）、`ServiceRewardsDistributed.ownerRemaining` 不能按来源行动拆分（只在服务级聚合）、`LpWithdrawn` 的部分提取扣减项、`LpExecutor` 时间权重的逐项扣减、`GroupActionVerify` 的 `hasPreviousApplication` 身份对（由申请事件全集推导）。
 
+**同 payload 内的恒等冗余优先删除，不登记为派生缓存**：若某字段恒等于同一事件 payload 中另外两个字段的乘积或比值，它不构成独立事实，携带即冗余，删除后折叠能力不下降。`LiquidityStaked` 的成员后置票权即属此类——它恒等于同事件的 `liquidityShares × promisedWaitingPhases`（`Stake._govVotesOf` 的实现），因此不设 `govVotes` 字段；`BoostStaked` 的 payload 里没有 `liquidityShares`，同名字段不可由本事件推导，故保留。这与 §6.7「旧值由新值恒等可推时可以省略」同源，区别只在省略的是同 payload 内的派生量而非旧值。
+
+**参数个数上限（可执行约束）**：非 `via_ir` 的标准编译模式下（见 [开发规范 §3.1](dev-standards.md#31-工具链)），**3 个 indexed + 12 个 payload = 15 个参数是可 emit 的上限**；16 个（3 + 13）在 solc 0.8.37 + `optimizer_runs = 200` 下必然 `Stack too deep`，且用 memory struct 作唯一载荷再经私有 `_emit` 分离**同样无法绕过**（已实测）。新增 payload 字段时须先核对本上限；超限时按本节上一条删除同 payload 内的恒等冗余字段，不得改用 `via_ir`。当前最接近上限的是 `LiquidityStaked` 与 `BoostStaked`（均为 15 个），下一张加字段的票必须先腾出槽位。
+
 ### 6.10 注释
 
 事件声明与 emit 点均不写解释性注释；语义只存在于本规范。复述式注释与「何时发射」注释一律不写；`forge-lint` / `slither` 等工具指令除外。
@@ -432,14 +451,31 @@ v1 基线：
 - **群对象**：`MemberMinted`（`memberId` 即 `groupId`，携带名称/所有者）+ 两条链路事件 + `GroupActivated`（组配置）+ `GroupChatActivated`（聊天配置）+ 后续 `*Changed`，折叠结果必须等于三仓 view 的并集。
 - **管理员有效性**：`AdminChanged`（快照旧/新 + membership）+ core ERC-721 `Transfer`（owner 变化）。
 - **兜底清理**：`JoinStateCleared(forced=true)` 只代表 ActionTarget 注册表清理；不回调 executor、不要求 executor 事件；executor 仓位由自身退出路径处理。
+- **单币质押的两层折叠**：`periphery.hub` 的质押事实（本次备齐量、退回量、`caller`）与同一 tx hash 的 core `LiquidityStaked` / `BoostStaked`（份额、票权、等待期、各种 `total*`）叠加后才还原完整业务投影。任一层单独都不完整：Hub 不知道份额，core 不知道单币输入形态。判定标准是 §3.3 的折叠完整性，按「同一 `tokenAddress` + `memberId` 的 Hub 事实 + core 事实」联合折叠，不要求任一层自足。
 - 其余对象的折叠不变量见 `.scratch/events-spec/02-coverage-matrix.md` §4。
+
+### 7.5 Periphery
+
+本节的接口以 `periphery/src/interfaces/` 为准。
+
+| 对象 | 状态迁移 | 事件类 |
+|---|---|---|
+| HubStake | 单币 / 原生币输入经 swap 备齐双币后调用 core `stakeLiquidity`，退回剩余 | `HubLiquidityStakedWithToken`、`HubLiquidityStakedWithNative` |
+| HubLp | 单币 / 原生币输入经 swap 备齐双币后直接组 LP 发给 `to`，不产生质押记账 | `HubLiquidityAddedWithToken`、`HubLiquidityAddedWithNative` |
+
+Hub 不自建份额 / 票权 / 等待期账本，也**不折叠** core 的质押状态：它是编排层，状态全部留在 core，自身无存储、无 `view` 账本（报价入口为纯 `view` 试算，不构成账本）。因此 `periphery.hub` 族没有需要折叠的独立聚合量，只有 §3.1 的编排事实。
 
 ---
 
 ## 8. 可执行化
 
 1. 每个事件至少一个测试断言：发射条件、发射次数、字段顺序、indexed 布局、**字段取值**。同一事件内两个同类型字段必须由**取值可区分**的夹具断言——把两个实参互换后测试仍通过，等于没有断言。协议上恒等的成对字段免于此条，但必须满足其一并在 `.scratch/events-spec/03-migration-status.md` 的「恒等对」清单登记理由（迁移冻结后该清单并入本文 §7 的对象表，随对象表一起维护）：(a) §6.4 的 `<role>Id` / `<role>` 成对槽位，且该 id 必然等于另一字段（`GroupChatActivated.ownerId` ≡ `groupId`，因为 group-chat 域内 owner 的 actor id 恒为 `groupId`；同理，群 owner 作为操作者时 `AdminChanged.operatorId` / `MemberStatusChanged.operatorId` / `AdminSenderBanChanged.operatorId` ≡ `groupId`，admin 操作时 `operatorId` 为其 memberId）；(b) 1:1 记账使两个字段恒等，或同事件内两个字段的乘积恒等于第三个字段（`StakesMerged.targetGovVotes` ≡ `targetLiquidityShares × targetPromisedWaitingPhases`、`prevSourceGovVotes` ≡ `liquiditySharesMerged × prevSourcePromisedWaitingPhases`）——后者保留派生值是为了让消费方免于复算，属有意冗余。两个字段只是「本次夹具恰好同值」不构成恒等，必须改夹具让它们分开。
-2. 每个仓库维护两份事件表：从 ABI 生成的「事件清单」基线 `script/events/events-baseline.txt`，以及「事件 → 族」映射 `script/events/event-families.txt`。检查器 `<repo>/script/events/check-events.py` 校验族覆盖、根键首字段与 `round` 锚点，并对比 ABI 基线；新增/修改/删除事件必须显式更新两份表。检查器内的族槽位表是 §6.1 的**逐仓切片**，只登记本仓发射的族，全量以本文为准；切片之外的部分（ABI 扫描、基线比对、槽位判定）三仓逐字节相同。各仓 `.github/workflows/ci.yml` 在 push/PR 运行该检查器。
+
+   **`core.stake` 的三个 `caller` 相关字段不构成恒等**，必须有取值可区分的夹具：`caller` 是 `msg.sender`，`memberOwner` 是写入时点 `ownerOf(memberId)` 的快照，两者在「本人直接质押」时同值、在「本人经 Hub 质押」与「第三方代付」时分叉——三种形态都要有夹具，且断言 `caller != memberOwner` 的两组各占其一。`prevPromisedWaitingPhases` 与 `promisedWaitingPhases` 同理：空仓位首次质押时前者为 `0`、后者非零（可区分），追加质押提高等待期时两者都非零且不相等（也要断言）；只用「夹具恰好同值」的用例不算覆盖。
+
+   **`periphery.hub` 的派生量不进字段**：`prepared − remaining` 恒等于 core `LiquidityStaked` 的实际入池量，按 §6.9 写成跨层验收断言（同一 tx hash 的两层日志联立），不加派生字段；`remainingTokenAmount` / `remainingParentTokenAmount` 在无退款时为 `0`，须有「恰好备齐、无剩余」与「比例失衡、有剩余」两类夹具。
+
+2. 每个仓库维护两份事件表：从 ABI 生成的「事件清单」基线 `script/events/events-baseline.txt`，以及「事件 → 族」映射 `script/events/event-families.txt`。检查器 `<repo>/script/events/check-events.py` 校验族覆盖、根键首字段与 `round` 锚点，并对比 ABI 基线；新增/修改/删除事件必须显式更新两份表。检查器内的族槽位表是 §6.1 的**逐仓切片**，只登记本仓发射的族，全量以本文为准；切片之外的部分（ABI 扫描、基线比对、槽位判定）各仓逐字节相同。`periphery` 建仓自带一份只含 `periphery.hub` 的切片。各仓 `.github/workflows/ci.yml` 在 push/PR 运行该检查器。
 3. 新增或修改事件时，必须同步更新覆盖矩阵与本文的对象模型；只改代码不改模型视为规范缺陷。
 4. 事件声明与 emit 点不写注释；语义只写在本文。
 5. 事件签名以各仓 `src/interfaces/` 为准；本文不复制签名。
@@ -485,4 +521,5 @@ v1 基线：
   - `core/src/interfaces/ILOVE20Token.sol`、`ILaunch.sol`、`IMemberNFT.sol`、`IMint.sol`、`IPhase.sol`、`IStake.sol`、`ISubmit.sol`、`IVote.sol`
   - `action/src/interfaces/IActionTarget.sol`、`IActionExecutor.sol`、`IGroupActionManager.sol`、`IGroupActionJoin.sol`、`IGroupActionVerify.sol`、`IGroupRecipients.sol`、`IGroupServiceExecutor.sol`、`ILpExecutor.sol`
   - `group-chat/src/interfaces/IGroupChat.sol`、`IGroupAdmin.sol`、`IGroupMember.sol`、`IGroupChatBanList.sol`、`sources/ban/IGovVotedBanSource.sol`、`managers/ITokenScopeManagerBase.sol`、`managers/ITokenActionScopeManagerBase.sol`
+  - `periphery/src/interfaces/ILOVE20Hub.sol`（建仓后生效）
 - 错误规范：`matt-gov/docs/error-standards.md`（事件与错误的分工：revert 用错误，成功/捕获型失败用事件）

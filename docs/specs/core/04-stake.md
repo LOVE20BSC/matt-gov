@@ -1,6 +1,6 @@
 # Stake
 
-Stake 按 `tokenAddress + memberId` 维护流动性质押和加速质押，不发行 SL/ST 凭证。两类资产共享解锁生命周期；权限见 [通用规则](01-common-rules.md)。
+Stake 按 `tokenAddress + memberId` 维护流动性质押和加速质押，不发行 SL/ST 凭证。两类资产共享解锁生命周期。**减项收紧、增项开放**：解锁、提取、融合源侧要求调用者是持有人；`stakeLiquidity`、`stakeBoost` 与融合目标侧只要求 `memberId` 存在，任何人可代为增加（见[通用规则](01-common-rules.md#无许可增项)）。
 
 ## 状态
 
@@ -38,14 +38,16 @@ Stake 按 `tokenAddress + memberId` 维护流动性质押和加速质押，不�
 
 每个社区的唯一 Pair 由 [Launch](08-launch.md) 在发射该代币的同一笔交易内创建或复用；`Stake` 在首次质押时通过 `PAIR_FACTORY_ADDRESS.getPair(tokenAddress, parentTokenAddress)` 读取并保存，为零地址时回滚 `PairMissing(tokenAddress)`。**`Stake` 的所有入口都只接受 Launch 已登记的代币，只读取已登记的 Pair，不创建 Pair**，未登记回滚 `TokenNotRegistered(tokenAddress)`，无 Pair 回滚 `PairMissing(tokenAddress)`。
 
-调用者提供社区代币、父币的期望数量和允许的滑点。Stake 按当前 Pair 储备折算本次实际入池的最优数量——按储备比例一侧取期望值、另一侧按比例折算，只转入折算后的数量，再直接向 Pair 铸出 LP：
+调用者提供社区代币与父币的期望数量。`stakeLiquidity` 不承担价格保护，只按 Pair 储备把收到的两种币**尽可能**放进流动性质押——按储备比例一侧取期望值、另一侧按比例折算，只转入折算后的数量，再直接向 Pair 铸出 LP；**折算后放不下的部分不转账、留在调用者手里**（它们从未进入 Stake，无需退款）：
 
 ```text
 parentTokenAmountOptimal = floor(tokenAmountDesired * reserveParent / reserveToken)
 tokenAmountOptimal      = floor(parentTokenAmountDesired * reserveToken / reserveParent)
 ```
 
-先算父币方向；该值不超过期望值时入池 `(期望代币量, 折算父币量)`，否则改算代币方向并入池 `(折算代币量, 期望父币量)`。折算使任一方向的入池量低于期望值时，偏离量不得超过 `floor(期望量 * slippage / 1e18)`，否则回滚 `SlippageExceeded(actualDeviation, maxDeviation)`——两个参数同为代币最小单位，第一个是本次的实际偏离量、第二个是按容差算出的允许偏离量；`slippage` 按 `1e18` 精度表达允许的相对偏离，`0` 表示不允许任何偏离，不设除零以外的上界。Pair 任一侧储备为零时不做折算，直接采用期望数量。Pair 铸出的 LP 数量为零时回滚 `ZeroLiquidityMinted()`；该分支保留给“返回 0 而不是回滚”的 V2 兼容 Pair，参考实现会先以 `INSUFFICIENT_LIQUIDITY_MINTED` 回滚。添加 LP 成功后按 LP 数量计份额，并按实际转入的社区代币数量增加本金台账 `totalLiquidityTokenAmount[tokenAddress]`；提取时移除 LP 并返还双币，同时按 `floor(liquidityShares × T / totalLiquidityShares)` 扣减该台账。
+先算父币方向；该值不超过期望值时入池 `(期望代币量, 折算父币量)`，否则改算代币方向并入池 `(折算代币量, 期望父币量)`。折算保留一侧全额、削减另一侧，因此只可能一侧有剩余，或比例一致时两侧都无剩余。折算只是**纯比例计算**，不含任何容差、上限或回滚：比例失衡不 revert，只是静默少押、剩余留在自己钱包——资产无损，但少了偏离提醒。价格保护完全交给调用方自己指定的最小量（`periphery` 的 `LOVE20Hub` 用 `tokenAmountMin` / `parentTokenAmountMin` 在调用前做全链路终点口径的事后校验，不在 core 内复刻）。Pair 任一侧储备为零时不做折算，直接采用期望数量。Pair 铸出的 LP 数量为零时回滚 `ZeroLiquidityMinted()`；该分支保留给“返回 0 而不是回滚”的 V2 兼容 Pair，参考实现会先以 `INSUFFICIENT_LIQUIDITY_MINTED` 回滚。添加 LP 成功后按 LP 数量计份额，并按实际转入的社区代币数量增加本金台账 `totalLiquidityTokenAmount[tokenAddress]`；提取时移除 LP 并返还双币，同时按 `floor(liquidityShares × T / totalLiquidityShares)` 扣减该台账。
+
+`stakeLiquidity` 与 `stakeBoost` **不要求调用者持有该 `memberId` 的 NFT**，只调用 `ownerOf(memberId)` 校验存在（见[通用规则 · 无许可增项](01-common-rules.md#无许可增项)）。任一地址都可以为任意已存在的 `memberId` 增加质押，`_pull` 从 `msg.sender` 拉币。**已有仓位的等待期不可被第三方改写**：当该 `memberId` 已有质押（`liquidityShares != 0 || boostShares != 0`，与 `mergeStake` 的 `targetHadPosition` 同判据）且调用者不是该 NFT 的持有人时，传入的 `promisedWaitingPhases` 必须等于现有值，否则按下面的顺序回滚；空仓位允许调用者自由指定（含 `MAX`）。
 
 份额铸造公式（必须在手续费重分类之后计算）：
 
@@ -190,7 +192,7 @@ stakeBoost 通过条件：member.boostShares + amount <= m_i
 
 - 源和目标不同且已存在；调用者必须持有源，不要求持有目标。
 - 任一方待解锁时拒绝；源在当前治理 Round 已使用过质押权时拒绝，目标已使用过质押权不阻止融合。
-- 空目标（`promisedWaitingPhases = 0`）继承源等待期；非空目标等待期短于源则拒绝，否则保持目标等待期。
+- 空目标（`liquidityShares == 0 && boostShares == 0`，与 `stakeLiquidity` / `stakeBoost` 判「已有仓位」的 `targetHadPosition` 同一判据；注意不是 `promisedWaitingPhases == 0`）继承源等待期；非空目标等待期短于源则拒绝，否则保持目标等待期。
 - 源全部流动性份额和加速份额并入目标，源当前质押清零。目标原资产不得减少，历史投票和激励不回写。
 - 目标本轮已投票仍可接收：融合只增加目标的流动性份额，按 `liquidityShares × promisedWaitingPhases` 重算后表现为治理票增量，与该成员自己追加质押产生的增量等价，可继续用这部分增量投票。
 - 源本轮已推举或已投票则禁止融合：推举或投票都视为使用质押权，融合会让同一份质押资产在本轮转移后再次使用。
@@ -200,7 +202,7 @@ stakeBoost 通过条件：member.boostShares + amount <= m_i
 
 ## 拒绝条件与错误
 
-各入口按「鉴权 → 参数 → 存在性 → 业务 → 账本」的顺序校验，先命中的条件先回滚，同一入口内不重排。鉴权行同时覆盖 `memberId` 不存在：`memberId == 0` 或 NFT 不存在时由 `MemberNFT.ownerOf` 抛出 `ERC721NonexistentToken`，不进入 `NotMemberOwner`。`ERC721NonexistentToken` 与 token 的 ERC20 标准错误按透传登记，来源 ABI 为 MemberNFT 与 LOVE20Token；`SafeERC20FailedOperation` 通过 `SafeERC20` 进入 Stake ABI。Stake 自有错误定义见 [`IStake.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/IStake.sol)。
+各入口按「鉴权 → 参数 → 存在性 → 业务 → 账本」的顺序校验，先命中的条件先回滚，同一入口内不重排。**鉴权分两类**：处分类入口（`unstake`、`withdraw`、`mergeStake` 源侧）校验 `ownerOf(memberId) == msg.sender`，不持有回滚 `NotMemberOwner(memberId)`；单向增加类入口（`stakeLiquidity`、`stakeBoost`，以及 `mergeStake` 的目标侧）只调 `ownerOf` 校验存在，**不会产生 `NotMemberOwner`**。两类都覆盖 `memberId` 不存在：`memberId == 0` 或 NFT 不存在时由 `MemberNFT.ownerOf` 抛出 `ERC721NonexistentToken`，不进入 `NotMemberOwner`。`ERC721NonexistentToken` 与 token 的 ERC20 标准错误按透传登记，来源 ABI 为 MemberNFT 与 LOVE20Token；`SafeERC20FailedOperation` 通过 `SafeERC20` 进入 Stake ABI。Stake 自有错误定义见 [`IStake.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/IStake.sol)。
 
 `tokenAddress` 的有效性统一由 `ILaunch(LAUNCH_ADDRESS).isLOVE20Token(tokenAddress)` 判定；未由 Launch 登记的地址即使实现了 `PARENT_TOKEN_ADDRESS()` 也无效，回滚 `TokenNotRegistered(tokenAddress)`。需要 Pair 的入口再判 `pairAddress[tokenAddress]` 为零地址，回滚 `PairMissing(tokenAddress)`。
 
@@ -210,35 +212,48 @@ stakeBoost 通过条件：member.boostShares + amount <= m_i
 
 ### `stakeLiquidity`
 
-| 顺序 | 条件 | 回滚错误 |
-| --- | --- | --- |
-| 1 | 调用者不持有指定 `memberId` 的 NFT | `NotMemberOwner(memberId)` |
-| 2 | `tokenAmount` 为零 | `ZeroTokenAmount()` |
-| 3 | `parentTokenAmount` 为零 | `ZeroParentTokenAmount()` |
-| 4 | `promisedWaitingPhases` 不在 `[PROMISED_WAITING_PHASES_MIN, PROMISED_WAITING_PHASES_MAX]` 范围 | `InvalidPromisedWaitingPhases(promisedWaitingPhases, PROMISED_WAITING_PHASES_MIN, PROMISED_WAITING_PHASES_MAX)` |
-| 5 | `tokenAddress` 未由 Launch 登记 | `TokenNotRegistered(tokenAddress)` |
-| 6 | 首次质押时 Pair 为零地址 | `PairMissing(tokenAddress)` |
-| 7 | 当前 Phase 为 `0` | `StakeNotStarted()` |
-| 8 | 已申请解锁 | `UnstakeAlreadyRequested(tokenAddress, memberId)` |
-| 9 | `promisedWaitingPhases` 小于已有值 | `PromisedWaitingPhasesDecreased(promisedWaitingPhases, member.promisedWaitingPhases)` |
-| 10 | 折算使入池量低于期望量，且偏离超过 `slippage` | `SlippageExceeded(actualDeviation, maxDeviation)` |
-| 11 | Pair 铸出的 LP 数量为零 | `ZeroLiquidityMinted()` |
+**鉴权：只校验 `memberId` 存在，不要求调用者持有该 NFT**（[无许可增项](01-common-rules.md#无许可增项)）。本入口没有调用者限制，因此不存在鉴权行；`ownerOf(memberId)` 的判定落在「存在性」层。
+
+| 顺序 | 层 | 条件 | 回滚错误 |
+| --- | --- | --- | --- |
+| 1 | 参数 | `tokenAmount` 为零 | `ZeroTokenAmount()` |
+| 2 | 参数 | `parentTokenAmount` 为零 | `ZeroParentTokenAmount()` |
+| 3 | 参数 | `promisedWaitingPhases` 不在 `[PROMISED_WAITING_PHASES_MIN, PROMISED_WAITING_PHASES_MAX]` 范围 | `InvalidPromisedWaitingPhases(promisedWaitingPhases, PROMISED_WAITING_PHASES_MIN, PROMISED_WAITING_PHASES_MAX)` |
+| 4 | 存在性 | `memberId` 不存在（含 `0`） | MemberNFT 的标准错误（`ownerOf` 回滚 `ERC721NonexistentToken`） |
+| 5 | 存在性 | `tokenAddress` 未由 Launch 登记 | `TokenNotRegistered(tokenAddress)` |
+| 6 | 存在性 | 首次质押时 Pair 为零地址 | `PairMissing(tokenAddress)` |
+| 7 | 业务 | 当前 Phase 为 `0` | `StakeNotStarted()` |
+| 8 | 业务 | 已申请解锁 | `UnstakeAlreadyRequested(tokenAddress, memberId)` |
+| 9 | 业务 | `promisedWaitingPhases` 小于已有值（含：已有仓位且调用者非持有人时的「必须沿用」） | `PromisedWaitingPhasesDecreased(promisedWaitingPhases, member.promisedWaitingPhases)` |
+| 10 | 业务 | Pair 铸出的 LP 数量为零 | `ZeroLiquidityMinted()` |
+
+第 4 行取代原表第 1 行的 `NotMemberOwner`：判据由「持有该 NFT」放宽为「该 `memberId` 存在」，位置随之从 modifier 层（最前）落到存在性层（参数之后），符合 [开发规范 §5.5](../../dev-standards.md#55-调用者校验)「鉴权 → 参数 → 存在性 → 业务 → 账本」。**这带来一处刻意的错误优先级变化**：不存在的 `memberId` + 非法参数，现在先回滚参数错误、再回滚 `ERC721NonexistentToken`，而旧表是鉴权错误优先。理由是本入口已无鉴权面，没有「非授权方不能探测内部状态」这条约束要守；`memberId` 本身由 ERC721Enumerable 公开可枚举，不构成信息泄漏。
 
 第 6 行在首次质押时读取 Factory 登记的 Pair 并保存；该入口不创建 Pair，未登记即回滚。
 
+第 9 行同时承担等待期约束的两个方向：**所有**调用者都不能下调 `promisedWaitingPhases`；**非持有人**在已有仓位时也不能上调（必须精确等于现有值，上调同样命中本行）。空仓位没有这条上限，非持有人可以自由指定到 `MAX`。
+
+本入口**没有**滑点类拒绝条件：`slippage` 参数、`SLIPPAGE_PRECISION` 常量、`_checkSlippage` 守卫与 `SlippageExceeded` 错误已删除，折算出的剩余不转账、留在调用者手里，不构成回滚（原表第 10 行随之删除，原第 11 行前移为第 10 行）。
+
 ### `stakeBoost`
 
-| 顺序 | 条件 | 回滚错误 |
-| --- | --- | --- |
-| 1 | 调用者不持有指定 `memberId` 的 NFT | `NotMemberOwner(memberId)` |
-| 2 | `boostAmount` 为零 | `ZeroBoostAmount()` |
-| 3 | `promisedWaitingPhases` 不在 `[PROMISED_WAITING_PHASES_MIN, PROMISED_WAITING_PHASES_MAX]` 范围 | `InvalidPromisedWaitingPhases(promisedWaitingPhases, PROMISED_WAITING_PHASES_MIN, PROMISED_WAITING_PHASES_MAX)` |
-| 4 | `tokenAddress` 未由 Launch 登记 | `TokenNotRegistered(tokenAddress)` |
-| 5 | 当前 Phase 为 `0` | `StakeNotStarted()` |
-| 6 | 已申请解锁 | `UnstakeAlreadyRequested(tokenAddress, memberId)` |
-| 7 | 无流动性质押 | `NoStakedLiquidity(tokenAddress, memberId)` |
-| 8 | `promisedWaitingPhases` 小于已有值 | `PromisedWaitingPhasesDecreased(promisedWaitingPhases, member.promisedWaitingPhases)` |
-| 9 | 追加后超过该成员的单人上限 `m_i` | `BoostCapExceeded(tokenAddress, memberId, boostAmount, memberRemaining)` |
+**鉴权：只校验 `memberId` 存在，不要求调用者持有该 NFT**（同 `stakeLiquidity`，见[无许可增项](01-common-rules.md#无许可增项)）。
+
+| 顺序 | 层 | 条件 | 回滚错误 |
+| --- | --- | --- | --- |
+| 1 | 参数 | `boostAmount` 为零 | `ZeroBoostAmount()` |
+| 2 | 参数 | `promisedWaitingPhases` 不在 `[PROMISED_WAITING_PHASES_MIN, PROMISED_WAITING_PHASES_MAX]` 范围 | `InvalidPromisedWaitingPhases(promisedWaitingPhases, PROMISED_WAITING_PHASES_MIN, PROMISED_WAITING_PHASES_MAX)` |
+| 3 | 存在性 | `memberId` 不存在（含 `0`） | MemberNFT 的标准错误（`ownerOf` 回滚 `ERC721NonexistentToken`） |
+| 4 | 存在性 | `tokenAddress` 未由 Launch 登记 | `TokenNotRegistered(tokenAddress)` |
+| 5 | 业务 | 当前 Phase 为 `0` | `StakeNotStarted()` |
+| 6 | 业务 | 已申请解锁 | `UnstakeAlreadyRequested(tokenAddress, memberId)` |
+| 7 | 业务 | 无流动性质押 | `NoStakedLiquidity(tokenAddress, memberId)` |
+| 8 | 业务 | `promisedWaitingPhases` 小于已有值（含：已有仓位且调用者非持有人时的「必须沿用」） | `PromisedWaitingPhasesDecreased(promisedWaitingPhases, member.promisedWaitingPhases)` |
+| 9 | 业务 | 追加后超过该成员的单人上限 `m_i` | `BoostCapExceeded(tokenAddress, memberId, boostAmount, memberRemaining)` |
+
+第 3 行取代原表第 1 行的 `NotMemberOwner`，位置从 modifier 层落到存在性层，与 `stakeLiquidity` 同口径。
+
+第 8 行与 `stakeLiquidity` 同口径：非持有人在该 `memberId` 已有仓位时只能沿用现有等待期。`stakeBoost` 的前提是已有流动性质押（第 7 行），因此「非持有人 + 空仓位」这一组合在本入口不可达——非持有人调 `stakeBoost` 时仓位必然非空，等待期必然只能沿用。
 
 第 9 行在同一轮按当前 `T`、`totalSupply / MAX_SUPPLY`、`v_i / V` 现算；`allowed` 是当前剩余额度，已超限的祖父头寸对应 `0`。社区层面没有聚合校验，也没有对应的回滚错误。
 
@@ -295,8 +310,8 @@ stakeBoost 通过条件：member.boostShares + amount <= m_i
 
 | 事件 | 触发入口 | 字段 |
 | --- | --- | --- |
-| `LiquidityStaked(tokenAddress, round, memberId, tokenAmount, parentTokenAmount, promisedWaitingPhases, govVotesAdded, govVotes, liquiditySharesAdded, liquidityShares, totalLiquidityShares, totalValidGovVotes, totalWithdrawableLp)` | `stakeLiquidity` | `tokenAmount`/`parentTokenAmount` 为折算后实际入池量；`govVotesAdded` = `(旧份额 + 新份额) × promisedWaitingPhases - 旧票权`；`govVotes` 为成员后置票权；`liquiditySharesAdded`/`liquidityShares` 为本次新增份额与成员后置份额；`totalLiquidityShares`/`totalValidGovVotes` 为社区后置总量；`totalWithdrawableLp` 为加入本次 LP 后的后置可提取 LP 账本 |
-| `BoostStaked(tokenAddress, round, memberId, boostAmount, promisedWaitingPhases, govVotesAdded, govVotes, boostShares, totalBoostShares, totalValidBoostShares, totalValidGovVotes)` | `stakeBoost` | `boostAmount` 为本次转入的加速代币数量，同时也是本次份额增量（1:1，不再重复成 `boostSharesAdded`）；`govVotesAdded` 仅在等待期提升时为正；`boostShares` 为成员后置**余额**；`totalBoostShares` 为社区余额合计；`totalValidBoostShares` 为 `round` 当轮有效加速份额合计；`totalValidGovVotes` 为社区后置票权总量 |
+| `LiquidityStaked(tokenAddress, round, memberId, caller, memberOwner, tokenAmount, parentTokenAmount, promisedWaitingPhases, prevPromisedWaitingPhases, govVotesAdded, liquiditySharesAdded, liquidityShares, totalLiquidityShares, totalValidGovVotes, totalWithdrawableLp)` | `stakeLiquidity` | `caller` 是直接调用者 `msg.sender`（单笔交易涉及多层合约调用时日志只带发日志的合约地址、`tx.from` 只有顶层 EOA，中间调用者需 `debug_traceTransaction` 才能还原）；`memberOwner` 是 `ownerOf(memberId)` 在本次写入时点的快照；三者（`caller` / `memberOwner` / `tx.from`）比对即可判「本人直接质押 / 本人经 Hub / 第三方代付」。`tokenAmount`/`parentTokenAmount` 为折算后实际入池量（折算剩余从不进入 Stake，故不出现）；`promisedWaitingPhases` 为写入后的新值，`prevPromisedWaitingPhases` 为写入前的旧值（首次质押为 `0`）；`govVotesAdded` = `(旧份额 + 新份额) × promisedWaitingPhases - 旧票权`；`liquiditySharesAdded`/`liquidityShares` 为本次新增份额与成员后置份额；`totalLiquidityShares`/`totalValidGovVotes` 为社区后置总量；`totalWithdrawableLp` 为加入本次 LP 后的后置可提取 LP 账本。**成员后置票权不单独成字段**：它恒等于本 payload 内的 `liquidityShares × promisedWaitingPhases`（`Stake._govVotesOf` 的实现），属[事件规范 §6.9](../../event-standards.md#69-派生缓存) 的派生缓存，携带即冗余；`BoostStaked` 不同——它的 payload 里没有 `liquidityShares`，`govVotes` 不可推导，因此保留。该字段的删除同时受非 `via_ir` 的代码生成上限约束：3 个 indexed 加 13 个 payload 参数（共 16 个）在仓库锁定的 solc 0.8.37 + `optimizer_runs = 200` 下必然 `Stack too deep`，15 个才可通过；[开发规范 §3.1](../../dev-standards.md#31-工具链) 明令不使用 `via_ir`、遇此错误优先重构，因此该字段不能保留。 |
+| `BoostStaked(tokenAddress, round, memberId, caller, memberOwner, boostAmount, promisedWaitingPhases, prevPromisedWaitingPhases, govVotesAdded, govVotes, boostShares, totalBoostShares, totalValidBoostShares, totalValidGovVotes)` | `stakeBoost` | `caller` / `memberOwner` / `prevPromisedWaitingPhases` 与 `LiquidityStaked` 同义同口径。`boostAmount` 为本次转入的加速代币数量，同时也是本次份额增量（1:1，不再重复成 `boostSharesAdded`）；`govVotesAdded` 仅在等待期提升时为正；`boostShares` 为成员后置**余额**；`totalBoostShares` 为社区余额合计；`totalValidBoostShares` 为 `round` 当轮有效加速份额合计；`totalValidGovVotes` 为社区后置票权总量 |
 | `Unstaked(tokenAddress, round, memberId, promisedWaitingPhases, govVotes, liquidityShares, boostShares, totalValidBoostShares, totalValidGovVotes)` | `unstake` | `round` 同时是本次写入的 `unlockRequestPhase`；`govVotes` 为被清零的票权（社区总量同步减该值）；`liquidityShares`/`boostShares` 为成员仍保留的余额；`totalValidBoostShares` 为扣减后当轮有效加速份额合计；`totalValidGovVotes` 为扣减后社区票权总量 |
 | `StakeWithdrawn(tokenAddress, round, memberId, promisedWaitingPhases, liquidityShares, tokenAmountForLiquidity, parentTokenAmountForLiquidity, boostShares, withdrawableLpBurned, withdrawableLpToMember, totalLiquidityShares, totalBoostShares, totalWithdrawableLp)` | `withdraw` | `tokenAmountForLiquidity`/`parentTokenAmountForLiquidity` 为销毁 LP 取回的双币数量；`boostShares` 为归还的加速代币；`withdrawableLpBurned` 与 `withdrawableLpToMember` **互斥**，二者之和等于本次折算出的 LP `floor(liquidityShares × lastWithdrawableLp / totalLiquidityShares)`——`liquidityShares` 是份额，与 LP 不同量纲，不能直接与这两个字段相加；`withdrawableLpBurned` 是可提取 LP 账本中真正烧成双币返还成员的部分，`withdrawableLpToMember` 是「非零但不可烧」时原样交给成员的那一支；`totalWithdrawableLp` 为扣减后的后置账本 |
 | `FeesSettled(tokenAddress, round, feeLpBurned, tokenBurned, parentTokenBurned, totalBurnedToken, totalParentTokenBurned, totalFeeLp)` | `settleFees`、`withdraw` 的结算段 | `feeLpBurned` 为本次销毁的费用 LP；`tokenBurned` 为社区代币销毁量（含父币换得的部分），`parentTokenBurned` 为换币前的父币数量；`totalBurnedToken`/`totalParentTokenBurned` 为社区累计销毁量；`totalFeeLp` 为扣减后的后置费用账本 |
@@ -306,6 +321,10 @@ stakeBoost 通过条件：member.boostShares + amount <= m_i
 事件里成员级**没有**单独的有效加速份额字段（查询侧有 `validBoostShares`）：`BoostStaked`、`StakesMerged`、`StakeWithdrawn` 三个时点上 `boostShares` 本身就是有效值（未申请解锁的成员，余额与当轮有效份额相等），而 `Unstaked` 之后有效值恒为 `0`，由事件名承载——另设字段只会是恒等对或常量。全局侧则相反：`totalBoostShares`（余额合计，提取才减）与 `totalValidBoostShares`（当轮有效合计，申请解锁即减）会在「已申请解锁、尚未提取」的成员上分叉，两者必须并存；加速质押的业务趋势以 `totalValidBoostShares` 为准，而不是滞后的 `totalBoostShares`；成员级同理，趋势看 `validBoostShares(tokenAddress, round, memberId)`，而不是 `boostShares`。两个 `valid*` 值都能直接查询，事件里的总量与查询结果必须逐条相等。
 
 `StakeWithdrawn` 不携带 `totalValidGovVotes`：票权在 `unstake` 已清零，提取不再改变它，重复携带属于复述未变化字段。
+
+**只有 `LiquidityStaked` / `BoostStaked` 带 `prevPromisedWaitingPhases`**：Stake 的全部入口里只有 `stakeLiquidity` 与 `stakeBoost` 会改变 `promisedWaitingPhases`；`unstake` 只写入 `unlockRequestPhase` 并读取等待期、`withdraw` 随记录删除一起读取、`mergeStake` 的源记录被 `delete`、目标等待期在空仓时取源值、非空时保持不变。`StakesMerged` 因而不补目标前置值：目标为空仓时该前置值恒为 `0`，非空仓时恒等于 `targetPromisedWaitingPhases`，两种情形都可由新值恒等推导，属[事件规范 §6.7](../../event-standards.md#67-旧值与新值)「旧值由新值恒等可推时可以省略」。
+
+`caller` / `memberOwner` 只在 `LiquidityStaked` / `BoostStaked` 上：这两个入口现在允许任何人调用，链下必须能区分「本人直接质押 / 本人经 Hub / 第三方代付」；`unstake` / `withdraw` / `mergeStake` 的源侧仍然要求 `ownerOf(msg.sender)`，归属由鉴权与 `memberId` 唯一确定，不需要快照。
 
 `withdrawableLpBurned` 与 `feeLpBurned` 都调用 `pair.burn`，但分属两个账本：前者是可提取 LP 账本中被烧成双币返还成员的部分，后者是手续费账本中被销毁的部分（父币先换成社区代币再销毁）；`StakeWithdrawn` 不报告手续费 LP，手续费 LP 只在同一笔交易更早的 `FeesSettled` 中。
 
@@ -319,6 +338,8 @@ stakeBoost 通过条件：member.boostShares + amount <= m_i
 - 手续费结算失败（Pair 取回、Router 兑换、销毁或统计更新任一失败）时整笔结算回滚；提取本金前自动结算手续费，手续费结算失败则提取也回滚。
 - 空目标沿用本文件的等待期继承例外；`MemberStake` 和 `TotalStake` 结构体仅用于内部存储，不作为查询返回格式。
 - `memberId == 0` 与不存在的 `memberId` 同走 `MemberNFT.ownerOf`，由 OpenZeppelin 抛出 `ERC721NonexistentToken`；Stake 不声明 `InvalidMemberId()`，与 `Launch` 的既有实现一致。
+- 鉴权 modifier 只有 `onlyMemberOwner` 一个，用在 `unstake`、`withdraw`、`mergeStake` 的源侧；`stakeLiquidity`、`stakeBoost` 与 `mergeStake` 的目标侧不走 modifier，改为在函数体内按 `// forge-lint: disable-next-item(unused-return)` + `IMemberNFT(MEMBER_NFT_ADDRESS).ownerOf(memberId);` 只验存在。**不得为放宽鉴权而给 modifier 加布尔开关**——两个鉴权面的判据不同（`!= msg.sender` 回滚 vs 只验存在），混进一个 modifier 会让「谁可以调」在阅读时不可见（[开发规范 §5.5](../../dev-standards.md#55-调用者校验)）。
+- **等待期约束在写点判定，不在 modifier 里**：判据同时依赖 `msg.sender` 与成员仓位的读写，属于业务校验而非调用者校验。统一实现为「该 `memberId` 的 NFT 持有人不是 `msg.sender`，且成员仓位非空（`liquidityShares != 0 || boostShares != 0`）时，入参 `promisedWaitingPhases` 必须等于 `member.promisedWaitingPhases`」，命中即回滚 `PromisedWaitingPhasesDecreased`，与原有单调不减约束共用同一行拒绝条件。
 - 治理票的**原始乘积**为 `liquidityShares × promisedWaitingPhases`，只用于在写点计算增量；对外可查的是轮次账本 `validGovVotes(round, memberId)`，申请解锁当轮记 `0`。`stakeLiquidity`、`stakeBoost` 提升等待期、`unstake`、`mergeStake` 四处写点必须同时更新成员账本与社区的 `Added` / `Removed`，使 `totalValidGovVotes(round)` 恒等于该轮全体成员 `validGovVotes` 之和。加速份额同构，但**只在社区净额变化时**写社区账本：`mergeStake` 的加速搬迁只在成员之间移动，净额为零，不写 `Added` / `Removed`（各记一笔等额会把 `total` 抬成两倍）。
 - `memberStake()` 和 `totalStake()` 返回的 `tokenAmountForLiquidity` / `parentTokenAmountForLiquidity` 以及 `withdrawableLp` / `feeLp` 都是查询时根据当前 Pair 状态现算的值，不是直接读取存储的历史基准。加速上限不读这些现算值，只读本金台账 `_totalLiquidityTokenAmount`。
 - `memberStake(tokenAddress, memberId)` 返回 `(liquidityShares, boostShares, promisedWaitingPhases, unlockRequestPhase, tokenAmountForLiquidity, parentTokenAmountForLiquidity, firstGovVoteRound)`，`totalStake(tokenAddress)` 返回 `(totalLiquidityShares, totalLp, withdrawableLp, feeLp, totalBoostShares, tokenAmountForLiquidity, parentTokenAmountForLiquidity, firstGovVoteRound)`。两个 `firstGovVoteRound` 的口径见[状态](#状态)表：成员级随 `withdraw` 归零、社区级永不重置。两者都**不**由 `stakeBoost` 写入——加速质押本身不产生治理票，也不改变流动性质押份额。

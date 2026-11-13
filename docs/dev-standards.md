@@ -254,8 +254,8 @@ EIP-170 限制部署字节码 ≤ 24,576 字节。超过时：
 ```
 script/
 ├── deploy/                        # 部署脚本实现
-│   ├── one_click_deploy.sh        # 一键部署入口（必需，纯编排）
-│   ├── one_click_deploy_<x>.sh    # 新增合约/模块的独立入口（按需）
+│   ├── one_click_deploy.sh        # 一键部署入口（集合冻结时才设，纯编排）
+│   ├── one_click_deploy_<x>.sh    # 按模块的独立入口（集合未冻结时唯一入口）
 │   ├── 11_deploy.sh               # 合约部署与初始化（自载入部署输入）
 │   ├── 21_check.sh                # 部署与初始化正确性校验（自载入校验文件）
 │   ├── 31_verify.sh               # 合约开源验证（自载入网络与地址文件）
@@ -269,18 +269,21 @@ script/
 
 ### 6.1 deploy 脚本
 
-- **`one_click_deploy.sh` 必需**：一键部署本代码库的全部合约。后续新增合约/模块时额外增加 `one_click_deploy_xxx.sh`（只部署该部分）。
+- **`one_click_deploy.sh` 按「已部署合约集合是否冻结」判定**，不再无条件必需：
+  - **集合冻结**（迁移验收完成、后续只修 bug 不新增合约）→ 允许全仓统一 `one_click_deploy.sh`，一键部署本代码库的全部合约；即便允许，后续真的新增合约/模块时仍另加 `one_click_deploy_<x>.sh`（只部署该部分）作为逃生口。
+  - **集合未冻结 / 按设计会持续新增独立合约** → 只按模块给 `one_click_deploy_<x>.sh`，**不设全仓入口**。理由：统一入口要么重复部署先前已部署的合约，要么无法覆盖后来新增的合约，两种结果都是错的。
+  - 判据与各仓结论的出处见 [ADR 2026-11-13](adr/2026-11-13-periphery-hub-single-token-staking.md)；`periphery`、`tools` 属未冻结一类，`core`、`action`、`group-chat`、`dex` 的结论由各自验收给出，不按名单预先钉死。
 - **步骤脚本只做自己那一步、互不调用**（`11_deploy.sh` 不得调用 `21_check.sh`）；顺序编排与失败处理（如校验失败不得覆盖上次已保存的地址）只放在 `one_click_deploy.sh` 一类入口脚本里。
 - **步骤脚本自包含**：统一 `<step>.sh <network>` 一种调用形态，网络目录校验、配置存在性检查、文件载入、链 ID 核对都在步骤内完成；不依赖调用方预载环境，也没有文件互相 source。入口脚本不 source 任何文件，只做编排。共享 `00_init.sh` 一类的环境初始化文件不再单设，其职责并入 `11_deploy.sh`。
 - **参数载入器只有 `params.sh` 一份**：每个步骤 `source` 它，由它提供三件事——`params_load`（`1e17`/`1_000_000` 的词法展开）、`params_unset_all`（按文件里出现的键清掉调用方继承值）、`params_require_keys` / `params_require_values`（按文件断言必填键）。四个仓各持一份**逐字节相同**的副本：每仓都要能独立部署，文件无法共享，改动须一次改四处，并由仓内回归测试用 sha256 钉住，漂移即失败。
 - **步骤编号**：deploy 步骤以 `1` 开头、check 以 `2` 开头、verify 以 `3` 开头，第二位为模块序号——`1x` 部署、`2x` 校验、`3x` 验证同属模块 `x`（如 `dex`：WETH 模块 `11_deploy_weth`/`21_check_weth`/`31_verify_weth`，UniswapV2 模块 `12_deploy_uniswapv2`/`22_check_uniswapv2`/`32_verify`；单模块仓库即 `11`/`21`/`31`）。无可验证合约的模块不设 verify 步骤。
 - 新增合约/模块 = 一套自包含脚本（`one_click_deploy_<x>.sh` + 自己的步骤脚本 + 自己的参数文件），各模块的部署输入互不要求存在——部署模块 A 不会因模块 B 的参数缺失或变动而失败。
 - **账户签名统一走 keystore**：`.account` 是必需文件，提供 `KEYSTORE_ACCOUNT` 与 `ACCOUNT_ADDRESS`；不按链 ID 提供 `--unlocked` 回退，本地链与公共网络同一签名路径。
-- **keystore 密码口径**：`KEYSTORE_PASSWORD` 非空时直接用于解锁，部署全程无交互；留空或未配时由 macOS `osascript` 弹窗读取（全程仅一次）；非 macOS 环境没有 `osascript`，必须预设 `KEYSTORE_PASSWORD`，脚本在缺失时明确报错，不静默退出。**入口脚本不继承调用方环境变量里的密码**：`one_click_deploy.sh` 先重置 `KEYSTORE_PASSWORD` 再读 `.account`、最后才交互，避免上次运行的残留值被静默复用；因此 `KEYSTORE_PASSWORD=xxx ./one_click_deploy.sh <net>` 不生效，非交互场景请把密码写进 `.account`。
+- **keystore 密码口径**：`KEYSTORE_PASSWORD` 非空时直接用于解锁，部署全程无交互；留空或未配时由 macOS `osascript` 弹窗读取（全程仅一次）；非 macOS 环境没有 `osascript`，必须预设 `KEYSTORE_PASSWORD`，脚本在缺失时明确报错，不静默退出。**入口脚本不继承调用方环境变量里的密码**：`one_click_deploy*.sh` 先重置 `KEYSTORE_PASSWORD` 再读 `.account`、最后才交互，避免上次运行的残留值被静默复用；因此 `KEYSTORE_PASSWORD=xxx ./one_click_deploy.sh <net>` 不生效（按模块入口同理），非交互场景请把密码写进 `.account`。
 - **密码不得进入进程参数**：`forge script --password` 会把明文放进 `/proc/<pid>/cmdline`（权限 0444，本机所有用户可读）；改用 `--password-file` 指向权限 600 的临时文件，广播结束或脚本退出时删除。环境变量（`/proc/<pid>/environ`，0400）只对同一用户可读，而 `.account` 本身就是明文密码、同一用户已能直接读取，因此作为环境变量传递不增加泄露面。部署回归测试须断言 `--password` 不出现在 forge 参数里。
 - **被依赖方地址由 `.s.sol` 在广播前校验**：从配置文件读入的被依赖方地址（如 `FACTORY_ADDRESS`/`ROUTER_ADDRESS`、`MINT_ADDRESS`/`STAKE_ADDRESS`、已配置的 `WETH_ADDRESS`）由 `Deploy<X>.s.sol` 在 `startBroadcast()` 前校验代码与地址关系；脚本内派生的值（如 `Router.WETH()`）同样在广播前校验。`11_deploy.sh` 只保留编排所需的文件、链 ID、账户和密码检查；存量脚本的 `cast code` 快速失败逐步删除，不作为长期第二份校验。
 - **键集合断言**：每个 check 步骤（`2x`）断言其地址文件的键集合等于期望合约集合（逐一对应、无多无缺）。键名漏改会让后续变量静默为空，逐项链上调用要到很后面才以难以定位的形式失败；显式断言把「漏改」变成即时失败。
-- 下列职责**各自独立成文件**，由 `one_click_deploy.sh` 统一调用，也可按实际情况单独执行其中任一文件：
+- 下列职责**各自独立成文件**，由 `one_click_deploy*.sh` 一类入口统一调用，也可按实际情况单独执行其中任一文件：
 
 | 文件             | 职责                         |
 | -------------- | -------------------------- |

@@ -85,6 +85,31 @@
 - 等待期提升后治理票立即重算
 - 批量铸造任一 Round 失败则全部回滚
 
+### 单向增加开放与代质押
+**覆盖要求**：覆盖「减少 / 处分收敛，单向增加开放」这条鉴权分界在两个方向上都成立。
+
+*增项开放*：非持有人可为任意已存在的 `memberId` 调用 `stakeLiquidity` / `stakeBoost`，只调 `ownerOf` 校验存在、不比较 `msg.sender`；`_pull` 从调用者拉币；目标份额与票权只增不减。`LiquidityStaked` / `BoostStaked` 的 `caller`（`msg.sender`）与 `memberOwner`（写入时点 `ownerOf` 快照）在「本人直接质押 / 本人经中间合约质押 / 第三方代付」三种形态下取值可区分。不存在（含 `0`）的 `memberId` 回滚 `ERC721NonexistentToken`，不落 `NotMemberOwner`。
+
+*减项仍收紧*：`unstake`、`withdraw`、`mergeStake` 源侧、投票、推举、领取激励由非持有人调用时全部回滚 `NotMemberOwner`。
+
+*等待期约束*：`stakeLiquidity` / `stakeBoost` 是唯一会改变 `promisedWaitingPhases` 的两个入口。该 `memberId` 已有质押（`liquidityShares != 0 || boostShares != 0`）时非持有人必须沿用现有值，任何不等于现值（含更大值）都回滚 `PromisedWaitingPhasesDecreased`；空仓位允许自由指定（含 `MAX`），`stakeBoost` 因 `NoStakedLiquidity` 前提不存在「非持有人 + 空仓位」组合。**只有这两条事件带 `prevPromisedWaitingPhases`**；`StakesMerged` 的目标前置值由恒等推导（空仓恒为 `0`、非空仓恒等于 `targetPromisedWaitingPhases`），不补字段。
+
+*无滑点记账*：折算后剩余留在调用者钱包、不回滚、不进 Stake 余额；`slippage` 参数、`SLIPPAGE_PRECISION`、`_checkSlippage` 与 `SlippageExceeded` 均已删除，任何容差场景都不应产生该错误。价格保护由调用方指定最小量，`periphery` 的 `LOVE20Hub` 在调用 core 之前以 `prepared − remaining >= Min` 做全链路终点口径的事后校验。
+
+*融合可撤销抢跑*：第三方给空目标开仓后，该 `memberId` 的持有人仍可 `mergeStake` 移走仓位或 `withdraw` 清理，`firstGovVoteRound` 随之归零（社区级标记除外）；放宽 `stakeLiquidity` 不引入 `mergeStake` 之外的新 griefing 类别。
+
+**测试方式**：
+- 单元测试：`core/test/Stake.t.sol` 的代质押、等待期沿用、不存在 `memberId`、折算剩余留在调用者、融合可撤销五组场景
+- 单元测试：`core/test/Stake.t.sol` 的事件载荷判别力用例，断言 `caller` 与 `memberOwner` 分叉、`prevPromisedWaitingPhases` 与 `promisedWaitingPhases` 取值可区分
+- 验收证据：测试日志显示第三方调用成功且目标份额只增、非持有人改等待期被拒的精确错误、`caller ≠ memberOwner` 的具体地址对
+
+**判定标准**：
+- 增项入口对任意已存在的 `memberId` 开放，且只增加目标状态
+- 减项入口对非持有人一律回滚 `NotMemberOwner`
+- 已有仓位的等待期不会被非持有人改写，空仓位可自由指定
+- 折算剩余留在调用者手里，核心不再产生滑点类回滚
+- 事件同时提供 `caller`、`memberOwner`、`prevPromisedWaitingPhases`，链下不需 trace 即可还原调用链与代付关系
+
 ### MemberNFT 发射次数边界
 **覆盖要求**：覆盖本次铸造前剩余供应量的阈值向上取整、只有正数实际治理激励进入 `launchCredit`、剩余供应量为零时不计算阈值、一次治理激励跨过多个完整阈值、整数除法余数继续累计、每个社区达到 `maxLaunchCount` 后停止新增次数和额度、调用者只控制来源 MemberNFT 时向他人持有的目标 MemberNFT 部分融合整数次数但不转移 `launchCredit`、源次数扣减/目标次数增加的原子性，以及次数消耗后不能再次发射。
 

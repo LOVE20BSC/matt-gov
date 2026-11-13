@@ -97,7 +97,7 @@ Rows are grouped by repo + signature; interfaces list every local declaration si
 | action | `ZeroRewardWeight(address,uint256,uint256)` | `0x7a448f07` | `IActionExecutorErrors` | 1 | `action/src/GroupServiceExecutor.sol:723` |
 | action | `ZeroVerifyVotes(address,uint256)` | `0x131e332f` | `IGroupActionVerifyErrors` | 1 | `action/src/GroupActionVerify.sol:843` |
 | core | `AirdropAlreadyClaimed(address,address)` | `0x3349f079` | `IAirdropDistributorErrors` | 1 | `core/src/distributor/AirdropDistributor.sol:103` |
-| core | `BoostCapExceeded(address,uint256,uint256,uint256)` | `0x837ed964` | `IStakeErrors` | 1 | `core/src/Stake.sol:321`, `core/src/Stake.sol:543` |
+| core | `BoostCapExceeded(address,uint256,uint256,uint256)` | `0x837ed964` | `IStakeErrors` | 1 | `core/src/Stake.sol:365`, `core/src/Stake.sol:587` |
 | core | `CallbackTargetNotContract(address)` | `0x5816a336` | `ISubmitErrors` | 1 | `core/src/Submit.sol:241` |
 | core | `ClaimDelayRoundsExceeded(uint256,uint256)` | `0x4e25c8d7` | `IAirdropDistributorErrors` | 1 | `core/src/distributor/AirdropDistributor.sol:240` |
 | core | `ClaimRoundNotReached(address,uint256,uint256)` | `0xff978a22` | `IAirdropDistributorErrors` | 1 | `core/src/distributor/AirdropDistributor.sol:99` |
@@ -107,7 +107,7 @@ Rows are grouped by repo + signature; interfaces list every local declaration si
 | core | `InsufficientSubmitPower(address,uint256,uint256,uint256)` | `0x6898aba8` | `ISubmitErrors` | 1 | `core/src/Submit.sol:91` |
 | core | `InvalidDistributorDataCount(uint256,uint256)` | `0x3ea8b6a5` | `IAirdropDistributorErrors` | 1 | `core/src/distributor/AirdropDistributor.sol:80` |
 | core | `InvalidDistributorDataLength(uint256,uint256)` | `0xecd41092` | `IAirdropDistributorErrors` | 1 | `core/src/distributor/AirdropDistributor.sol:81` |
-| core | `InvalidPromisedWaitingPhases(uint256,uint256,uint256)` | `0x50a046ad` | `IStakeErrors` | 1 | `core/src/Stake.sol:554` |
+| core | `InvalidPromisedWaitingPhases(uint256,uint256,uint256)` | `0x50a046ad` | `IStakeErrors` | 1 | `core/src/Stake.sol:598` |
 | core | `InvalidProof()` | `0x09bde339` | `IAirdropDistributorErrors` | 1 | `core/src/distributor/AirdropDistributor.sol:107`, `core/src/distributor/AirdropDistributor.sol:110` |
 | core | `InvalidTokenSymbolCharacters()` | `0x7e279c58` | `ILaunchErrors` | 1 | `core/src/Launch.sol:277` |
 | core | `InvalidTokenSymbolLength(uint256,uint256)` | `0x18a4669e` | `ILaunchErrors` | 1 | `core/src/Launch.sol:276` |
@@ -124,19 +124,19 @@ Rows are grouped by repo + signature; interfaces list every local declaration si
 | core | `NameInvalidCharacters()` | `0x9954195a` | `IMemberNFTErrors` | 1 | `core/src/MemberNFT.sol:189` |
 | core | `NameTooLong(uint256,uint256)` | `0x243cf1c9` | `IMemberNFTErrors` | 1 | `core/src/MemberNFT.sol:188` |
 | core | `NoGovVotes(address)` | `0xa0d4ddef` | `ISubmitErrors` | 1 | `core/src/Submit.sol:88` |
-| core | `NoStakedLiquidity(address,uint256)` | `0x42b29552` | `IStakeErrors` | 1 | `core/src/Stake.sol:577` |
+| core | `NoStakedLiquidity(address,uint256)` | `0x42b29552` | `IStakeErrors` | 1 | `core/src/Stake.sol:621` |
 | core | `NoVotingPower(address,uint256)` | `0x8102b749` | `IVoteErrors` | 1 | `core/src/Vote.sol:83` |
 | core | `NotLaunchContract(address)` | `0x78654bfe` | `IAirdropDistributorErrors` | 1 | `core/src/distributor/AirdropDistributor.sol:45` |
-| core | `NotMemberOwner(uint256)` | `0x33393244` | `ILaunchErrors`, `IMintErrors`, `IStakeErrors`, `ISubmitErrors`, `IVoteErrors` | 5 | `core/src/Launch.sol:36`, `core/src/Mint.sol:239`, `core/src/Stake.sol:112`, `core/src/Submit.sol:97`, `core/src/Vote.sol:59` |
+| core | `NotMemberOwner(uint256)` | `0x33393244` | `ILaunchErrors`, `IMintErrors`, `IStakeErrors`, `ISubmitErrors`, `IVoteErrors` | 5 | `core/src/Launch.sol:36`, `core/src/Mint.sol:239`, `core/src/Stake.sol:160`, `core/src/Submit.sol:97`, `core/src/Vote.sol:59` |
 | core | `NotMintContract(address)` | `0x3ab9a846` | `ILaunchErrors` | 1 | `core/src/Launch.sol:31` |
 | core | `NotMinter(address)` | `0x361c31f2` | `ILOVE20TokenErrors` | 1 | `core/src/LOVE20Token.sol:37` |
 | core | `NotProposalTarget(address,address)` | `0xc157502b` | `IMintErrors` | 1 | `core/src/Mint.sol:184` |
 | core | `NotSnapshotUriUpdater(address,uint256)` | `0x52ed8447` | `IAirdropDistributorErrors` | 1 | `core/src/distributor/AirdropDistributor.sol:52`, `core/src/distributor/AirdropDistributor.sol:55` |
 | core | `PairCreationFailed(address)` | `0x90fa4b05` | `ILaunchErrors` | 1 | `core/src/Launch.sol:264` |
-| core | `PairMissing(address)` | `0xeabd8816` | `IStakeErrors` | 1 | `core/src/Stake.sol:604` |
+| core | `PairMissing(address)` | `0xeabd8816` | `IStakeErrors` | 1 | `core/src/Stake.sol:669` |
 | core | `ParentTokenNotRegistered(address)` | `0x7201021d` | `ILaunchErrors` | 1 | `core/src/Launch.sol:104` |
 | core | `PhaseNotStarted()` | `0xf2469089` | `IPhaseErrors` | 1 | `core/src/Phase.sol:52`, `core/src/Phase.sol:61`, `core/src/Phase.sol:92` |
-| core | `PromisedWaitingPhasesDecreased(uint256,uint256)` | `0x80336ded` | `IStakeErrors` | 1 | `core/src/Stake.sol:134`, `core/src/Stake.sol:156` |
+| core | `PromisedWaitingPhasesDecreased(uint256,uint256)` | `0x80336ded` | `IStakeErrors` | 1 | `core/src/Stake.sol:635`, `core/src/Stake.sol:641` |
 | core | `ProposalAlreadySubmitted(address,uint256,uint256)` | `0x9dcaa584` | `ISubmitErrors` | 1 | `core/src/Submit.sol:128` |
 | core | `ProposalBelowThreshold(address,uint256,uint256,uint256,uint256)` | `0xbdf55b4f` | `IMintErrors` | 1 | `core/src/Mint.sol:210` |
 | core | `ProposalIdsEmpty()` | `0x46b9908e` | `IVoteErrors` | 1 | `core/src/Vote.sol:72` |
@@ -147,43 +147,42 @@ Rows are grouped by repo + signature; interfaces list every local declaration si
 | core | `ProposalRewardRoundedToZero(address,uint256,uint256)` | `0xf6f9f8c8` | `IMintErrors` | 1 | `core/src/Mint.sol:215` |
 | core | `ProposalVoteAmountsLengthMismatch(uint256,uint256)` | `0xc1eadb2b` | `IVoteErrors` | 1 | `core/src/Vote.sol:75` |
 | core | `RoundNotEnded(uint256)` | `0x652d87c5` | `IMintErrors` | 1 | `core/src/Mint.sol:111` |
-| core | `RoundNotStarted(uint256,uint256)` | `0xea74f32b` | `IStakeErrors` | 1 | `core/src/Stake.sol:497` |
+| core | `RoundNotStarted(uint256,uint256)` | `0xea74f32b` | `IStakeErrors` | 1 | `core/src/Stake.sol:541` |
 | core | `ShareExceedsRemaining(uint256,uint256)` | `0x079c232c` | `IAirdropDistributorErrors` | 1 | `core/src/distributor/AirdropDistributor.sol:108` |
-| core | `SlippageExceeded(uint256,uint256)` | `0x71c4efed` | `IStakeErrors` | 1 | `core/src/Stake.sol:837` |
 | core | `SnapshotUriEmpty()` | `0xdd461fc3` | `IAirdropDistributorErrors` | 1 | `core/src/distributor/AirdropDistributor.sol:136` |
 | core | `SnapshotUriTooLong(uint256,uint256)` | `0xf2f9c2c9` | `IAirdropDistributorErrors` | 1 | `core/src/distributor/AirdropDistributor.sol:137` |
-| core | `SourceEqualsTarget(uint256)` | `0xbbef66e9` | `ILaunchErrors`, `IStakeErrors` | 2 | `core/src/Launch.sol:158`, `core/src/Stake.sol:292` |
-| core | `StakeNotStarted()` | `0xcd329a46` | `IStakeErrors` | 1 | `core/src/Stake.sol:549` |
-| core | `StakeRightsUsed(address,uint256,uint256)` | `0xd2632e80` | `IStakeErrors` | 1 | `core/src/Stake.sol:205`, `core/src/Stake.sol:306` |
+| core | `SourceEqualsTarget(uint256)` | `0xbbef66e9` | `ILaunchErrors`, `IStakeErrors` | 2 | `core/src/Launch.sol:158`, `core/src/Stake.sol:336` |
+| core | `StakeNotStarted()` | `0xcd329a46` | `IStakeErrors` | 1 | `core/src/Stake.sol:593` |
+| core | `StakeRightsUsed(address,uint256,uint256)` | `0xd2632e80` | `IStakeErrors` | 1 | `core/src/Stake.sol:249`, `core/src/Stake.sol:350` |
 | core | `SubmitRoundFull(address,uint256,uint256)` | `0x0fe6aa6e` | `ISubmitErrors` | 1 | `core/src/Submit.sol:293` |
 | core | `TargetDataLengthMismatch(uint256,uint256)` | `0x232f36be` | `IVoteErrors` | 1 | `core/src/Vote.sol:78` |
 | core | `TargetDataTooLarge(uint256,uint256)` | `0xb6bbb06e` | `ISubmitErrors` | 1 | `core/src/Submit.sol:236` |
 | core | `TargetDataTooMany(uint256,uint256)` | `0x3f77fa64` | `ISubmitErrors` | 1 | `core/src/Submit.sol:229` |
-| core | `TargetPromisedWaitingPhasesTooShort(uint256,uint256)` | `0xe393d50b` | `IStakeErrors` | 1 | `core/src/Stake.sol:620` |
+| core | `TargetPromisedWaitingPhasesTooShort(uint256,uint256)` | `0xe393d50b` | `IStakeErrors` | 1 | `core/src/Stake.sol:685` |
 | core | `TitleEmpty()` | `0x5d0ff12d` | `ISubmitErrors` | 1 | `core/src/Submit.sol:221` |
 | core | `TitleTooLong(uint256,uint256)` | `0x83dc6558` | `ISubmitErrors` | 1 | `core/src/Submit.sol:222` |
 | core | `TokenAlreadyConfigured(address)` | `0x54d67cef` | `IAirdropDistributorErrors` | 1 | `core/src/distributor/AirdropDistributor.sol:237` |
 | core | `TokenNameEmpty()` | `0x0d7673b5` | `ILaunchErrors` | 1 | `core/src/Launch.sol:246` |
 | core | `TokenNameTooLong(uint256,uint256)` | `0x312f5772` | `ILaunchErrors` | 1 | `core/src/Launch.sol:247` |
 | core | `TokenNotConfigured(address)` | `0xa5be5e0f` | `IAirdropDistributorErrors` | 1 | `core/src/distributor/AirdropDistributor.sol:50`, `core/src/distributor/AirdropDistributor.sol:94` |
-| core | `TokenNotRegistered(address)` | `0xddef98d7` | `ILaunchErrors`, `IMintErrors`, `IStakeErrors` | 3 | `core/src/Launch.sol:163`, `core/src/Launch.sol:191`, `core/src/Mint.sol:107`, `core/src/Stake.sol:561` |
+| core | `TokenNotRegistered(address)` | `0xddef98d7` | `ILaunchErrors`, `IMintErrors`, `IStakeErrors` | 3 | `core/src/Launch.sol:163`, `core/src/Launch.sol:191`, `core/src/Mint.sol:107`, `core/src/Stake.sol:605` |
 | core | `TokenSymbolAlreadyExists(bytes32)` | `0x98f23aa3` | `ILaunchErrors` | 1 | `core/src/Launch.sol:124` |
 | core | `TokenSymbolEmpty()` | `0xf09ce013` | `ILaunchErrors` | 1 | `core/src/Launch.sol:250` |
 | core | `TokenSymbolTooLong(uint256,uint256)` | `0xb77a560d` | `ILaunchErrors` | 1 | `core/src/Launch.sol:251` |
-| core | `UnlockRoundNotReached(uint256,uint256)` | `0x39cb81ec` | `IStakeErrors` | 1 | `core/src/Stake.sol:249` |
-| core | `UnstakeAlreadyRequested(address,uint256)` | `0xe8e88f47` | `IStakeErrors` | 1 | `core/src/Stake.sol:569` |
-| core | `UnstakeNotRequested(address,uint256)` | `0x44357cd8` | `IStakeErrors` | 1 | `core/src/Stake.sol:241` |
+| core | `UnlockRoundNotReached(uint256,uint256)` | `0x39cb81ec` | `IStakeErrors` | 1 | `core/src/Stake.sol:293` |
+| core | `UnstakeAlreadyRequested(address,uint256)` | `0xe8e88f47` | `IStakeErrors` | 1 | `core/src/Stake.sol:613` |
+| core | `UnstakeNotRequested(address,uint256)` | `0x44357cd8` | `IStakeErrors` | 1 | `core/src/Stake.sol:285` |
 | core | `VoteLimitExceeded(address,uint256,uint256,uint256,uint256)` | `0xb60c38d3` | `IVoteErrors` | 1 | `core/src/Vote.sol:250` |
-| core | `ZeroBoostAmount()` | `0xbbaa8875` | `IStakeErrors` | 1 | `core/src/Stake.sol:147` |
+| core | `ZeroBoostAmount()` | `0xbbaa8875` | `IStakeErrors` | 1 | `core/src/Stake.sol:199` |
 | core | `ZeroCount()` | `0x047b9cec` | `ILaunchErrors` | 1 | `core/src/Launch.sol:160`, `core/src/Launch.sol:190` |
 | core | `ZeroDistributorAddress()` | `0x71702079` | `ILOVE20TokenErrors`, `ILaunchErrors` | 2 | `core/src/LOVE20Token.sol:24`, `core/src/Launch.sol:100` |
 | core | `ZeroInitialSupply()` | `0x9243dc6c` | `ILOVE20TokenErrors` | 1 | `core/src/LOVE20Token.sol:22` |
-| core | `ZeroLiquidityMinted()` | `0xf4791324` | `IStakeErrors` | 1 | `core/src/Stake.sol:738` |
+| core | `ZeroLiquidityMinted()` | `0xf4791324` | `IStakeErrors` | 1 | `core/src/Stake.sol:880` |
 | core | `ZeroMerkleRoot()` | `0x9266ee62` | `IAirdropDistributorErrors` | 1 | `core/src/distributor/AirdropDistributor.sol:238` |
-| core | `ZeroParentTokenAmount()` | `0xe6e1b13a` | `IStakeErrors` | 1 | `core/src/Stake.sol:125` |
+| core | `ZeroParentTokenAmount()` | `0xe6e1b13a` | `IStakeErrors` | 1 | `core/src/Stake.sol:172` |
 | core | `ZeroRecipientAddress()` | `0xceef9857` | `IMintErrors` | 1 | `core/src/Mint.sol:196`, `core/src/Mint.sol:519` |
 | core | `ZeroTargetAddress()` | `0xeaf673fd` | `ISubmitErrors` | 1 | `core/src/Submit.sol:239` |
-| core | `ZeroTokenAmount()` | `0x82c4a8c9` | `IStakeErrors` | 1 | `core/src/Stake.sol:124` |
+| core | `ZeroTokenAmount()` | `0x82c4a8c9` | `IStakeErrors` | 1 | `core/src/Stake.sol:171` |
 | core | `ZeroVoteAmount(address,uint256,uint256)` | `0x0164ed89` | `IVoteErrors` | 1 | `core/src/Vote.sol:218` |
 | group-chat | `ActionNotExist(address,uint256)` | `0x9c0f73f0` | `ITokenActionScopeManagerBaseErrors` | 1 | `group-chat/src/managers/TokenActionScopeManagerBase.sol:137`, `group-chat/src/managers/TokenActionScopeManagerBase.sol:140` |
 | group-chat | `AdminIdsLimitExceeded(uint256,uint256,uint256)` | `0x2ffd6226` | `IGroupAdminErrors` | 1 | `group-chat/src/GroupAdmin.sol:168` |
@@ -219,7 +218,6 @@ Rows are grouped by repo + signature; interfaces list every local declaration si
 | group-chat | `ZeroTargetSenderId()` | `0x16f52684` | `IGovVotedBanSourceErrors`, `IGroupChatBanListErrors` | 2 | `group-chat/src/GroupChatBanList.sol:142`, `group-chat/src/sources/ban/GovVotedBanSource.sol:407` |
 | group-chat | `ZeroVoteWeight(uint256,uint256)` | `0xbeffc593` | `IGovVotedBanSourceErrors` | 1 | `group-chat/src/sources/ban/GovVotedBanSource.sol:185` |
 | libs | `InvalidKeyOrder(uint256,uint256)` | `0xc7a2002f` | `IOrderedHistoryIndexErrors` | 1 | `libs/src/OrderedHistoryIndex.sol:26` |
-| tools | `AmountExceeded(uint256,uint256)` | `0xb97c056b` | `IUniswapV2ZapErrors` | 1 | `tools/src/UniswapV2Zap.sol:271`, `tools/src/UniswapV2Zap.sol:272`, `tools/src/UniswapV2Zap.sol:392`, `tools/src/UniswapV2Zap.sol:394` |
 | tools | `ArrayLengthMismatch(uint256,uint256)` | `0xfa5dbe08` | `IBatchTransferErrors` | 1 | `tools/src/BatchTransfer.sol:105` |
 | tools | `ERC20AllowanceQueryFailed(address,address,address,bytes32,uint256)` | `0xa4d60177` | `IBatchTransferErrors` | 1 | `tools/src/BatchTransfer.sol:152` |
 | tools | `ERC20BalanceQueryFailed(address,address,bytes32,uint256)` | `0x649527fb` | `IBatchTransferErrors` | 1 | `tools/src/BatchTransfer.sol:137` |
@@ -228,30 +226,11 @@ Rows are grouped by repo + signature; interfaces list every local declaration si
 | tools | `ERC20InvalidReturn(address,uint256,address,uint256,bytes32,uint256)` | `0x7ebea543` | `IBatchTransferErrors` | 1 | `tools/src/BatchTransfer.sol:182` |
 | tools | `ERC20TransferFailed(address,uint256,address,uint256,bytes32,uint256)` | `0x9184d70c` | `IBatchTransferErrors` | 1 | `tools/src/BatchTransfer.sol:177` |
 | tools | `EmptyBatch()` | `0xc2e5347d` | `IBatchTransferErrors` | 1 | `tools/src/BatchTransfer.sol:102` |
-| tools | `IdenticalTokens()` | `0x5c6d7b73` | `IUniswapV2ZapErrors` | 1 | `tools/src/UniswapV2Zap.sol:501` |
-| tools | `InsufficientInitialLiquidity()` | `0xe57902cd` | `IUniswapV2ZapErrors` | 1 | `tools/src/UniswapV2Zap.sol:278` |
-| tools | `InsufficientLiquidity()` | `0xbb55fd27` | `IUniswapV2ZapErrors` | 1 | `tools/src/UniswapV2Zap.sol:391` |
-| tools | `LiquidityMintedZero()` | `0xd1d731c8` | `IUniswapV2ZapErrors` | 1 | `tools/src/UniswapV2Zap.sol:329` |
-| tools | `NativeRefundFailed()` | `0x8520d710` | `IUniswapV2ZapErrors` | 1 | `tools/src/UniswapV2Zap.sol:534` |
-| tools | `NativeTokenNotAccepted()` | `0x37668688` | `IUniswapV2ZapErrors` | 1 | `tools/src/UniswapV2Zap.sol:63` |
 | tools | `NativeTransferFailed(uint256,address,uint256,bytes32,uint256)` | `0xdbe37f79` | `IBatchTransferErrors` | 1 | `tools/src/BatchTransfer.sol:30` |
 | tools | `NativeValueMismatch(uint256,uint256)` | `0xbc760cfe` | `IBatchTransferErrors` | 1 | `tools/src/BatchTransfer.sol:19` |
-| tools | `OptimalAmountZero()` | `0x0b930eaa` | `IUniswapV2ZapErrors` | 1 | `tools/src/UniswapV2Zap.sol:323` |
-| tools | `PairMissingOrEmpty()` | `0xa569b1a1` | `IUniswapV2ZapErrors` | 1 | `tools/src/UniswapV2Zap.sol:209`, `tools/src/UniswapV2Zap.sol:276` |
-| tools | `SlippageExceeded(uint256,uint256)` | `0x71c4efed` | `IUniswapV2ZapErrors` | 1 | `tools/src/UniswapV2Zap.sol:234` |
-| tools | `SwapOutputZero()` | `0x5273e2e8` | `IUniswapV2ZapErrors` | 1 | `tools/src/UniswapV2Zap.sol:300`, `tools/src/UniswapV2Zap.sol:313` |
 | tools | `TokenNotContract(address)` | `0x18aca2db` | `IBatchTransferErrors` | 1 | `tools/src/BatchTransfer.sol:127` |
-| tools | `WrappedNativeTokenNotAccepted()` | `0x4a3d191b` | `IUniswapV2ZapErrors` | 1 | `tools/src/UniswapV2Zap.sol:134`, `tools/src/UniswapV2Zap.sol:197` |
 | tools | `ZeroAmount(uint256)` | `0x9af70448` | `IBatchTransferErrors` | 1 | `tools/src/BatchTransfer.sol:115` |
-| tools | `ZeroFactory()` | `0x00821e6f` | `IUniswapV2ZapErrors` | 1 | `tools/src/UniswapV2Zap.sol:58` |
 | tools | `ZeroGasLimit()` | `0x3e267f95` | `IBatchTransferErrors` | 1 | `tools/src/BatchTransfer.sol:122` |
-| tools | `ZeroInputAmounts()` | `0x2896991c` | `IUniswapV2ZapErrors` | 1 | `tools/src/UniswapV2Zap.sol:136`, `tools/src/UniswapV2Zap.sol:186`, `tools/src/UniswapV2Zap.sol:198`, `tools/src/UniswapV2Zap.sol:74` |
 | tools | `ZeroRecipient(uint256)` | `0xef28bd44` | `IBatchTransferErrors` | 1 | `tools/src/BatchTransfer.sol:111` |
-| tools | `ZeroRecipientAddress()` | `0xceef9857` | `IUniswapV2ZapErrors` | 1 | `tools/src/UniswapV2Zap.sol:135`, `tools/src/UniswapV2Zap.sol:73` |
-| tools | `ZeroRouter()` | `0x920d9292` | `IUniswapV2ZapErrors` | 1 | `tools/src/UniswapV2Zap.sol:52` |
-| tools | `ZeroToken()` | `0xad1991f5` | `IUniswapV2ZapErrors` | 1 | `tools/src/UniswapV2Zap.sol:133`, `tools/src/UniswapV2Zap.sol:196` |
-| tools | `ZeroTokenA()` | `0xa82c9674` | `IUniswapV2ZapErrors` | 1 | `tools/src/UniswapV2Zap.sol:499` |
-| tools | `ZeroTokenB()` | `0xb2a93375` | `IUniswapV2ZapErrors` | 1 | `tools/src/UniswapV2Zap.sol:500` |
-| tools | `ZeroWrappedNativeToken()` | `0xe5e356d3` | `IUniswapV2ZapErrors` | 1 | `tools/src/UniswapV2Zap.sol:59` |
 
-Total: 283 declarations, 235 unique signatures.
+Total: 262 declarations, 216 unique signatures.

@@ -27,11 +27,11 @@
 | `group-chat` | 群聊业务 | `action`（`core`、`libs`、OpenZeppelin 经 `action` 传递） | 活跃；群聊业务已实现并提交 |
 | `interface-test` | BSC 前端开发、集成和验收 | `core`、`action`、`group-chat` | 规划中；日常修改入口 |
 | `interface` | BSC 前端正式发布 | 验收后的 `interface-test` | 规划中；只接受人工同步 |
-| `periphery` | 跨仓库调用与外围适配：依赖协议已部署合约、可随时替换的聚合查看与便捷交互 | `core` | 规划中 |
+| `periphery` | 跨仓库调用与外围适配：依赖协议已部署合约、可随时替换的聚合查看与便捷交互 | `core` | 进行中；`LOVE20Hub`（单币流动性质押、单币组 LP、配对报价）与 `viewer` 归本仓，承担原 `UniswapV2Zap` 的全部能力 |
 | `script` | 部署、地址和发布脚本 | 各可部署业务仓库 | 规划中 |
-| `love20-anvil` | 本地区块链集成测试编排 | `core`、`action`、`group-chat`、`tools` | 规划中 |
+| `anvil` | 本地区块链集成测试编排（旧名 `love20-anvil`；当前工作区目录为 `anvil/`） | `core`、`action`、`group-chat`、`libs`、`dex`（均为只读输入） | 活跃；当前不引用 Zap 或 `tools`，本次外围重构不要求它改代码 |
 | `docs` | BSC 版协议对外公开文档 | 各业务仓库 | 活跃；公开仓库与文档站已启用 |
-| `tools` | 不依赖协议部署合约、功能单一的独立工具合约 | 无（外部 DEX 接口在仓内自声明） | 活跃；`BatchTransfer`、`UniswapV2Zap` 已迁移并通过测试 |
+| `tools` | 不依赖协议部署合约、功能单一的独立工具合约 | 无 | 活跃；`BatchTransfer` 已迁移并通过测试 |
 
 `docs` 是公开仓库 [LOVE20BSC/docs](https://github.com/LOVE20BSC/docs)，文档站入口为 [love20bsc.github.io/docs](https://love20bsc.github.io/docs/)。它只收录定稿的对外内容；协议行为与合约接口仍分别以 `matt-gov/docs/specs` 和 `core/src/interfaces` 为准。
 
@@ -45,13 +45,17 @@
 
 | 类别 | 判据 | 依赖 | 例子 |
 | --- | --- | --- | --- |
-| `periphery` | 依赖协议已部署的合约，可随时替换，提供聚合查看或便捷交互 | `core` | viewer、hub |
-| `tools` | **不**依赖协议已部署的合约，功能单一 | 无 | `UniswapV2Zap`、`BatchTransfer` |
+| `periphery` | 依赖协议已部署的合约，可随时替换，提供聚合查看或便捷交互 | `core` | viewer、hub（`LOVE20Hub`） |
+| `tools` | **不**依赖协议已部署的合约，功能单一 | 无 | `BatchTransfer` |
 | 业务库 | 功能复杂、多合约协作，一库一仓 | `core`、`action` | `group-chat` |
 
 判据的关键后果：`tools` 的合约**不随协议升级而返工**，所以先建、先稳定；`periphery` 的合约读取协议状态，必须等它依赖的接口定稿后再建。「可随时重新部署」不构成归入外围的理由——读写协议状态的合约即便能重新部署，旧地址仍然在写协议状态，这类合约按普通协议组件处理，不按外围处理。
 
-`tools` 内各工具互相独立，因此**不设全仓统一的一键部署入口**：一个全局入口要么重复部署先前已部署的工具，要么无法覆盖后来新增的工具，两种结果都是错的。每个工具自带 `one_click_deploy_<tool>.sh` 与自己的参数文件、地址文件、`NN_*_<tool>.sh` 步骤脚本，编号在仓内按工具分段（`11`/`21`/`31`、`12`/`22`/`32`）。
+`tools` 与 `periphery` 的边界是一条编译期事实：`periphery` 的合约 `import @core/`，`tools` 的合约不 import 任何协议合约。`UniswapV2Zap` 取消后其 swap / 折算能力并入 `periphery` 的 `LOVE20Hub`（组 LP、单币质押、报价，各按 ERC20 / 原生币拆分支），`tools` 只剩 `BatchTransfer`。`tools/src/interfaces/` 里的 `IUniswapV2Factory` / `IUniswapV2Pair` / `IUniswapV2Router02` / `IWrappedNative` 随 Zap 一并迁入 `periphery`，不在两仓维护副本。
+
+**一键部署入口按「该仓库的已部署合约集合是否冻结」判定**，判据与理由见 [ADR 2026-11-13](adr/2026-11-13-periphery-hub-single-token-staking.md)，落地规则见 [开发规范 §6.1](dev-standards.md#61-deploy-脚本)：集合冻结的仓库允许全仓统一 `one_click_deploy.sh`；未冻结或按设计会持续新增独立合约的仓库只按模块给 `one_click_deploy_<x>.sh`，不设全仓入口。`periphery`、`tools` 属后者：每个模块自带 `one_click_deploy_<x>.sh` 与自己的参数文件、地址文件、`NN_*_<x>.sh` 步骤脚本，编号在仓内按模块分段（`11`/`21`/`31`、`12`/`22`/`32`）。`core`、`action`、`group-chat`、`dex` 是否允许全仓入口，由各自「合约集合是否冻结」的验收结论判定，不按仓库名单预先钉死。
+
+本地链编排实际在 `anvil/` 仓库（旧名 `love20-anvil`，工作区并无同名目录）：它把 `core`、`action`、`group-chat`、`libs`、`dex` 作为只读输入编译部署。`anvil/` 当前不引用 Zap 或 `tools`，本次改动不要求它改代码；若将来接入 Hub，按 Hub 地址接即可。
 
 旧 `LOVE20TKM/extension`、`LOVE20TKM/extension-group` 的业务迁入 `action`；旧 `LOVE20TKM/extension-lp` 仅迁移 V2 LP 业务，重写为 `action` 内的 LP 行动执行合约，V1 LP 实现及旧 LP 工厂不迁移。`burn`、未部署的 `chat` 和外部 `v2-periphery` 不在本组织清单中。首币的 `distributor` 为本仓库的 `core/src/distributor/AirdropDistributor.sol`。首币空投的份额数据来源于旧 `LOVE20TKM/burn` 记录在链上的销毁活动结果（来源链 ID、来源区块、来源地址与份额快照）；部署记录必须公开记录实际使用的来源链、来源区块、Merkle Root 与首币地址，使任何人可独立复算。
 
