@@ -234,6 +234,8 @@ stakeBoost 通过条件：member.boostShares + amount <= m_i
 
 第 9、10 行是等待期约束的两个方向：**所有**调用者都不能下调（第 9 行）；**非持有人**在已有仓位时也不能上调或改成任何别的值，必须精确等于现有值（第 10 行）。两者用两个错误——下调是「变小」，非持有人改写是「不许改」，条件、主体与可诊断性都不同，按[错误标准 §二](../../error-standards.md)「一条件一错误」不共用一个 selector。空仓位没有这条上限，非持有人可以自由指定到 `MAX`。
 
+**「空仓位」的判据是份额而非等待期**：`liquidityShares == 0 && boostShares == 0`，**不是** `promisedWaitingPhases == 0`。两者在当前实现里等价，因为成员记录只在 `withdraw`（整个 `delete`）与 `mergeStake` 的源侧（同样 `delete`）被清空，而 `_creditLiquidity` 写入等待期时必然同时写入至少一份份额：份额公式 `floor(totalLiquidityShares × lpMinted / lastWithdrawableLp)` 的下界由不变量 `lastWithdrawableLp <= totalLiquidityShares` 保证，该不变量又由「两者在 `_creditLiquidity` 同步增长、重分类只降低 `lastWithdrawableLp`」归纳成立，因此 `liquiditySharesAdded >= lpMinted > 0`（`lpMinted == 0` 已回滚 `ZeroLiquidityMinted()`）。按份额判定是**承重**的：若哪天份额增量可以取整为零，一笔 dust 质押就会把等待期写到一条空记录上，钉死真实持有人首次质押的等待期。该等价性由 `StakeInvariant.t.sol` 的 `invariant_EmptyPositionHasNoWaitingPeriod` 与 `invariant_WithdrawableLpNeverExceedsShareTotal` 守护。
+
 **这条约束对任何中间合约同样成立，包括 `periphery` 的 `LOVE20Hub`**：Hub 代用户调 `stakeLiquidity` 时 `msg.sender` 是 Hub 自己，永远不等于 NFT 持有人，因此经 Hub 对**已有仓位**的二次质押只能**精确沿用**当前等待期，无法借 Hub 提升；要提升等待期，须由持有人**直接调用** `Stake.stakeLiquidity`。Hub 侧据此不提供提升入口，前端应先读 `memberStake(tokenAddress, memberId).promisedWaitingPhases` 原样回填。空仓位不受此限，经 Hub 可自由指定（含 `MAX`）。
 
 本入口**没有**滑点类拒绝条件：`slippage` 参数、`SLIPPAGE_PRECISION` 常量、`_checkSlippage` 守卫与 `SlippageExceeded` 错误已删除，折算出的剩余不转账、留在调用者手里，不构成回滚。第 10 行是本次新增：它由原第 9 行的复合条件拆出，见上。
