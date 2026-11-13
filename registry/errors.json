@@ -2020,7 +2020,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Stake.sol:657"
+        "core/src/Stake.sol:656"
       ],
       "selector": "0xeabd8816",
       "signature": "PairMissing(address)"
@@ -2067,7 +2067,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Stake.sol:625"
+        "core/src/Stake.sol:628"
       ],
       "selector": "0x80336ded",
       "signature": "PromisedWaitingPhasesDecreased(uint256,uint256)"
@@ -2082,7 +2082,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Stake.sol:629"
+        "core/src/Stake.sol:625"
       ],
       "selector": "0xf2be37f2",
       "signature": "PromisedWaitingPhasesRewritten(address,uint256,uint256,uint256)"
@@ -2416,7 +2416,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Stake.sol:673"
+        "core/src/Stake.sol:672"
       ],
       "selector": "0xe393d50b",
       "signature": "TargetPromisedWaitingPhasesTooShort(uint256,uint256)"
@@ -2713,7 +2713,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Stake.sol:865"
+        "core/src/Stake.sol:864"
       ],
       "selector": "0xf4791324",
       "signature": "ZeroLiquidityMinted()"
