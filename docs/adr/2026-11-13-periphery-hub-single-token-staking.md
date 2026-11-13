@@ -74,7 +74,7 @@ BSC 版需要一个「单笔完成流动性质押」的便捷入口：用户只�
    - 不加 `inputTokenSymbol`（[event-standards.md](../event-standards.md) §6.4：机器可读的值不得用 `string`，资产标识一律用 address）；不加路由 / Router 地址（不可变部署参数不进事件；单币场景 path 可推导；多跳路由单发子事件，不预留空字段）。
 5. **组 LP 与报价（承接 Zap 的其余能力）**：
    - 组 LP 入口按输入形态同样拆 ERC20 / 原生币两支，LP 交给 `to`（不经 `stakeLiquidity`，不产生质押记账）。它与质押入口共用 swap / 折算 / 退款实现。
-   - 报价入口覆盖 `quoteZapToken` / `quoteZapNativeToken` 的能力：给定输入币与数量，返回备齐的双币量、是否将 swap、swap 方向与数量、预期 LP；`quoteSingleTokenStake` 在此之上额外给出四个 prepared/remaining 量供质押场景使用。报价均为纯 view，不带 `memberId` / `promisedWaitingPhases`。
+   - 报价入口覆盖 `quoteZapToken` / `quoteZapNativeToken` 的能力：给定输入币与数量，返回备齐的双币量、是否将 swap、swap 方向与数量、预期 LP；`quoteSingleTokenStakeLiquidity` 在此之上额外给出质押口径的返回值。**质押报价必须带 `memberId` 与 `promisedWaitingPhases`**（本 ADR 原稿写的是「不带」，已修正）：流动性质押对外可读的是**份额、治理票与承诺解锁期**，LP 是 core 的内部记账，不对外暴露；而 `govVotesAdded` 的精确值依赖该成员的既有份额与既有等待期，不带账户就只能返回编排量、答不出用户真正关心的东西。报价因此返回 `liquiditySharesAdded` / `liquidityShares` / `govVotesAdded`，与写入口实际产生的值逐项相等（链下断言，见 `test/StakeLiquidityTest.t.sol`）。组 LP 的报价 `quoteSingleTokenLp` 仍不带账户——它不产生质押记账，也没有账户相关的返回值。
    - 组 LP 的事件同样归 `periphery.hub` 族，与质押事件按事实拆名；Zap 的 `TokenZapped` / `NativeTokenZapped` 不保留原名。
 6. **最小外部接口**：Zap 取消后，`tools/src/interfaces/` 里的 `IUniswapV2Factory` / `IUniswapV2Pair` / `IUniswapV2Router02` / `IWrappedNative` 迁入 periphery（按 [dev-standards.md](../dev-standards.md) §4.1 不在两仓维护副本），tools 只留 `IBatchTransfer.sol` 与 `IERC20Minimal.sol`。
 
@@ -135,7 +135,7 @@ BSC 版需要一个「单笔完成流动性质押」的便捷入口：用户只�
 ## 待建仓时定（不在本 ADR 钉死）
 
 - `periphery.hub` 事件的确切命名与 `caller` / `memberOwner` 是否 indexed（三槽已被根键 / 主对象 id / actor 占满，倾向 payload）。
-- `quoteSingleTokenStake` 是否附带建议 Min 值供前端填写。
+- ~~`quoteSingleTokenStake` 是否附带建议 Min 值供前端填写~~ —— 已定：附带（`suggestedTokenAmountMin` / `suggestedParentAmountMin`）。
 - `core`、`action`、`group-chat`、`dex` 各自的「合约集合是否冻结」验收结论。
 
 ## 相关文档

@@ -219,23 +219,24 @@ Rows are grouped by repo + signature; interfaces list every local declaration si
 | group-chat | `ZeroTargetSenderId()` | `0x16f52684` | `IGovVotedBanSourceErrors`, `IGroupChatBanListErrors` | 2 | `group-chat/src/GroupChatBanList.sol:142`, `group-chat/src/sources/ban/GovVotedBanSource.sol:407` |
 | group-chat | `ZeroVoteWeight(uint256,uint256)` | `0xbeffc593` | `IGovVotedBanSourceErrors` | 1 | `group-chat/src/sources/ban/GovVotedBanSource.sol:185` |
 | libs | `InvalidKeyOrder(uint256,uint256)` | `0xc7a2002f` | `IOrderedHistoryIndexErrors` | 1 | `libs/src/OrderedHistoryIndex.sol:26` |
-| periphery | `AmountExceeded(uint256,uint256)` | `0xb97c056b` | `ILOVE20HubErrors` | 1 | `periphery/src/LOVE20Hub.sol:419` |
-| periphery | `DeadlineExpired(uint256,uint256)` | `0x1503f5f8` | `ILOVE20HubErrors` | 1 | `periphery/src/LOVE20Hub.sol:276` |
-| periphery | `InsufficientParentTokenAmount(uint256,uint256)` | `0x0fec8a65` | `ILOVE20HubErrors` | 1 | `periphery/src/LOVE20Hub.sol:377` |
-| periphery | `InsufficientTokenAmount(uint256,uint256)` | `0xf468a29e` | `ILOVE20HubErrors` | 1 | `periphery/src/LOVE20Hub.sol:372` |
-| periphery | `InvalidInputTokenAddress(address)` | `0xcdffc1a8` | `ILOVE20HubErrors` | 1 | `periphery/src/LOVE20Hub.sol:310` |
-| periphery | `NativeInputUnsupported(address)` | `0xe7aa3ef7` | `ILOVE20HubErrors` | 1 | `periphery/src/LOVE20Hub.sol:305` |
-| periphery | `NativeRefundFailed()` | `0x8520d710` | `ILOVE20HubErrors` | 1 | `periphery/src/LOVE20Hub.sol:645` |
+| periphery | `AmountExceeded(uint256,uint256)` | `0xb97c056b` | `ILOVE20HubErrors` | 1 | `periphery/src/LOVE20Hub.sol:444` |
+| periphery | `DeadlineExpired(uint256,uint256)` | `0x1503f5f8` | `ILOVE20HubErrors` | 1 | `periphery/src/LOVE20Hub.sol:293` |
+| periphery | `InsufficientParentTokenAmount(uint256,uint256)` | `0x0fec8a65` | `ILOVE20HubErrors` | 1 | `periphery/src/LOVE20Hub.sol:402` |
+| periphery | `InsufficientTokenAmount(uint256,uint256)` | `0xf468a29e` | `ILOVE20HubErrors` | 1 | `periphery/src/LOVE20Hub.sol:397` |
+| periphery | `InvalidInputTokenAddress(address)` | `0xcdffc1a8` | `ILOVE20HubErrors` | 1 | `periphery/src/LOVE20Hub.sol:327` |
+| periphery | `InvalidPromisedWaitingPhases(uint256,uint256,uint256)` | `0x50a046ad` | `ILOVE20HubErrors` | 1 | `periphery/src/LOVE20Hub.sol:335` |
+| periphery | `NativeInputUnsupported(address)` | `0xe7aa3ef7` | `ILOVE20HubErrors` | 1 | `periphery/src/LOVE20Hub.sol:322` |
+| periphery | `NativeRefundFailed()` | `0x8520d710` | `ILOVE20HubErrors` | 1 | `periphery/src/LOVE20Hub.sol:681` |
 | periphery | `NativeTokenSenderRejected(address)` | `0xbcabaee4` | `ILOVE20HubErrors` | 1 | `periphery/src/LOVE20Hub.sol:87` |
-| periphery | `PairEmpty(address)` | `0x812193a8` | `ILOVE20HubErrors` | 1 | `periphery/src/LOVE20Hub.sol:332` |
-| periphery | `PairMissing(address)` | `0xeabd8816` | `ILOVE20HubErrors` | 1 | `periphery/src/LOVE20Hub.sol:327` |
-| periphery | `TokenNotRegistered(address)` | `0xddef98d7` | `ILOVE20HubErrors` | 1 | `periphery/src/LOVE20Hub.sol:315` |
-| periphery | `ZeroInputTokenAddress()` | `0x93850931` | `ILOVE20HubErrors` | 1 | `periphery/src/LOVE20Hub.sol:284` |
-| periphery | `ZeroInputTokenAmount()` | `0x11338dfa` | `ILOVE20HubErrors` | 1 | `periphery/src/LOVE20Hub.sol:285` |
-| periphery | `ZeroNativeTokenAmount()` | `0x5b95f03b` | `ILOVE20HubErrors` | 1 | `periphery/src/LOVE20Hub.sol:290` |
+| periphery | `PairEmpty(address)` | `0x812193a8` | `ILOVE20HubErrors` | 1 | `periphery/src/LOVE20Hub.sol:357` |
+| periphery | `PairMissing(address)` | `0xeabd8816` | `ILOVE20HubErrors` | 1 | `periphery/src/LOVE20Hub.sol:352` |
+| periphery | `TokenNotRegistered(address)` | `0xddef98d7` | `ILOVE20HubErrors` | 1 | `periphery/src/LOVE20Hub.sol:340` |
+| periphery | `ZeroInputTokenAddress()` | `0x93850931` | `ILOVE20HubErrors` | 1 | `periphery/src/LOVE20Hub.sol:301` |
+| periphery | `ZeroInputTokenAmount()` | `0x11338dfa` | `ILOVE20HubErrors` | 1 | `periphery/src/LOVE20Hub.sol:302` |
+| periphery | `ZeroNativeTokenAmount()` | `0x5b95f03b` | `ILOVE20HubErrors` | 1 | `periphery/src/LOVE20Hub.sol:307` |
 | periphery | `ZeroRecipientAddress()` | `0xceef9857` | `ILOVE20HubErrors` | 1 | `periphery/src/LOVE20Hub.sol:170`, `periphery/src/LOVE20Hub.sol:203` |
-| periphery | `ZeroSwapOutput()` | `0x0e42b339` | `ILOVE20HubErrors` | 1 | `periphery/src/LOVE20Hub.sol:428` |
-| periphery | `ZeroTokenAddress()` | `0x6b093aad` | `ILOVE20HubErrors` | 1 | `periphery/src/LOVE20Hub.sol:283`, `periphery/src/LOVE20Hub.sol:289` |
+| periphery | `ZeroSwapOutput()` | `0x0e42b339` | `ILOVE20HubErrors` | 1 | `periphery/src/LOVE20Hub.sol:453` |
+| periphery | `ZeroTokenAddress()` | `0x6b093aad` | `ILOVE20HubErrors` | 1 | `periphery/src/LOVE20Hub.sol:300`, `periphery/src/LOVE20Hub.sol:306` |
 | tools | `ArrayLengthMismatch(uint256,uint256)` | `0xfa5dbe08` | `IBatchTransferErrors` | 1 | `tools/src/BatchTransfer.sol:105` |
 | tools | `ERC20AllowanceQueryFailed(address,address,address,bytes32,uint256)` | `0xa4d60177` | `IBatchTransferErrors` | 1 | `tools/src/BatchTransfer.sol:152` |
 | tools | `ERC20BalanceQueryFailed(address,address,bytes32,uint256)` | `0x649527fb` | `IBatchTransferErrors` | 1 | `tools/src/BatchTransfer.sol:137` |
@@ -251,4 +252,4 @@ Rows are grouped by repo + signature; interfaces list every local declaration si
 | tools | `ZeroGasLimit()` | `0x3e267f95` | `IBatchTransferErrors` | 1 | `tools/src/BatchTransfer.sol:122` |
 | tools | `ZeroRecipient(uint256)` | `0xef28bd44` | `IBatchTransferErrors` | 1 | `tools/src/BatchTransfer.sol:111` |
 
-Total: 280 declarations, 231 unique signatures.
+Total: 281 declarations, 231 unique signatures.

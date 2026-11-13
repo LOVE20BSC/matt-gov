@@ -3369,7 +3369,7 @@
       ],
       "repo": "periphery",
       "revert_sites": [
-        "periphery/src/LOVE20Hub.sol:419"
+        "periphery/src/LOVE20Hub.sol:444"
       ],
       "selector": "0xb97c056b",
       "signature": "AmountExceeded(uint256,uint256)"
@@ -3384,7 +3384,7 @@
       ],
       "repo": "periphery",
       "revert_sites": [
-        "periphery/src/LOVE20Hub.sol:276"
+        "periphery/src/LOVE20Hub.sol:293"
       ],
       "selector": "0x1503f5f8",
       "signature": "DeadlineExpired(uint256,uint256)"
@@ -3399,7 +3399,7 @@
       ],
       "repo": "periphery",
       "revert_sites": [
-        "periphery/src/LOVE20Hub.sol:377"
+        "periphery/src/LOVE20Hub.sol:402"
       ],
       "selector": "0x0fec8a65",
       "signature": "InsufficientParentTokenAmount(uint256,uint256)"
@@ -3414,7 +3414,7 @@
       ],
       "repo": "periphery",
       "revert_sites": [
-        "periphery/src/LOVE20Hub.sol:372"
+        "periphery/src/LOVE20Hub.sol:397"
       ],
       "selector": "0xf468a29e",
       "signature": "InsufficientTokenAmount(uint256,uint256)"
@@ -3429,7 +3429,7 @@
       ],
       "repo": "periphery",
       "revert_sites": [
-        "periphery/src/LOVE20Hub.sol:310"
+        "periphery/src/LOVE20Hub.sol:327"
       ],
       "selector": "0xcdffc1a8",
       "signature": "InvalidInputTokenAddress(address)"
@@ -3444,7 +3444,22 @@
       ],
       "repo": "periphery",
       "revert_sites": [
-        "periphery/src/LOVE20Hub.sol:305"
+        "periphery/src/LOVE20Hub.sol:335"
+      ],
+      "selector": "0x50a046ad",
+      "signature": "InvalidPromisedWaitingPhases(uint256,uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "periphery/src/interfaces/ILOVE20Hub.sol"
+      ],
+      "interfaces": [
+        "ILOVE20HubErrors"
+      ],
+      "repo": "periphery",
+      "revert_sites": [
+        "periphery/src/LOVE20Hub.sol:322"
       ],
       "selector": "0xe7aa3ef7",
       "signature": "NativeInputUnsupported(address)"
@@ -3459,7 +3474,7 @@
       ],
       "repo": "periphery",
       "revert_sites": [
-        "periphery/src/LOVE20Hub.sol:645"
+        "periphery/src/LOVE20Hub.sol:681"
       ],
       "selector": "0x8520d710",
       "signature": "NativeRefundFailed()"
@@ -3489,7 +3504,7 @@
       ],
       "repo": "periphery",
       "revert_sites": [
-        "periphery/src/LOVE20Hub.sol:332"
+        "periphery/src/LOVE20Hub.sol:357"
       ],
       "selector": "0x812193a8",
       "signature": "PairEmpty(address)"
@@ -3504,7 +3519,7 @@
       ],
       "repo": "periphery",
       "revert_sites": [
-        "periphery/src/LOVE20Hub.sol:327"
+        "periphery/src/LOVE20Hub.sol:352"
       ],
       "selector": "0xeabd8816",
       "signature": "PairMissing(address)"
@@ -3519,7 +3534,7 @@
       ],
       "repo": "periphery",
       "revert_sites": [
-        "periphery/src/LOVE20Hub.sol:315"
+        "periphery/src/LOVE20Hub.sol:340"
       ],
       "selector": "0xddef98d7",
       "signature": "TokenNotRegistered(address)"
@@ -3534,7 +3549,7 @@
       ],
       "repo": "periphery",
       "revert_sites": [
-        "periphery/src/LOVE20Hub.sol:284"
+        "periphery/src/LOVE20Hub.sol:301"
       ],
       "selector": "0x93850931",
       "signature": "ZeroInputTokenAddress()"
@@ -3549,7 +3564,7 @@
       ],
       "repo": "periphery",
       "revert_sites": [
-        "periphery/src/LOVE20Hub.sol:285"
+        "periphery/src/LOVE20Hub.sol:302"
       ],
       "selector": "0x11338dfa",
       "signature": "ZeroInputTokenAmount()"
@@ -3564,7 +3579,7 @@
       ],
       "repo": "periphery",
       "revert_sites": [
-        "periphery/src/LOVE20Hub.sol:290"
+        "periphery/src/LOVE20Hub.sol:307"
       ],
       "selector": "0x5b95f03b",
       "signature": "ZeroNativeTokenAmount()"
@@ -3595,7 +3610,7 @@
       ],
       "repo": "periphery",
       "revert_sites": [
-        "periphery/src/LOVE20Hub.sol:428"
+        "periphery/src/LOVE20Hub.sol:453"
       ],
       "selector": "0x0e42b339",
       "signature": "ZeroSwapOutput()"
@@ -3610,8 +3625,8 @@
       ],
       "repo": "periphery",
       "revert_sites": [
-        "periphery/src/LOVE20Hub.sol:283",
-        "periphery/src/LOVE20Hub.sol:289"
+        "periphery/src/LOVE20Hub.sol:300",
+        "periphery/src/LOVE20Hub.sol:306"
       ],
       "selector": "0x6b093aad",
       "signature": "ZeroTokenAddress()"
@@ -3846,6 +3861,13 @@
     },
     {
       "declarations": [
+        "core:IStakeErrors",
+        "periphery:ILOVE20HubErrors"
+      ],
+      "signature": "InvalidPromisedWaitingPhases(uint256,uint256,uint256)"
+    },
+    {
+      "declarations": [
         "action:IActionExecutorErrors",
         "core:IMintErrors"
       ],
@@ -3911,16 +3933,16 @@
     }
   ],
   "summary": {
-    "declarations": 280,
+    "declarations": 281,
     "repos": {
       "action": 106,
       "core": 97,
       "group-chat": 45,
       "libs": 1,
-      "periphery": 17,
+      "periphery": 18,
       "tools": 14
     },
-    "signatures": 244,
+    "signatures": 245,
     "unique_signatures": 231
   }
 }
