@@ -27,7 +27,7 @@
 | `group-chat` | 群聊业务 | `action`（`core`、`libs`、OpenZeppelin 经 `action` 传递） | 活跃；群聊业务已实现并提交 |
 | `interface-test` | BSC 前端开发、集成和验收 | `core`、`action`、`group-chat` | 规划中；日常修改入口 |
 | `interface` | BSC 前端正式发布 | 验收后的 `interface-test` | 规划中；只接受人工同步 |
-| `periphery` | 跨仓库调用与外围适配：依赖协议已部署合约、可随时替换的聚合查看与便捷交互 | `core` | 进行中；`LOVE20Hub`（单币流动性质押、单币组 LP、配对报价）与 `viewer` 归本仓，承担原 `UniswapV2Zap` 的全部能力 |
+| `periphery` | 跨仓库调用与外围适配：依赖协议已部署合约、可随时替换的聚合查看与便捷交互 | `core` | 进行中；`LOVE20Hub`（双边流动性质押、双边组 LP、报价）与 `viewer` 归本仓，承担原 `UniswapV2Zap` 的全部能力 |
 | `script` | 部署、地址和发布脚本 | 各可部署业务仓库 | 规划中 |
 | `anvil` | 本地区块链集成测试编排（旧名 `love20-anvil`；当前工作区目录为 `anvil/`） | `core`、`action`、`group-chat`、`libs`、`dex`（均为只读输入） | 活跃；当前不引用 Zap 或 `tools`，本次外围重构不要求它改代码 |
 | `docs` | BSC 版协议对外公开文档 | 各业务仓库 | 活跃；公开仓库与文档站已启用 |
@@ -51,7 +51,9 @@
 
 判据的关键后果：`tools` 的合约**不随协议升级而返工**，所以先建、先稳定；`periphery` 的合约读取协议状态，必须等它依赖的接口定稿后再建。「可随时重新部署」不构成归入外围的理由——读写协议状态的合约即便能重新部署，旧地址仍然在写协议状态，这类合约按普通协议组件处理，不按外围处理。
 
-`tools` 与 `periphery` 的边界是一条编译期事实：`periphery` 的合约 `import @core/`，`tools` 的合约不 import 任何协议合约。`UniswapV2Zap` 取消后其 swap / 折算能力并入 `periphery` 的 `LOVE20Hub`（组 LP、单币质押、报价，各按 ERC20 / 原生币拆分支），`tools` 只剩 `BatchTransfer`。`tools/src/interfaces/` 里的 `IUniswapV2Factory` / `IUniswapV2Pair` / `IUniswapV2Router02` / `IWrappedNative` 随 Zap 一并迁入 `periphery`，不在两仓维护副本。
+`tools` 与 `periphery` 的边界是一条编译期事实：`periphery` 的合约 `import @core/`，`tools` 的合约不 import 任何协议合约。`UniswapV2Zap` 取消后其 swap / 折算能力并入 `periphery` 的 `LOVE20Hub`（组 LP、质押、报价，各按 ERC20 / 原生币拆分支），`tools` 只剩 `BatchTransfer`。`tools/src/interfaces/` 里的 `IUniswapV2Factory` / `IUniswapV2Pair` / `IUniswapV2Router02` / `IWrappedNative` 随 Zap 一并迁入 `periphery`，不在两仓维护副本。
+
+**`LOVE20Hub` 的一条登记例外**（[ADR 2026-11-14](adr/2026-11-14-periphery-hub-dual-sided-and-generic-lp.md)）：Hub 内部有两条路径，范围不同——**流动性质押**限定「已注册社区币 ↔ 它的 parent」（读 `Launch` / `ILOVE20Token` / `Stake`），**一键组 LP** 不限代币对（不读任何协议合约，pair 由 DEX factory 派生）。后者的实现本身不依赖 `core`，却与前者同居一个合约，故整个 Hub 仍 `import @core/`、整体归 `periphery`。不把组 LP 拆出去，是因为拆分会把 `UniswapV2Zap` 复活成第二个合约 + 第二套部署（[ADR 2026-11-13](adr/2026-11-13-periphery-hub-single-token-staking.md) 已否决）。判据不变：**判据针对「合约是否依赖协议合约」，Hub 整体依赖，故整体归 `periphery`**；例外只说明「同一合约内可以有一条不依赖协议合约的路径」，不构成新的仓库类别。
 
 **一键部署入口按「该仓库的已部署合约集合是否冻结」判定**，判据与理由见 [ADR 2026-11-13](adr/2026-11-13-periphery-hub-single-token-staking.md)，落地规则见 [开发规范 §6.1](dev-standards.md#61-deploy-脚本)：集合冻结的仓库允许全仓统一 `one_click_deploy.sh`；未冻结或按设计会持续新增独立合约的仓库只按模块给 `one_click_deploy_<x>.sh`，不设全仓入口。`periphery`、`tools` 属后者：每个模块自带 `one_click_deploy_<x>.sh` 与自己的参数文件、地址文件、`NN_*_<x>.sh` 步骤脚本，编号在仓内按模块分段（`11`/`21`/`31`、`12`/`22`/`32`）。`core`、`action`、`group-chat`、`dex` 是否允许全仓入口，由各自「合约集合是否冻结」的验收结论判定，不按仓库名单预先钉死。
 
