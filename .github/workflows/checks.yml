@@ -26,6 +26,14 @@ jobs:
           path: libs
       - uses: actions/checkout@v4
         with:
+          repository: LOVE20BSC/tools
+          path: tools
+      - uses: actions/checkout@v4
+        with:
+          repository: LOVE20BSC/periphery
+          path: periphery
+      - uses: actions/checkout@v4
+        with:
           path: matt-gov
       # check_errors.py resolves selectors with `cast`, so the toolchain has to be
       # installed even though no Solidity is compiled here.

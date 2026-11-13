@@ -278,6 +278,8 @@ Layout 中**部署后冻结的字段**按 §3.1 用 `UPPER_SNAKE`（`ACTION_TARG
 
 `address` 类型的**实体**参数/字段必须带 `Address` 后缀（`tokenAddress`、`pairAddress`）；角色与流向地址保留角色名（`recipient`、`distributor`、`owner`、`from`、`to`）。`address token`、`uint256 member` 一律不合格；`uint256` 身份必须带 `Id` 后缀。
 
+**登记例外：Uniswap V2 的 `tokenA` / `tokenB` 对。** 通用组 LP 路径的 `tokenA` / `tokenB` 沿用 Uniswap V2 生态的既有词形（`getPair(tokenA, tokenB)`、`addLiquidity(tokenA, tokenB, …)`），两侧是**对称的同级角色**、没有「主体 + 附属」的区分，加 `Address` 后缀会变成 `tokenAAddress` / `tokenBAddress` 这类无信息量的叠词。判据：该例外只适用于**两侧对称且沿用上游 V2 词形**的场景；一旦某一侧是社区币而另一侧是 parent（如质押路径），就必须用 `tokenAddress` / `parentTokenAddress`——`Hub` 正是这样分的：组 LP 用 `tokenA`/`tokenB`，质押用 `tokenAddress`/`parentTokenAddress`。`check_naming.py` 的 N14 只匹配固定实体名单，本例外属人工核对范围。
+
 `MemberNFT` 同时是 ERC-721 与协议身份入口，按语义分层：NFT 语义的入口用 `tokenId`（`ownerOf`、`tokenURI`、`memberName`、`mint` 的返回值），协议语义的入口用 `memberId`（事件字段、`memberId(string name)` 的返回值）。两者是同一个数值；分层是为了不与继承来的 ERC-721 参数名冲突（§3 硬约束 4）。
 
 ## 十一、参数与返回值

@@ -34,7 +34,7 @@ Stake 按 `tokenAddress + memberId` 维护流动性质押和加速质押，不�
 
 ## 流动性质押与手续费
 
-构造函数固定 `PHASE_ADDRESS`、`MEMBER_NFT_ADDRESS`、`VOTE_ADDRESS`、`LAUNCH_ADDRESS`、`ROUTER_ADDRESS`、`PAIR_FACTORY_ADDRESS`、`PROMISED_WAITING_PHASES_MIN`、`PROMISED_WAITING_PHASES_MAX`、`FEE_SETTLEMENT_RATIO`、`BOOST_STAKE_SUPPLY_FACTOR` 和 `BOOST_STAKE_MULTIPLIER`，不设调用者限制，只保存入参、不读取同批部署合约；`VOTE_ADDRESS` 在前序部署中尚未存在时由脚本按 nonce 预测，并在 `Vote` 部署后核对 `Stake.VOTE_ADDRESS()`。
+构造函数固定 `PHASE_ADDRESS`、`MEMBER_NFT_ADDRESS`、`VOTE_ADDRESS`、`LAUNCH_ADDRESS`、一条 `DexConfig` 记录（`router` / `pairFactory` / `swapFeeForLpRatio` / `swapFeeForProtocolRatio`，见下节）、`PROMISED_WAITING_PHASES_MIN`、`PROMISED_WAITING_PHASES_MAX`、`FEE_SETTLEMENT_RATIO`、`BOOST_STAKE_SUPPLY_FACTOR` 和 `BOOST_STAKE_MULTIPLIER`，不设调用者限制，只保存入参、不读取同批部署合约；`VOTE_ADDRESS` 在前序部署中尚未存在时由脚本按 nonce 预测，并在 `Vote` 部署后核对 `Stake.VOTE_ADDRESS()`。
 
 每个社区的唯一 Pair 由 [Launch](08-launch.md) 在发射该代币的同一笔交易内创建或复用；`Stake` 在首次质押时通过 `PAIR_FACTORY_ADDRESS.getPair(tokenAddress, parentTokenAddress)` 读取并保存，为零地址时回滚 `PairMissing(tokenAddress)`。**`Stake` 的所有入口都只接受 Launch 已登记的代币，只读取已登记的 Pair，不创建 Pair**，未登记回滚 `TokenNotRegistered(tokenAddress)`，无 Pair 回滚 `PairMissing(tokenAddress)`。
 
@@ -62,16 +62,64 @@ sharesMinted = totalLiquidityShares == 0 or lastWithdrawableLp == 0
 手续费重分类公式（必须在份额铸造之前执行）：
 
 ```text
-currentSqrtKOfLp = floor(sqrt(reserve0 * reserve1) * totalLp / pairTotalSupply)
+effectiveSupply  = pairTotalSupply + pendingProtocolFeeLp
+currentSqrtKOfLp = floor(sqrt(reserve0 * reserve1) * totalLp / effectiveSupply)
 newWithdrawableLp = floor(lastWithdrawableLp * lastSqrtKOfLp / currentSqrtKOfLp)
 newFeeLp = totalLp - newWithdrawableLp
 ```
 
-`totalLp` 是合约记账的 LP 总量（`lastWithdrawableLp + lastFeeLp`），`pairTotalSupply` 是 Pair 的 LP 总供应。两者必须同一口径：基线 `lastSqrtKOfLp` 与重分类都用记账量计算，任何人主动转入的 LP 既不影响基准也不进入可提取量，避免重分类两侧基数不一致。仅当 `currentSqrtKOfLp > lastSqrtKOfLp` 时重分类手续费；`pairTotalSupply == 0`、`currentSqrtKOfLp == 0` 或基准未增长时跳过结算，不能先除零再判断。结算更新 `lastWithdrawableLp`、`lastFeeLp` 和 `lastSqrtKOfLp`；`totalLp` 不落存储，`totalStake()` 与 `_updateSqrtKBaseline` 都在使用时由 `lastWithdrawableLp + lastFeeLp` 派生。
+`totalLp` 是合约记账的 LP 总量（`lastWithdrawableLp + lastFeeLp`），`pairTotalSupply` 是 Pair 的 LP 总供应。两者必须同一口径：基线 `lastSqrtKOfLp` 与重分类都用记账量计算，任何人主动转入的 LP 既不影响基准也不进入可提取量，避免重分类两侧基数不一致。仅当 `currentSqrtKOfLp > lastSqrtKOfLp` 时重分类手续费；`effectiveSupply == 0`、`currentSqrtKOfLp == 0` 或基准未增长时跳过结算，不能先除零再判断。结算更新 `lastWithdrawableLp`、`lastFeeLp` 和 `lastSqrtKOfLp`；`totalLp` 不落存储，`totalStake()` 与 `_updateSqrtKBaseline` 都在使用时由 `lastWithdrawableLp + lastFeeLp` 派生。
+
+**协议费（`pendingProtocolFeeLp`）与分母口径。** Uniswap V2 及其分叉在 Factory 配置了 `feeTo` 时，Pair 的 `mint`/`burn` 会先调用 `_mintFee`：把自上次流动性事件以来的 √K 增长的 **1/6** 铸成 LP 给 `feeTo`，然后才用**增加后的** `totalSupply` 做除法。因此：
+
+```text
+pendingProtocolFeeLp = floor(pairTotalSupply * (rootK - rootKLast) / (rootK * 5 + rootKLast))
+effectiveSupply      = pairTotalSupply + pendingProtocolFeeLp
+```
+
+`rootK = sqrt(reserve0*reserve1)`，`rootKLast = sqrt(kLast)`；`feeTo == address(0)`、`kLast == 0` 或 `rootK <= rootKLast` 时为 `0`，`effectiveSupply` 退化为 `pairTotalSupply`，与无协议费的 DEX 完全一致。凡是要与 Pair 实际派发口径对齐的分母都用 `effectiveSupply`：重分类、`_updateSqrtKBaseline`、`_canBurn`、`settlementUnit`、`memberStake`/`totalStake` 的 LP→双币折算。理由：LP 只拥有 √K 增长的 **5/6**，另外 1/6 是 DEX 协议费、从来不归 LP。若用裸 `pairTotalSupply` 做分母，Stake 会按「100% 原始增长」剥离，多剥的 1/6 只能从质押者本金里出（实测本金收回率 99.8349% 而非 100%）；`_canBurn` 也会因为 Pair 的真实分母更大而「乐观放行」一个会被 `INSUFFICIENT_LIQUIDITY_BURNED` 回滚的销毁。
+
+兼容性：`kLast()` 与 `feeTo()` 都用底层 `staticcall` 探测（不用 `try/catch`——它不捕获 ABI 解码失败，一个 fallback 返回空数据的分叉会让整个快照 revert）。不暴露这两个 getter 的 V2 分叉被当作「无协议费」，Stake 行为与引入本机制前逐位一致；因此 Stake 可接入任意兼容 Uniswap V2 的 DEX，而不需要假设 `feeTo == 0`。
+
+**DEX 配置 `DexConfig`（构造参数）。** 描述 Stake 接入的 DEX，四个字段作为一条记录一起传入：
+
+```solidity
+struct DexConfig {
+    address router;                  // 与 pairFactory 必须属于同一次部署
+    address pairFactory;
+    uint256 swapFeeForLpRatio;       // 1e18 定点，手续费中归 LP 的部分
+    uint256 swapFeeForProtocolRatio; // 1e18 定点，归 DEX 协议的部分；0 = 无协议费
+}
+```
+
+打包成结构体而不是四个独立参数，是因为它们只在互相匹配时才有意义：router 与 factory 必须同源，费率档案必须描述这对地址背后的那个 DEX，混搭会按错误的 DEX 给质押定价。附带效果是构造参数从十三个降到十个，避开 solc 非 `via_ir` 模式下的 stack too deep（该约束属编译期失败，不作为代码注释保留）。构造期对 `router`、`pairFactory` 做零地址校验（`InvalidDexConfig`），对费率做 `0 < lp`、`protocol < lp`、`lp + protocol < 1e18` 三条校验（`InvalidSwapFeeRatios`）：`lp == 0` 会让约分除零；`protocol >= lp` 意味着 DEX 拿走至少一半的 √K 增长，任何真实档案都不满足；`lp + protocol == 1e18` 意味着 pair 不收手续费，闭式解的 `F = 0` 退化为无定义。`protocol == 0` **合法**，表示该 DEX 永久无协议费（本地 `dex` 即此情形），此时约分为 `(0, 1)`、预测在 `_feeNumerator == 0` 处短路。
+
+两个费率之和是 pair 实际收取的手续费率，其比值决定 `_mintFee` 的 √K 增长分成。Stake 把这两个值**原样**存储（不约分），以便部署校验逐字比对，也让下游（periphery Hub）直接读取而不必重复声明；同时内部存约分后的 `(a, b) = (protocol, lp) / gcd` 供计算：
+
+```text
+T = S * g * a / (b * rootK + a * rootKLast)      g = rootK - rootKLast
+```
+
+这与 periphery Hub 的 `_totalSupplyAfterFeeMint` 是同一个式子，因此两个合约算出的数逐位一致。与 Uniswap V2 的经典形式 `T = S*g/(rootK*c + rootKLast)` 对照，两边同除 `a` 即得 `c = b/a = lp/protocol`，所以两种写法等价——**但只有分数形式能精确表达非整数比**。PancakeSwap 主网是 0.17%/0.08%，约分后 `17/8`；整数 `c` 无法表示，用 2 或 3 近似会分别偏差 +4.2% / −21.9%（对照链上实测 `2919716218400518`，分数形式精确命中）。
+
+`c` 与交易手续费率正交：费率决定 √K 增长得多快，`c = lp/protocol` 决定这份增长怎么分。因此两个数完备。
+
+| DEX | lp / protocol | `c` | 协议抽成 |
+| --- | --- | --- | --- |
+| Uniswap V2（含 `dex/` 自部署，`feeTo` 永久为零） | 0.30% / 0 | 无定义 | 0（预测短路） |
+| 同一 DEX 若开启协议费 | 0.25% / 0.05% | 5 | 1/6 ≈ 16.67% |
+| PancakeSwap 主网 | 0.17% / 0.08% | 17/8 | 32% |
+| PancakeSwap 测试网 | 0.15% / 0.05% | 3 | 25% |
+
+**本地部署必须写 `protocol = 0`。** `dex/` 自部署的工厂以 `feeToSetter = address(0)` 部署，`feeTo` 永久为零（`dex/docs/adr/0001`），因此该 DEX 从不铸造协议费 LP。若把这里配成非零，Stake 会预测一笔永不发生的 treasury mint，periphery Hub 也会把该 DEX 当作「有协议费」，两边同时算错。`protocol == 0` 时约分为 `(0, 1)`，预测在 `_feeNumerator == 0` 处短路，所有分母退化为 `pairTotalSupply`，行为与引入本机制前逐位一致。
+
+配置与链上不符会**静默**偏离而非回滚（把 `c=3` 的 DEX 配成 5，实测 10% 增长下本金收回率从 100.00% 掉到 99.23%），因此部署脚本校验这两个值、`21_check.sh` 断言链上读数与配置一致。
+
+**确定性。** `_mintFee` 是 `(totalSupply, kLast, reserve0, reserve1)` 的纯整数函数，四个输入在同一笔交易内都可读，因此「下一次 mint/burn 会铸出多少协议费 LP」在触发之前就是确定的，预测值与 Pair 实际铸出量逐位相等（含 Stake 自己 `pair.mint` 消费掉该预测值的那一步）。
 
 **流动性质押的执行顺序**：先重分类手续费（更新 `lastWithdrawableLp`），再按新的 `lastWithdrawableLp` 计算份额。两个公式都以 `lastWithdrawableLp` 为输入，顺序错误会导致份额和手续费计算错误。
 
-手续费是质押 LP 的全部 √K 增值，不区分 swap 手续费与外部捐赠；增量归协议，不归旧质押者。只有质押 LP 的增值被剥离，未质押 LP 保留自己的份额；剥离没有上限，任何地址都能触发。直接转账进池只有在被 `sync`/`mint`/`burn` 折入储备后才计入；折入前可被任何人 `skim` 取回。重分类后可提取 LP 下降；相同新存入 LP 对应更多份额。无池价变化的比例模型中，这是剥离增值，不是损失本金；整数舍入仍须按公式计算。
+手续费是质押 LP 的 √K 增值中归属 LP 的部分（`feeTo` 未配置时为全部 √K 增值，配置时为 5/6），不区分 swap 手续费与外部捐赠；增量归协议，不归旧质押者。只有质押 LP 的增值被剥离，未质押 LP 保留自己的份额；剥离没有上限，任何地址都能触发。直接转账进池只有在被 `sync`/`mint`/`burn` 折入储备后才计入；折入前可被任何人 `skim` 取回。重分类后可提取 LP 下降；相同新存入 LP 对应更多份额。无池价变化的比例模型中，这是剥离增值，不是损失本金；整数舍入仍须按公式计算。
 
 例（整数模型）：原可提取 LP 为 120，旧/新 sqrt(k) 基准为 100/120，重分类后可提取 LP 为 100、手续费 LP 为 20。原总份额为 120 时，新存入 100 LP 得到 120 份额。
 
@@ -84,18 +132,18 @@ newFeeLp = totalLp - newWithdrawableLp
 **二、单笔结算量就是一个阈值单位。**
 
 ```text
-settlementUnit = floor(pairTotalSupply * FEE_SETTLEMENT_RATIO / 1e18)
+settlementUnit = floor(effectiveSupply * FEE_SETTLEMENT_RATIO / 1e18)
 触发条件        feeLp >= settlementUnit
 单笔处理量      processedFeeLp = settlementUnit
 ```
 
 `FEE_SETTLEMENT_RATIO` 是单笔结算占 Pair 的 LP 总供应的比例，以 `1e18` 表示 100%（配置值 `25e14`，即 0.25%）；部署时要求 `0 < FEE_SETTLEMENT_RATIO <= MAX_FEE_SETTLEMENT_RATIO`（源码常量 `2.5e15`，本身已小于 `1e18`）。
 
-阈值同时定义「何时开始烧」和「一次烧多少」：手续费 LP 达到一个单位才结算一个单位，剩余 `feeLp - settlementUnit` 留待下个 Phase。这样不需要第二个参数。可提取 LP 归零不影响单位本身：只要 `pairTotalSupply × FEE_SETTLEMENT_RATIO / 1e18 > 0`，单位仍为正；再满足社区质押 LP 占全池比例大于结算比例且手续费 LP 不少于一个结算单位时，任何人仍可按同一比例释放。手续费 LP 不足一个结算单位时，手续费 LP 留在合约（仍是池中 LP），不会实际销毁；精确边界是 `feeLp >= floor(S × r / 1e18)`，份额低于比例但落在取整边界上的例外见下。
+阈值同时定义「何时开始烧」和「一次烧多少」：手续费 LP 达到一个单位才结算一个单位，剩余 `feeLp - settlementUnit` 留待下个 Phase。这样不需要第二个参数。可提取 LP 归零不影响单位本身：只要 `effectiveSupply × FEE_SETTLEMENT_RATIO / 1e18 > 0`，单位仍为正；再满足社区质押 LP 占全池比例大于结算比例且手续费 LP 不少于一个结算单位时，任何人仍可按同一比例释放。手续费 LP 不足一个结算单位时，手续费 LP 留在合约（仍是池中 LP），不会实际销毁；精确边界是 `feeLp >= floor(S × r / 1e18)`，份额低于比例但落在取整边界上的例外见下。
 
-手续费 LP 恒不超过社区记账 LP：`lastFeeLp <= lastFeeLp + lastWithdrawableLp = L`，而 `settlementUnit` 按 `pairTotalSupply = S` 计价。设重分类前 `s = L / S`、`r = FEE_SETTLEMENT_RATIO`，实际销毁的精确必要条件是 `feeLp >= floor(S × r / 1e18)`。当 `s < r` 时 `L < rS`；若 `rS` 非整数，`L` 仍可能等于 `floor(rS)`。因此「`s < r` 就永不销毁」只在取整边界之外成立：边界外 `L < settlementUnit`，手续费账本的上限不到一个单位，`settleFees` 只重分类、不实际销毁，手续费 LP 留在合约（仍是池中 LP），直到社区质押增长；边界内 `L == settlementUnit`，手续费账本的上限恰好是一个单位，重分类把全部记账 LP 转为手续费时（如 `L = 1` 时的任意增长）仍会结算。份额达标后，首次销毁所需的 √K 增长 `g` 满足 `g / (1 + g) >= r / s`，即 `g >= (r / s) / (1 - r / s)`；例如 `r = 0.25%`、`s = 1%` 时约需 33% 的 √K 增长。`s = r` 时分母为零：有限增长下需 `s > r`，`s = r` 只有把可提取 LP 全部重分类为手续费的极限才够一个单位。
+手续费 LP 恒不超过社区记账 LP：`lastFeeLp <= lastFeeLp + lastWithdrawableLp = L`，而 `settlementUnit` 按 `effectiveSupply = S` 计价。设重分类前 `s = L / S`、`r = FEE_SETTLEMENT_RATIO`，实际销毁的精确必要条件是 `feeLp >= floor(S × r / 1e18)`。当 `s < r` 时 `L < rS`；若 `rS` 非整数，`L` 仍可能等于 `floor(rS)`。因此「`s < r` 就永不销毁」只在取整边界之外成立：边界外 `L < settlementUnit`，手续费账本的上限不到一个单位，`settleFees` 只重分类、不实际销毁，手续费 LP 留在合约（仍是池中 LP），直到社区质押增长；边界内 `L == settlementUnit`，手续费账本的上限恰好是一个单位，重分类把全部记账 LP 转为手续费时（如 `L = 1` 时的任意增长）仍会结算。份额达标后，首次销毁所需的 √K 增长 `g` 满足 `g / (1 + g) >= r / s`，即 `g >= (r / s) / (1 - r / s)`；例如 `r = 0.25%`、`s = 1%` 时约需 33% 的 √K 增长。`s = r` 时分母为零：有限增长下需 `s > r`，`s = r` 只有把可提取 LP 全部重分类为手续费的极限才够一个单位。
 
-结算把 `processedFeeLp / pairTotalSupply` 的流动性按比例取出，再把其中父币那半卖出。`processedFeeLp = pairTotalSupply × FEE_SETTLEMENT_RATIO / 1e18`，所以单笔销毁占 Pair LP 总供应的比例恰为配置值；卖出量占父币储备的比例与它相同，成交价相对结算前偏离恰为配置值，池子的现货价移动约为其两倍。**因此该参数同时是夹子敞口的尺度，取值必须满足**：
+结算把 `processedFeeLp / effectiveSupply` 的流动性按比例取出，再把其中父币那半卖出。`processedFeeLp = effectiveSupply × FEE_SETTLEMENT_RATIO / 1e18`，所以单笔销毁占 Pair LP 总供应的比例恰为配置值；卖出量占父币储备的比例与它相同，成交价相对结算前偏离恰为配置值，池子的现货价移动约为其两倍。**因此该参数同时是夹子敞口的尺度，取值必须满足**：
 
 ```text
 FEE_SETTLEMENT_RATIO <= 池费率
@@ -174,7 +222,7 @@ stakeBoost 通过条件：member.boostShares + amount <= m_i
 
 **查询入口。** `boostStakeCap(tokenAddress, memberId)` 返回 `(memberCap, memberUsed)`，其中 `memberCap = m_i`、`memberUsed` 为该成员已存加速本金，均按当前轮计算；上限基数 `C` 只在合约内部计算，不对外返回（其输入 `T` 仍可由 `liquidityTokenAmount(tokenAddress)` 读取）。成员可在 `stakeBoost` 前读到自己的可用额度；但额度会随本轮新增投票、`totalSupply` 销毁和他人提取而变化，查询只是当时快照。
 
-**量纲与可操纵性。** `T` 取 `_totalLiquidityTokenAmount` 本金台账，入池时增加实际转入的社区代币数量，提取时按扣减前的 `totalLiquidityShares` 扣除 `floor(liquidityShares × T / totalLiquidityShares)`，再扣减份额总量，与可提取 LP 的份额口径一致。选择本金而非 `tokenAmountForLiquidity`（`withdrawableLp × reserveToken / pairTotalSupply`）的原因：后者读 Pair 现货储备，可被捐赠 + `sync`、闪电贷或价格波动移动；本金台账只由协议自己的入池/提取写入，不受外部转账影响。代价是本金按入池时数量记账，不随池价重估。
+**量纲与可操纵性。** `T` 取 `_totalLiquidityTokenAmount` 本金台账，入池时增加实际转入的社区代币数量，提取时按扣减前的 `totalLiquidityShares` 扣除 `floor(liquidityShares × T / totalLiquidityShares)`，再扣减份额总量，与可提取 LP 的份额口径一致。选择本金而非 `tokenAmountForLiquidity`（`withdrawableLp × reserveToken / effectiveSupply`）的原因：后者读 Pair 现货储备，可被捐赠 + `sync`、闪电贷或价格波动移动；本金台账只由协议自己的入池/提取写入，不受外部转账影响。代价是本金按入池时数量记账，不随池价重估。
 
 **释放时点。** `unstake` 只把有效加速份额清零，不减少 `totalBoostShares`；`withdraw` 真正归还代币时才减少。由于聚合字段不再参与校验，这一差异只影响查询口径，不影响任何人的可用额度。`mergeStake` 保持聚合总量不变。仅当源带加速余额且目标合并前非空（有流动性质押或有加速余额）时，才在融合完成后按目标的新票占比重算 `m_target` 并校验目标余额；目标为空仓时豁免，因为那只是同一份加速换了持有身份，不构成新存入，合并后该仓位随即处于祖父状态。该检查是防御性的：命中意味着合并后的合计超过按新票占比算出的额度，至少一方在合并前已超限。
 
@@ -184,7 +232,7 @@ stakeBoost 通过条件：member.boostShares + amount <= m_i
 2. 满足 `currentPhase > unlockRequestPhase + promisedWaitingPhases` 后，当前持有人一次提取 LP 对应双币和加速代币；不能分别解锁、分别提取。等待期按「申请 Phase 之后再等满 `promisedWaitingPhases` 个完整 Phase」计量，与旧 `LOVE20Stake.withdraw` 同口径：申请轮加 `promisedWaitingPhases` 的那一个 Phase 仍然太早，例如在 Phase 100 申请、承诺 `1` 时，Phase 102 起才可提取。
 3. NFT 转移不重置等待期，不限制解锁中的 NFT 转移。查询应返回申请 Phase、承诺等待期和是否可提取，任何人可按社区和成员查询。
 
-提取先按原规则结算手续费，再以 `floor(liquidityShares * lastWithdrawableLp / totalLiquidityShares)` 折算 LP。结果为零时跳过 LP 转账与 Pair 销毁，仍归还全部加速代币、扣减成员及社区份额并清理头寸；`StakeWithdrawn` 的双币数量为零。退出者放弃不足一个 LP 最小单位的尾差，零额提取不扣减可提取 LP 总账，余量由剩余份额承接。LP 非零时，只有两侧产出都非零（`lpAmount * reserve_i >= pairTotalSupply`，`i` 取两币）才转入 Pair 并销毁；否则 `pair.burn` 会因一侧取整为零而回滚，而 `withdraw` 是原子的、加速代币返还排在其后，整笔头寸（本金与 boost）将永久锁死。因此「非零但不可烧」时 LP 原样转给提取者：不转入 Pair、不销毁，`StakeWithdrawn` 的双币数量为零，份额与可提取 LP 总账照常扣减，LP 转出同时由 `StakeWithdrawn.withdrawableLpBurned`/`withdrawableLpToMember` 记录，Pair 代币的 Transfer 仍可作标准审计；提取人持 LP 自行退出 Pair，这是协议唯一的直接 LP 出口，仅在销毁会回滚时启用。LP 转出不改变 `pairTotalSupply`，手续费分类与基线照常重算，不受影响。手续费结算或后续资产交付失败仍整笔回滚。
+提取先按原规则结算手续费，再以 `floor(liquidityShares * lastWithdrawableLp / totalLiquidityShares)` 折算 LP。结果为零时跳过 LP 转账与 Pair 销毁，仍归还全部加速代币、扣减成员及社区份额并清理头寸；`StakeWithdrawn` 的双币数量为零。退出者放弃不足一个 LP 最小单位的尾差，零额提取不扣减可提取 LP 总账，余量由剩余份额承接。LP 非零时，只有两侧产出都非零（`lpAmount * reserve_i >= effectiveSupply`，`i` 取两币）才转入 Pair 并销毁；否则 `pair.burn` 会因一侧取整为零而回滚，而 `withdraw` 是原子的、加速代币返还排在其后，整笔头寸（本金与 boost）将永久锁死。因此「非零但不可烧」时 LP 原样转给提取者：不转入 Pair、不销毁，`StakeWithdrawn` 的双币数量为零，份额与可提取 LP 总账照常扣减，LP 转出同时由 `StakeWithdrawn.withdrawableLpBurned`/`withdrawableLpToMember` 记录，Pair 代币的 Transfer 仍可作标准审计；提取人持 LP 自行退出 Pair，这是协议唯一的直接 LP 出口，仅在销毁会回滚时启用。LP 转出不改变 `pairTotalSupply`，手续费分类与基线照常重算，不受影响。手续费结算或后续资产交付失败仍整笔回滚。
 
 ## 融合
 

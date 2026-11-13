@@ -22,7 +22,7 @@ import pathlib
 import re
 import sys
 
-DEFAULT_REPOS = ("core", "action", "group-chat", "tools")
+DEFAULT_REPOS = ("core", "action", "group-chat", "tools", "periphery")
 
 DECL = re.compile(r"\berror\s+(\w+)\s*\(")
 

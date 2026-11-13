@@ -17,7 +17,7 @@
 ### 既有事实
 
 - **Hub 从未部署过**：`periphery/broadcast/` 只有 `DeployHub.s.sol/31337`，`script/network/` 只有 `anvil31337_dev`；`anvil` / `interface-dev-dsh` / `compatibility` / `action` / `group-chat` / `dex` / `tools` / `libs` 全仓 grep `LOVE20Hub` 零命中。改签名无兼容成本。
-- **`core` 的 ABI 不变**：`Stake.stakeLiquidity` 仍是 5 参，`ROUTER_ADDRESS` / `PAIR_FACTORY_ADDRESS` / `LAUNCH_ADDRESS` / `MEMBER_NFT_ADDRESS` 都是 `public` getter（`core/src/Stake.sol`）。本 ADR **不动 `core`**，因此不阻塞 `compatibility` / `anvil` / 前端。
+- **`core` 的 `stakeLiquidity` 签名不变**：仍是 5 参，`ROUTER_ADDRESS` / `PAIR_FACTORY_ADDRESS` / `LAUNCH_ADDRESS` / `MEMBER_NFT_ADDRESS` 都是 `public` getter（`core/src/Stake.sol`）。**但本 ADR 并非不动 `core`**：协议费预测要求 `Stake` 自己知道 DEX 费率档案，因此构造函数把 `router` / `pairFactory` 两个独立参数收成一条 `DexConfig` 记录（新增 `swapFeeForLpRatio` / `swapFeeForProtocolRatio` 两个字段），并新增 `SWAP_FEE_FOR_LP_RATIO()` / `SWAP_FEE_FOR_PROTOCOL_RATIO()` 两个 getter、`InvalidDexConfig()` / `InvalidSwapFeeRatios(uint256,uint256)` 两个错误。这是构造 ABI 的破坏性变更，`compatibility` / `anvil` / `action` 的部署与测试调用点必须同步改（本 ADR 的落地提交已包含这三处适配）；前端只需读新增的两个零参 getter，不阻塞。
 - **`Launch` 建 token 时 `createPair` 但从不注资**（`core/src/Launch.sol` 的 `_ensurePair`），所以社区币的 pair 必然存在、储备必然为 0，直到第一笔流动性。当前 Hub 对空池直接 `PairEmpty` 回滚，**新币第一笔流动性走不了 Hub**，而 `Stake.stakeLiquidity` 在储备为 0 时能收双边首次注资——这是一个真实的能力缺口。
 - **DEX 手续费率因部署而异，且已实测**（`compatibility/results/`）：
   - `anvil`（本地 `dex`）：`pair_feeToConfigured=0`、`router.feeModel=30bps`（`results/anvil/probe.evidence.txt`）
@@ -111,30 +111,34 @@ liquidity = supply · ΔrootK · proto / (lp·rootK + proto·rootKLast)
 
 ### 四、DEX 费率参数化
 
-构造函数 3 个参数，全部 `immutable`：
+**费率不是 Hub 的构造参数。** 费率档案的唯一来源是 `Stake`：`Stake` 本来就需要这两个值来预测 pair 的 `_mintFee`，所以它才是权威副本。Hub 构造函数只收一个注入依赖，两个费率在构造期从 `Stake` 读回并写入 `immutable`：
 
 ```solidity
-constructor(
-    address stakeAddress,
-    uint256 swapFeeForLpRatio,        // lp：留给 LP 的手续费，1e18 单位
-    uint256 swapFeeForProtocolRatio   // proto：协议抽走的手续费，1e18 单位
-)
+constructor(address stakeAddress) {
+    uint256 lp = IStake(stakeAddress).SWAP_FEE_FOR_LP_RATIO();
+    uint256 proto = IStake(stakeAddress).SWAP_FEE_FOR_PROTOCOL_RATIO();
+    ...
+}
 ```
 
-构造期校验：`swapFeeForLpRatio > 0`、`swapFeeForLpRatio + swapFeeForProtocolRatio < 1e18`。
+这样做消除了「Hub 与 Stake 配到不同档案」这个失效模式——两份独立参数各自可配，就必然存在配错的可能。代价是 Hub 的部署顺序被绑到 Stake 之后（本来也是）。
+
+`Stake` 侧的对应形状是一条 `DexConfig` 记录（`router` / `pairFactory` / `swapFeeForLpRatio` / `swapFeeForProtocolRatio`），见 [`04-stake.md`](../specs/core/04-stake.md)。打包成结构体是因为四个值只在互相匹配时才有意义，并顺带把构造参数从十三个降到十个，避开 solc 非 `via_ir` 下的 stack too deep。
+
+构造期校验（Hub 与 Stake 同一边界，**必须是同一条规则**）：`lp > 0`、`proto < lp`、`lp + proto < 1e18`。`proto == 0` 合法且表示该 DEX 永久无协议费。Hub 另校验闭式解的溢出边界 `F + D ≤ 65536`（`F = 1e18 − (lp + proto)` 约分后）。
 
 派生的两个量（内部计算用，不额外占参数）：
 
 - `swapFeeRatio = 1e18 − (lp + proto)`，即 `F/D` 的 1e18 表达
 - 抽成公式直接用 `lp` / `proto` 作为 `a` / `k` 的等价物
 
-**部署期校验**（`DeployHub.s.sol` 的 `_validateConfig`，在 `startBroadcast()` 之前）：取一对已知有流动性的 pair，用 `getAmountsOut` 反解实际费率，与 `1e18 − (lp + proto)` 比对；不一致则中止并打印两组值。反解公式：
+**部署期校验**（`DeployHub.s.sol`，在 `startBroadcast()` 之前）：Hub 的 `_validateConfig` 读 `Stake` 的两个 getter，套用与构造期相同的边界，并把结果与地址簿交叉核对；`_validateFeeRatiosAgainstTheDex` 另取一对已知有流动性的 pair，用 `getAmountsOut` 反解实际费率做交叉校验，不一致则中止并打印两组值。反解公式：
 
 ```text
 F/D = y·rIn / (x·(rOut − y))      // x → y 是一次 getAmountsOut 探测
 ```
 
-值本身来自 `hub.params`（人工维护、可审计、可复现），脚本的反解只做交叉校验 —— 不依赖部署时链上是否已有池子。
+探测目标由 `hub.params` 的可选 `SWAP_FEE_PROBE_TOKEN` 指定（人工维护、可审计、可复现）；为空时跳过该探测，本地链没有已注资的池子属于这种情况。费率值本身来自 `core.params`，因为 `Stake` 才是它唯一的存放处。部署后 `21_check_hub.sh` 断言 Hub 报告的两个值等于 `Stake` 报告的两个值。
 
 ### 五、删除 `SWAP_OUTPUT_TOLERANCE_RATIO`
 
@@ -149,7 +153,9 @@ F/D = y·rIn / (x·(rOut − y))      // x → y 是一次 getAmountsOut 探测
 - `quoteLp(tokenA, tokenB, amountADesired, amountBDesired)`
 - `quoteLpWithNative(tokenAddress, amountTokenDesired, amountNativeDesired)`
 - `quoteStakeLiquidity(tokenAddress, tokenAmountDesired, parentTokenAmountDesired, memberId, promisedWaitingPhases)`
-- `quoteStakeLiquidityWithNative(tokenAddress, tokenAmountDesired, memberId, promisedWaitingPhases)`
+- `quoteStakeLiquidityWithNative(tokenAddress, tokenAmountDesired, parentTokenAmountDesired, memberId, promisedWaitingPhases)`
+
+原生币报价**把原生金额作为参数**（与写入口用 `msg.value` 不同）：`view` 调用没有 `msg.value`，而试算必须同时知道两侧金额。因此两条 native 报价的入参都是「双边期望量」。
 
 全部补 `hasLiquidity`（前端要区分首次注资）；组 LP 报价**也**返回 `suggestedAmountAMin` / `suggestedAmountBMin`（取 `usable*`），与质押报价的 `suggestedTokenAmountMin` / `suggestedParentAmountMin` 对齐；保留 `prepared*`（被 swap 掉的一侧 `prepared = desired − amountToSwap`，不等于用户转账量，`_settle` 与 `suggested*Min` 都以它为基准）；**不补** `reserve*After`（报价与成交之间池子会变，给的是过期值，且能自行推导）。
 
@@ -162,6 +168,7 @@ F/D = y·rIn / (x·(rOut − y))      // x → y 是一次 getAmountsOut 探测
 
 - 事件名**保留 `Hub` 前缀**：发射者即域，前缀是冗余，但它是可读性约定（一眼看出层级），不承担唯一性职责（见「八」）。
 - 组 LP 事件的字段改 `preparedAmountA` / `preparedAmountB` / `remainingAmountA` / `remainingAmountB`（LP 路径没有「parent」角色）；质押事件字段不变。
+- 组 LP 事件**额外带 `liquidity`**（本次铸出的 LP），与两个写入口的返回值同义。它不属于「编排事实」的四金额，但也不与 §十「LP 不对外暴露」冲突：§十 说的是**不把 LP 数当作调用方必须自己填的输入下限**（所以不恢复 Zap 的 `liquidityMin`），不是说事件不能回报一个已经发生的结果。`liquidity` 无法由四金额推导（`min(a·S/A, b·S/B)` 需要 pair 总供应量，事件里没有），所以不记就永久丢失；记下来则组 LP 事实可以单层还原，不必依赖同 tx 的 Pair `Mint` 日志。
 - `pairAddress` 在 `getPair == 0` 时于 `addLiquidity` 返回后回读（`factory.getPair(tokenA, tokenB)`），多一次外部调用（约 5k gas），只发生在「该 pair 的史上第一笔 LP」这一笔上。**不**用 CREATE2 预算（pair init code hash 在 `dex` 与 Pancake 不同，作为构造参数填错时静默出错）。
 - 两个族在 `check-events.py` 的 `FAMILIES` 表里分别登记根键，机器守住「质押事件必须以 `tokenAddress` 开头、组 LP 事件必须以 `pairAddress` 开头」。**不**用「一族多根键」（那会把机器约束降级成人眼约定）。
 
@@ -178,7 +185,7 @@ F/D = y·rIn / (x·(rOut − y))      // x → y 是一次 getAmountsOut 探测
 ### 九、错误集合
 
 - **删**：`InvalidInputTokenAddress`、`ZeroInputTokenAddress`、`ZeroInputTokenAmount`、`PairEmpty`（空池合法）
-- **增**：`ZeroAmount`（两侧 desired 全 0）、`IdenticalTokens`（`tokenA == tokenB`）、`WrappedNativeAsToken`（native 分支 `token == WBNB`）、`PairWithoutLiquidity(tokenA, tokenB)`、`InsufficientAmountA(uint256, uint256)`、`InsufficientAmountB(uint256, uint256)`（LP 侧，与 `amountA` / `amountB` 字段同名）
+- **增**：`ZeroDesiredAmounts`（两侧 desired 全 0；不叫 `ZeroAmount`，那个名字已被 `tools` 的 `ZeroAmount(uint256 index)` 占用，同名不同签名违反 `error-standards.md` §八）、`IdenticalTokens`（`tokenA == tokenB`）、`WrappedNativeAsToken`（native 分支 `token == WBNB`）、`PairWithoutLiquidity(tokenA, tokenB)`、`InsufficientAmountA(uint256, uint256)`、`InsufficientAmountB(uint256, uint256)`（LP 侧，与 `amountA` / `amountB` 字段同名）
 - **保留**：`PairMissing(tokenAddress)`（只服务质押分支）、`DeadlineExpired`、`AmountExceeded`、`ZeroSwapOutput`、`ZeroRecipientAddress`、`ZeroTokenAddress`、`ZeroNativeTokenAmount`、`NativeInputUnsupported`、`NativeTokenSenderRejected`、`NativeRefundFailed`、`InvalidPromisedWaitingPhases`、`TokenNotRegistered`、`InsufficientTokenAmount` / `InsufficientParentTokenAmount`（只服务质押分支）
 
 **`AmountExceeded` 的语义修正**：现有注释声称它挡得住 pair 溢出，这是错的。pair 的真实溢出条件是 `reserve + amountIn ≤ uint112.max`（`UniswapV2Pair._update` 里 `balance <= uint112.max`），而 Hub 检查的是「单个量 ≤ `uint112.max`」：

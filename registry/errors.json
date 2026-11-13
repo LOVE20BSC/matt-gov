@@ -1464,8 +1464,8 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Stake.sol:357",
-        "core/src/Stake.sol:579"
+        "core/src/Stake.sol:391",
+        "core/src/Stake.sol:615"
       ],
       "selector": "0x837ed964",
       "signature": "BoostCapExceeded(address,uint256,uint256,uint256)"
@@ -1616,7 +1616,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Stake.sol:590"
+        "core/src/Stake.sol:626"
       ],
       "selector": "0x50a046ad",
       "signature": "InvalidPromisedWaitingPhases(uint256,uint256,uint256)"
@@ -1872,7 +1872,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Stake.sol:613"
+        "core/src/Stake.sol:649"
       ],
       "selector": "0x42b29552",
       "signature": "NoStakedLiquidity(address,uint256)"
@@ -1927,7 +1927,7 @@
       "revert_sites": [
         "core/src/Launch.sol:36",
         "core/src/Mint.sol:239",
-        "core/src/Stake.sol:154",
+        "core/src/Stake.sol:188",
         "core/src/Submit.sol:97",
         "core/src/Vote.sol:59"
       ],
@@ -2020,7 +2020,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Stake.sol:656"
+        "core/src/Stake.sol:692"
       ],
       "selector": "0xeabd8816",
       "signature": "PairMissing(address)"
@@ -2067,7 +2067,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Stake.sol:628"
+        "core/src/Stake.sol:664"
       ],
       "selector": "0x80336ded",
       "signature": "PromisedWaitingPhasesDecreased(uint256,uint256)"
@@ -2082,7 +2082,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Stake.sol:625"
+        "core/src/Stake.sol:661"
       ],
       "selector": "0xf2be37f2",
       "signature": "PromisedWaitingPhasesRewritten(address,uint256,uint256,uint256)"
@@ -2225,6 +2225,21 @@
     {
       "declarations": 1,
       "files": [
+        "core/src/interfaces/IStake.sol"
+      ],
+      "interfaces": [
+        "IStakeErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Stake.sol:159"
+      ],
+      "selector": "0x1444ba17",
+      "signature": "ProtocolFeeRatioNotBelowLpRatio(uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
         "core/src/interfaces/IMint.sol"
       ],
       "interfaces": [
@@ -2247,7 +2262,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Stake.sol:533"
+        "core/src/Stake.sol:569"
       ],
       "selector": "0xea74f32b",
       "signature": "RoundNotStarted(uint256,uint256)"
@@ -2310,7 +2325,7 @@
       "repo": "core",
       "revert_sites": [
         "core/src/Launch.sol:158",
-        "core/src/Stake.sol:328"
+        "core/src/Stake.sol:362"
       ],
       "selector": "0xbbef66e9",
       "signature": "SourceEqualsTarget(uint256)"
@@ -2325,7 +2340,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Stake.sol:585"
+        "core/src/Stake.sol:621"
       ],
       "selector": "0xcd329a46",
       "signature": "StakeNotStarted()"
@@ -2340,8 +2355,8 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Stake.sol:241",
-        "core/src/Stake.sol:342"
+        "core/src/Stake.sol:275",
+        "core/src/Stake.sol:376"
       ],
       "selector": "0xd2632e80",
       "signature": "StakeRightsUsed(address,uint256,uint256)"
@@ -2360,6 +2375,21 @@
       ],
       "selector": "0x0fe6aa6e",
       "signature": "SubmitRoundFull(address,uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/IStake.sol"
+      ],
+      "interfaces": [
+        "IStakeErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Stake.sol:162"
+      ],
+      "selector": "0x8a727c00",
+      "signature": "SwapFeeRatiosConsumeTheWholeAmount(uint256,uint256)"
     },
     {
       "declarations": 1,
@@ -2416,7 +2446,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Stake.sol:672"
+        "core/src/Stake.sol:708"
       ],
       "selector": "0xe393d50b",
       "signature": "TargetPromisedWaitingPhasesTooShort(uint256,uint256)"
@@ -2529,7 +2559,7 @@
         "core/src/Launch.sol:163",
         "core/src/Launch.sol:191",
         "core/src/Mint.sol:107",
-        "core/src/Stake.sol:597"
+        "core/src/Stake.sol:633"
       ],
       "selector": "0xddef98d7",
       "signature": "TokenNotRegistered(address)"
@@ -2589,7 +2619,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Stake.sol:285"
+        "core/src/Stake.sol:319"
       ],
       "selector": "0x39cb81ec",
       "signature": "UnlockRoundNotReached(uint256,uint256)"
@@ -2604,7 +2634,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Stake.sol:605"
+        "core/src/Stake.sol:641"
       ],
       "selector": "0xe8e88f47",
       "signature": "UnstakeAlreadyRequested(address,uint256)"
@@ -2619,7 +2649,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Stake.sol:277"
+        "core/src/Stake.sol:311"
       ],
       "selector": "0x44357cd8",
       "signature": "UnstakeNotRequested(address,uint256)"
@@ -2649,7 +2679,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Stake.sol:192"
+        "core/src/Stake.sol:226"
       ],
       "selector": "0xbbaa8875",
       "signature": "ZeroBoostAmount()"
@@ -2713,10 +2743,25 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Stake.sol:864"
+        "core/src/Stake.sol:900"
       ],
       "selector": "0xf4791324",
       "signature": "ZeroLiquidityMinted()"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "core/src/interfaces/IStake.sol"
+      ],
+      "interfaces": [
+        "IStakeErrors"
+      ],
+      "repo": "core",
+      "revert_sites": [
+        "core/src/Stake.sol:157"
+      ],
+      "selector": "0x7d3a91cd",
+      "signature": "ZeroLpFeeRatio()"
     },
     {
       "declarations": 1,
@@ -2743,7 +2788,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Stake.sol:166"
+        "core/src/Stake.sol:200"
       ],
       "selector": "0xe6e1b13a",
       "signature": "ZeroParentTokenAmount()"
@@ -2789,7 +2834,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/Stake.sol:165"
+        "core/src/Stake.sol:199"
       ],
       "selector": "0x82c4a8c9",
       "signature": "ZeroTokenAmount()"
@@ -3369,7 +3414,7 @@
       ],
       "repo": "periphery",
       "revert_sites": [
-        "periphery/src/LOVE20Hub.sol:444"
+        "periphery/src/LOVE20Hub.sol:549"
       ],
       "selector": "0xb97c056b",
       "signature": "AmountExceeded(uint256,uint256)"
@@ -3384,7 +3429,7 @@
       ],
       "repo": "periphery",
       "revert_sites": [
-        "periphery/src/LOVE20Hub.sol:293"
+        "periphery/src/LOVE20Hub.sol:344"
       ],
       "selector": "0x1503f5f8",
       "signature": "DeadlineExpired(uint256,uint256)"
@@ -3399,7 +3444,52 @@
       ],
       "repo": "periphery",
       "revert_sites": [
-        "periphery/src/LOVE20Hub.sol:402"
+        "periphery/src/LOVE20Hub.sol:354"
+      ],
+      "selector": "0xcd8207e4",
+      "signature": "IdenticalTokens(address)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "periphery/src/interfaces/ILOVE20Hub.sol"
+      ],
+      "interfaces": [
+        "ILOVE20HubErrors"
+      ],
+      "repo": "periphery",
+      "revert_sites": [
+        "periphery/src/LOVE20Hub.sol:692"
+      ],
+      "selector": "0x9ae8017c",
+      "signature": "InsufficientAmountA(uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "periphery/src/interfaces/ILOVE20Hub.sol"
+      ],
+      "interfaces": [
+        "ILOVE20HubErrors"
+      ],
+      "repo": "periphery",
+      "revert_sites": [
+        "periphery/src/LOVE20Hub.sol:696"
+      ],
+      "selector": "0x356f5f64",
+      "signature": "InsufficientAmountB(uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "periphery/src/interfaces/ILOVE20Hub.sol"
+      ],
+      "interfaces": [
+        "ILOVE20HubErrors"
+      ],
+      "repo": "periphery",
+      "revert_sites": [
+        "periphery/src/LOVE20Hub.sol:695"
       ],
       "selector": "0x0fec8a65",
       "signature": "InsufficientParentTokenAmount(uint256,uint256)"
@@ -3414,7 +3504,7 @@
       ],
       "repo": "periphery",
       "revert_sites": [
-        "periphery/src/LOVE20Hub.sol:397"
+        "periphery/src/LOVE20Hub.sol:691"
       ],
       "selector": "0xf468a29e",
       "signature": "InsufficientTokenAmount(uint256,uint256)"
@@ -3429,22 +3519,7 @@
       ],
       "repo": "periphery",
       "revert_sites": [
-        "periphery/src/LOVE20Hub.sol:327"
-      ],
-      "selector": "0xcdffc1a8",
-      "signature": "InvalidInputTokenAddress(address)"
-    },
-    {
-      "declarations": 1,
-      "files": [
-        "periphery/src/interfaces/ILOVE20Hub.sol"
-      ],
-      "interfaces": [
-        "ILOVE20HubErrors"
-      ],
-      "repo": "periphery",
-      "revert_sites": [
-        "periphery/src/LOVE20Hub.sol:335"
+        "periphery/src/LOVE20Hub.sol:373"
       ],
       "selector": "0x50a046ad",
       "signature": "InvalidPromisedWaitingPhases(uint256,uint256,uint256)"
@@ -3459,7 +3534,7 @@
       ],
       "repo": "periphery",
       "revert_sites": [
-        "periphery/src/LOVE20Hub.sol:322"
+        "periphery/src/LOVE20Hub.sol:366"
       ],
       "selector": "0xe7aa3ef7",
       "signature": "NativeInputUnsupported(address)"
@@ -3474,7 +3549,7 @@
       ],
       "repo": "periphery",
       "revert_sites": [
-        "periphery/src/LOVE20Hub.sol:681"
+        "periphery/src/LOVE20Hub.sol:928"
       ],
       "selector": "0x8520d710",
       "signature": "NativeRefundFailed()"
@@ -3489,7 +3564,7 @@
       ],
       "repo": "periphery",
       "revert_sites": [
-        "periphery/src/LOVE20Hub.sol:87"
+        "periphery/src/LOVE20Hub.sol:106"
       ],
       "selector": "0xbcabaee4",
       "signature": "NativeTokenSenderRejected(address)"
@@ -3504,22 +3579,7 @@
       ],
       "repo": "periphery",
       "revert_sites": [
-        "periphery/src/LOVE20Hub.sol:357"
-      ],
-      "selector": "0x812193a8",
-      "signature": "PairEmpty(address)"
-    },
-    {
-      "declarations": 1,
-      "files": [
-        "periphery/src/interfaces/ILOVE20Hub.sol"
-      ],
-      "interfaces": [
-        "ILOVE20HubErrors"
-      ],
-      "repo": "periphery",
-      "revert_sites": [
-        "periphery/src/LOVE20Hub.sol:352"
+        "periphery/src/LOVE20Hub.sol:396"
       ],
       "selector": "0xeabd8816",
       "signature": "PairMissing(address)"
@@ -3534,7 +3594,70 @@
       ],
       "repo": "periphery",
       "revert_sites": [
-        "periphery/src/LOVE20Hub.sol:340"
+        "periphery/src/LOVE20Hub.sol:490",
+        "periphery/src/LOVE20Hub.sol:507",
+        "periphery/src/LOVE20Hub.sol:771",
+        "periphery/src/LOVE20Hub.sol:888"
+      ],
+      "selector": "0x97bd8b02",
+      "signature": "PairWithoutLiquidity(address,address)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "periphery/src/interfaces/ILOVE20Hub.sol"
+      ],
+      "interfaces": [
+        "ILOVE20HubErrors"
+      ],
+      "repo": "periphery",
+      "revert_sites": [
+        "periphery/src/LOVE20Hub.sol:83"
+      ],
+      "selector": "0x1444ba17",
+      "signature": "ProtocolFeeRatioNotBelowLpRatio(uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "periphery/src/interfaces/ILOVE20Hub.sol"
+      ],
+      "interfaces": [
+        "ILOVE20HubErrors"
+      ],
+      "repo": "periphery",
+      "revert_sites": [
+        "periphery/src/LOVE20Hub.sol:86"
+      ],
+      "selector": "0x8a727c00",
+      "signature": "SwapFeeRatiosConsumeTheWholeAmount(uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "periphery/src/interfaces/ILOVE20Hub.sol"
+      ],
+      "interfaces": [
+        "ILOVE20HubErrors"
+      ],
+      "repo": "periphery",
+      "revert_sites": [
+        "periphery/src/LOVE20Hub.sol:90"
+      ],
+      "selector": "0x42ca8a54",
+      "signature": "SwapFeeSumBreaksTheClosedForm(uint256,uint256)"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "periphery/src/interfaces/ILOVE20Hub.sol"
+      ],
+      "interfaces": [
+        "ILOVE20HubErrors"
+      ],
+      "repo": "periphery",
+      "revert_sites": [
+        "periphery/src/LOVE20Hub.sol:378"
       ],
       "selector": "0xddef98d7",
       "signature": "TokenNotRegistered(address)"
@@ -3549,10 +3672,11 @@
       ],
       "repo": "periphery",
       "revert_sites": [
-        "periphery/src/LOVE20Hub.sol:301"
+        "periphery/src/LOVE20Hub.sol:247",
+        "periphery/src/LOVE20Hub.sol:298"
       ],
-      "selector": "0x93850931",
-      "signature": "ZeroInputTokenAddress()"
+      "selector": "0x12b8aac2",
+      "signature": "WrappedNativeAsToken(address)"
     },
     {
       "declarations": 1,
@@ -3564,10 +3688,10 @@
       ],
       "repo": "periphery",
       "revert_sites": [
-        "periphery/src/LOVE20Hub.sol:302"
+        "periphery/src/LOVE20Hub.sol:348"
       ],
-      "selector": "0x11338dfa",
-      "signature": "ZeroInputTokenAmount()"
+      "selector": "0x58689fe5",
+      "signature": "ZeroDesiredAmounts()"
     },
     {
       "declarations": 1,
@@ -3579,7 +3703,23 @@
       ],
       "repo": "periphery",
       "revert_sites": [
-        "periphery/src/LOVE20Hub.sol:307"
+        "periphery/src/LOVE20Hub.sol:81"
+      ],
+      "selector": "0x7d3a91cd",
+      "signature": "ZeroLpFeeRatio()"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "periphery/src/interfaces/ILOVE20Hub.sol"
+      ],
+      "interfaces": [
+        "ILOVE20HubErrors"
+      ],
+      "repo": "periphery",
+      "revert_sites": [
+        "periphery/src/LOVE20Hub.sol:164",
+        "periphery/src/LOVE20Hub.sol:248"
       ],
       "selector": "0x5b95f03b",
       "signature": "ZeroNativeTokenAmount()"
@@ -3594,8 +3734,8 @@
       ],
       "repo": "periphery",
       "revert_sites": [
-        "periphery/src/LOVE20Hub.sol:170",
-        "periphery/src/LOVE20Hub.sol:203"
+        "periphery/src/LOVE20Hub.sol:211",
+        "periphery/src/LOVE20Hub.sol:249"
       ],
       "selector": "0xceef9857",
       "signature": "ZeroRecipientAddress()"
@@ -3610,7 +3750,8 @@
       ],
       "repo": "periphery",
       "revert_sites": [
-        "periphery/src/LOVE20Hub.sol:453"
+        "periphery/src/LOVE20Hub.sol:562",
+        "periphery/src/LOVE20Hub.sol:801"
       ],
       "selector": "0x0e42b339",
       "signature": "ZeroSwapOutput()"
@@ -3625,11 +3766,45 @@
       ],
       "repo": "periphery",
       "revert_sites": [
-        "periphery/src/LOVE20Hub.sol:300",
-        "periphery/src/LOVE20Hub.sol:306"
+        "periphery/src/LOVE20Hub.sol:352"
+      ],
+      "selector": "0x09143d0c",
+      "signature": "ZeroTokenAAddress()"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "periphery/src/interfaces/ILOVE20Hub.sol"
+      ],
+      "interfaces": [
+        "ILOVE20HubErrors"
+      ],
+      "repo": "periphery",
+      "revert_sites": [
+        "periphery/src/LOVE20Hub.sol:119",
+        "periphery/src/LOVE20Hub.sol:163",
+        "periphery/src/LOVE20Hub.sol:246",
+        "periphery/src/LOVE20Hub.sol:297",
+        "periphery/src/LOVE20Hub.sol:311",
+        "periphery/src/LOVE20Hub.sol:326"
       ],
       "selector": "0x6b093aad",
       "signature": "ZeroTokenAddress()"
+    },
+    {
+      "declarations": 1,
+      "files": [
+        "periphery/src/interfaces/ILOVE20Hub.sol"
+      ],
+      "interfaces": [
+        "ILOVE20HubErrors"
+      ],
+      "repo": "periphery",
+      "revert_sites": [
+        "periphery/src/LOVE20Hub.sol:353"
+      ],
+      "selector": "0x6863c1f0",
+      "signature": "ZeroTokenBAddress()"
     },
     {
       "declarations": 1,
@@ -3911,11 +4086,25 @@
     },
     {
       "declarations": [
+        "core:IStakeErrors",
+        "periphery:ILOVE20HubErrors"
+      ],
+      "signature": "ProtocolFeeRatioNotBelowLpRatio(uint256,uint256)"
+    },
+    {
+      "declarations": [
         "action:IActionExecutorErrors",
         "core:IStakeErrors",
         "group-chat:IGroupChatErrors"
       ],
       "signature": "RoundNotStarted(uint256,uint256)"
+    },
+    {
+      "declarations": [
+        "core:IStakeErrors",
+        "periphery:ILOVE20HubErrors"
+      ],
+      "signature": "SwapFeeRatiosConsumeTheWholeAmount(uint256,uint256)"
     },
     {
       "declarations": [
@@ -3926,6 +4115,13 @@
     },
     {
       "declarations": [
+        "core:IStakeErrors",
+        "periphery:ILOVE20HubErrors"
+      ],
+      "signature": "ZeroLpFeeRatio()"
+    },
+    {
+      "declarations": [
         "core:IMintErrors",
         "periphery:ILOVE20HubErrors"
       ],
@@ -3933,16 +4129,16 @@
     }
   ],
   "summary": {
-    "declarations": 281,
+    "declarations": 292,
     "repos": {
       "action": 106,
-      "core": 97,
+      "core": 100,
       "group-chat": 45,
       "libs": 1,
-      "periphery": 18,
+      "periphery": 26,
       "tools": 14
     },
-    "signatures": 245,
-    "unique_signatures": 231
+    "signatures": 256,
+    "unique_signatures": 239
   }
 }
