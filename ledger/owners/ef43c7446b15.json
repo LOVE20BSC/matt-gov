@@ -1,7 +1,7 @@
 {
   "identity": {"uuid": "47d39b07-9d74-4077-8a12-8ab9280ea25d"},
   "tasks": {
-    "20261112-2223-b87b-periphery-hub-单币质押重构-推进-6-张票": {"category": "功能开发", "created": "2026-11-12 22:23:00", "creator": "47d39b07-9d74-4077-8a12-8ab9280ea25d", "creator_name": "tester", "finished": null, "owner": "47d39b07-9d74-4077-8a12-8ab9280ea25d", "owner_name": "tester", "started": "2026-11-12 22:23:00", "status": "doing", "tags": ["跨仓重构", "periphery", "Stake", "ABI", "事件族"], "title": "periphery Hub 单币质押重构：推进 6 张票", "updated": "2026-11-12 23:09:22", "worklog": "worklog/202611/12-2223-b87b-periphery-hub-单币质押重构-推进-6-张票.md"}
+    "20261112-2223-b87b-periphery-hub-单币质押重构-推进-6-张票": {"category": "功能开发", "created": "2026-11-12 22:23:00", "creator": "47d39b07-9d74-4077-8a12-8ab9280ea25d", "creator_name": "tester", "finished": null, "owner": "47d39b07-9d74-4077-8a12-8ab9280ea25d", "owner_name": "tester", "started": "2026-11-12 22:23:00", "status": "doing", "tags": ["跨仓重构", "periphery", "Stake", "ABI", "事件族"], "title": "periphery Hub 单币质押重构：推进 6 张票", "updated": "2026-11-13 00:45:30", "worklog": "worklog/202611/12-2223-b87b-periphery-hub-单币质押重构-推进-6-张票.md"}
   },
   "version": "20261022000000"
 }
