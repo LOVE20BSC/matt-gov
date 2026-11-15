@@ -15,7 +15,7 @@
 | # | 判据 | 反例 |
 | --- | --- | --- |
 | P1 | 词性即读写：动词开头是写，名词是读，`is/has/can/should` 是判断 | core 旧名 `sync()` 写、`syncObservations()` 读，同词根不同词性（已改为 `observations()`） |
-| P2 | 键在名里：`By<Key>` 的 Key 与入参同名 | `voteBySenderId(groupId, targetSenderId, …)` |
+| P2 | 键在名里：`By<Key>` 的 Key 与入参或结构体入参字段同名 | `voteBySenderId(groupId, targetSenderId, …)` |
 | P3 | 量纲入名：`Amount`/`Shares`/`Votes`/`Ratio`/`Blocks`/`Round` | `value`、`num`、`amt` |
 | P4 | 冻结可见：全大写 = 部署后不变 | `LpExecutor.actionTarget`（init 后冻结）与 `GroupChat.scopeSource`（可 set）同形 |
 | P5 | 一词一义：同一概念全仓一个词根 | `Num`/`Count`、`Of`/`By`、`Account`/`MemberId` 并存 |
@@ -150,8 +150,8 @@
 
 ### 7.3 `By<Key>`
 
-- Key 必须与某个入参同名（首字母大写）。`voteBySenderId(groupId, targetSenderId, …)` 不合格：键是 `SenderId`，入参是 `targetSenderId`。
-- **Key 必须与某个入参同名**：`messagesBySenderId(groupId, senderId, …)`、`proposalIdBySubmitterId(…, submitterId)`、`voteWeightsBySenderIdsByVoterId(…, voterId)`、`votesByMemberIdByProposalId(…, memberId, proposalId)`。`Id`/`Ids` 是类型标记，不是可省后缀——写成 `BySender` 只省四个字符，却让读者无法判断 Key 是 id 还是 address（旧仓的 address 主体路径恰叫 `sender`）。匹配是单向的：`BySenderId` 配入参 `targetSenderId` 不合格（`SenderId` 不是 `targetSenderId`），反过来 `ByTargetSenderId` 合格。
+- Key 必须与某个入参或结构体入参的直接字段同名（首字母大写）。`verifierApplicationsByRound(…, ApplicationPage page)` 的键可对应 `page.round`；检查器按类型和声明作用域匹配本文件结构体，不使用无关结构体的字段。`voteBySenderId(groupId, targetSenderId, …)` 不合格：键是 `SenderId`，入参是 `targetSenderId`。
+- **Key 必须与入参名或字段名全等匹配**：`messagesBySenderId(groupId, senderId, …)`、`proposalIdBySubmitterId(…, submitterId)`、`voteWeightsBySenderIdsByVoterId(…, voterId)`、`votesByMemberIdByProposalId(…, memberId, proposalId)`。`Id`/`Ids` 是类型标记，不是可省后缀——写成 `BySender` 只省四个字符，却让读者无法判断 Key 是 id 还是 address（旧仓的 address 主体路径恰叫 `sender`）。匹配是单向的：`BySenderId` 配入参 `targetSenderId` 不合格（`SenderId` 不是 `targetSenderId`），反过来 `ByTargetSenderId` 合格。
 - **筛选条件没有入参时不能用 `By`**：`messagesByMentionAll(groupId, …)` 的 mention-all 是固定条件、不对应任何入参，改形容词前缀 `mentionAllMessages` / `mentionAllMessageIds`。
 - 多键按入参顺序书写：`votesByMemberIdByProposalId(tokenAddress, round, memberId, proposalId)`。
 - `By<Key>Ids` 表示该键是 id 数组：`proposalInfosByProposalIds`、`voteAmountsByMemberIdByProposalIds`、`chatInfosByGroupIds`。**不设无键的 `ByIds`**——它不指名 Key，违反 P2。试探两端都不成立：若主键真的不言自明，那连 `Ids` 都不必写；可函数名又必须区分「按 id 批量」与「分页」两种读法，不写就看不出入参是数组。
@@ -386,7 +386,7 @@ Layout 中**部署后冻结的字段**按 §3.1 用 `UPPER_SNAKE`（`ACTION_TARG
 | `N02` | 禁用动词前缀 | 全部函数 |
 | `N03` | 带参数的函数不得全大写 | external/public |
 | `N04` | 带参数的单个 bool 返回必须是谓词（具名与否同判） | external/public |
-| `N05` | `By<Key>` 的 Key 必须与某个入参同名（允许去掉 `added`/`removed`/`checked`/`requested` 用途前缀） | external/public |
+| `N05` | `By<Key>` 的 Key 必须与某个入参或结构体入参的直接字段同名（允许去掉 `added`/`removed`/`checked`/`requested` 用途前缀） | external/public |
 | `N06` | `Count` 必须在末尾 | external/public |
 | `N07` | 禁用词（`num`/`amt`/`addr`/`tmp` 等） | 全部标识符 |
 | `N08` | 状态变量 `_` 前缀与可见性匹配 | 状态变量 |

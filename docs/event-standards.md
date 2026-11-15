@@ -245,7 +245,7 @@ ERC-20 / ERC-721 标准事件保持不变，不进入本规范正文。`AddHolde
 | action.participation | 根键 → actionId → memberId → round → groupId → providerId → 数值/布尔 → 文本数组 | `GroupActionJoined`、`GroupActionWithdrawn`、`GroupActionExited`、`LpJoined`、`LpWithdrawn`、`LpExited`、`ServiceJoined`、`ServiceExited`、`JoinStateRegistered`、`JoinStateCleared`、`MemberRewardMinted` |
 | action.round | 根键 → actionId → round → 数值 | `ActionRewardMinted` |
 | action.quota | 根键 → actionId → groupId → providerId → memberId → 数值 | `ProviderQuotaAdded`、`ProviderQuotaRemoved`、`ProviderQuotaRestored` |
-| action.verification | 根键 → actionId → 主体 id（`memberId`/`groupId`/`voterId`/`verifierId`）→ round → `applicationId`/`verifierId` → 次级 id（被投的验证者 / 上一申请）→ 数值/布尔 → 文本/数组 | `OriginScoresSubmitted`、`VerifierApplicationSubmitted`、`VerifierApplicationCancelled`、`VerifierStakeDeposited`、`VerifierStakeRefunded`、`VerifierLocked`、`ApplicationVoteRecorded` |
+| action.verification | 根键 → actionId → 主体 id（`memberId`/`groupId`/`voterId`/`verifierId`）→ round → `applicationId`/`verifierId` → 次级 id（被投的验证者 / 上一申请）→ 数值/布尔 → 文本/数组 | `OriginScoresSubmitted`、`VerifierApplicationSubmitted`、`VerifierApplicationDescriptionUpdated`、`VerifierApplicationPunished`、`VerifierApplicationStopped`、`VerifierApplicationCancelled`、`VerifierStakeDeposited`、`VerifierStakeRefunded`、`ApplicationVoteRecorded` |
 | action.recipients | 根键 → sourceActionId → round → groupId → 新表 → 旧表 | `RecipientsChanged` |
 | action.service | 根键 → serviceActionId → round → 对象链（groupId 或 actionTokenAddress）→ 源链/角色 → 数值 | `RecipientPaid`、`ServiceRewardsDistributed` |
 | gc.management | 根键 → 对象标识（id 或对象地址）→ actor id → actor 地址 → 新值组 → 旧值组 | `AdminChanged`、`MemberStatusChanged`、`AdminSenderBanChanged`、`GroupChatActivated`、`PostingAllowedChanged`、`ScopeSourceChanged`、`BanSourceChanged`、`BeforePostPluginChanged`、`AfterPostPluginChanged` |
@@ -293,7 +293,7 @@ ERC-20 / ERC-721 标准事件保持不变，不进入本规范正文。`AddHolde
 - 分配优先级：根键 → 主对象 id 链 → actor。主对象键占满时，actor 降为非 indexed 字段。
 - 纯链路事件（`TokenActionGroupActivated`）的 3 个槽给链路键；actor 入 payload。
 - `string` / `bytes` / 动态数组绝不 indexed；禁止 anonymous event。
-- actor 与主对象 id 应当 indexed；同组事件必须在迁移中对齐（`VerifierLocked`、`StakesMerged`）。
+- actor 与主对象 id 应当 indexed；同组事件必须在迁移中对齐（`VerifierApplicationStopped`、`StakesMerged`）。
 - `gc.management` 族的 actor 在只剩一个槽时按「对象标识形态」择一：对象标识是 **id** 时第三个槽给 actor **地址**（`AdminChanged`、`MemberStatusChanged`、`AdminSenderBanChanged`）；对象标识是**地址**时第三个槽给 actor **id**（`ScopeSourceChanged`、`BanSourceChanged`、`BeforePostPluginChanged`、`AfterPostPluginChanged`）；对象只有根键时 id 与地址都 indexed（`PostingAllowedChanged`、`GroupChatActivated`；后者的 `ownerId` 是 actor id 且恒等于 `groupId`）。这样每个事件至少提供一个对象键和一个 actor 的可过滤形式——钱包按地址订阅、协议按 id 对账各取所需。
 - **已登记的三槽取舍**：`ApplicationVoteRecorded` 的三个槽被 `tokenAddress` / `actionId` / `applicationId` 占满，`voterId` 与 `verifierId` 降为 payload；它不与同族前 6 条「actor indexed」对齐，是槽位优先级的结果，不是漂移。`RecipientsChanged` / `RecipientPaid` 的三个槽被 `sourceTokenAddress` / `sourceActionId` / `groupId` 占满，`recipientIds`（动态数组，禁止 indexed）与 `recipientId` 不能作为 topic；按收款人检索必须从 payload 建链下索引，不改为可过滤而牺牲对象键。
 - **`core.stake` 的 `caller` / `memberOwner` 不占 indexed 槽**：`LiquidityStaked` / `BoostStaked` 的三个槽已被 `tokenAddress`（根键）/ `round`（纪元键）/ `memberId`（主对象 id）占满，按上面的优先级 `caller` 与 `memberOwner` 落 payload。它们的用途是**在事件流内自包含地还原调用链**（回填 `memberId` 与 `tx.from` 之间缺失的那一层），属于「拿到这条日志后现看」而非「按地址订阅」，与钱包按 actor 地址过滤的需求不同——后者已有 core 的 `memberId` 可先定位到人。同族的 `StakesMerged` 把 `round` 降为 payload 换得 `sourceMemberId` / `targetMemberId` 两个槽，是因为它的两个成员 id 都是主对象；两条规则一致：**主对象键优先于纪元键，纪元键优先于 actor 地址**。
@@ -433,7 +433,7 @@ v1 基线：
 | GroupConfig | 激活、停用、配置变更 | `GroupActivated`、`GroupDeactivated`、`GroupConfigChanged` |
 | JoinState | 注册表注册/清除、加入、提取、退出 | `JoinStateRegistered`、`JoinStateCleared`、`GroupActionJoined`、`GroupActionWithdrawn`、`GroupActionExited`、`LpJoined`、`LpWithdrawn`、`LpExited`、`ServiceJoined`、`ServiceExited` |
 | ProviderQuota | 配额增加、移除、退出恢复 | `ProviderQuotaAdded`、`ProviderQuotaRemoved`、`ProviderQuotaRestored` |
-| Verification | 申请、取消、质押、退款、原始分、投票、锁定 | `VerifierApplicationSubmitted`、`VerifierApplicationCancelled`、`VerifierStakeDeposited`、`VerifierStakeRefunded`、`OriginScoresSubmitted`、`ApplicationVoteRecorded`、`VerifierLocked` |
+| Verification | 申请、描述更新、停止、处罚、取消、质押、退款、原始分、投票 | `VerifierApplicationSubmitted`、`VerifierApplicationDescriptionUpdated`、`VerifierApplicationStopped`、`VerifierApplicationPunished`、`VerifierApplicationCancelled`、`VerifierStakeDeposited`、`VerifierStakeRefunded`、`OriginScoresSubmitted`、`ApplicationVoteRecorded` |
 | Recipients | 设置收款表、分发 | `RecipientsChanged`、`RecipientPaid` |
 | Rewards | 行动奖励、成员奖励、服务分发 | `ActionRewardMinted`、`MemberRewardMinted`、`ServiceRewardsDistributed` |
 | JoinStateFallback | owner 兜底清理注册表（不回调 executor、不结算资金） | `JoinStateCleared(forced=true)` |

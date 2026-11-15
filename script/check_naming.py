@@ -203,7 +203,7 @@ class File:
                 continue
             self._type_decl(m.group(1), m.group(2), m.start())
 
-    def _type_decl(self, kind, name, pos):
+    def _type_decl(self, kind, name, pos, scope=""):
         i = self.src.index("{", pos)
         d, j = 1, i + 1
         while j < len(self.src) and d:
@@ -219,7 +219,7 @@ class File:
                 toks = part.split()
                 if len(toks) >= 2:
                     fields.append((toks[0], toks[-1]))
-            self.structs.append(dict(name=name, fields=fields, line=self.line(pos), kind="struct"))
+            self.structs.append(dict(name=name, fields=fields, line=self.line(pos), kind="struct", scope=scope))
         else:
             self.enums.append(dict(name=name, values=[v.strip() for v in inner.split(",") if v.strip()],
                                    line=self.line(pos), kind="enum"))
@@ -247,7 +247,7 @@ class File:
                 if m:
                     rec["modifiers"].append(dict(name=m.group(1), line=self.line(pos)))
             elif h.startswith("struct") or h.startswith("enum"):
-                self._type_decl(h.split()[0], h.split()[1], pos)
+                self._type_decl(h.split()[0], h.split()[1], pos, rec["name"])
             elif kind == "stmt":
                 st = re.sub(r"\s+", " ", header).strip()
                 if not st or st.startswith(("using ", "event ", "error ", "type ", "import ", "pragma ")):
@@ -286,6 +286,9 @@ def check(files):
         for c in f.contracts:
             if c["kind"] == "interface" and not re.match(r"^I[A-Z]\w*$", c["name"]):
                 add("N15", c["name"], f, c["line"], "接口名必须是 I + PascalCase")
+            struct_fields = {st["name"]: st["fields"] for st in f.structs if not st["scope"]}
+            struct_fields.update({st["name"]: st["fields"] for st in f.structs if st["scope"] == c["name"]})
+            struct_fields.update({f"{st['scope']}.{st['name']}": st["fields"] for st in f.structs if st["scope"]})
             for fn in c["functions"]:
                 name, line = fn["name"], fn["line"]
                 base = name.lstrip("_")
@@ -308,14 +311,15 @@ def check(files):
                     single_bool = re.fullmatch(r"bool(?:\s+\w+)?", fn["returns"].strip()) is not None
                     if single_bool and fn["params"] and not PREDICATE.match(name) and name not in STD_EXEMPT:
                         add("N04", name, f, line, "带参数的单个 bool 返回必须是 is/has/can/should 谓词")
+                    params = fn["params"] + [field for ty, _ in fn["params"] for field in struct_fields.get(ty, [])]
                     for key in by_keys(name):
-                        keys = {p[1][:1].upper() + p[1][1:] for p in fn["params"]}
+                        keys = {p[1][:1].upper() + p[1][1:] for p in params}
                         stripped = {
                             re.sub(r"^(Added|Removed|Checked|Requested)", "", k) for k in keys
                         }
                         if key in keys or key in stripped:
                             continue
-                        add("N05", name, f, line, f"By{key} 没有同名入参（去掉 Added/Removed/Checked/Requested 前缀后也不匹配）")
+                        add("N05", name, f, line, f"By{key} 没有同名入参或结构体入参字段（去掉 Added/Removed/Checked/Requested 前缀后也不匹配）")
                     if "Count" in name and not name.endswith("Count"):
                         add("N06", name, f, line, "Count 必须是最后一个词")
                     if re.search(r"Of(?=[A-Z]|$)", name) and name not in STD_EXEMPT:
