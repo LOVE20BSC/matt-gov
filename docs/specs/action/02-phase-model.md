@@ -16,6 +16,15 @@
 
 投票、加入、铸币 Round 见 [`IActionExecutor.sol`](https://github.com/LOVE20BSC/action/blob/main/src/interfaces/IActionExecutor.sol)。GroupAction 和 GroupService 额外提供 `currentVerifyRound()`；LP 不提供虚构的验证接口。加入类写操作只写当前加入 Round，验证只接受当前验证 Round，历史领取允许 `1 <= round <= currentMintRound()`。
 
+**按加入轮读取历史**：令 `joinRound = ActionRoundAxis.joinRound(PHASE_ADDRESS)`。下列查询在 `round > joinRound` 时统一回滚 `RoundNotStarted(round, joinRound)`，两个载荷分别为请求轮次和当前加入轮；即使没有行动或成员记录，也先检查轮次。`phase` 为 0/1 时，任何正轮次都尚未开始。`round = 0` 沿用历史原语的起点查询语义；已开始但没有记录时，金额与加入标记仍为 `0` / `false`，成员等名单为空，验证资料按模板返回空字符串值；分页 `offset` 越界仍返回空列表与真实总数。
+
+| 范围 | 受此边界约束的查询 |
+| --- | --- |
+| ActionTarget | `isJoinedByRound`、`memberIdsByActionId` |
+| 三个 Executor 的通用参与量 | `joinedAmountByActionId`、`joinedAmountByMemberId` |
+| GroupAction 参与历史 | `joinInfo`、`joinedAmountByGroupId`、`groupIdsByRound`、`memberIdsByGroupId`、`providerAmountsByMemberId`、`verificationInfosByRound` |
+| GroupAction 激活质押历史 | `totalActivationStakeByRound`、`activationStakeByGroupIdByRound`（快照键为激活/停用时的 `phase - 1`） |
+
 实现分层：`GroupActionRoundAxis`（join/verify/mint）与 `LpRoundAxis`（join/mint）只做 `phase → round` 纯换算，入参是 Phase 地址、不 import 错误接口。未开始守卫由消费方承担：Executor 基座的 `currentVoteRound`/`currentJoinRound`/`currentMintRound` 是 ABI 查询入口；业务模块内部用到时，`GroupActionManager.currentJoinRound` 与 `GroupActionVerify.currentVerifyRound` 是共享实现，其他模块以 `internal` 内联复用。两条路径回滚同一载荷 `RoundNotStarted(1, 0)`。
 
 **轴库分层**：加入轮（`phase < 2 ? 0 : phase − 1`）只在中立库 `ActionRoundAxis` 定义一次。`GroupActionRoundAxis` 与 `LpRoundAxis` 的 `joinRound` 都委托它，`ActionTarget` 也直接调用它，不存在内联副本或第三份同式。类型轴只保留各自类型专属的偏移：`GroupActionRoundAxis` 的 `verifyRound`（`phase − 2`）与 `mintRound`（`phase − 3`）、`LpRoundAxis` 的 `mintRound`（`phase − 2`）；这些偏移按业务类型本就不同，不合并。底座共用合约不依赖带业务类型名字的库。

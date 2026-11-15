@@ -45,7 +45,7 @@ targetData[SLOT_EXECUTOR] = abi.encode(executorAddress)
 
 **集合读取**：成员的行动列表是无界集合（由成员加入次数决定），采用标准分页签名 `actionIdsByMemberId(tokenAddress, memberId, offset, limit, reverse) returns (actionIds[], totalCount)`。行动的成员列表同样是无界集合，但只保留一条完整读取路径——按轮读取 `memberIdsByActionId(tokenAddress, actionId, round, offset, limit, reverse) returns (memberIds[], totalCount)`（指定 `round` 时的成员列表）；不带 `round` 的当前态列表不单设，当前态用 `isJoined` 点查或传当前轮读取。参数语义：越界返回空数组与真实总数、不回滚；`limit` 超剩余按剩余返回；`limit = 0` 只返回总数；`reverse` 为 true 时逆序遍历当前存储顺序。符合[集合读取设计原则](../../dev-standards.md#43-集合读取函数)。
 
-**历史查询**：提供按 round 的历史快照查询，`isJoinedByRound(tokenAddress, actionId, round, memberId)` 检查指定 round 时的加入状态，`memberIdsByActionId(tokenAddress, actionId, round, offset, limit, reverse)` 返回指定 round 时的成员列表（分页）。round 的口径是**加入轮**（= 当前投票轮 - 1，加入在投票后一个阶段开放，见 [阶段模型](02-phase-model.md)），与三个 Executor 的加入 Round 同轴；加入态事件与按轮快照同源，`JoinStateRegistered.round` 也是加入轮（`JoinStateCleared.round` 例外，它是清理时的当前加入轮，见上）。快照不会落在创建轮之前——该不变式由 `registerJoinState` 的 `JoinNotOpen` 入口校验保证（见写操作权限）；`ActionRegistered` 的 round 即创建投票轮，也是该行动的首个加入轮，因此以它查询成员列表可得首个加入窗口的成员。round 大于当前加入轮时按未开始处理：`isJoinedByRound` 返回 false，列表返回空数组与 `totalCount = 0`。按轮快照的读法随共享原语：查询的 `round` 上没有写入时，返回该轮之前最近一次记录的状态（空缺轮继承先前状态）；早于首次写入返回未加入 / 空列表。同一加入轮内的多次写入（加入、退出、再加入）在该轮只保留最后一次写入的值——事件仍按发生顺序逐条记录；两者并用时，以事件顺序还原过程，以快照读取该轮结束状态。
+**历史查询**：提供按 round 的历史快照查询，`isJoinedByRound(tokenAddress, actionId, round, memberId)` 检查指定 round 时的加入状态，`memberIdsByActionId(tokenAddress, actionId, round, offset, limit, reverse)` 返回指定 round 时的成员列表（分页）。round 的口径是**加入轮**（= 当前投票轮 - 1，加入在投票后一个阶段开放，见 [阶段模型](02-phase-model.md)），与三个 Executor 的加入 Round 同轴；加入态事件与按轮快照同源，`JoinStateRegistered.round` 也是加入轮（`JoinStateCleared.round` 例外，它是清理时的当前加入轮，见上）。快照不会落在创建轮之前——该不变式由 `registerJoinState` 的 `JoinNotOpen` 入口校验保证（见写操作权限）；`ActionRegistered` 的 round 即创建投票轮，也是该行动的首个加入轮，因此以它查询成员列表可得首个加入窗口的成员。round 大于当前加入轮时，两条查询均回滚 `RoundNotStarted(round, joinRound)`。按轮快照的读法随共享原语：查询的 `round` 上没有写入时，返回该轮之前最近一次记录的状态（空缺轮继承先前状态）；早于首次写入返回未加入 / 空列表。同一加入轮内的多次写入（加入、退出、再加入）在该轮只保留最后一次写入的值——事件仍按发生顺序逐条记录；两者并用时，以事件顺序还原过程，以快照读取该轮结束状态。
 
 **加入轮查询**：`joinedRounds(tokenAddress, actionId, memberIds[]) returns (uint256[] rounds)` 批量返回每个成员的加入轮（数组与入参等长、按下标配对）。round 口径与 `JoinStateRegistered` 一致，为登记时的加入轮；未加入（从未加入、已退出或已 `forceClearJoinState`）与未关联的行动/代币返回 0。该查询反映当前状态；历史过程以事件顺序还原，历史快照以按轮查询读取。
 
@@ -65,7 +65,7 @@ targetData[SLOT_EXECUTOR] = abi.encode(executorAddress)
 
 **`mintActionReward` 不校验 `round` 的可结算窗口**：窗口随行动类型不同（LP 执行器 `phase−2`，Group/Service 执行器 `phase−3`），由调用方 Executor 负责；新 Executor 必须实现等价约束，否则可对任意已结束轮次发起铸造。ActionTarget 不掌握行动类型，因此不在入口做半套检查——该边界与 core 卷 `MNT-01` 一致（准备时点属机制设计，不在此重开）。
 
-重复加入、重复退出均不改状态、不发重复事件；因此 `forceClearJoinState` 后，Executor 正常调用 `clearJoinState` 必须成功且不改状态。重复铸造回滚 Mint 的 `ProposalRewardAlreadyMinted(tokenAddress, round, proposalId)`——行动级去重键 `tokenAddress + actionId + round` 由 Mint 的状态位承担，ActionTarget 不另存铸造状态位。不存在关联时 `executor` 返回零，但写操作拒绝零关联。`isJoined` 与 `isJoinedByRound` 无记录时返回 false。
+重复加入、重复退出均不改状态、不发重复事件；因此 `forceClearJoinState` 后，Executor 正常调用 `clearJoinState` 必须成功且不改状态。重复铸造回滚 Mint 的 `ProposalRewardAlreadyMinted(tokenAddress, round, proposalId)`——行动级去重键 `tokenAddress + actionId + round` 由 Mint 的状态位承担，ActionTarget 不另存铸造状态位。不存在关联时 `executor` 返回零，但写操作拒绝零关联。`isJoined` 无记录时返回 false；`isJoinedByRound` 在加入轮已开始但无记录时返回 false。
 
 **铸造信息查询**：`actionReward(tokenAddress, actionId, round)` 返回 `(amount, minted)`——`amount` 在已铸造时为本轮实际铸造金额、未铸造时为本轮理论可铸造数量（按 Mint 账本计算，未投票、未达门槛、零额度时为 `0`），`minted` 表示本轮是否已铸造；未关联的行动返回 `(0, false)`，已关联但未铸造的行动返回 `(理论数量, false)`，均不回滚。该查询不持有独立账本：已关联时直接委托 Mint 的 `proposalRewardByProposalId`（`amount` 由 Mint 按票数复算，与铸造时同源；Mint 侧已铸造的 `amount` 与 `ActionRewardMinted` 的 `amount` 相等），ActionTarget 只负责把未关联行动收敛为零：销毁不再经过本合约，因此不需要任何掩零。前端与索引据此判断某行动某轮是否已铸造与可铸造数量，不需要扫描事件；同一笔铸造另由 `ActionRewardMinted(tokenAddress, actionId, round, amount)` 留痕，`amount` 与该查询铸造后的返回值同源，供历史回溯与审计使用。
 
@@ -95,7 +95,7 @@ Executor 失效时的兜底清理：成员 NFT 当前持有人可清除加入态
 
 ## 实现约束
 
-分页查询的 `offset` 越界返回空数组与真实总数，不回滚；`limit` 超剩余按剩余返回。`forceClearJoinState` 重复清理无操作，不发重复事件；它不回调 Executor、不阻塞也不参与 Executor 的资金结算，因此 Executor 故障不会把注册表清理拖死。ActionTarget 不校验业务 Round，也不校验 Proposal 的投票门槛。
+分页查询的 `offset` 越界返回空数组与真实总数，不回滚；`limit` 超剩余按剩余返回。`forceClearJoinState` 重复清理无操作，不发重复事件；它不回调 Executor、不阻塞也不参与 Executor 的资金结算，因此 Executor 故障不会把注册表清理拖死。ActionTarget 不校验各 Executor 的铸造窗口，也不校验 Proposal 的投票门槛。
 
 激励转发见 [铸造链路](07-minting.md#铸造链路)，验收见 [Action 验收](08-testing.md)。
 

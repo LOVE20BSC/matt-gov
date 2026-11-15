@@ -235,7 +235,7 @@ Action 门禁：**406 tests 全绿**；`build --deny warnings`、`lint`、`check
 #### 行为变更（旧回滚 → 新幂等/不回滚）
 - **重复加入**：旧 `ExtensionCenter.sol:187-189` 回滚 `AccountAlreadyJoined`；新 `registerJoinState` 幂等，不改状态、不发事件
 - **未加入时退出**：旧 `removeAccount` 返回 `false`；新 `clearJoinState` 无返回值、不改状态
-- **round 越界**：旧 `validRound` 修饰符回滚 `RoundExceedsJoinRound`（`ExtensionCenter.sol:112-118`）；新查询返回空数组与真实总数，`isJoinedByRound` 返回 false
+- **round 越界**：旧 `validRound` 修饰符回滚 `RoundExceedsJoinRound`（`ExtensionCenter.sol:112-118`）；迁移时查询返回空数组与真实总数，`isJoinedByRound` 返回 false。当前未来加入轮已统一回滚 `RoundNotStarted(round, joinRound)`，查询范围与无记录语义见[阶段模型](action/02-phase-model.md)。
 
 #### 接口完整性补全
 - 补 `initialized()`：与 core 六个接口同形
