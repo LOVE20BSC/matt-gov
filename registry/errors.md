@@ -102,21 +102,21 @@ Rows are grouped by repo + signature; interfaces list every local declaration si
 | action | `ZeroRecipientRatio(uint256)` | `0x4a3b43a3` | `IGroupRecipientsErrors` | 1 | `action/src/GroupRecipients.sol:331` |
 | action | `ZeroRewardWeight(address,uint256,uint256)` | `0x7a448f07` | `IActionExecutorErrors` | 1 | `action/src/GroupServiceExecutor.sol:720` |
 | action | `ZeroVerifyVotes(address,uint256)` | `0x131e332f` | `IGroupActionVerifyErrors` | 1 | `action/src/GroupActionVerify.sol:905` |
-| core | `AirdropAlreadyClaimed(address,address)` | `0x3349f079` | `IAirdropDistributorErrors` | 1 | `core/src/distributor/AirdropDistributor.sol:103` |
+| core | `AirdropAlreadyClaimed(address,address)` | `0x3349f079` | `IAirdropDistributorErrors` | 1 | `core/src/distributor/AirdropDistributor.sol:105` |
 | core | `BoostCapExceeded(address,uint256,uint256,uint256)` | `0x837ed964` | `IStakeErrors` | 1 | `core/src/Stake.sol:464`, `core/src/Stake.sol:688` |
 | core | `CallbackTargetNotContract(address)` | `0x5816a336` | `ISubmitErrors` | 1 | `core/src/Submit.sol:241` |
-| core | `ClaimDelayRoundsExceeded(uint256,uint256)` | `0x4e25c8d7` | `IAirdropDistributorErrors` | 1 | `core/src/distributor/AirdropDistributor.sol:240` |
-| core | `ClaimRoundNotReached(address,uint256,uint256)` | `0xff978a22` | `IAirdropDistributorErrors` | 1 | `core/src/distributor/AirdropDistributor.sol:99` |
+| core | `ClaimDelayRoundsExceeded(uint256,uint256)` | `0x4e25c8d7` | `IAirdropDistributorErrors` | 1 | `core/src/distributor/AirdropDistributor.sol:246` |
+| core | `ClaimRoundNotReached(address,uint256,uint256)` | `0xff978a22` | `IAirdropDistributorErrors` | 1 | `core/src/distributor/AirdropDistributor.sol:101` |
 | core | `DeadlineExpired(uint256)` | `0xbc3088ef` | `IStakeErrors` | 1 | `core/src/Stake.sol:209` |
 | core | `DetailsTooLong(uint256,uint256)` | `0x8be47d4d` | `ISubmitErrors` | 1 | `core/src/Submit.sol:225` |
 | core | `DistributorNotContract(address)` | `0x7c7610b0` | `ILaunchErrors` | 1 | `core/src/Launch.sol:321` |
 | core | `InexactTokenTransfer(address,uint256,uint256)` | `0xc1a4db95` | `IStakeErrors` | 1 | `core/src/Stake.sol:1176`, `core/src/Stake.sol:1178`, `core/src/Stake.sol:1272`, `core/src/Stake.sol:1274`, `core/src/Stake.sol:968`, `core/src/Stake.sol:975` |
 | core | `InsufficientLaunchCount(uint256,uint256,uint256)` | `0x750e6e06` | `ILaunchErrors` | 1 | `core/src/Launch.sol:108`, `core/src/Launch.sol:169` |
 | core | `InsufficientSubmitPower(address,uint256,uint256,uint256)` | `0x6898aba8` | `ISubmitErrors` | 1 | `core/src/Submit.sol:91` |
-| core | `InvalidDistributorDataCount(uint256,uint256)` | `0x3ea8b6a5` | `IAirdropDistributorErrors` | 1 | `core/src/distributor/AirdropDistributor.sol:80` |
-| core | `InvalidDistributorDataLength(uint256,uint256)` | `0xecd41092` | `IAirdropDistributorErrors` | 1 | `core/src/distributor/AirdropDistributor.sol:81` |
+| core | `InvalidDistributorDataCount(uint256,uint256)` | `0x3ea8b6a5` | `IAirdropDistributorErrors` | 1 | `core/src/distributor/AirdropDistributor.sol:82` |
+| core | `InvalidDistributorDataLength(uint256,uint256)` | `0xecd41092` | `IAirdropDistributorErrors` | 1 | `core/src/distributor/AirdropDistributor.sol:83` |
 | core | `InvalidPromisedWaitingPhases(uint256,uint256,uint256)` | `0x50a046ad` | `IStakeErrors` | 1 | `core/src/Stake.sol:699` |
-| core | `InvalidProof()` | `0x09bde339` | `IAirdropDistributorErrors` | 1 | `core/src/distributor/AirdropDistributor.sol:107`, `core/src/distributor/AirdropDistributor.sol:110` |
+| core | `InvalidProof()` | `0x09bde339` | `IAirdropDistributorErrors` | 1 | `core/src/distributor/AirdropDistributor.sol:109`, `core/src/distributor/AirdropDistributor.sol:112` |
 | core | `InvalidTokenSymbolCharacters()` | `0x7e279c58` | `ILaunchErrors` | 1 | `core/src/Launch.sol:277` |
 | core | `InvalidTokenSymbolLength(uint256,uint256)` | `0x18a4669e` | `ILaunchErrors` | 1 | `core/src/Launch.sol:276` |
 | core | `LaunchCountLimitExceeded(address,uint256,uint256)` | `0x9affae33` | `ILaunchErrors` | 1 | `core/src/Launch.sol:195` |
@@ -161,9 +161,9 @@ Rows are grouped by repo + signature; interfaces list every local declaration si
 | core | `RoundNotCurrent(uint256,uint256)` | `0x1b1fc95c` | `IMintErrors` | 1 | `core/src/Mint.sol:117` |
 | core | `RoundNotEnded(uint256)` | `0x652d87c5` | `IMintErrors` | 1 | `core/src/Mint.sol:153` |
 | core | `RoundNotStarted(uint256,uint256)` | `0xea74f32b` | `IStakeErrors` | 1 | `core/src/Stake.sol:642` |
-| core | `ShareExceedsRemaining(uint256,uint256)` | `0x079c232c` | `IAirdropDistributorErrors` | 1 | `core/src/distributor/AirdropDistributor.sol:108` |
-| core | `SnapshotUriEmpty()` | `0xdd461fc3` | `IAirdropDistributorErrors` | 1 | `core/src/distributor/AirdropDistributor.sol:136` |
-| core | `SnapshotUriTooLong(uint256,uint256)` | `0xf2f9c2c9` | `IAirdropDistributorErrors` | 1 | `core/src/distributor/AirdropDistributor.sol:137` |
+| core | `ShareExceedsRemaining(uint256,uint256)` | `0x079c232c` | `IAirdropDistributorErrors` | 1 | `core/src/distributor/AirdropDistributor.sol:110` |
+| core | `SnapshotUriEmpty()` | `0xdd461fc3` | `IAirdropDistributorErrors` | 1 | `core/src/distributor/AirdropDistributor.sol:142` |
+| core | `SnapshotUriTooLong(uint256,uint256)` | `0xf2f9c2c9` | `IAirdropDistributorErrors` | 1 | `core/src/distributor/AirdropDistributor.sol:143` |
 | core | `SourceEqualsTarget(uint256)` | `0xbbef66e9` | `ILaunchErrors`, `IStakeErrors` | 2 | `core/src/Launch.sol:158`, `core/src/Stake.sol:432` |
 | core | `StakeNotStarted()` | `0xcd329a46` | `IStakeErrors` | 1 | `core/src/Stake.sol:694` |
 | core | `StakeRightsUsed(address,uint256,uint256)` | `0xd2632e80` | `IStakeErrors` | 1 | `core/src/Stake.sol:340`, `core/src/Stake.sol:446` |
@@ -175,10 +175,10 @@ Rows are grouped by repo + signature; interfaces list every local declaration si
 | core | `TargetPromisedWaitingPhasesTooShort(uint256,uint256)` | `0xe393d50b` | `IStakeErrors` | 1 | `core/src/Stake.sol:772` |
 | core | `TitleEmpty()` | `0x5d0ff12d` | `ISubmitErrors` | 1 | `core/src/Submit.sol:221` |
 | core | `TitleTooLong(uint256,uint256)` | `0x83dc6558` | `ISubmitErrors` | 1 | `core/src/Submit.sol:222` |
-| core | `TokenAlreadyConfigured(address)` | `0x54d67cef` | `IAirdropDistributorErrors` | 1 | `core/src/distributor/AirdropDistributor.sol:237` |
+| core | `TokenAlreadyConfigured(address)` | `0x54d67cef` | `IAirdropDistributorErrors` | 1 | `core/src/distributor/AirdropDistributor.sol:243` |
 | core | `TokenNameEmpty()` | `0x0d7673b5` | `ILaunchErrors` | 1 | `core/src/Launch.sol:246` |
 | core | `TokenNameTooLong(uint256,uint256)` | `0x312f5772` | `ILaunchErrors` | 1 | `core/src/Launch.sol:247` |
-| core | `TokenNotConfigured(address)` | `0xa5be5e0f` | `IAirdropDistributorErrors` | 1 | `core/src/distributor/AirdropDistributor.sol:50`, `core/src/distributor/AirdropDistributor.sol:94` |
+| core | `TokenNotConfigured(address)` | `0xa5be5e0f` | `IAirdropDistributorErrors` | 1 | `core/src/distributor/AirdropDistributor.sol:50`, `core/src/distributor/AirdropDistributor.sol:96` |
 | core | `TokenNotRegistered(address)` | `0xddef98d7` | `ILaunchErrors`, `IMintErrors`, `IStakeErrors` | 3 | `core/src/Launch.sol:163`, `core/src/Launch.sol:191`, `core/src/Mint.sol:118`, `core/src/Mint.sol:149`, `core/src/Stake.sol:706` |
 | core | `TokenSymbolAlreadyExists(bytes32)` | `0x98f23aa3` | `ILaunchErrors` | 1 | `core/src/Launch.sol:124` |
 | core | `TokenSymbolEmpty()` | `0xf09ce013` | `ILaunchErrors` | 1 | `core/src/Launch.sol:250` |
@@ -193,7 +193,7 @@ Rows are grouped by repo + signature; interfaces list every local declaration si
 | core | `ZeroInitialSupply()` | `0x9243dc6c` | `ILOVE20TokenErrors` | 1 | `core/src/LOVE20Token.sol:22` |
 | core | `ZeroLiquidityMinted()` | `0xf4791324` | `IStakeErrors` | 1 | `core/src/Stake.sol:979` |
 | core | `ZeroLpFeeRatio()` | `0x7d3a91cd` | `IStakeErrors` | 1 | `core/src/Stake.sol:171` |
-| core | `ZeroMerkleRoot()` | `0x9266ee62` | `IAirdropDistributorErrors` | 1 | `core/src/distributor/AirdropDistributor.sol:238` |
+| core | `ZeroMerkleRoot()` | `0x9266ee62` | `IAirdropDistributorErrors` | 1 | `core/src/distributor/AirdropDistributor.sol:244` |
 | core | `ZeroParentTokenAmount()` | `0xe6e1b13a` | `IStakeErrors` | 1 | `core/src/Stake.sol:232` |
 | core | `ZeroRecipientAddress()` | `0xceef9857` | `IMintErrors` | 1 | `core/src/Mint.sol:235`, `core/src/Mint.sol:556` |
 | core | `ZeroTargetAddress()` | `0xeaf673fd` | `ISubmitErrors` | 1 | `core/src/Submit.sol:239` |

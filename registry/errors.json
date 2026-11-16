@@ -1545,7 +1545,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/distributor/AirdropDistributor.sol:103"
+        "core/src/distributor/AirdropDistributor.sol:105"
       ],
       "selector": "0x3349f079",
       "signature": "AirdropAlreadyClaimed(address,address)"
@@ -1591,7 +1591,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/distributor/AirdropDistributor.sol:240"
+        "core/src/distributor/AirdropDistributor.sol:246"
       ],
       "selector": "0x4e25c8d7",
       "signature": "ClaimDelayRoundsExceeded(uint256,uint256)"
@@ -1606,7 +1606,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/distributor/AirdropDistributor.sol:99"
+        "core/src/distributor/AirdropDistributor.sol:101"
       ],
       "selector": "0xff978a22",
       "signature": "ClaimRoundNotReached(address,uint256,uint256)"
@@ -1717,7 +1717,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/distributor/AirdropDistributor.sol:80"
+        "core/src/distributor/AirdropDistributor.sol:82"
       ],
       "selector": "0x3ea8b6a5",
       "signature": "InvalidDistributorDataCount(uint256,uint256)"
@@ -1732,7 +1732,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/distributor/AirdropDistributor.sol:81"
+        "core/src/distributor/AirdropDistributor.sol:83"
       ],
       "selector": "0xecd41092",
       "signature": "InvalidDistributorDataLength(uint256,uint256)"
@@ -1762,8 +1762,8 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/distributor/AirdropDistributor.sol:107",
-        "core/src/distributor/AirdropDistributor.sol:110"
+        "core/src/distributor/AirdropDistributor.sol:109",
+        "core/src/distributor/AirdropDistributor.sol:112"
       ],
       "selector": "0x09bde339",
       "signature": "InvalidProof()"
@@ -2454,7 +2454,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/distributor/AirdropDistributor.sol:108"
+        "core/src/distributor/AirdropDistributor.sol:110"
       ],
       "selector": "0x079c232c",
       "signature": "ShareExceedsRemaining(uint256,uint256)"
@@ -2469,7 +2469,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/distributor/AirdropDistributor.sol:136"
+        "core/src/distributor/AirdropDistributor.sol:142"
       ],
       "selector": "0xdd461fc3",
       "signature": "SnapshotUriEmpty()"
@@ -2484,7 +2484,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/distributor/AirdropDistributor.sol:137"
+        "core/src/distributor/AirdropDistributor.sol:143"
       ],
       "selector": "0xf2f9c2c9",
       "signature": "SnapshotUriTooLong(uint256,uint256)"
@@ -2668,7 +2668,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/distributor/AirdropDistributor.sol:237"
+        "core/src/distributor/AirdropDistributor.sol:243"
       ],
       "selector": "0x54d67cef",
       "signature": "TokenAlreadyConfigured(address)"
@@ -2714,7 +2714,7 @@
       "repo": "core",
       "revert_sites": [
         "core/src/distributor/AirdropDistributor.sol:50",
-        "core/src/distributor/AirdropDistributor.sol:94"
+        "core/src/distributor/AirdropDistributor.sol:96"
       ],
       "selector": "0xa5be5e0f",
       "signature": "TokenNotConfigured(address)"
@@ -2951,7 +2951,7 @@
       ],
       "repo": "core",
       "revert_sites": [
-        "core/src/distributor/AirdropDistributor.sol:238"
+        "core/src/distributor/AirdropDistributor.sol:244"
       ],
       "selector": "0x9266ee62",
       "signature": "ZeroMerkleRoot()"
