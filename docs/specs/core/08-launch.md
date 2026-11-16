@@ -30,7 +30,7 @@ Launch 负责首币部署、LOVE20Token 创建、基础发射与次数账本。T
 | 首币建池时工厂返回零地址 | `PairCreationFailed(ROOT_PARENT_TOKEN_ADDRESS)`；正常 UniswapV2 工厂返回 pair 或回滚，该错误保留给“返回零地址”的 V2 兼容工厂 |
 | 首币创建时代币构造函数拒绝 | `ZeroInitialSupply()` / `MaxSupplyBelowInitialSupply(initialSupply, maxSupply)` / `ZeroDistributorAddress()`（透传） |
 
-`0 < launchCountThresholdRatio <= 1e18`、`maxLaunchCount > 0`、`tokenSymbolLength > 0`、`0 < launchAmount <= maxSupply`、首币 `distributor != 0` 由 DeployCore 广播前校验；依赖地址有代码与首币登记结果由 DeployCore 部署后校验；两者均由 21_check 独立复核；构造函数只保存配置，不做静态零值校验。首币创建仍经过 LOVE20Token 构造函数，零供应、供应上限和零 distributor 由该构造函数独立拒绝（权限开放发射路径不能依赖部署脚本）。
+`0 < launchCountThresholdRatio <= 1e18`、`maxLaunchCount > 0`、`tokenSymbolLength > 0`、`0 < launchAmount <= maxSupply`、首币 `distributor != 0` 由 DeployCore 广播前校验；依赖地址有代码与首币登记结果由 DeployCore 部署后校验；两者均由 21_check 独立复核；构造函数只保存配置，不做静态零值校验。首币创建仍经过 LOVE20Token 构造函数，零供应、最大铸币上限和零 distributor 由该构造函数独立拒绝（权限开放发射路径不能依赖部署脚本）。
 
 首币符号不套用 `TOKEN_SYMBOL_LENGTH` 校验：旧实现的第一个代币走 `tokensCount() == 0` 分支，跳过符号校验与测试网 `Test` 前缀（名称仍按 `tokenSymbol + "@" + parentTokenSymbol` 拼接）；BSC 版由构造参数直接给定首币名称和符号，因此首币符号长度可以与配置的子币符号长度不同。
 

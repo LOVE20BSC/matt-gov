@@ -8,7 +8,7 @@ Stake 按 `tokenAddress + memberId` 维护流动性质押和加速质押，不�
 
 | 字段 | 含义 |
 | --- | --- |
-| `liquidityShares` / `boostShares` | 成员流动性份额 / 加速质押份额 |
+| `liquidityShares` / `boostShares` | 成员流动性质押份额 / 加速质押份额 |
 | `promisedWaitingPhases` | 承诺解锁期，单位 Phase |
 | `unlockRequestPhase` | 申请 Phase；0 表示未申请 |
 | `firstGovVoteRound`（成员级） | 当前仓位的**首次获取治理票的 Round**：`liquidityShares` 由 0 变为非 0 的那一轮写入，追加质押与提高等待期都不改写；`withdraw` 清空整个成员记录时一并归零，再次质押从新的那一轮重新记。0 表示当前没有仓位。加速质押不写该字段（它本身不产生票权） |
@@ -241,8 +241,8 @@ stakeBoost 通过条件：member.boostShares + amount <= m_i
 - 源和目标不同且已存在；调用者必须持有源，不要求持有目标。
 - 任一方待解锁时拒绝；源在当前治理 Round 已使用过质押权时拒绝，目标已使用过质押权不阻止融合。
 - 空目标（`liquidityShares == 0 && boostShares == 0`，与 `stakeLiquidity` / `stakeBoost` 判「已有仓位」的 `targetHadPosition` 同一判据；注意不是 `promisedWaitingPhases == 0`）继承源等待期；非空目标等待期短于源则拒绝，否则保持目标等待期。
-- 源全部流动性份额和加速份额并入目标，源当前质押清零。目标原资产不得减少，历史投票和激励不回写。
-- 目标本轮已投票仍可接收：融合只增加目标的流动性份额，按 `liquidityShares × promisedWaitingPhases` 重算后表现为治理票增量，与该成员自己追加质押产生的增量等价，可继续用这部分增量投票。
+- 源全部流动性质押份额和加速份额并入目标，源当前质押清零。目标原资产不得减少，历史投票和激励不回写。
+- 目标本轮已投票仍可接收：融合只增加目标的流动性质押份额，按 `liquidityShares × promisedWaitingPhases` 重算后表现为治理票增量，与该成员自己追加质押产生的增量等价，可继续用这部分增量投票。
 - 源本轮已推举或已投票则禁止融合：推举或投票都视为使用质押权，融合会让同一份质押资产在本轮转移后再次使用。
 - 当前 Round 结束后限制清零；上一 Round 使用过质押权的来源，在下一 Round 可以再次融合。Submit 会先完成推举状态写入，再执行创建回调，回调不能绕过该限制。
 - 融合后按目标份额正常提取双币和加速代币；解锁中的成员需完成提取后才可再次融合。
@@ -360,7 +360,7 @@ stakeBoost 通过条件：member.boostShares + amount <= m_i
 
 ## 事件
 
-事件签名见 [`IStake.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/IStake.sol)。三个聚合量——流动性份额、加速份额、治理票——在**改变它们的每个事件**上都携带后置总量，与增量字段并存：增量用于折叠，总量用于对账。`totalLiquidityShares` / `totalBoostShares` 必须等于 `totalStake` 的同名字段；`totalValidGovVotes` / `totalValidBoostShares` 必须等于 `totalValidGovVotes(tokenAddress, round)` / `totalValidBoostShares(tokenAddress, round)`，也就是同轮 `Added` 与 `Removed` 之差。`lastFeeLp` 与 `lastWithdrawableLp` 同样在**每个改变它们的事件**上携带后置总量，两个账本可从事件逐笔折叠，不需要反推份额公式或读取 Pair 日志。
+事件签名见 [`IStake.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/IStake.sol)。三个聚合量——流动性质押份额、加速份额、治理票——在**改变它们的每个事件**上都携带后置总量，与增量字段并存：增量用于折叠，总量用于对账。`totalLiquidityShares` / `totalBoostShares` 必须等于 `totalStake` 的同名字段；`totalValidGovVotes` / `totalValidBoostShares` 必须等于 `totalValidGovVotes(tokenAddress, round)` / `totalValidBoostShares(tokenAddress, round)`，也就是同轮 `Added` 与 `Removed` 之差。`lastFeeLp` 与 `lastWithdrawableLp` 同样在**每个改变它们的事件**上携带后置总量，两个账本可从事件逐笔折叠，不需要反推份额公式或读取 Pair 日志。
 
 | 事件 | 触发入口 | 字段 |
 | --- | --- | --- |
@@ -388,7 +388,7 @@ stakeBoost 通过条件：member.boostShares + amount <= m_i
 
 - 当前质押余额为 `0` 就表示没有质押；只有 RoundHistory 的历史查询需要区分”本轮没有记录”和”本轮明确归零”，直接沿用旧 RoundHistory 的显式记录语义，不新增额外布尔状态。
 - 流动性写操作先按条件表顺序完成鉴权、参数与存在性校验——校验自身允许读取 Factory、代币合约与 MemberNFT 的只读接口——**再发起会改变资产或记账的外部调用**（转入代币、向 Pair 铸出或退出 LP、经 Router 换币），并以这些调用实际返回的数量记账；不设重入锁，一致性由这一顺序保证（与 [通用规则](01-common-rules.md#部署与安全)的检查—更新—交互顺序的差别在此）。读取 Pair 状态，在任何除法前处理 `pairTotalSupply == 0`、`currentSqrtKOfLp == 0` 和基准未增长；需要 Router、Pair 或 ERC20 调用时，以外部调用成功返回的实际数量计算并更新 `lastWithdrawableLp`、`lastFeeLp`、`lastSqrtKOfLp`、成员份额和社区总份额。任一步失败全部回滚。BSC 不使用 SL/ST 凭证，所有份额和可提取 LP 直接存入 Stake。
-- 「不设重入锁」的前提是**所有外部调用的接收方都不触发回调**：`tokenAddress` 只能是 Launch 创建的标准 `LOVE20Token`，Pair 是标准 UniswapV2Pair，Router 是部署期固定的可信合约，三者的转账与 `mint`/`burn`/`swap` 都不回调发起方。`withdraw` 在发起任何外部调用之前先 `delete` 成员记录（等待期、流动性份额、加速份额已先读入内存），因此即使存在回调也无法二次提取同一份份额。若将来引入带接收回调的代币标准或替换 Pair 实现，必须先恢复重入锁或补齐完整 CEI。
+- 「不设重入锁」的前提是**所有外部调用的接收方都不触发回调**：`tokenAddress` 只能是 Launch 创建的标准 `LOVE20Token`，Pair 是标准 UniswapV2Pair，Router 是部署期固定的可信合约，三者的转账与 `mint`/`burn`/`swap` 都不回调发起方。`withdraw` 在发起任何外部调用之前先 `delete` 成员记录（等待期、流动性质押份额、加速份额已先读入内存），因此即使存在回调也无法二次提取同一份份额。若将来引入带接收回调的代币标准或替换 Pair 实现，必须先恢复重入锁或补齐完整 CEI。
 - 手续费结算失败（Pair 取回、Router 兑换、销毁或统计更新任一失败）时整笔结算回滚；提取本金前自动结算手续费，手续费结算失败则提取也回滚。
 - 空目标沿用本文件的等待期继承例外；`MemberStake` 和 `TotalStake` 结构体仅用于内部存储，不作为查询返回格式。
 - `memberId == 0` 与不存在的 `memberId` 同走 `MemberNFT.ownerOf`，由 OpenZeppelin 抛出 `ERC721NonexistentToken`；Stake 不声明 `InvalidMemberId()`，与 `Launch` 的既有实现一致。

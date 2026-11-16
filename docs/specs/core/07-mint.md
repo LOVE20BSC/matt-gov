@@ -37,7 +37,7 @@ available = MAX_SUPPLY - totalSupply - reservedAvailable
 
 `MAX_SUPPLY` 约束的是**任一时刻的在售供应**，不是累计发行量：`LOVE20Token.burn` 无许可，任何人销毁自己的余额都会抬高 `MAX_SUPPLY − totalSupply`，未来轮次据此重新预留；因此 `totalRewardMinted` 可以超过 `MAX_SUPPLY`，把两者直接比较的判断都是错的。
 
-各项向下取整产生的余数是明确的永久保留量：继续计入 `reservedAvailable`，不进入后续轮次池，也不单独铸造或销毁；该保留量属于供应上限内的协议保留额度。
+各项向下取整产生的余数是明确的永久保留量：继续计入 `reservedAvailable`，不进入后续轮次池，也不单独铸造或销毁；该保留量属于最大铸币上限内的协议保留额度。
 
 ## 准备一次
 
@@ -220,7 +220,7 @@ B_i / V_i ≤ min(C × M / B, 1 / s_i)
 | --- | --- | --- |
 | `ISubmit.proposalTarget` | `ProposalNotFound(address,uint256)` | `mintProposalReward` 的授权与存在性前置、`proposalRewardByProposalId` 的查询前置 |
 | `IMemberNFT.ownerOf` | `ERC721NonexistentToken(uint256)` | `onlyMemberOwner` 与 `govRewardByMemberId` 的查询前置 |
-| `ILOVE20Token.mint` | `MaxSupplyExceeded(uint256,uint256)`、`ERC20InvalidReceiver(address)` | `recipient` 已在入口判零；供应上限由代币合约兜底 |
+| `ILOVE20Token.mint` | `MaxSupplyExceeded(uint256,uint256)`、`ERC20InvalidReceiver(address)` | `recipient` 已在入口判零；最大铸币上限由代币合约兜底 |
 | `ILaunch.addLaunchCount` | `TokenNotRegistered(address)`、`LaunchCountLimitExceeded(address,uint256,uint256)` | 正常路径不可达：`_prepareRewardIfNeeded` 已先用 `ILaunch.isLOVE20Token` 判过登记，`count` 也已按剩余 `MAX_LAUNCH_COUNT` 削平；登记二者是为了让本入口的失败集合完整 |
 
 ## 发射额度的生成
