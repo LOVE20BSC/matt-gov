@@ -29,6 +29,8 @@ Core 不解释具体 Proposal 的业务字段，扩展通过 Target 接入。
 | MemberNFT 构造参数 | `multiplier` | 每缩短一字节的费用倍数；状态变量和公开 getter 为 `MULTIPLIER`，如 `10` |
 | MemberNFT 构造参数 | `maxNameLength` | 最大字节数；状态变量和公开 getter 为 `MAX_NAME_LENGTH`，如 `32` |
 | Phase 构造参数 | `ORIGIN_BLOCKS`、`ORIGIN_PHASE_BLOCKS`、`TARGET_SECONDS`、`ADJUST_THRESHOLD`、`SYNC_OBSERVATION_LIMIT` | 启动区块、初始区块数、每个 Phase 的目标自然时长（秒，7 天为 `604800`）、偏差阈值、单次同步回溯上限；五项均须大于零，偏差阈值使用 `1e18` 精度且不超过 `1e18` |
+| AirdropDistributor | `launchAddress`、`phaseAddress`、`genesisTokenAddress` | Launch、时间与首币地址；前向引用由部署脚本预测并核对 |
+| AirdropDistributor | `genesisMerkleRoot`、`genesisClaimDelayRounds`、`genesisSnapshotUri` | 首币份额根、延迟 Phase 数与本网络快照 URI；构造期写入，URI 非空且最多 256 字节，此后不可更新 |
 | Stake | `PHASE_ADDRESS`、`MEMBER_NFT_ADDRESS`、`VOTE_ADDRESS`、`LAUNCH_ADDRESS`、`ROUTER_ADDRESS`、`PAIR_FACTORY_ADDRESS` | 时间、身份、当前轮投票/推举检查、Launch 代币登记、路由和 Pair Factory 依赖；Stake 通过 Vote 已绑定的 Submit 读取推举记录；在 Stake 侧 Pair Factory 只用于读取 Launch 已创建或复用的 Pair |
 | Stake | `promisedWaitingPhasesMin`、`promisedWaitingPhasesMax` | 承诺解锁期的最小、最大 Phase 数 |
 | Stake | `feeSettlementRatio` | 单笔手续费结算占 Pair 的 LP 总供应的比例，`1e18` 表示 100%（如 `25e14` 为 0.25%）；同时是结算阈值与单笔处理量；须不大于部署期上界（0.25%），见 [Stake](04-stake.md#手续费结算与销毁) |

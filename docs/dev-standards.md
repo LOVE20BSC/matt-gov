@@ -292,7 +292,7 @@ script/
 | `21_check.sh`  | 校验部署与初始化是否正确（只读、可重复运行）；自载入校验文件，含上次部署写入的地址文件 |
 | `31_verify.sh` | 合约开源验证（链支持开源验证时才需要）；自载入网络与地址文件 |
 
-- 支持开源验证的链**必须包含验证环节**（`31_verify.sh`）。验证**默认开启**：验证器端点取自 `script/network/verifier.params` 的 `ETHERSCAN_VERIFIER_URL`（Etherscan V2 用一个端点覆盖全部支持链；换自建或第三方验证器只改这个键），只有列在 `VERIFY_SKIP_CHAIN_IDS` 的链才跳过并返回成功——本地链与没有浏览器的链写进该名单，漏配的后果是该步骤失败，而不是一条没验证的部署看起来像成功。`56` / `97` 不得出现在跳过名单，部署回归测试拒绝。API Key 取自 `network.params` 的 `ETHERSCAN_API_KEY`，为空时该步骤**直接失败**。
+- 支持开源验证的链**必须包含验证环节**（`31_verify.sh`）。验证**默认开启**：验证器端点取自 `script/network/verifier.params` 的 `ETHERSCAN_VERIFIER_URL`（Etherscan V2 用一个端点覆盖全部支持链；换自建或第三方验证器只改这个键），只有列在 `VERIFY_SKIP_CHAIN_IDS` 的链才跳过并返回成功——本地链与没有浏览器的链写进该名单，漏配的后果是该步骤失败，而不是一条没验证的部署看起来像成功。`56` / `97` 不得出现在跳过名单，部署回归测试拒绝。API Key 只取自未入库的 `.account` 的 `ETHERSCAN_API_KEY`（不接受调用方环境变量补位），为空时该步骤**直接失败**。
 - **部署脚本改动先在本地链端到端验证再提交**：按依赖顺序先部署被依赖的代码库（如 `core` 依赖 `dex`），再跑本库入口脚本，确认校验步骤全部通过、工作区无残留改动；只有回归测试或"能编译"不算验证。
 
 ### 6.2 network 配置
@@ -305,8 +305,8 @@ script/
 
 | 文件                        | 内容                                                             |
 | ------------------------- | -------------------------------------------------------------- |
-| `.account`                | `KEYSTORE_ACCOUNT`（keystore 路径或账户标识）、`ACCOUNT_ADDRESS`（部署账户地址）、`KEYSTORE_PASSWORD`（可选，口径见 6.1）；不含私钥，签名统一走 keystore |
-| `network.params`          | `CHAIN_ID`、`RPC_URL`；另带开源验证凭据 `ETHERSCAN_API_KEY`（空=验证步骤直接失败） |
+| `.account`                | `KEYSTORE_ACCOUNT`（keystore 路径或账户标识）、`ACCOUNT_ADDRESS`（部署账户地址）、`KEYSTORE_PASSWORD`（可选，口径见 6.1）、`ETHERSCAN_API_KEY`；带凭据的私有 `RPC_URL` 也放在这里，可覆盖公开节点；不含私钥，签名统一走 keystore |
+| `network.params`          | `CHAIN_ID`、公开 `RPC_URL`；只含可公开的网络参数 |
 | `<代码库名>.params`           | 构造函数或 `init` 所需的全部参数；参数名与接口声明一致                                |
 | `addresses.<代码库名>.params` | 已部署的链上地址记录，供后续脚本引用与验证；代码库按模块拆分部署时，一个模块一个 `addresses.<模块名>.params`（如 `addresses.weth.params`、`addresses.uniswapv2.params`） |
 
@@ -319,7 +319,10 @@ script/
 - **参数只来自文件**：`<代码库名>.params` 是唯一取值来源。载入前一律先跑 `params_unset_all <文件…>`：它按这些文件里出现的键清掉调用方同名变量，`params_load` 再按文件 `export` 一次，因此「文件缺键、环境补位」不会发生。它只认识文件里还写着的键——文件**可能省略**的键（如只在本地部署分支才需要的 `WETH_NAME`/`WETH_SYMBOL`）必须在 `params_unset_all` **之前**显式 `unset`，否则继承值会漏进 `vm.envOr` 和 `2x` 对账，把一份正确配置判成冲突。`${VAR:-}` 不因文件完整而免疫。取值合法性仍只由 `.s.sol` 判定。
 - **必填键在调用点断言**：缺键会静默改变行为的键（插件槽位、模式开关、空值本身合法的分层配置）由**读取该文件的每个步骤**用 `params_require_keys`（只判存在）或 `params_require_values`（存在且非空）断言，入参是「文件名 + 键名」而不是变量——变量可以被继承值满足。同一文件上的必填键集合必须在所有步骤一致，回归测试按「读取该文件的脚本集合」交叉断言，漏一处即失败。不设集中键表文件，也不为它新增共享脚本。
 - **同一个值只能有一个来源**：复核步骤（`2x`）用参数文件里的原始值对账，不得再套一层与部署侧相同的默认值展开——两侧共用同一个默认值时，缺键会让期望值与链上值同时变成默认值，复核退化为自证。
-- `.account` 含敏感信息，必须加入 `.gitignore`；其余三个提交进 Git。
+- 所有仓库用 `.gitignore` 的 `.account` 规则忽略任意层级的同名文件。账户、密码、验证 API Key、带凭据的私有 RPC 等敏感配置只放在 `.account`；其余网络参数、地址与 Merkle 快照提交进 Git。
+- 部署步骤读取 `.account`；只读校验在文件存在时读取，以支持私有 RPC；验证步骤在跳过本地链或外部合约之后才要求验证凭据。公开 `network.params` 中的 RPC 始终可直接对外发布。
+- 源码仓库的 GitHub Pages 使用 `git archive HEAD` 打包已提交文件并保留目录，不复制本地工作目录，不额外导出一份网络配置；不打包符号链接。发现被跟踪的 `.account` 必须阻止发布。前端保留 Vite 构建发布，文档站保留 Jekyll 构建发布，两者也检查误提交的 `.account`。Pages 只含当前提交，不含 Git 历史。
+- `core/script/network/<network>/airdrop.json` 与对应的公开参数、地址在同一目录；前端同步命令直接读取这些公开文件并打包进前端。快照 root 与链上一致时使用本地内容，缺失、损坏或不一致时回退到合约 URI；钱包证明仍由链上验证。
 - 部署脚本从这些文件读配置，不得硬编码网络参数或地址。网络切换只切 `network/` 子目录，不改脚本。
 - **跨库依赖地址**：A 依赖 B 已部署合约时，把 B 的各模块 `addresses.<模块名>.params` 复制到 `A/script/network/<net>/`，与 `addresses.<A>.params` 并列，不在 A 的配置文件里重复记录 B 的地址（如 `core` 依赖 `dex` 时只复制 UniswapV2 模块的 `addresses.uniswapv2.params`；根父币由 `Router.WETH()` 读取，无需复制 WETH 模块文件）。这样 B 重新部署后，A 只需复制新地址文件即可同步，避免手工转抄与多处漂移。
 - 部署脚本按依赖顺序 `source` 各 `addresses.*.params`：先被依赖方，再本库。

@@ -18,15 +18,15 @@ AirdropDistributor 是首币与普通发射共用的可选 distributor：接收�
 - 不支持部分领取、同币重复领取或单笔多代币领取。
 - 不设管理员、暂停、升级、截止时间、Root 更新或资产取回入口。
 
-构造函数固定 `LAUNCH_ADDRESS` 与 `PHASE_ADDRESS`，按 `(launchAddress, phaseAddress, genesisTokenAddress, genesisMerkleRoot, genesisClaimDelayRounds)` 传入。两者都是部署后冻结的值，声明为 `public immutable`、以大写命名并直接提供同名 getter，与 `core` 其他构造函数冻结值（`Phase.ORIGIN_BLOCKS`、`LOVE20Token.MAX_SUPPLY`）一致——`immutable` 让「任何人都不可能改写它」由编译器保证，而不是靠「没有第二个写入口」的约定。
+构造函数固定 `LAUNCH_ADDRESS` 与 `PHASE_ADDRESS`，按 `(launchAddress, phaseAddress, genesisTokenAddress, genesisMerkleRoot, genesisClaimDelayRounds, genesisSnapshotUri)` 传入。两者都是部署后冻结的值，声明为 `public immutable`、以大写命名并直接提供同名 getter，与 `core` 其他构造函数冻结值（`Phase.ORIGIN_BLOCKS`、`LOVE20Token.MAX_SUPPLY`）一致——`immutable` 让「任何人都不可能改写它」由编译器保证，而不是靠「没有第二个写入口」的约定。
 
 - `LAUNCH_ADDRESS` 是 `onTokenLaunched` 的唯一允许调用方；除构造函数这条首币路径外，它是唯一的配置写入路径。
 - `PHASE_ADDRESS` 只用于读取 `currentPhase()`，是 `claimableFromRound` 的时间基准。
 - `MEMBER_NFT_ADDRESS` **不新增构造参数**：快照 URI 鉴权需要的 MemberNFT 地址从 `LAUNCH_ADDRESS` 派生，即运行时读取 `ILaunch(LAUNCH_ADDRESS).MEMBER_NFT_ADDRESS()`（该 getter 已存在）。这与 dev-standards §5.2「能由入参地址的 getter 派生的依赖，不再重复入参」一致；不在构造期缓存该地址，因此 MemberNFT 部署顺序与地址预测不受本能力影响。
-- 构造函数不做静态零值校验；依赖地址与首币配置由部署脚本在广播前校验、部署后核对，见 dev-standards §5.7。
+- 构造函数不做静态零值校验；依赖地址与首币配置由部署脚本在广播前校验、部署后核对，见 dev-standards §5.7。创世 URI 在构造期写入，共用 URI 更新的非空与 256 字节上限检查。
 - 部署时 `launchAddress` 与首币地址都尚未存在，由部署脚本按部署者 nonce 预测后传入，并在 `Launch` 部署后核对；首币地址恒为 `computeCreateAddress(launchAddress, 1)`。
 
-构造函数在同一次部署内调用首币配置路径，因此首币在构造期即完成配置，不需要 `Launch` 回调。`Launch` 构造函数不调用 distributor 回调（首币固定 `NoCallback`），见 [Launch](08-launch.md#部署与首个代币)。构造期发出的 `AirdropConfigured` 是已登记的第二处「构造函数可发业务事件」例外：首币的配置没有其它事件覆盖，不在构造期发就只能丢失这次状态迁移，理由见 [通用规则](01-common-rules.md#部署与安全)。
+构造函数在同一次部署内调用首币配置路径，因此首币在构造期即完成配置，不需要 `Launch` 回调。`Launch` 构造函数不调用 distributor 回调（首币固定 `NoCallback`），见 [Launch](08-launch.md#部署与首个代币)。构造期依次发出 `AirdropConfigured` 与 `AirdropSnapshotUriUpdated`（旧 URI 为空串），分别记录首币分发配置与初始快照 URI；两项业务事实均已登记为构造期事件例外，理由见 [通用规则](01-common-rules.md#部署与安全)。
 
 ## 常量
 
@@ -34,7 +34,7 @@ AirdropDistributor 是首币与普通发射共用的可选 distributor：接收�
 | --- | --- | --- |
 | `TOTAL_SHARE` | `1e18` | 每个代币快照的份额分母，编译期常量，不可按部署配置 |
 | `MAX_CLAIM_DELAY_ROUNDS` | `1000` | `claimDelayRounds` 的上限，单位 Phase |
-| `MAX_SNAPSHOT_URI_BYTES` | `256` | `snapshotUri` 的链上字节上限，`updateSnapshotUri` 写入前按 `bytes(snapshotUri).length` 校验 |
+| `MAX_SNAPSHOT_URI_BYTES` | `256` | `snapshotUri` 的链上字节上限，构造期与 `updateSnapshotUri` 写入前均按 `bytes(snapshotUri).length` 校验 |
 
 `MAX_SNAPSHOT_URI_BYTES` 使 `snapshotUri` 这个 `string` 虽变长但有 256 字节链上硬上限：单条记录最大体量有界，页内体量与 `limit` 成正比，不构成 dev-standards §4.3(2) 所禁止的无界记录。这是我们有意选择「`airdropInfos` 分页直接返回含 `string` 的 `AirdropInfo`」而非「分页只回 id、另设按 id 批量读」的论证——记录里的 `string` 受常量约束，不会像 §4.3(2) 担心的「一条大记录把整页顶过 gas 上限且跳不过去」，故分页可以回记录本体。上限对事件里的新值与旧值同样成立，见 [快照 URI 更新 · 事件字段](#事件字段) 与 [event-standards §6.8](../../event-standards.md#68-动态字段上限)。
 
@@ -57,12 +57,12 @@ AirdropDistributor 是首币与普通发射共用的可选 distributor：接收�
 | 已领份额 | `tokenAddress` | `totalClaimedShare`，累计被成功领取消耗的份额 |
 | 领取标记 | `tokenAddress` + `claimer` | 是否已领取该代币 |
 | 已领金额 | `tokenAddress` + `claimer` | 该地址成功领取时实际转出的代币数量（与 `AirdropClaimed.amount` 同值） |
-| 快照 URI | `tokenAddress` | `snapshotUri`，快照 JSON 的发现提示 URL；默认空串，仅由 `updateSnapshotUri` 写入，每次更新发事件（含旧值） |
+| 快照 URI | `tokenAddress` | `snapshotUri`，快照 JSON 的发现提示 URL；创世币由构造参数一次写定；子币默认空串，由 `updateSnapshotUri` 写入；写入均发事件（含旧值） |
 | 发射者 memberId | `tokenAddress` | `launcherMemberId`，配置时一次写定；`0` 表示创世币，`updateSnapshotUri` 永久拒绝 |
 
 另有一个按配置顺序追加的 `tokenAddress` 列表，供 `airdropInfos` 分页读取；首币是首个元素。列表只追加，不删除、不重排。
 
-`launcherMemberId` 与 Root、起始轮次一样在配置时一次写定，此后没有第二写入点：`_configure` 的第四个参数由 `onTokenLaunched` 的 `launcherMemberId` 透传，构造函数为首币传 `0`。`snapshotUri` 是唯一可反复写入的状态，可由该 token 记录里的 `launcherMemberId` 对应的 `MemberNFT.ownerOf` 当前持有人更新；它不参与任何领取判定。`totalClaimedShare` 只增不减；领取标记与已领金额只会由「未领取」变为「已领取」。
+`launcherMemberId` 与 Root、起始轮次一样在配置时一次写定，此后没有第二写入点：`_configure` 的第四个参数由 `onTokenLaunched` 的 `launcherMemberId` 透传，构造函数为首币传 `0`。子币的 `snapshotUri` 可反复写入，可由该 token 记录里的 `launcherMemberId` 对应的 `MemberNFT.ownerOf` 当前持有人更新；它不参与任何领取判定。`totalClaimedShare` 只增不减；领取标记与已领金额只会由「未领取」变为「已领取」。
 
 ## 份额与金额
 
@@ -82,7 +82,7 @@ amount = floor(balanceOf(this) × share ÷ remainingShare)
 
 ## 代币配置
 
-两个入口共用同一条配置路径 `_configure(tokenAddress, merkleRoot, claimDelayRounds, launcherMemberId)`：构造函数用它为首币写入配置（`launcherMemberId = 0`），`onTokenLaunched` 用它为普通发射的子币写入配置（`launcherMemberId` 取回调第三个参数）。因此首币与子币的错误集合、判定顺序、轮次夹取完全一致；只有 `launcherMemberId` 的取值不同。
+两个入口共用同一条配置路径 `_configure(tokenAddress, merkleRoot, claimDelayRounds, launcherMemberId)`：构造函数用它为首币写入配置（`launcherMemberId = 0`），`onTokenLaunched` 用它为普通发射的子币写入配置（`launcherMemberId` 取回调第三个参数）。因此首币与子币的错误集合、判定顺序、轮次夹取完全一致；首币的 `launcherMemberId` 固定为 `0`，并在配置后额外写入构造参数 `genesisSnapshotUri`；普通子币的 URI 由发射者后续登记。
 
 ### onTokenLaunched（回调）
 
@@ -293,7 +293,7 @@ leafHash(msg.sender, share) = keccak256(bytes.concat(keccak256(abi.encode(msg.se
 | `totalRemainingShare` | `TOTAL_SHARE - totalClaimedShare`（当前值） |
 | `totalClaimedAmount` | 该代币累计已实际转出的代币数量（由 `claim` 累加） |
 | `remainingAmount` | 该代币在本合约的当前余额 `balanceOf(this)`，逐元素读取 |
-| `snapshotUri` | 该代币当前登记的快照 URI；默认空串 |
+| `snapshotUri` | 该代币当前登记的快照 URI；创世币为构造参数，子币未登记时为空串 |
 
 两个恒等式把四个数值锁在一起，链下可直接对账：
 
@@ -343,12 +343,12 @@ totalClaimedAmount + remainingAmount   == 该代币的初始首批供应量   //
 - **金额随领取顺序变化**：`amount` 按剩余份额比例计算，同一地址在不同时点领取得到的数量不同。这不是缺陷而是设计：按剩余额分配使任何人都无法通过抢先领取占取超过自身份额比例的资产，也让最后一人清空余额。对账以 `AirdropClaimed.amount` 为准。
 - **无管理员、无暂停、无取回入口**：没有 owner、admin、pause、rescue、upgrade，也没有改变 Root 或截止时间的入口。部署后合约行为只由代码与快照决定。
 - **`NoCallback` 模式下把本合约设为子币 distributor 会锁死首批供应**：普通发射允许 `NoCallback`，此时 `Launch` 不调用回调，本合约不会为该子币写入任何配置；而 `LOVE20Token` 构造函数已把整批首批供应铸给 distributor 地址，本合约又没有取回入口。结果就是这批代币永久留在合约里、任何地址都无法领取（`claim` 恒回滚 `TokenNotConfigured`）。本合约唯一合法的子币接入方式是 `Callback` 模式并传入 64 字节配置。发射入口与前端必须在把 distributor 设为本合约时强制 `Callback`；`Launch` 本身不检查这种组合，因为它不知道 distributor 的业务语义。
-- **前端必须预检**：最低限度要核对 `Σleaves == 1e18`、每条证明与 `leafHash` 一致、`claimableFromRound` 与部署所在轮次相符，并用 `claimableAmount` 逐条模拟。链上没有可弥补这些错误的手段，预检是唯一的失败前置点。
-- **快照 URI 是发现提示、不是授权**：`snapshotUri` 只告诉前端「去哪里找快照 JSON」，Merkle Root 在配置后不可变，链上**不校验** URI 指向的文件内容是否与 Root 匹配，也不因 URI 改变而调整任何领取逻辑。URI 指向错文件、被改成钓鱼站、或失联，最坏结果只是「前端找不到数据」，不可能让任何人多领或少领——领取资格只由 `proof` 对链上 Root 的校验决定。前端因此必须自行完成下一条的校验流程，不能把 URI 当作可信数据源。
-- **前端校验流程（提交前拦截）**：`airdropInfos` 分页拿到 `snapshotUri` → `fetch(uri)` 取回快照 JSON → 按 [快照来源](#快照来源) 的叶子格式重建 Merkle 树 → 断言 `Σleaves == 1e18` 且重建出的 root 等于链上 `merkleRoot` → **任一不匹配则在提交交易前拦截、不展示可领数量**（不发起 `claim`、不给用户「可领 X」的误导）→ 匹配后从文件中查已连接钱包地址的 `share` 与 `proof`，用 `claimableAmount` 模拟，再让用户提交 `claim`。URI 内容不通过校验时，领取入口必须保持不可用，而不是退化为「用链上 Root 盲领」。
+- **发布与部署必须预检**：快照生成、前端同步与发布门禁校验 root、每条证明、正份额、名单数量、重复地址及 `Σleaves == 1e18`。`DeployCore` 在广播前校验本网络文件；部署后另核对 `claimableFromRound`。前端使用时比较文件 root 与链上 root，并用 `claimableAmount` 校验当前钱包的 share/proof，不重复重建整棵树。
+- **快照 URI 是发现提示、不是授权**：`snapshotUri` 只告诉前端「去哪里找快照 JSON」，Merkle Root 在配置后不可变，链上**不校验** URI 指向的文件内容是否与 Root 匹配，也不因 URI 改变而调整任何领取逻辑。URI 指向错文件、被改成钓鱼站、或失联，最坏结果只是「前端找不到数据」，不可能让任何人多领或少领——领取资格只由 `proof` 对链上 Root 的校验决定。前端因此必须完成下一条的 root 比较与当前钱包证明校验，不能把 URI 当作可信数据源。
+- **前端校验流程（提交前拦截）**：创世币优先懒加载当前网络随构建打包的快照，root 与链上一致即使用，不请求远端；本地缺失、损坏或 root 不一致时才从链上 HTTP(S) URI 拉取。子币按链上 URI 发现快照。两种来源都比较文件 `merkleRoot` 与链上值，不一致则不展示可领数量、不发起 `claim`；一致后查当前钱包的 `share` 与 `proof`，调用链上 `claimableAmount` 校验并报价。前端不重建整棵树；比较文件声明的 root 不等于证明整个 JSON 完整，完整性预检在生成、同步与发布阶段执行。
 - **前端去中心化**：子币发射者无需说服前端开发者手工整合自己的快照，自己调用 `updateSnapshotUri` 登记 URI 即可；前端只读 `airdropInfos` 就能发现所有已登记的子币。这把新币上线的协作成本从「改前端代码 + 发版」降为「发射者链上一笔交易」。
 - **GitHub Pages 可行性**：实测 `https://love20bsc.github.io/docs/` 返回 `access-control-allow-origin: *`，浏览器可直接 `fetch`；前端本身部署在 GitHub Pages 时与快照同源，连 CORS 都不用考虑。`MAX_SNAPSHOT_URI_BYTES = 256` 对形如 `https://<user>.github.io/<repo>/<path>/<file>.json` 的 URL 绰绰有余（约 60 字节的实测串远低于上限）。
-- **创世币 URI 永久为空且无人可设**：构造期首币的 `launcherMemberId = 0`；因 `MemberNFT._nextTokenId = 1`，`memberId 0` 永不铸造，`onlySnapshotUriUpdater` 第 2 步对 `launcherMemberId == 0` 直接回 `NotSnapshotUriUpdater(msg.sender, 0)`（不落到 `ownerOf(0)`）。因此首币没有 URI 更新者、URI 恒为空串——这是刻意设计，不是遗漏：首币快照由部署记录公开举证（来源链、来源区块、Merkle Root、首币地址），不依赖某个可改口的发射者。
+- **创世币 URI 构造期写定且不可更新**：新部署传入非空 `genesisSnapshotUri`，指向对应网络的公开快照。首币的 `launcherMemberId = 0`，`updateSnapshotUri` 对任何调用者仍回滚 `NotSnapshotUriUpdater(msg.sender, 0)`，不读取 `ownerOf(0)`。旧部署的空 URI 不会因源码更新改变，前端继续支持本地快照；旧文件应保留，以便旧部署的链接持续可用。
 
 ### 快照来源
 
