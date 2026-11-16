@@ -253,13 +253,13 @@ Layout 中**部署后冻结的字段**按 §3.1 用 `UPPER_SNAKE`（`ACTION_TARG
 | `Weight` | 权重（非票数） | — |
 | `Ratio` | 1e18 定点比例 | `rate`、`percent`、`bps`、`perThousand` |
 | `Blocks` | 区块数 | — |
-| `Phase` | 时间片 | `round` |
+| `Phase` | 阶段 | `round` |
 | `Round` | 治理轮 | `epoch`、`period` |
 | `Timestamp` | 秒级时间戳 | `time` |
 | `Count` | 基数 | `num`、`length` |
 | `Index` | 序号 | `idx` |
 
-`Phase` 与 `Round` 是本协议最容易写错的一对：`Phase` 是出块时间片（`currentPhase`、`promisedWaitingPhases`），`Round` 是治理轮（`currentRound`、`round`）。两者不互为别名，也不得用 `period`/`epoch` 代替任何一个。
+`Phase` 与 `Round` 是本协议最容易写错的一对：`Phase` 是出块阶段（`currentPhase`、`promisedWaitingPhases`；界面统一写「阶段」，旧称「时间片」只在解释协议结构时用），`Round` 是治理轮（`currentRound`、`round`）。两者不互为别名，也不得用 `period`/`epoch` 代替任何一个。
 
 ## 十、跨仓术语
 

@@ -15,7 +15,7 @@
 ## 质押与发射
 
 - **治理质押账本**：BSC 版不使用独立的 SL/ST 质押凭证；质押份额和可赎回状态属于核心 `Stake` 账本。
-- **统一解锁**：流动性质押和加速质押不能分别解锁；等待期按底层 `Phase` 时间片理解，不使用上层业务 `Round` 计数。
+- **统一解锁**：流动性质押和加速质押不能分别解锁；等待期按底层 `Phase`（阶段）理解，不使用上层业务 `Round` 计数。
 - **质押融合**：按 `tokenAddress` 社区隔离；来源 MemberNFT 在当前治理 Round 已推举或投票后不能再融合，上一 Round 的使用不影响下一 Round；已发生的治理、投票和激励历史仍归原 `memberId`。
 - **发射次数**：发射权直接记录在 `tokenAddress + memberId` 的 `launchCount` 账本中，并保留未消耗的累计发射额度 `launchCredit`；每次治理激励实际铸造后，按本次铸造前剩余供应量计算并向上取整阈值，达到完整阈值就增加整数次数并扣除对应额度，余数继续累计。每个代币社区累计最多 `X` 次，达到上限后不再新增次数，发射时消耗次数。`X` 为协议初始化的每社区上限。
 - **发射次数融合**：同一代币社区内，源 MemberNFT 可向目标 MemberNFT 原子转移部分整数次数；调用者只需控制来源 MemberNFT，不要求控制目标 MemberNFT，且不能跨社区或回写历史发射记录。它与质押融合是两个独立操作。
@@ -23,9 +23,9 @@
 
 ## Phase 与 Round
 
-- **Phase**：底层时间线中的无语义时间片，不命名投票、行动、验证或铸币阶段，也不定义业务轮次。
-- **Round**：上层业务将 Phase 组合后形成的轮次编号，从 `1` 开始；不同层的同名或同号 Round 不表示相等。
-- **行动轮次**：`action` 层按 Executor 定义轮次。LP 使用三阶段（投票、加入、铸币），GroupAction 和 GroupService 使用四阶段（投票、加入、验证、铸币）。当前 `Phase = p` 时，LP 的投票、加入、铸币 Round 分别为 `p`、`p-1`、`p-2`；GroupAction 和 GroupService 的投票、加入、验证、铸币 Round 分别为 `p`、`p-1`、`p-2`、`p-3`。结果小于 `1` 表示该阶段尚未开始，查询回滚而不返回 `0`。加入阶段包括行动参与、加入、退出和资产状态变化；LP 与 GroupService 没有独立验证业务，GroupService 复用 GroupAction 验证结果。是否满足铸币条件仍由具体执行合约判断。
+- **Phase（阶段）**：全局时钟的一个刻度，底层时间线中的无语义单位；不命名投票、加入、验证、铸币这些业务环节，也不定义业务轮次。中文统一写「阶段」（旧称「时间片」已废弃，只在解释协议结构时可用）。
+- **Round**：上层业务把相邻若干 Phase 串成的一条流水线（投票 →（加入）→（验证）→ 铸币），编号从 `1` 开始。第 X 轮的各个环节落在阶段 X、X+1、X+2、X+3（环节数量按轮次类型不同）。四类轮次——治理轮、LP 行动轮、链群行动轮、链群服务轮——同号 Round 不表示相等，引用时必须带类型；不使用「层」这类集合说法。
+- **行动轮次**：`action` 代码库按 Executor 定义轮次。LP 使用三阶段（投票、加入、铸币），GroupAction 和 GroupService 使用四阶段（投票、加入、验证、铸币）。当前 `Phase = p` 时，LP 的投票、加入、铸币 Round 分别为 `p`、`p-1`、`p-2`；GroupAction 和 GroupService 的投票、加入、验证、铸币 Round 分别为 `p`、`p-1`、`p-2`、`p-3`。结果小于 `1` 表示该阶段尚未开始，查询回滚而不返回 `0`。加入阶段包括行动参与、加入、退出和资产状态变化；LP 与 GroupService 没有独立验证业务，GroupService 复用 GroupAction 验证结果。是否满足铸币条件仍由具体执行合约判断。
 - **治理 Round**：核心 `Submit` 和 `Vote` 把 `Phase N` 解释为治理 `Round N`；该 Phase 结束后，Round N 的核心激励可以准备和铸造。
 
 ## Proposal 与 Target
@@ -33,10 +33,10 @@
 - **Proposal**：底层治理对象，由 `Submit` 创建、由 `Submit` 推举、由 `Vote` 表决、由 `Mint` 铸造提案激励。Proposal 记录命名为 `ProposalInfo { ProposalHead head, ProposalBody body }`，对应旧 `ActionInfo` 及其 `ActionHead` / `ActionBody`：头部是合约分配的三项 `id`、`author`、`createAtBlock`，主体是创建者提供的全部字段 `title`、`details`、`target`、`targetMode`、`targetData`。创建者字段使用旧代码命名 `author`，但 BSC 值记录创建 Proposal 的 MemberNFT/memberId，不再以地址作为业务主体。
 - **Proposal Target**：Proposal 的激励铸造接收主体。Target 可以是普通地址或合约；合约型 Target 是否接收回调由 `targetMode` 决定。代币由协议按规则铸造，不表述为某人发放代币。
 - **ActionTarget**：当前社群行动提案类型的 Proposal Target。它把 Proposal 与行动执行合约关联，并提供该提案类型的通用加入/退出状态和应急清理边界。
-- **行动执行合约**：由 `ActionTarget` 关联的业务合约，负责具体行动的参与、验证、资产处理和行动层激励分配。`executor` 不属于底层治理框架的通用业务角色。
+- **行动执行合约**：由 `ActionTarget` 关联的业务合约，负责具体行动的参与、验证、资产处理和行动激励分配。`executor` 不属于底层治理框架的通用业务角色。
 - **GroupAction 参与归属**：GroupAction Executor 以 `tokenAddress + actionId + groupId + memberId` 的当前有效关系为事实来源，跨其所有代币社区和行动维护归属计数；集合读取收敛为 `isGroupMember(groupId, memberId)` 与五条标准分页索引（`joinedGroupIds`、`joinedGroupIdsByMemberId`、`joinedTokenAddressesByGroupIdByMemberId`、`joinedMemberIds`、`joinedMemberIdsByGroupId`），按轮历史另有两读（`groupIdsByRound`、`memberIdsByGroupId`）。Group Chat 通过 `isGroupMember` 判断归属；ActionTarget 的强制退出不修改这些业务索引。
 - **proposalId 与 actionId**：`proposalId` 是所有 Proposal 的统一 ID；只有部分行动类 Proposal 使用 `actionId` 作为业务别名，二者数值完全相同，`actionId` 是 `proposalId` 的子集，不创建第二个 ID。
-- **回调与透传数据**：Proposal 创建、提案推举和提案投票分别触发对应 Target 回调；回调名称为 `onProposalCreated`、`onProposalSubmitted`、`onProposalVoted`；推举回调使用 `submitterId`，投票回调使用 `voterId` 和本次增量票数；核心只传递标准 Proposal 上下文和不透明的 Target Data（核心接口中为 `bytes[]`/`bytes[][]` 参数），不解释提案扩展业务；该数据的编码在 action 层称 KV，具体字段由对应 Target 或行动执行合约定义。
+- **回调与透传数据**：Proposal 创建、提案推举和提案投票分别触发对应 Target 回调；回调名称为 `onProposalCreated`、`onProposalSubmitted`、`onProposalVoted`；推举回调使用 `submitterId`，投票回调使用 `voterId` 和本次增量票数；核心只传递标准 Proposal 上下文和不透明的 Target Data（核心接口中为 `bytes[]`/`bytes[][]` 参数），不解释提案扩展业务；该数据的编码在 action 代码库称 KV，具体字段由对应 Target 或行动执行合约定义。
 
 ## 架构与仓库关系
 
