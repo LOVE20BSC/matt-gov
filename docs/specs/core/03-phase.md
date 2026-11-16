@@ -1,6 +1,6 @@
 # Phase 与 Round
 
-Phase 维护连续的无语义时间片、同步观测和动态校准，不内置 Vote、Join、Verify、Mint 或业务 Round。不能把旧静态 Phase 直接作为本版实现。
+Phase 维护连续的、无业务语义的阶段、同步观测和动态校准，不内置 Vote、Join、Verify、Mint 或业务 Round。不能把旧静态 Phase 直接作为本版实现。
 
 ## 参数与查询
 

@@ -10,7 +10,7 @@
 | Stake | 流动性质押、加速质押、份额和手续费 |
 | Submit / Vote | Proposal 创建、推举、投票和 Target 回调 |
 | Mint | 轮次激励准备、治理激励及 Proposal 激励结算 |
-| Phase | 无业务语义的时间片 |
+| Phase | 无业务语义的阶段 |
 | LOVE20Token | 代币实例与代币树 |
 | Launch | 首币部署、LOVE20Token 创建、发射额度、次数融合及子币发射 |
 

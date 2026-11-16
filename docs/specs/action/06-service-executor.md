@@ -2,7 +2,7 @@
 
 服务 Proposal 的代币为 `serviceTokenAddress`，面向整个 `actionTokenAddress` 社区的 GroupAction，不绑定单个源 actionId。两者必须相同，或服务代币是行动代币的直接父币；其他关系在创建时拒绝。服务 Proposal 绑定本 Executor，其 Proposal ID 在 Action 层统一以 `serviceActionId` 称呼（Action ID 别名）。
 
-阶段和源行动查询见 [服务验证复用](02-phase-model.md#服务验证复用)。分母统计 `actionTokenAddress` 社区本轮全部 GroupAction 的行动层激励：按 `votedActionIdsByExecutors(actionTokenAddress, round, [GROUP_ACTION_EXECUTOR_ADDRESS()])` 枚举本轮属于本执行器的有票行动（**上界 = 该代币本轮有推举资格的成员数**：每个成员每轮最多推举一个提案，出处 core [提交](../core/05-submit.md)；不是社区行动总数，见 [ActionTarget](01-action-target.md)），逐个行动求和。行动层查询自带验证与激励条件，未完成验证或无公共验证者的行动整轮返回 0，GroupService 不重复筛选。服务 Proposal 本轮没有可铸造激励时，由 Mint 的内部 Round 准备逻辑决定为零，Executor 不重复判断原因，owner 和公共验证者激励均为零。
+阶段和源行动查询见 [服务验证复用](02-phase-model.md#服务验证复用)。分母统计 `actionTokenAddress` 社区本轮全部 GroupAction 的行动激励：按 `votedActionIdsByExecutors(actionTokenAddress, round, [GROUP_ACTION_EXECUTOR_ADDRESS()])` 枚举本轮属于本执行器的有票行动（**上界 = 该代币本轮有推举资格的成员数**：每个成员每轮最多推举一个提案，出处 core [提交](../core/05-submit.md)；不是社区行动总数，见 [ActionTarget](01-action-target.md)），逐个行动求和。行动查询自带验证与激励条件，未完成验证或无公共验证者的行动整轮返回 0，GroupService 不重复筛选。服务 Proposal 本轮没有可铸造激励时，由 Mint 的内部 Round 准备逻辑决定为零，Executor 不重复判断原因，owner 和公共验证者激励均为零。
 
 状态集中在 `GroupServiceStorage.Layout`；字段的插入、删除或重排都会移动后续槽位。本仓无生产部署，Layout 变更后必须整体重新部署；若已有部署，只能尾部追加。
 
@@ -10,7 +10,7 @@
 
 | 符号 | 含义 |
 | --- | --- |
-| `A[a]` | 源 GroupAction a 的行动层分配总额，即 `generatedActionReward` 返回的 proposalReward；按群切片 floor 后其和不超过 `A[a]` |
+| `A[a]` | 源 GroupAction a 的行动分配总额，即 `generatedActionReward` 返回的 proposalReward；按群切片 floor 后其和不超过 `A[a]` |
 | `r` / `publicVerifierRatio` | 服务 Proposal 绑定的公共验证者比例，`1e18` 精度，取值严格位于 `(0, 1e18)`；各源行动统一取该值（不再由验证者在申请时自报） |
 | `totalGroupActionReward` | `actionTokenAddress` 社区本轮全部 GroupAction 的 `A[a]` 之和，即本服务轮次的分母 |
 | `publicVerifierId[a]` | 行动 a 在目标轮锁定的公共验证者 verifierId |
@@ -19,7 +19,7 @@
 | `serviceReward` | 本服务 Proposal 的整笔激励 |
 
 ```text
-A[a] = generatedActionReward(actionTokenAddress, a, round)                 // 该行动自身的行动层激励
+A[a] = generatedActionReward(actionTokenAddress, a, round)                 // 该行动自身的行动激励
 D    = Σ_a A[a]                                                          // 未准备时实时重算；行动代币轮次准备后读缓存
 
 verifierWeightNumerator(m) = Σ_{a: lockedVerifierId(actionTokenAddress, a, round) == m} A[a]

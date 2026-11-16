@@ -7,7 +7,7 @@ Core 定义治理、统一身份、时间线和基础子币发射。按编号阅
 | [00-protocol-model.md](00-protocol-model.md) | 协议模型、组件与部署参数 |
 | [01-common-rules.md](01-common-rules.md) | 主体、编号、精度和安全约束 |
 | [02-member-nft.md](02-member-nft.md) | 身份、名称、铸造费用 |
-| [03-phase.md](03-phase.md) | 时间片、同步观测和动态校准 |
+| [03-phase.md](03-phase.md) | 阶段、同步观测和动态校准 |
 | [04-stake.md](04-stake.md) | 质押、手续费、解锁与融合 |
 | [05-submit.md](05-submit.md) | Proposal 创建、推举与 Submit 回调 |
 | [06-vote.md](06-vote.md) | Proposal 投票、快照与 Vote 回调 |

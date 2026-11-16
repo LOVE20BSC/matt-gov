@@ -38,9 +38,9 @@
 | GroupAction | 验证者押金（申请划转、修改不重复划转、撤销全额退还） | `verifierStakeAmount = 0` 时申请与撤销都不转账；首次申请按配置额划转，修改申请（含换轮修改）不退款也不再划转且不发新的押金事件；撤销把押金全额退还给该 verifierId 的当前持有人（退款跟随 NFT 转移后的新持有人）；无治理票、说明超长（1025 字节回滚、正好 1024 字节通过并划转）与未创建行动的申请、无当前申请的撤销都不产生划转；多成员各自独立，一人撤销不影响他人押金；同一社区不同行动各自配置与独立，一个行动撤销不影响另一个行动的押金与配置；`verifierStake` 与「持有当前申请」一致（持有返回配置额，撤销后为 0）；创建轮结束后撤销仍然有效并退款；已在本轮排名内或已锁定的验证者撤销后照常退款，且不影响该轮的锁定与后续批次提交；余额或授权不足时整笔回滚、不留下申请；押金不进 `staked`/`totalStaked`/`stakedByMemberId`，不改变 `hasActiveGroups`；`VerifierStakeDeposited`/`VerifierStakeRefunded` 的金额与代币划转一致，申请与撤销事件的 `round` 是操作发生的轮次（撤销事件不再是创建轮）；对应 `testVerifierStakeLifecycle`、`testVerifierApplicationReplacementKeepsTheBond`、`testLockedVerifierKeepsVerifyingAfterCancelling`、`testVerifierApplicationCancelEventCarriesTheCancelRound` |
 | GroupAction | 描述字段长度上限 | 验证者申请说明与群描述 `GroupConfig.description` 超过 1024 字节均回滚 `DescriptionTooLong(length, 1024)`；正好 1024 字节通过 |
 | GroupAction | 开放区块与容量查询 | `SPLITS()` 回构造函数传入的分割线且只读；用它与 `IPhase.phaseInfo(round + 2)` 算出的开放区块与合约判定一致，可开放人数为 `SPLITS().length + 1` |
-| GroupAction | 连续批次、NFT 转移续验、无验证者入榜/失联 | 无跳跃或重复，不换锁定身份；未完成行动层激励为零 |
+| GroupAction | 连续批次、NFT 转移续验、无验证者入榜/失联 | 无跳跃或重复，不换锁定身份；未完成行动激励为零 |
 | GroupAction | 停用链群继续目标轮验证 | 加入轮结束后停用、恢复或新增链群都不改变该轮验证集合，目标轮验证仍可完成，不因当前激活状态阻断 |
-| GroupAction | 未完成验证时的行动层查询 | `generatedActionReward` 与 `generatedActionRewardByGroupId` 按轮次返回 0，部分批次已计入不产生正值，`totalFinalScore` 为零时不除零 |
+| GroupAction | 未完成验证时的行动查询 | `generatedActionReward` 与 `generatedActionRewardByGroupId` 按轮次返回 0，部分批次已计入不产生正值，`totalFinalScore` 为零时不除零 |
 | GroupAction | 完整验证后的成员和群激励 | 符合权重与舍入公式 |
 | [GroupService](06-service-executor.md) | 全社区聚合、同币/直接父币、非直接关系 | 分母按 `votedActionIdsByExecutors` 直接枚举绑定 `GROUP_ACTION_EXECUTOR_ADDRESS()` 的本轮有票行动、逐行动求和；源行动查询自行处理验证条件；非法代币关系回滚 `ActionTokenParentMismatch(actionTokenAddress, serviceTokenAddress, actualParentTokenAddress)`；`publicVerifierRatio == 0` 或 `>= 1e18` 回滚 `InvalidRatioForPublicVerifier(value)`（两个边界都拒绝） |
 | GroupService | 构造派生依赖与绑定 | ActionTarget 从 GroupActionExecutor 的 `ACTION_TARGET_ADDRESS()` 反查，Stake 再从 ActionTarget 的 `VOTE_ADDRESS()` 反查，`MEMBER_NFT_ADDRESS`/`PHASE_ADDRESS`/`LAUNCH_ADDRESS` 从 Stake 读取一次并缓存，`MINT_ADDRESS` 从 `ActionTarget.MINT_ADDRESS()` 读取一次并缓存；依赖代码、Stake 派生图与 `GROUP_ACTION_EXECUTOR_ADDRESS()` 绑定由 `DeployAction`/21_check 覆盖；`MINT_ADDRESS` 不作为构造参数；不派生 `VOTE_ADDRESS` |

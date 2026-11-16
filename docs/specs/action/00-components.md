@@ -18,7 +18,7 @@
 | Submit | Proposal 创建、推举及回调 |
 | Vote | 轮次投票与回调 |
 | Mint | Proposal 激励铸造 |
-| Phase | 当前时间片和业务轮次映射 |
+| Phase | 当前阶段和业务轮次映射 |
 
 `GroupActionStorage` / `GroupServiceStorage` 是纯声明的布局库：只定义 `Layout`、常量与槽位切分，不承载业务逻辑、不参与链接部署；边界与例外见 [GroupAction Executor 的部署体积与拆分](05-group-action-executor.md#部署体积与拆分)。
 

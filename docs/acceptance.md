@@ -59,12 +59,12 @@
 - 激励结算精度无损失
 
 ### 行动公式零值边界
-**覆盖要求**：覆盖 LP 时间扣减封顶、`totalEffectiveAmount` 为零，以及治理上限启用时 `totalValidGovVotes` 为零；覆盖链群 `voteAmountTotal`/`totalFinalScore` 为零时不除零且行动层激励为零，并验证底层 Proposal 激励仍可独立处理。`govRatioMultiplier == 0` 时不得因治理票为零错误地清零 LP 或服务激励。
+**覆盖要求**：覆盖 LP 时间扣减封顶、`totalEffectiveAmount` 为零，以及治理上限启用时 `totalValidGovVotes` 为零；覆盖链群 `voteAmountTotal`/`totalFinalScore` 为零时不除零且行动激励为零，并验证底层 Proposal 激励仍可独立处理。`govRatioMultiplier == 0` 时不得因治理票为零错误地清零 LP 或服务激励。
 
 **测试方式**：
 - 单元测试：边界值参数化测试
 - Fuzzing：`action/test/LpExecutorFuzz.t.sol::test_ZeroBoundaries(uint256 effectiveAmount, uint256 totalVotes, uint256 multiplier)`（零 `totalEffectiveAmount`、零 `totalValidGovVotes`、零 `govRatioMultiplier`）；LP 时间扣减封顶由同文件 `testFuzzJoinDeductionCapsAtAmount` 覆盖
-- Fuzzing：`action/test/GroupActionExecutor.t.sol::testZeroTotalScoreBlocksSettle`、`action/test/GroupActionFuzz.t.sol::testFuzzSettleSplitsMatchFinalScore`（链群零 `totalFinalScore` 不除零且行动层激励为零）
+- Fuzzing：`action/test/GroupActionExecutor.t.sol::testZeroTotalScoreBlocksSettle`、`action/test/GroupActionFuzz.t.sol::testFuzzSettleSplitsMatchFinalScore`（链群零 `totalFinalScore` 不除零且行动激励为零）
 - 验收证据：Fuzzing 运行报告显示无 panic
 
 **判定标准**：
@@ -258,7 +258,7 @@
 - 参数透传无丢失
 
 ### 公共验证者与 Round 历史
-**覆盖要求**：覆盖自有来源与 Provider 额度来源的加入、追加、部分撤回和全部退出逐笔更新当前 Round；成员可在同一行动混合多个来源，未使用的 Provider 额度留存合约内可退还；Provider 额度授予即存入合约，成员 `join` 只消耗可用额度。Provider 只能撤回自己提供的那部分：`withdrawProviderQuota` 按链群撤回未使用额度（可部分撤回，不改成员参与量），`removeProviderQuota` 收回整笔授权（含已投入部分，总参与量归零时自动退出），且只有该 Provider 当前持有人可调用。**成员退出按资金归属处理：自有资产返还成员，Provider 来源恢复为该 Provider 对该成员的可用额度、不转出合约**，成员可再次用同一额度加入。覆盖同轮多次变更、显式零值退出、最后成员退出移除 Group、无交互 Round 继承最近历史，以及加入阶段结束后不能回写。单个撤回操作：自有 `withdraw` 发 `GroupActionWithdrawn`，`withdrawProviderQuota` 只发 `ProviderQuotaRemoved`（不改参与量），`removeProviderQuota` 对已投入部分发 `GroupActionWithdrawn`、对整笔授权发 `ProviderQuotaRemoved`；成员退出时对自有金额发 `GroupActionWithdrawn`、对每个有余额的 Provider 发 `ProviderQuotaRestored`，再发 `GroupActionExited`；代币量只由 `GroupActionJoined`/`GroupActionWithdrawn` 承载，`GroupActionExited` 不带金额。验证阶段无需前置状态准备交易即可读取目标 Round 历史，验证集合只由目标 Round 历史决定，加入轮结束后停用、恢复或新增链群都不改变该轮验证集合；验证提交按成员历史顺序使用连续游标，每个成员每轮只产生一次新的冷写入。零票申请不进入排名，替换或撤销申请时旧申请从排名移除且不从榜外补位；验证者得票名册按 `(round, applicationId)` 记录，同一投票人只占一行、金额累加，按申请 id 与按验证者 id 两个入口读到同一份集合，名册金额之和等于该申请在该轮的票数与排名票数。验证者押金按行动配置在首次申请时划转、替换申请不重复划转，撤销申请时同步全额退还给该 verifierId 的当前持有人（任何轮次都可撤销并全额退款，包括已进入当轮排名或已被锁定的情形），且押金不进链群激活质押账本。每个成员的 `finalScore = participationAmount × originScore`，再用全行动总 `finalScore` 分配激励，不因所属 Group 不同而改变相同参与量/得分的权重；目标轮未完成验证时行动层分配查询返回 `0`。首个验证批次永久锁定后验证者停止提交时，本轮行动层激励保持为 `0`，底层 Proposal 激励仍可按规则铸造或销毁，且不允许未经授权的其他验证者接管。
+**覆盖要求**：覆盖自有来源与 Provider 额度来源的加入、追加、部分撤回和全部退出逐笔更新当前 Round；成员可在同一行动混合多个来源，未使用的 Provider 额度留存合约内可退还；Provider 额度授予即存入合约，成员 `join` 只消耗可用额度。Provider 只能撤回自己提供的那部分：`withdrawProviderQuota` 按链群撤回未使用额度（可部分撤回，不改成员参与量），`removeProviderQuota` 收回整笔授权（含已投入部分，总参与量归零时自动退出），且只有该 Provider 当前持有人可调用。**成员退出按资金归属处理：自有资产返还成员，Provider 来源恢复为该 Provider 对该成员的可用额度、不转出合约**，成员可再次用同一额度加入。覆盖同轮多次变更、显式零值退出、最后成员退出移除 Group、无交互 Round 继承最近历史，以及加入阶段结束后不能回写。单个撤回操作：自有 `withdraw` 发 `GroupActionWithdrawn`，`withdrawProviderQuota` 只发 `ProviderQuotaRemoved`（不改参与量），`removeProviderQuota` 对已投入部分发 `GroupActionWithdrawn`、对整笔授权发 `ProviderQuotaRemoved`；成员退出时对自有金额发 `GroupActionWithdrawn`、对每个有余额的 Provider 发 `ProviderQuotaRestored`，再发 `GroupActionExited`；代币量只由 `GroupActionJoined`/`GroupActionWithdrawn` 承载，`GroupActionExited` 不带金额。验证阶段无需前置状态准备交易即可读取目标 Round 历史，验证集合只由目标 Round 历史决定，加入轮结束后停用、恢复或新增链群都不改变该轮验证集合；验证提交按成员历史顺序使用连续游标，每个成员每轮只产生一次新的冷写入。零票申请不进入排名，替换或撤销申请时旧申请从排名移除且不从榜外补位；验证者得票名册按 `(round, applicationId)` 记录，同一投票人只占一行、金额累加，按申请 id 与按验证者 id 两个入口读到同一份集合，名册金额之和等于该申请在该轮的票数与排名票数。验证者押金按行动配置在首次申请时划转、替换申请不重复划转，撤销申请时同步全额退还给该 verifierId 的当前持有人（任何轮次都可撤销并全额退款，包括已进入当轮排名或已被锁定的情形），且押金不进链群激活质押账本。每个成员的 `finalScore = participationAmount × originScore`，再用全行动总 `finalScore` 分配激励，不因所属 Group 不同而改变相同参与量/得分的权重；目标轮未完成验证时行动分配查询返回 `0`。首个验证批次永久锁定后验证者停止提交时，本轮行动激励保持为 `0`，底层 Proposal 激励仍可按规则铸造或销毁，且不允许未经授权的其他验证者接管。
 
 **测试方式**：
 - 单元测试：`action/test/GroupActionExecutor.t.sol` 的 Round 历史、验证场景
@@ -268,8 +268,8 @@
 **判定标准**：
 - Round 历史按加入阶段操作正确记录
 - 停用链群的入选轮验证不被阻断
-- 未完成验证时行动层分配查询为 `0`
-- 验证者锁定后行动层激励为0
+- 未完成验证时行动分配查询为 `0`
+- 验证者锁定后行动激励为0
 - 验证者押金只在撤销申请时全额退还，退款跟随 verifierId 的当前持有人
 - 验证者得票名册与票数、排名三者恒等，两个入口结果一致
 - 底层 Proposal 激励独立处理

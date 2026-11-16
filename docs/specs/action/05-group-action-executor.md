@@ -99,9 +99,9 @@ openBlock = verifyPhaseStartBlock + openOffset
 
 `SPLITS[0]` 对应第 2 名。`block.number >= openBlock` 才开放，不能因取整提前。读取方用 `SPLITS()` 与 `IPhase.phaseInfo(round + 2)` 的 `(startBlock, phaseBlocks)` 自行计算各名次的开放区块；可开放人数为 `SPLITS().length + 1`，第 1 名在验证阶段起点即可提交。`SPLITS()` 为空数组时不分层，只有第 1 名作为当轮唯一公共验证者。
 
-首个有效验证批次永久锁定验证者 MemberNFT；NFT 转移后新持有人续验，不能由未经授权的验证者接管。需完成目标 Round 的全部 Group 验证；无验证者入榜或锁定者失联、未完成时，行动层激励为零，底层 Proposal 激励仍可独立铸造或销毁。`generatedActionRewardByGroupId` 与一切行动层分配查询按轮次读取，目标轮未完成验证时返回 0，不因部分批次已计入而返回正值；GroupService 与 GroupAction 阶段划分相同，其读取的轮次已经完成验证，正常不会命中该分支。相关验收见 [组织验收](../../acceptance.md#公共验证者与-round-历史)。
+首个有效验证批次永久锁定验证者 MemberNFT；NFT 转移后新持有人续验，不能由未经授权的验证者接管。需完成目标 Round 的全部 Group 验证；无验证者入榜或锁定者失联、未完成时，行动激励为零，底层 Proposal 激励仍可独立铸造或销毁。`generatedActionRewardByGroupId` 与一切行动分配查询按轮次读取，目标轮未完成验证时返回 0，不因部分批次已计入而返回正值；GroupService 与 GroupAction 阶段划分相同，其读取的轮次已经完成验证，正常不会命中该分支。相关验收见 [组织验收](../../acceptance.md#公共验证者与-round-历史)。
 
-**验证者信任模型（接受的取舍）**：原始分是验证者的自由裁量输入，合约只约束 `0 ≤ originScore ≤ 100`（`ScoreLimitExceeded`）与累计游标，不提供回避、交叉复核、挑战期或罚没；押金只担保「持有当前申请」，撤销即全额退款。对失信验证者的约束全部落在治理层（逐轮投票与排名），而单轮锁定后不可替换、无接管，本轮行动层激励可能被独占或因全 0 得分永久停留未结算（无销毁路径）；链下必须在投票前读取 `OriginScoresSubmitted` 等链上留痕，不能把当轮纠正寄望于合约。
+**验证者信任模型（接受的取舍）**：原始分是验证者的自由裁量输入，合约只约束 `0 ≤ originScore ≤ 100`（`ScoreLimitExceeded`）与累计游标，不提供回避、交叉复核、挑战期或罚没；押金只担保「持有当前申请」，撤销即全额退款。对失信验证者的约束全部落在治理层（逐轮投票与排名），而单轮锁定后不可替换、无接管，本轮行动激励可能被独占或因全 0 得分永久停留未结算（无销毁路径）；链下必须在投票前读取 `OriginScoresSubmitted` 等链上留痕，不能把当轮纠正寄望于合约。
 
 ## 行动激励
 
@@ -113,7 +113,7 @@ totalFinalScore = sum(finalScore across all groups)
 memberReward(memberId) = floor(proposalReward * finalScore(memberId) / totalFinalScore)
 ```
 
-所有 Group 使用同一原始得分和最终得分规则；按目标 Round 已确认参与数据汇总全行动的 `totalFinalScore` 后直接分配。`totalFinalScore` 为零时不除零，行动层激励为零；群 owner 的聚合份额由其成员最终激励之和得到，不在 Group 内再次按比例分配。成员结算无可分配量时按成因三分：成员侧最终验证得分为零（仅已验证轮可达）回滚 `ZeroFinalScore(tokenAddress, actionId, memberId)`；轮级「未完成验证 / `totalFinalScore` 为零 / 行动激励为零」回滚 `MemberRewardPoolEmpty(tokenAddress, round)`（未验证轮先判此项，即使成员有票也回此项）；分子非零但逐项取整为零回滚 `MemberRewardRoundedToZero(tokenAddress, round, memberId)`。三者都不置位已结算、不发事件，验证完成后可重试。
+所有 Group 使用同一原始得分和最终得分规则；按目标 Round 已确认参与数据汇总全行动的 `totalFinalScore` 后直接分配。`totalFinalScore` 为零时不除零，行动激励为零；群 owner 的聚合份额由其成员最终激励之和得到，不在 Group 内再次按比例分配。成员结算无可分配量时按成因三分：成员侧最终验证得分为零（仅已验证轮可达）回滚 `ZeroFinalScore(tokenAddress, actionId, memberId)`；轮级「未完成验证 / `totalFinalScore` 为零 / 行动激励为零」回滚 `MemberRewardPoolEmpty(tokenAddress, round)`（未验证轮先判此项，即使成员有票也回此项）；分子非零但逐项取整为零回滚 `MemberRewardRoundedToZero(tokenAddress, round, memberId)`。三者都不置位已结算、不发事件，验证完成后可重试。
 
 Executor 先按 [统一铸造链路](07-minting.md#铸造链路) 取得整笔激励，再内部分配。
 
@@ -174,13 +174,13 @@ Executor 是单例，全部逻辑落在一个地址上会超过 EIP-170 的 24,5
 
 成员级激励铸造不单独成库：它只有约 1.6KB，且成员结算三件（`mintMemberReward`/`mintMemberRewards`/`memberReward`）声明在基座 `IActionExecutor`，留在 Executor 实现即可，也省掉每笔结算的跨库开销。
 
-`IGroupActionExecutor` 自身声明 Executor 本地实现的成员（依赖 getter、`currentVerifyRound`、行动层激励查询两件——`generatedActionReward` 与 `generatedActionRewardByGroupId`——与成员结算四件）、包不进行动配置与创建回调的错误，其余全部经上表三个模块接口继承；`GroupConfig` 声明在 `IGroupActionManager.sol`，`VerifierApplication` 声明在 `IGroupActionVerify.sol`。
+`IGroupActionExecutor` 自身声明 Executor 本地实现的成员（依赖 getter、`currentVerifyRound`、行动激励查询两件——`generatedActionReward` 与 `generatedActionRewardByGroupId`——与成员结算四件）、包不进行动配置与创建回调的错误，其余全部经上表三个模块接口继承；`GroupConfig` 声明在 `IGroupActionManager.sol`，`VerifierApplication` 声明在 `IGroupActionVerify.sol`。
 
 **库不能继承接口**（Solidity 不允许），所以「接口文件 ↔ 库」是**声明归属的映射**，编译期唯一强制的契约是 Executor 继承全部接口、其包装函数再调用对应库：接口签名漂移在 Executor 编译不过，库侧签名漂移则在该调用点编译不过。
 
 **共享状态与共享规则都只留一份，运行时依赖图保持星型**：跨模块共享的状态通过同一个根 Layout 直接读写（创建回调写验证信息模板、验证写分数、分配读分数），库之间不产生 DELEGATECALL、没有循环依赖——判据是各业务库的 `linkReferences` 不含其他业务库；源级依赖只允许指向规则属主模块、单向、不成环。跨模块的**规则**按属主落位——有单一属主的（`maxJoinAmount`、`currentJoinRound` 属 `GroupActionManager`；`currentVerifyRound` 属 `GroupActionVerify`）实现留在属主模块，其他模块以 `internal` 函数**编译期内联**复用，规则复用产生的源级依赖只有 `GroupActionJoin` → `GroupActionManager`、`GroupActionExecutor` / `GroupServiceExecutor` → `GroupActionVerify` 与 `GroupActionManager` / `GroupServiceExecutor` → `MemberOwner`；无属主且被两个以上模块消费的留在 `GroupActionStorage`，即 `memberAmountAt`（`GroupActionVerify`、Executor 本地）。`phase → round` 换算只留在三个**纯换算库**：`ActionRoundAxis` 唯一定义 `joinRound`，`GroupActionRoundAxis`（verify/mint）与 `LpRoundAxis`（mint）保留类型专属偏移并委托 `joinRound`；未开始守卫不在轴库里：Executor 基座的 Round getter 与上述属主模块各自守卫。`requireMemberOwner` 已按 §5.5 改为各库本地的 `onlyMemberOwner` modifier。属主模块持有的规则不进 `GroupActionStorage`。
 
-**除业务库之外留在 Executor 的两类**：一是**会被其他合约链上调用的接口**——`IGroupActionIndexes` 的查询（Group Chat 链上读 `isGroupMember`；五条 `joined*` 分页查询随业务库走）、行动层激励查询两件（Group Service 读取：一件取行动总额做分母，一件取群切片做权重）与基座 `IActionExecutor` 的 Round、参与量查询：这类函数本身很便宜，跨库会让一次读取的固定开销（约 2,600 gas 冷访问）翻倍；只被钱包与前端读取的查询走 `eth_call`、不计 gas，随业务库走。二是**成员级激励铸造**（见上表下方说明）。
+**除业务库之外留在 Executor 的两类**：一是**会被其他合约链上调用的接口**——`IGroupActionIndexes` 的查询（Group Chat 链上读 `isGroupMember`；五条 `joined*` 分页查询随业务库走）、行动激励查询两件（Group Service 读取：一件取行动总额做分母，一件取群切片做权重）与基座 `IActionExecutor` 的 Round、参与量查询：这类函数本身很便宜，跨库会让一次读取的固定开销（约 2,600 gas 冷访问）翻倍；只被钱包与前端读取的查询走 `eth_call`、不计 gas，随业务库走。二是**成员级激励铸造**（见上表下方说明）。
 
 「留在 Executor」指**实现**留在 Executor：写成转发库的薄壳没有意义，仍要付跨库开销。
 
@@ -197,7 +197,7 @@ Executor 是单例，全部逻辑落在一个地址上会超过 EIP-170 的 24,5
 **承重字段**（破坏后不报错，只让账本失去自证能力；按 `dev-standards §5.3` 以规格承载，不在源码加注释）：
 
 - `roundVerified`：`OriginScoresSubmitted` 的重复提交判定与「本轮已验证」的唯一来源；置位后不可回退。
-- `groupIdsByRound` / `verifiedMemberCountByGroupId`：群层与行动层计数的对照表；一侧漏写会让 `hasActiveGroups` 与结算名册不一致。
+- `groupIdsByRound` / `verifiedMemberCountByGroupId`：群层与行动计数的对照表；一侧漏写会让 `hasActiveGroups` 与结算名册不一致。
 - `slotHistory` / `indexPlusOneHistory`：懒继承的锚点；`indexPlusOne` 用 `0` 表示「该槽未被写过」，写 `0` 与未写不可区分。
 
 **创建回调的四个副本**：`createdRound` 在 `ActionTarget`、`GroupActionManager`、`GroupActionJoin`、`GroupActionVerify` 各存一份，由 `onProposalCreated` 一次写入，运行期没有交叉断言；同一笔里四份恒等，读面按本合约自己的副本。漂移后加入窗口与结算窗口错位一格，两处都不报错。
