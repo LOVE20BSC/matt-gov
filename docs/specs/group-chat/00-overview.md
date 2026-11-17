@@ -13,11 +13,11 @@ Group Chat 是公开链上群聊，保存配置、消息和查询索引；不管
 - 删除群内 NFT 委托（`GroupChatDelegate` 与 `GROUP_DELEGATE_ADDRESS`），授权只认 NFT 当前持有人，见 [ADR-005](../../adr/005-remove-group-chat-delegation.md)。
 - 按已确认的 BSC 边界接入 Phase 和 ActionTarget/Executor；除此之外不增加、删减群聊功能。
 
-托管群名称模板见 [Manager](06-manager.md)；构造期静态校验由部署脚本在广播前完成（dev-standards §5.7），运行期业务校验仍在合约。
+托管链群名称模板见 [Manager](06-manager.md)；构造期静态校验由部署脚本在广播前完成（dev-standards §5.7），运行期业务校验仍在合约。
 
 ## 身份
 
-一个 MemberNFT 对应一个 Chat。群主体为 `groupId`，发言主体为 `senderId`；两者可以不同。成员、管理员、被提及者、黑名单目标和黑名单投票者均用 memberId。
+一个 MemberNFT 对应一个 Chat。链群主体为 `groupId`，发言主体为 `senderId`；两者可以不同。成员、管理员、被提及者、黑名单目标和黑名单投票者均用 memberId。
 
 代表身份写入时校验 `MemberNFT.ownerOf(memberId) == msg.sender`；sender/admin/voter 显式传入，不从地址默认身份推导。NFT 转移不改写历史消息或身份关系；管理员的有效性仍按旧 owner 快照规则判断。
 

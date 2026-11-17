@@ -1,6 +1,6 @@
 # AirdropDistributor
 
-AirdropDistributor 是首币与普通发射共用的可选 distributor：接收首批代币，按 Merkle 快照把该批供应分发给快照地址。它只做分发，不迁移 Burn 业务，也不在链上验证快照来源。完整 ABI 见 [`IAirdropDistributor.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/distributor/IAirdropDistributor.sol)。
+AirdropDistributor 是首币与普通发射共用的可选 distributor：接收首批代币，按 Merkle 快照把该批供应空投铸造给快照地址。它只做分发，不迁移 Burn 业务，也不在链上验证快照来源。完整 ABI 见 [`IAirdropDistributor.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/distributor/IAirdropDistributor.sol)。
 
 ## 职责与依赖
 

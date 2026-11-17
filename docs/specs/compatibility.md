@@ -28,7 +28,7 @@ profile 名称确定网络：`bsc97_dev` 的 chain ID 为 `97`，两个 `bsc56_*
 | Pair | `token0`、`token1`、`getReserves`、`totalSupply`、`mint`、`burn`、`swap` |
 | Router | `getAmountsOut`、`swapExactTokensForTokens`、路径和 `amountOutMin` |
 | 数值 | LP 份额、储备、供应、手续费、实际输出、k/sqrt(k) 与整数舍入 |
-| 失败 | 数量、路径、滑点、权限及外部调用失败后状态不变 |
+| 失败 | 数量、路径、滑点容忍度、权限及外部调用失败后状态不变 |
 
 不能仅凭 ABI 编译或 selector 相同判定兼容。
 
@@ -40,7 +40,7 @@ profile 名称确定网络：`bsc97_dev` 的 chain ID 为 `97`，两个 `bsc56_*
 2. 交易后读取储备、LP 供应和 sqrt(k)。
 3. 结算 feeLp，核对社区代币销毁，以及父币通过 Router 换成社区代币后的销毁。
 4. 核对 withdrawableLp、totalLpShares、成员 lpShares 和按份额提取。
-5. 对 Pair、Router、销毁和滑点失败执行整体回滚测试。
+5. 对 Pair、Router、销毁和超出滑点容忍度的失败执行整体回滚测试。
 
 测试金额、储备、手续费和 sqrt(k) 保存整数值，并记录每一步舍入。参考与目标差异只有在不影响上述结果时可接受。
 

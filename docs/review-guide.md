@@ -157,7 +157,7 @@ rg -n 'core\.md|action\.md|group-chat\.md|launchFirstToken|initializeGenesis|TOD
 选择至少三条真实流程，尝试只根据当前规格写伪代码：
 
 1. `MemberNFT.mint` → 费用计算 → NFT 铸造；
-2. `Vote` → Mint 首次领取时自动准备 → 治理/Proposal 激励铸造；
+2. `Vote` → Mint 首次铸造时自动准备 → 治理/Proposal 激励铸造；
 3. `Launch.init` → 首个代币 → AirdropDistributor → 首币 Pair；`Stake` 在首次质押时读取该 Pair；
 4. 一条 Action 加入/退出/验证/铸造流程；
 5. 一条 Group Chat 发言和黑名单流程。
@@ -222,7 +222,7 @@ rg -n 'core\.md|action\.md|group-chat\.md|launchFirstToken|initializeGenesis|TOD
 - [ ] 每个目标 profile 有独立地址、区块、代码摘要和提交
 - [ ] WETH、Factory、Pair、Router 均有真实调用结果
 - [ ] 记录 token 顺序、储备、供应、手续费、报价和舍入
-- [ ] 覆盖 Pair 创建、LP 铸造/销毁、Swap、滑点和失败回滚
+- [ ] 覆盖 Pair 创建、LP 铸造/销毁、Swap、滑点容忍度和失败回滚
 - [ ] 包含 Stake 加入、手续费结算、销毁和提取场景
 - [ ] 未验证 profile 不会进入部署配置
 - [ ] 测试仓库不成为生产合约运行时依赖
@@ -285,7 +285,7 @@ LOVE20TKM/<repo>/<path>[#<function-or-symbol>]
 
 - 权威入口冲突，导致实现者可能写出两种行为
 - 核心接口、权限或部署顺序缺失
-- 资金、供应或激励存在可重复领取、锁死或越权风险
+- 资金、供应或激励存在可重复铸造、锁死或越权风险
 - 关键公式或状态机无法实现
 
 处理：停止实现，修规格并重审。

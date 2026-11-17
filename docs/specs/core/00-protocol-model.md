@@ -6,13 +6,13 @@
 
 | 组件 | 职责 |
 | --- | --- |
-| MemberNFT | 统一业务身份 |
+| MemberNFT | 成员身份 NFT（统一业务主体） |
 | Stake | 流动性质押、加速质押、份额和手续费 |
 | Submit / Vote | Proposal 创建、推举、投票和 Target 回调 |
 | Mint | 轮次激励准备、治理激励及 Proposal 激励结算 |
 | Phase | 无业务语义的阶段 |
 | LOVE20Token | 代币实例与代币树 |
-| Launch | 首币部署、LOVE20Token 创建、发射额度、次数融合及子币发射 |
+| Launch | 首币部署、LOVE20Token 创建、发射次数、次数融合及子币发射 |
 
 Core 不解释具体 Proposal 的业务字段，扩展通过 Target 接入。
 
@@ -48,7 +48,7 @@ Core 不解释具体 Proposal 的业务字段，扩展通过 Target 接入。
 | Launch | `launchCountThresholdRatio` | 发射次数阈值比例；状态变量和公开 getter 为 `LAUNCH_COUNT_THRESHOLD_RATIO`，`1e18` 精度，如 `1e17 = 10%` |
 | Launch | `maxLaunchCount` | 每社区累计次数上限；状态变量和公开 getter 为 `MAX_LAUNCH_COUNT`，如 `100` |
 | Launch | `tokenSymbolLength` | 子币符号固定 UTF-8 字节长度，汉字占 3 字节；状态变量和公开 getter 为 `TOKEN_SYMBOL_LENGTH`，长度与字符集校验见 [Launch](08-launch.md#普通发射) |
-| Launch | `launchAmount`、`maxSupply` | 首批/最大供应量，构造函数固定；状态变量和公开 getter 为 `LAUNCH_AMOUNT`、`MAX_SUPPLY`；`0 < launchAmount <= maxSupply` |
+| Launch | `launchAmount`、`maxSupply` | 首批/最大铸币上限，构造函数固定；状态变量和公开 getter 为 `LAUNCH_AMOUNT`、`MAX_SUPPLY`；`0 < launchAmount <= maxSupply` |
 
 上表的 Launch 行按含义分组，不表示传参顺序；`Launch` 构造函数只接受一个 `LaunchInitParams`，实参顺序即结构体字段顺序（依赖地址 → 分发目标 → 经济与符号参数 → 供应量 → 首币元数据），参数表中的名字与字段名一致。结构体定义见 [`ILaunch.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/ILaunch.sol)。
 

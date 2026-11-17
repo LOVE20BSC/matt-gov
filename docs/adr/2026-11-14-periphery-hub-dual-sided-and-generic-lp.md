@@ -142,7 +142,7 @@ F/D = y·rIn / (x·(rOut − y))      // x → y 是一次 getAmountsOut 探测
 
 ### 五、删除 `SWAP_OUTPUT_TOLERANCE_RATIO`
 
-理由见「既有事实」。`swapExactTokensForTokens` 的 `amountOutMin` 传 `1`，唯一作用是「Router 不得返回 0」；价格保护完全交给调用者的终点 `tokenAmountMin` / `parentTokenAmountMin`（LP 侧 `amountAMin` / `amountBMin`）。
+理由见「既有事实」。`swapExactTokensForTokens` 的 `amountOutMin` 传 `1`，唯一作用是「Router 不得返回 0」；滑点容忍度（最多可接受的价格变化）完全交给调用者指定的终点 `tokenAmountMin` / `parentTokenAmountMin`（LP 侧 `amountAMin` / `amountBMin`）。
 
 **这是对 [ADR 2026-11-13](2026-11-13-periphery-hub-single-token-staking.md) §三.3 与 `periphery/README.md` 中「1% 内部输出界把 swap 段夹子变成回滚」这条论证的推翻** —— 该论证不成立，原文保留但加指针指向本 ADR。
 

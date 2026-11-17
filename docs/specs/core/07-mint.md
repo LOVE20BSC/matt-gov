@@ -9,7 +9,7 @@ Mint 准备并结算治理和 Proposal 激励，不读取行动验证结果。�
 | `totalRewardReserved` | 每个 token 的累计预留总额，包含后来铸造或销毁的额度 |
 | `totalRewardMinted` | 每个 token 的累计已铸造激励 |
 | `totalRewardBurned` | 每个 token 的累计已取消预留额度；不铸造该部分代币 |
-| `govReward` / `proposalReward` | 每个 token、Round 准备后冻结的完整治理池 / Proposal 池。**这是取消前的全额，不是可支付额**：加速池或 Proposal 池在准备阶段被取消时，对应额度已计入 `totalRewardBurned`，但这两个 getter 仍返回取消前的值；需要净可领取额的下游必须自行按 `totalVoterBoost == 0` / `eligibleProposalVoteAmount == 0` 扣减 |
+| `govReward` / `proposalReward` | 每个 token、Round 准备后冻结的完整治理池 / Proposal 池。**这是取消前的全额，不是可支付额**：加速池或 Proposal 池在准备阶段被取消时，对应额度已计入 `totalRewardBurned`，但这两个 getter 仍返回取消前的值；需要净可铸造额的下游必须自行按 `totalVoterBoost == 0` / `eligibleProposalVoteAmount == 0` 扣减 |
 | `totalVoteAmount` | Vote 的本轮 `totalVoteAmount(tokenAddress, round)` |
 | `voterBoost` | 成员本轮在 Vote 的加速快照，`voterBoost(tokenAddress, round, memberId)` |
 | `totalVoterBoost` | 本轮全局加速快照，`totalVoterBoost(tokenAddress, round)` |
@@ -25,7 +25,7 @@ proposalVoteAmount * 1e18 >= totalVoteAmount * proposalRewardMinVoteRatio
 
 `isProposalIdWithReward` 无论已准备或未准备，均读取 Vote 的 `voteAmountByProposalId(tokenAddress, round, proposalId)` 与 `totalVoteAmount(tokenAddress, round)` 实时判定。准备后若 `eligibleProposalVoteAmount == 0` 可快速返回 `false`（全轮无达标 Proposal 的缓存优化）。已铸造不影响返回值（仍返回 `true`）。本入口不做 Proposal 存在性校验；无效 `proposalId` 返回 `false`。
 
-三个奖励比例参数统一 `1e18` 精度，例如门槛 `5e16` 表示 5%。`proposalRewardMinVoteRatio` 允许 `0..1e18`，上界由 DeployCore 广播前校验、21_check 复核；零门槛仍要求 Proposal 有正数票。账本始终满足：
+三个激励比例参数统一 `1e18` 精度，例如门槛 `5e16` 表示 5%。`proposalRewardMinVoteRatio` 允许 `0..1e18`，上界由 DeployCore 广播前校验、21_check 复核；零门槛仍要求 Proposal 有正数票。账本始终满足：
 
 ```text
 totalRewardReserved >= totalRewardMinted + totalRewardBurned
@@ -35,7 +35,7 @@ available = MAX_SUPPLY - totalSupply - reservedAvailable
 
 `reservedAvailable` 是尚未结算的额度，不能再次分配。三个累计账本与本轮池值不能混用。
 
-`MAX_SUPPLY` 约束的是**任一时刻的在售供应**，不是累计发行量：`LOVE20Token.burn` 无许可，任何人销毁自己的余额都会抬高 `MAX_SUPPLY − totalSupply`，未来轮次据此重新预留；因此 `totalRewardMinted` 可以超过 `MAX_SUPPLY`，把两者直接比较的判断都是错的。
+`MAX_SUPPLY` 约束的是**任一时刻可铸出总量的上限**，不是累计发行量：`LOVE20Token.burn` 无许可，任何人销毁自己的余额都会抬高 `MAX_SUPPLY − totalSupply`，未来轮次据此重新预留；因此 `totalRewardMinted` 可以超过 `MAX_SUPPLY`，把两者直接比较的判断都是错的。
 
 各项向下取整产生的余数是明确的永久保留量：继续计入 `reservedAvailable`，不进入后续轮次池，也不单独铸造或销毁；该保留量属于最大铸币上限内的协议保留额度。
 
@@ -43,7 +43,7 @@ available = MAX_SUPPLY - totalSupply - reservedAvailable
 
 完整 ABI 见 [`IMint.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/IMint.sol)。
 
-准备由两种方式触发：调用无许可入口 `prepareRewardIfNeeded(tokenAddress, round)`，或首次调用治理 / Proposal 铸造入口时由 Mint 内部自动准备。两个路径复用同一实现，池子算法只有一份。`tokenAddress` 与 `round` 是唯一的定位参数，调用者不能指定收款地址、成员或金额，因此该入口符合 [通用规则](01-common-rules.md#无许可入口) 的无许可判据：它只把一个已经成立的轮次状态（轮次结束）推进为「池子已冻结」。此前定池只能由领取者触发；补上该入口后，任何地址都可以在第一个领取者之前中立地定池。池值仍按准备时点的 `rewardAvailable` 计算，首次准备的时点仍决定池子大小，但已不再只由领取权持有人掌握。同一 `(tokenAddress, round)` 幂等，重复调用直接返回；未结束的 Round 拒绝准备。
+准备由两种方式触发：调用无许可入口 `prepareRewardIfNeeded(tokenAddress, round)`，或首次调用治理 / Proposal 铸造入口时由 Mint 内部自动准备。两个路径复用同一实现，池子算法只有一份。`tokenAddress` 与 `round` 是唯一的定位参数，调用者不能指定收款地址、成员或金额，因此该入口符合 [通用规则](01-common-rules.md#无许可入口) 的无许可判据：它只把一个已经成立的轮次状态（轮次结束）推进为「池子已冻结」。此前定池只能由铸造者触发；补上该入口后，任何地址都可以在第一个铸造者之前中立地定池。池值仍按准备时点的 `rewardAvailable` 计算，首次准备的时点仍决定池子大小，但已不再只由铸造权持有人掌握。同一 `(tokenAddress, round)` 幂等，重复调用直接返回；未结束的 Round 拒绝准备。
 
 池值不只依赖「第 R 轮的准备时点」，还依赖**跨轮准备顺序**：`available` 扣除的是累计 `reservedAvailable`，而任意已结束轮次都可准备，所以先准备的轮次拿走 `ratio × available`、后准备的轮次只能在更小的基数上取同比例，第 R 轮与第 R+1 轮的相对份额由两次准备的先后决定。诚实路径上这不构成博弈——早准备让池子更大，对全轮次受益人都占优，任何人都能一次调用完成；只有在全员整整一个 Phase 都不准备的前提下顺序才被推迟，因此按「无许可入口 + 早准备占优」接受，不做跨轮强制排序。
 
@@ -75,7 +75,7 @@ if eligibleProposalVoteAmount == 0:
 
 只允许该 Proposal 已记录的 Target 调用，每个 token、Round、Proposal 只能结算一次；未结束、Proposal 不达标或该轮 `proposalReward` 为零时拒绝。若该 Round 尚未准备，入口先自动准备。
 
-领取权只由「票数达标 + 是 target」两点决定，与提案是否被执行无关：`NoCallback` 的 target 可为 EOA，协议不校验它与提案主题相关，也不读取任何执行状态。投票者投的是内容，收款的是 target，两者之间没有链上约束。
+铸造权只由「票数达标 + 是 target」两点决定，与提案是否被执行无关：`NoCallback` 的 target 可为 EOA，协议不校验它与提案主题相关，也不读取任何执行状态。投票者投的是内容，收款的是 target，两者之间没有链上约束。
 
 校验顺序：
 
@@ -135,7 +135,7 @@ else:
     boostReward = floor(boostPoolAmount * voterBoost / totalVoterBoost)
 ```
 
-`memberVoteAmount` 为本轮累计投出票数；`voterBoost` 和 `totalVoterBoost` 均取 Vote 的同轮冻结快照，记账时机见 [Vote](06-vote.md#投票和加速快照)。投票后仅追加质押、不再投票，不增加本轮加速权重；NFT 转移不重算快照。两池按固定 50/50 拆分，奇数余量归加速池。`totalVoterBoost == 0` 时整份加速池已在准备时取消，本次不得再计加速额。未投票者即使有加速质押也不能领取治理激励。
+`memberVoteAmount` 为本轮累计投出票数；`voterBoost` 和 `totalVoterBoost` 均取 Vote 的同轮冻结快照，记账时机见 [Vote](06-vote.md#投票和加速快照)。投票后仅追加质押、不再投票，不增加本轮加速权重；NFT 转移不重算快照。两池按固定 50/50 拆分，奇数余量归加速池。`totalVoterBoost == 0` 时整份加速池已在准备时取消，本次不得再计加速额。未投票者即使有加速质押也不能铸造治理激励。
 
 批量接口 `mintGovRewards` 先鉴权，再逐轮按上述顺序执行：每轮都先经过与 `mintGovReward` 相同的 `ZeroRecipientAddress`、自动准备门禁（`TokenNotRegistered` → `RoundNotEnded`）与结算校验；任一轮失败整笔回滚。空 `rounds` 数组在鉴权通过后允许（返回空数组，无副作用）。轮次数量由调用者自行决定，接口不设数量上限；数量过大导致交易失败及 gas 成本由调用者承担，这是写入批量长度上限规则的明确例外。
 

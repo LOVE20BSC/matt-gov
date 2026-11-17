@@ -46,7 +46,7 @@ Core 的预留、铸造和取消额度账本见 [Mint](../core/07-mint.md)，不
 | `InvalidMaxJoinAmountRatio(uint256 value)` / `InvalidActivationMinGovRatio(uint256 value)` / `InvalidRatioForPublicVerifier(uint256 value)` | 创建回调的比例非法（按字段分别报错）：前两者超出 `1e18`，`InvalidRatioForPublicVerifier` 为 `== 0` 或 `>= 1e18`（公共验证者比例须严格位于 (0, 100%)） |
 | `InvalidMinGovRatio(uint256 value)` / `InvalidJoinTokenFactory(address joinToken, address factory)` | LP 最小治理比例超过 `1e18` / 参与代币不是该工厂登记的交易对 |
 | `ZeroMinJoinAmount()` / `InvalidMaxJoinAmount(uint256 minAmount, uint256 maxAmount)` | 群最小加入量为零 / 非零最大加入量低于最小加入量 |
-| `GroupAlreadyActivated(uint256 groupId)` / `GroupNotActive(uint256 groupId)` / `GroupNotExist(uint256 groupId)` / `ZeroGroupId()` | 重复激活 / 在未激活链群上操作 / 群身份不存在 / 群参数缺省（`groupId == 0`，与「群身份不存在」分开） |
+| `GroupAlreadyActivated(uint256 groupId)` / `GroupNotActive(uint256 groupId)` / `GroupNotExist(uint256 groupId)` / `ZeroGroupId()` | 重复激活 / 在未激活链群上操作 / 链群身份不存在 / 群参数缺省（`groupId == 0`，与「链群身份不存在」分开） |
 | `DeactivationLockedInActivatedRound(uint256 groupId, uint256 round)` | 在链群激活的同一投票轮停用（`round` 为投票轮） |
 | `InsufficientActivationMinGovRatio(uint256 groupId, uint256 required, uint256 actual)` | 群 owner 的治理票占比低于激活下限 |
 | `NoGovVotes(address tokenAddress)` | 激励代币没有全局治理票，无法计算激活下限 |

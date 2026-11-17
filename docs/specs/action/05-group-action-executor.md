@@ -1,6 +1,6 @@
 # GroupAction Executor
 
-GroupAction 使用 MemberNFT 身份，`groupId` 是群主体的 `memberId`，不是钱包地址。参与资产见 [共同模型](03-participation.md)，四阶段映射见 [阶段模型](02-phase-model.md)。
+GroupAction 使用 MemberNFT 身份，`groupId` 是链群主体的 `memberId`，不是钱包地址。参与资产见 [共同模型](03-participation.md)，四阶段映射见 [阶段模型](02-phase-model.md)。
 
 ## 配置与参与接口
 
@@ -23,9 +23,9 @@ GroupAction 使用 MemberNFT 身份，`groupId` 是群主体的 `memberId`，不
 
 验证信息模板的 keys 和 descriptions 在 Proposal 创建回调时通过可选 `targetData[SLOT_VERIFICATION_INFO] = abi.encode(string[] keys, string[] descriptions)` 传入，后续不可修改；两数组不等长回滚 `VerificationInfoLengthMismatch(keys.length, descriptions.length)`。成员提交的验证信息值在加入时写入，项数与模板 keys 不符同样回滚 `VerificationInfoLengthMismatch(keys.length, verificationValues.length)`，值项数超过 `16` 回滚 `TooManyVerificationValues(count, 16)`、单个值超过 `1024` 字节回滚 `VerificationValueTooLong(index, length, 1024)`；模板 schema 超过 16 项回滚 `TooManyVerificationEntries(count, maxCount)`、key/description 超过 1024 字节分别回滚 `VerificationKeyTooLong(index, length, maxLength)`/`VerificationDescriptionTooLong(index, length, maxLength)`；key 不能为空，否则回滚 `VerificationKeyEmpty(index)`；key 按原始字节比较必须唯一，重复回滚 `DuplicateVerificationKey(index, previousIndex)`，`previousIndex` 为此前首次出现的位置。每次修改参与量时可更新成员值。schema 作为 `targetData[SLOT_VERIFICATION_INFO]` 还要受 `Submit` 的 `targetData` 总量 16 KiB 约束（见 [提交](../core/05-submit.md)），因此「16 项 ×1024 字节」只是事件字段上界，链上创建路径可达的最坏值更低。追加参与量时若不提交验证值（`verificationValues` 为空数组），`GroupActionJoined.verificationValues` 为空数组，含义是**本次无新值**、既有值保持不变，折叠不得清空。
 
-管理操作要求持有 groupId；自有参与操作要求持有 memberId。`activateGroup` 只接受本 Executor 已创建的行动（`createdRound != 0`）：创建回调之前 `activationStakeAmount` 仍为零、gov-ratio 下限未设，放行会让群零押金入场并绕开下限；未创建时回滚 `ActionNotCreated(tokenAddress, actionId)`。`groupId` 即群主体的 memberId，同一成员在同一行动上至多激活一个链群：行动内是否激活用 `isGroupActive(tokenAddress, actionId, groupId)` 直查，不设行动维度的按 owner 激活列表与质押查询。跨行动的社区级判定与聚合保留（主体为 memberId，与全员身份模型一致）：`hasActiveGroups(tokenAddress, memberId)` 一次判定该成员（自身作为链群主体）在该社区是否存在激活行动（GroupService 加入资格判据）；**第二个形参名为 `memberId`，实为群主体，即 `groupId`**——读时按水合理解，不要当成普通成员 id，`stakedByMemberId(tokenAddress, memberId)` 返回其全部激活链群的累计质押（各行动 `activationStakeAmount(tokenAddress, actionId)` 可能不同且激活行动数未知，不展开为按行动遍历）。同一行动中成员只能归属一个 Group，追加不得改群；换群须先正常退出。`join` 的资产来源由 `providerId` 决定：`0` 表示成员自有代币，非零表示从该 Provider 已存入合约的额度中扣减。同一成员可在同一行动上混合多个来源，重复 `join` 按来源分别追加；`joinInfo` 分列 `ownAmount` 与 `providerAmount`（总量为其和）、`joinedAmountByMemberId` 与 `joinedAmountByGroupId` 汇总全部来源。`withdraw` 只减少自有账本，`withdrawProviderQuota` 只撤回指定链群内该 Provider 的未使用额度（可部分），两者不互相抵扣；成员总参与量（自有 + 全部 Provider）归零时自动退出（自有 `withdraw` 或 `removeProviderQuota` 触发）。`withdrawProviderQuota` 由该 Provider 当前持有人调用，代币返还该 Provider 当前持有人；Provider 身份不授予成员 `exit` 或额度管理权限。成员调用 `exit` 时结清全部来源：自有资产返还成员，Provider 来源恢复为该 Provider 对该成员的可用额度、不转出合约（Provider 仍可用 `removeProviderQuota` 取回）。代币量只由 `GroupActionJoined` 与 `GroupActionWithdrawn` 承载：`exit` 对自有金额发一条 `GroupActionWithdrawn`（`providerId = 0`），对每个有余额的 Provider 发一条 `ProviderQuotaRestored`；`GroupActionExited` 只表示退出状态（带链群 `groupId`）、不带金额。无参与记录返回全零的 `JoinInfo`，历史集合无记录返回空数组。
+管理操作要求持有 groupId；自有参与操作要求持有 memberId。`activateGroup` 只接受本 Executor 已创建的行动（`createdRound != 0`）：创建回调之前 `activationStakeAmount` 仍为零、gov-ratio 下限未设，放行会让群零押金入场并绕开下限；未创建时回滚 `ActionNotCreated(tokenAddress, actionId)`。`groupId` 即链群主体的 memberId，同一成员在同一行动上至多激活一个链群：行动内是否激活用 `isGroupActive(tokenAddress, actionId, groupId)` 直查，不设行动维度的按 owner 激活列表与质押查询。跨行动的社区级判定与聚合保留（主体为 memberId，与全员身份模型一致）：`hasActiveGroups(tokenAddress, memberId)` 一次判定该成员（自身作为链群主体）在该社区是否存在激活行动（GroupService 加入资格判据）；**第二个形参名为 `memberId`，实为链群主体，即 `groupId`**——读时按水合理解，不要当成普通成员 id，`stakedByMemberId(tokenAddress, memberId)` 返回其全部激活链群的累计质押（各行动 `activationStakeAmount(tokenAddress, actionId)` 可能不同且激活行动数未知，不展开为按行动遍历）。同一行动中成员只能归属一个 Group，追加不得改群；换群须先正常退出。`join` 的资产来源由 `providerId` 决定：`0` 表示成员自有代币，非零表示从该 Provider 已存入合约的额度中扣减。同一成员可在同一行动上混合多个来源，重复 `join` 按来源分别追加；`joinInfo` 分列 `ownAmount` 与 `providerAmount`（总量为其和）、`joinedAmountByMemberId` 与 `joinedAmountByGroupId` 汇总全部来源。`withdraw` 只减少自有账本，`withdrawProviderQuota` 只撤回指定链群内该 Provider 的未使用额度（可部分），两者不互相抵扣；成员总参与量（自有 + 全部 Provider）归零时自动退出（自有 `withdraw` 或 `removeProviderQuota` 触发）。`withdrawProviderQuota` 由该 Provider 当前持有人调用，代币返还该 Provider 当前持有人；Provider 身份不授予成员 `exit` 或额度管理权限。成员调用 `exit` 时结清全部来源：自有资产返还成员，Provider 来源恢复为该 Provider 对该成员的可用额度、不转出合约（Provider 仍可用 `removeProviderQuota` 取回）。代币量只由 `GroupActionJoined` 与 `GroupActionWithdrawn` 承载：`exit` 对自有金额发一条 `GroupActionWithdrawn`（`providerId = 0`），对每个有余额的 Provider 发一条 `ProviderQuotaRestored`；`GroupActionExited` 只表示退出状态（带链群 `groupId`）、不带金额。无参与记录返回全零的 `JoinInfo`，历史集合无记录返回空数组。
 
-**激活质押随群 NFT 转移**：`activateGroup` 收取的 `activationStakeAmount` 在 `deactivateGroup` 时退还给 `groupId` 的**当前持有人**，不是原付款人；质押权属跟群主体走，与群 NFT 转让一致（同族口径见 `01-action-target.md` 的 `forceClearJoinState`：处分权随当前持有人）。**同轮不可停用**（`DeactivationLockedInActivatedRound`）：`activatedRound` 记录激活时的**投票轮**（`IPhase.currentPhase()`），停用只在「当前投票轮等于 `activatedRound`」时被拒——激活当轮不可停用，之后任意轮次可停用并取回押金；不是单纯的防抖。激活的**唯一前置条件是该行动已创建**（`createdRound != 0`），不要求加入轮已开始：相位单调，因此激活轮次恒不小于创建轮次。不做更强的锁定是有意的：下一轮撤出后该群已不激活，任何成员都无法 `join`，撤出者只是放弃自己在后续轮次的参与资格，代价自负；因此只需保证「激活当轮不能撤出」。
+**激活质押随链群 NFT 转移**：`activateGroup` 收取的 `activationStakeAmount` 在 `deactivateGroup` 时退还给 `groupId` 的**当前持有人**，不是原付款人；质押权属跟链群主体走，与链群 NFT 转让一致（同族口径见 `01-action-target.md` 的 `forceClearJoinState`：处分权随当前持有人）。**同轮不可停用**（`DeactivationLockedInActivatedRound`）：`activatedRound` 记录激活时的**投票轮**（`IPhase.currentPhase()`），停用只在「当前投票轮等于 `activatedRound`」时被拒——激活当轮不可停用，之后任意轮次可停用并取回押金；不是单纯的防抖。激活的**唯一前置条件是该行动已创建**（`createdRound != 0`），不要求加入轮已开始：相位单调，因此激活轮次恒不小于创建轮次。不做更强的锁定是有意的：下一轮撤出后该群已不激活，任何成员都无法 `join`，撤出者只是放弃自己在后续轮次的参与资格，代价自负；因此只需保证「激活当轮不能撤出」。
 
 ## 当前归属与索引
 
@@ -75,7 +75,7 @@ GroupAction 使用 MemberNFT 身份，`groupId` 是群主体的 `memberId`，不
 
 - **票数按轮隔离**：`voteAmountByApplicationId[tokenAddress][actionId][round][applicationId]` 只存该轮票数，排名与一切查询都读该值。不存在跨轮累计值——把不同轮的票加在一起既没有语义（选民集合不同），也会让旧申请压过当轮新申请而不回滚。
 - **申请常设**：`submitVerifierApplication` 在行动创建轮及之后的任意轮次可用，申请自提交轮起生效并对之后每一轮持续有效。同一成员在同一行动只有一条当前申请；**修改申请等价于撤销后重新申请**——旧 ID 失效、新 ID 单调递增且从零计票，当前轮排名里的旧项被移除。
-- **按轮查询**：`verifierApplication(tokenAddress, actionId, round, verifierId)` 回答「该成员在该轮以哪份申请站台」。该映射用 `RoundHistoryUint256` 按 `[tokenAddress][actionId][verifierId]` 记录：申请时在提交轮写入当时的 `applicationId`，撤销时在该轮写入显式零值，读取按 RoundHistory 的懒继承语义取「不晚于该轮的最近记录」。因此第 3 轮申请、第 5 轮才修改时，查第 4 轮仍返回**第 3 轮那份申请及其说明**；修改只影响修改轮及之后，从不回写历史。无记录返回零值结构体。**票数仍按轮读取**：`voteAmountsByVerifierIds` 先用同一份历史解析该轮生效的申请，再读该申请在该轮的票，与 `topVerifiers` 一致，不因后续修改申请而改变。
+- **按轮查询**：`verifierApplication(tokenAddress, actionId, round, verifierId)` 回答「该成员在该轮以哪份申请站台」。该映射用 `RoundHistoryUint256` 按 `[tokenAddress][actionId][verifierId]` 记录：申请时在提交轮写入当时的 `applicationId`，撤销时在该轮写入显式零值，读取按 RoundHistory 的懒继承语义取「不晚于该轮的最近记录」。因此链群行动轮第 3 轮申请、链群行动轮第 5 轮才修改时，查链群行动轮第 4 轮仍返回**链群行动轮第 3 轮那份申请及其说明**；修改只影响修改轮及之后，从不回写历史。无记录返回零值结构体。**票数仍按轮读取**：`voteAmountsByVerifierIds` 先用同一份历史解析该轮生效的申请，再读该申请在该轮的票，与 `topVerifiers` 一致，不因后续修改申请而改变。
 - **验证按当轮排名**：`submitOriginScores` 只作用于当前验证轮，从该轮的排名里选锁定验证者，验证者身份按该轮的历史解析——投票轮之后替换或撤销申请只改变后续轮次，**不收回该轮已得到的验证资格**（仍在榜内即可锁定，已锁定即可继续提交）；某验证者在该轮没有申请或没有票，就不在榜内，无法锁定。
 
 验证者、验证和激励查询接口见 [`IGroupActionExecutor.sol`](https://github.com/LOVE20BSC/action/blob/main/src/interfaces/IGroupActionExecutor.sol)。
@@ -101,7 +101,7 @@ openBlock = verifyPhaseStartBlock + openOffset
 
 首个有效验证批次永久锁定验证者 MemberNFT；NFT 转移后新持有人续验，不能由未经授权的验证者接管。需完成目标 Round 的全部 Group 验证；无验证者入榜或锁定者失联、未完成时，行动激励为零，底层 Proposal 激励仍可独立铸造或销毁。`generatedActionRewardByGroupId` 与一切行动分配查询按轮次读取，目标轮未完成验证时返回 0，不因部分批次已计入而返回正值；GroupService 与 GroupAction 阶段划分相同，其读取的轮次已经完成验证，正常不会命中该分支。相关验收见 [组织验收](../../acceptance.md#公共验证者与-round-历史)。
 
-**验证者信任模型（接受的取舍）**：原始分是验证者的自由裁量输入，合约只约束 `0 ≤ originScore ≤ 100`（`ScoreLimitExceeded`）与累计游标，不提供回避、交叉复核、挑战期或罚没；押金只担保「持有当前申请」，撤销即全额退款。对失信验证者的约束全部落在治理层（逐轮投票与排名），而单轮锁定后不可替换、无接管，本轮行动激励可能被独占或因全 0 得分永久停留未结算（无销毁路径）；链下必须在投票前读取 `OriginScoresSubmitted` 等链上留痕，不能把当轮纠正寄望于合约。
+**验证者信任模型（接受的取舍）**：原始分是验证者的自由裁量输入，合约只约束 `0 ≤ originScore ≤ 100`（`ScoreLimitExceeded`）与累计游标，不提供回避、交叉复核、挑战期或罚没；押金只担保「持有当前申请」，撤销即全额退款。对失信验证者的约束全部落在治理轮（逐轮投票与排名），而单轮锁定后不可替换、无接管，本轮行动激励可能被独占或因全 0 得分永久停留未结算（无销毁路径）；链下必须在投票前读取 `OriginScoresSubmitted` 等链上留痕，不能把当轮纠正寄望于合约。
 
 ## 行动激励
 
@@ -204,7 +204,7 @@ Executor 是单例，全部逻辑落在一个地址上会超过 EIP-170 的 24,5
 
 **`joinTokenAddress` 校验**：创建回调要求 `joinTokenAddress` 是合约且实现 `totalSupply()`，否则回滚 `InvalidJoinTokenAddress(address)`；`maxJoinAmount` 因此不会读到无法解码的代币。错误声明在 `IGroupActionExecutorErrors`。
 
-**错误契约**：成员身份严格查表（`ownerOf` 失败即回滚，`ERC721NonexistentToken` 被翻译直言）；群身份容错（`ownerOrZero` 把「非本群成员」折成 `0`，不区分「不存在」与「不属于我」）。
+**错误契约**：成员身份严格查表（`ownerOf` 失败即回滚，`ERC721NonexistentToken` 被翻译直言）；链群身份容错（`ownerOrZero` 把「非本群成员」折成 `0`，不区分「不存在」与「不属于我」）。
 
 **验证面**：验证值按 schema 位置绑定，链下必须保序；`joinedRound` 是当前段起点，退出后重新加入会覆写；归属计数是裸计数，成对性只由三个写点的组合保证；`removeProviderQuota` 与 `withdrawProviderQuota` 批量语义不对称，重复 `memberId` 整批回滚；`_restoreProviders` 先物化 `values()` 快照再删元素，遍历安全。
 

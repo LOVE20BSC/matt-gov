@@ -72,7 +72,7 @@
 - 激励计算结果符合规格定义
 - Proposal 激励与行动激励正确隔离
 
-### 治理融合与激励铸造
+### 质押融合与激励铸造
 **覆盖要求**：覆盖调用者只控制来源 MemberNFT 时，可以把指定社区的治理质押单向融合进他人持有的有效目标 MemberNFT；目标既有资产不能减少。覆盖从流动质押或加速质押入口提高等待期时，按现有 LP Shares 原子重算成员和社区治理票。覆盖同一成员单轮铸造、调用者自行决定长度的 Round 数组批量铸造、逐轮三类结果和任一 Round 失败时整笔回滚；批量接口不设协议长度上限，超出交易承载能力由调用者承担。
 
 **测试方式**：
@@ -90,11 +90,11 @@
 
 *增项开放*：非持有人可为任意已存在的 `memberId` 调用 `stakeLiquidity` / `stakeBoost`，只调 `ownerOf` 校验存在、不比较 `msg.sender`；`_pull` 从调用者拉币；目标份额与票权只增不减。`LiquidityStaked` / `BoostStaked` 的 `caller`（`msg.sender`）与 `memberOwner`（写入时点 `ownerOf` 快照）在「本人直接质押 / 本人经中间合约质押 / 第三方代付」三种形态下取值可区分。不存在（含 `0`）的 `memberId` 回滚 `ERC721NonexistentToken`，不落 `NotMemberOwner`。
 
-*减项仍收紧*：`unstake`、`withdraw`、`mergeStake` 源侧、投票、推举、领取激励由非持有人调用时全部回滚 `NotMemberOwner`。
+*减项仍收紧*：`unstake`、`withdraw`、`mergeStake` 源侧、投票、推举、铸造激励由非持有人调用时全部回滚 `NotMemberOwner`。
 
 *等待期约束*：`stakeLiquidity` / `stakeBoost` 是唯一会改变 `promisedWaitingPhases` 的两个入口。该 `memberId` 已有质押（`liquidityShares != 0 || boostShares != 0`）时非持有人必须沿用现有值，任何不等于现值（含更大值）都回滚 `PromisedWaitingPhasesDecreased`；空仓位允许自由指定（含 `MAX`），`stakeBoost` 因 `NoStakedLiquidity` 前提不存在「非持有人 + 空仓位」组合。**只有这两条事件带 `prevPromisedWaitingPhases`**；`StakesMerged` 的目标前置值由恒等推导（空仓恒为 `0`、非空仓恒等于 `targetPromisedWaitingPhases`），不补字段。
 
-*无滑点记账*：折算后剩余留在调用者钱包、不回滚、不进 Stake 余额；`slippage` 参数、`SLIPPAGE_PRECISION`、`_checkSlippage` 与 `SlippageExceeded` 均已删除，任何容差场景都不应产生该错误。价格保护由调用方指定最小量，`periphery` 的 `LOVE20Hub` 在调用 core 之前以 `prepared − remaining >= Min` 做全链路终点口径的事后校验。
+*不设滑点容忍度*：折算后剩余留在调用者钱包、不回滚、不进 Stake 余额；`slippage` 参数、`SLIPPAGE_PRECISION`、`_checkSlippage` 与 `SlippageExceeded` 均已删除，任何容差场景都不应产生该错误。滑点容忍度（最多可接受的价格变化）由调用方指定的最小量承担，`periphery` 的 `LOVE20Hub` 在调用 core 之前以 `prepared − remaining >= Min` 做全链路终点口径的事后校验。
 
 *融合可撤销抢跑*：第三方给空目标开仓后，该 `memberId` 的持有人仍可 `mergeStake` 移走仓位或 `withdraw` 清理，`firstGovVoteRound` 随之归零（社区级标记除外）；放宽 `stakeLiquidity` 不引入 `mergeStake` 之外的新 griefing 类别。
 
@@ -107,7 +107,7 @@
 - 增项入口对任意已存在的 `memberId` 开放，且只增加目标状态
 - 减项入口对非持有人一律回滚 `NotMemberOwner`
 - 已有仓位的等待期不会被非持有人改写，空仓位可自由指定
-- 折算剩余留在调用者手里，核心不再产生滑点类回滚
+- 折算剩余留在调用者手里，滑点容忍度（最多可接受的价格变化）由调用方指定的最小量承担，核心不再自行回滚
 - 事件同时提供 `caller`、`memberOwner`、`prevPromisedWaitingPhases`，链下不需 trace 即可还原调用链与代付关系
 
 ### MemberNFT 发射次数边界
@@ -144,10 +144,10 @@
 - `parentToken` 对首币返回 `ROOT_PARENT_TOKEN_ADDRESS`、对子币返回其父币、对未登记地址返回零地址；`isLOVE20Token` 与它一致
 
 ### 首币空投分发
-**覆盖要求**：覆盖 `AirdropDistributor` 的构造配置（`TOTAL_SHARE = 1e18`、`MAX_CLAIM_DELAY_ROUNDS = 1000`、`MAX_SNAPSHOT_URI_BYTES = 256`、首币在构造期完成配置并写入非空 `genesisSnapshotUri`）、回调数据形状（`distributorData` 恰好 1 元素、恰好 64 字节）、回调鉴权、配置拒绝（零根、延迟超上限、同一 token 二次配置）、轮次夹取（`currentPhase() == 0` 时 `baseRound = 1`）、`claimDelayRounds` 为 `0` 当轮可领与为 `1` 下一轮可领、`claim` 的六层失败契约与优先级、零份额的链上链下双层拒绝、按剩余份额的比例分配与最后一人清空余额、`claimableAmount` 预检与 `claim` 返回一致、`AirdropConfigured` / `AirdropClaimed` 的字段与 indexed 布局，以及 `airdropInfos` 的分页语义与「不设独立计数入口」。URI 能力另覆盖：`updateSnapshotUri` 的校验顺序与错误集合（存在性 → 鉴权 → 参数）、创世币 `launcherMemberId = 0` 永久不可更新、发射者更新成功与非发射者拒绝、NFT 转手后权限随 `ownerOf` 实时跟随、长度 256/257 边界与空 URI、`AirdropSnapshotUriUpdated` 三字段（含旧值），以及 URI 设置前后 `claim` 的金额与状态完全一致；并核对 `snapshotUri` 作为 `AirdropInfo` 第 7 字段、`airdropInfo` / （无公开 getter） 两个单点 getter。
+**覆盖要求**：覆盖 `AirdropDistributor` 的构造配置（`TOTAL_SHARE = 1e18`、`MAX_CLAIM_DELAY_ROUNDS = 1000`、`MAX_SNAPSHOT_URI_BYTES = 256`、首币在构造期完成配置并写入非空 `genesisSnapshotUri`）、回调数据形状（`distributorData` 恰好 1 元素、恰好 64 字节）、回调鉴权、配置拒绝（零根、延迟超上限、同一 token 二次配置）、轮次夹取（`currentPhase() == 0` 时 `baseRound = 1`）、`claimDelayRounds` 为 `0` 当轮可空投铸造与为 `1` 下一轮可空投铸造、`claim` 的六层失败契约与优先级、零份额的链上链下双层拒绝、按剩余份额的比例分配与最后一人清空余额、`claimableAmount` 预检与 `claim` 返回一致、`AirdropConfigured` / `AirdropClaimed` 的字段与 indexed 布局，以及 `airdropInfos` 的分页语义与「不设独立计数入口」。URI 能力另覆盖：`updateSnapshotUri` 的校验顺序与错误集合（存在性 → 鉴权 → 参数）、创世币 `launcherMemberId = 0` 永久不可更新、发射者更新成功与非发射者拒绝、NFT 转手后权限随 `ownerOf` 实时跟随、长度 256/257 边界与空 URI、`AirdropSnapshotUriUpdated` 三字段（含旧值），以及 URI 设置前后 `claim` 的金额与状态完全一致；并核对 `snapshotUri` 作为 `AirdropInfo` 第 7 字段、`airdropInfo` / （无公开 getter） 两个单点 getter。
 
 **测试方式**：
-- 单元测试：`core/test/AirdropDistributor.t.sol` 的配置、领取、比例分配与 URI 更新场景
+- 单元测试：`core/test/AirdropDistributor.t.sol` 的配置、空投铸造、比例分配与 URI 更新场景
 - 单元测试：`core/test/AirdropDistributorEdgeCases.t.sol` 的形状、鉴权、轮次、失败优先级与 URI 边界（256/257、空串、未配置 token、NFT 转手）
 - 单元测试：`core/test/AirdropDistributorEvents.t.sol` 的三个事件字段与折叠（含 `AirdropSnapshotUriUpdated` 的新值/旧值）
 - 验收证据：Merkle 快照（来源链、来源区块、Merkle Root、首币地址）与 `Σleaves == 1e18` 的独立复算记录；前端本地优先、root 匹配时不请求远端，以及本地失效时回退 URI 并经链上校验当前钱包证明的记录
@@ -155,11 +155,11 @@
 **判定标准**：
 - 首币在 `AirdropDistributor` 构造期即完成配置，`Launch` 构造函数不调用回调；首币与子币的 Root、起始轮次、`totalClaimedShare` 相互独立
 - 非 `LAUNCH_ADDRESS` 调用 `onTokenLaunched` 回滚 `NotLaunchContract(caller)`；形状错误先于解码，回滚 `InvalidDistributorDataCount` / `InvalidDistributorDataLength`
-- `claim` 的校验顺序固定为 存在性 → 状态 → 参数 → 账本 → 资格 → 外部，先命中先回滚；`share == 0` 由链上**显式**回滚 `InvalidProof()`，位置在 `ShareExceedsRemaining` 与证明校验之前，不依赖链下生成器，也不出现「领取成功但拿到 0 代币并失去资格」的静默结果
-- `claim` 不设调用者限制（`claimer` 即 `msg.sender`，只能给自己领）；第 8 步算出的 `amount` 不做零值检查，第 9 步写状态先于第 10 步转账；转账失败透传 OZ `SafeERC20FailedOperation`，`claim` 的错误全集为 5 个自有 selector + 该透传错误
-- `amount = floor(balanceOf(this) × share ÷ remainingShare)`；全部份额领完后合约余额为零，且每个人累计所得不超过其份额比例
+- `claim` 的校验顺序固定为 存在性 → 状态 → 参数 → 账本 → 资格 → 外部，先命中先回滚；`share == 0` 由链上**显式**回滚 `InvalidProof()`，位置在 `ShareExceedsRemaining` 与证明校验之前，不依赖链下生成器，也不出现「空投铸造成功但拿到 0 代币并失去资格」的静默结果
+- `claim` 不设调用者限制（`claimer` 即 `msg.sender`，只能给自己空投铸造）；第 8 步算出的 `amount` 不做零值检查，第 9 步写状态先于第 10 步转账；转账失败透传 OZ `SafeERC20FailedOperation`，`claim` 的错误全集为 5 个自有 selector + 该透传错误
+- `amount = floor(balanceOf(this) × share ÷ remainingShare)`；全部份额空投铸造完后合约余额为零，且每个人累计所得不超过其份额比例
 - `AirdropClaimed` 五个字段逐个正确，`totalRemainingShare` 是扣除本次后的值；`airdropInfos` 含首币、`offset` 越界返回空数组与真实 `totalCount`，且第 7 字段 `snapshotUri` 与单点 getter 一致
-- URI 是**发现提示、不是授权**：链上不校验 URI 指向的文件内容与 Root 匹配，也不因 URI 改变调整领取逻辑；设置 URI 前后 `claim` 的金额、状态与事件完全一致。创世 URI 在新部署构造期写入并发出旧值为空的事件，此后不可更新；前端优先使用本地快照，root 一致则不请求 URI，本地失效才回退 HTTP(S) URI；两种来源都比较文件 root 与链上值，再用 `claimableAmount` 校验当前钱包的 share/proof；不匹配则提交前拦截、不展示可领数量；整文件的证明与份额总和由生成、同步和发布预检验证，前端不重建整棵树；`snapshotUri` 受 256 字节链上上限约束，两个 string 事件字段同界
+- URI 是**发现提示、不是授权**：链上不校验 URI 指向的文件内容与 Root 匹配，也不因 URI 改变调整空投铸造逻辑；设置 URI 前后 `claim` 的金额、状态与事件完全一致。创世 URI 在新部署构造期写入并发出旧值为空的事件，此后不可更新；前端优先使用本地快照，root 一致则不请求 URI，本地失效才回退 HTTP(S) URI；两种来源都比较文件 root 与链上值，再用 `claimableAmount` 校验当前钱包的 share/proof；不匹配则提交前拦截、不展示可空投铸造数量；整文件的证明与份额总和由生成、同步和发布预检验证，前端不重建整棵树；`snapshotUri` 受 256 字节链上上限约束，两个 string 事件字段同界
 - `updateSnapshotUri` 的鉴权写在 `onlySnapshotUriUpdater` modifier 且是函数体第一道判定；modifier 第一行是 `TokenNotConfigured` 存在性检查、第二行起才是鉴权，未配置 token 不得落到 `ownerOf(0)` 的 OZ `ERC721NonexistentToken`；`launcherMemberId == 0`（创世币）直接回 `NotSnapshotUriUpdater(caller, 0)`，权限随 MemberNFT 转手实时读 `ownerOf`、不缓存地址
 - 快照生成器保证 `Σleaves == 1e18` 精确相等；链上没有 Root 更新、暂停或取回入口
 
@@ -202,7 +202,7 @@
 - 自转账不破坏持有人统计
 
 ### GroupAction 参与索引与 Group Chat 主体
-**覆盖要求**：覆盖 `isGroupMember` 的归属计数与五条 `joined*` 索引（`joinedGroupIds`、`joinedGroupIdsByMemberId`、`joinedTokenAddressesByGroupIdByMemberId`、`joinedMemberIds`、`joinedMemberIdsByGroupId`）的标准分页语义（`offset` 越界返回空数组与真实总数、`limit` 超剩余按剩余返回、`reverse` 逆序、`limit = 0` 只取总数）与 `totalCount` 一致性，以及 `isGroupMember` 与 `joinedTokenAddressesByGroupIdByMemberId` 的同源一致性；覆盖按轮历史两读（`groupIdsByRound`、`memberIdsByGroupId`）返回目标轮快照且加入阶段结束后稳定；覆盖同一成员跨社区、跨行动参与，退出一个行动但仍有其他关系时归属不变，最后一个关系退出后 `isGroupMember` 才返回假，以及 `forceClearJoinState` 不修改这些业务索引。覆盖四类 typed Manager、普通 owner 管理型 Chat、规则槽位、插件、消息与分页行为；覆盖成员、管理员、发言、提及、黑名单目标和黑名单投票者均按 `memberId` 运行，并确认不存在默认 MemberNFT 映射、默认身份发言入口、地址黑名单/投票/查询或其他地址主体接口，也不存在群内 NFT 委托。治理黑名单覆盖代币治理票与行动 Proposal 投票两类票权、全社区治理票分母、支持票严格超过反对票 `10` 倍且达到 `0.3%` 的双阈值、撤票和任何人刷新。Group Chat 的群组资格以成员名单或 `isGroupMember` 为任一满足；最后一个 GroupAction 归属正常退出后，才失去归属分支；ActionTarget 的 `forceClearJoinState` 不单独改变资格。owner 快照及消息/事件调用地址只用于 NFT 转移有效性和审计，不得成为业务主体。
+**覆盖要求**：覆盖 `isGroupMember` 的归属计数与五条 `joined*` 索引（`joinedGroupIds`、`joinedGroupIdsByMemberId`、`joinedTokenAddressesByGroupIdByMemberId`、`joinedMemberIds`、`joinedMemberIdsByGroupId`）的标准分页语义（`offset` 越界返回空数组与真实总数、`limit` 超剩余按剩余返回、`reverse` 逆序、`limit = 0` 只取总数）与 `totalCount` 一致性，以及 `isGroupMember` 与 `joinedTokenAddressesByGroupIdByMemberId` 的同源一致性；覆盖按轮历史两读（`groupIdsByRound`、`memberIdsByGroupId`）返回目标轮快照且加入阶段结束后稳定；覆盖同一成员跨社区、跨行动参与，退出一个行动但仍有其他关系时归属不变，最后一个关系退出后 `isGroupMember` 才返回假，以及 `forceClearJoinState` 不修改这些业务索引。覆盖四类 typed Manager、普通 owner 管理型 Chat、规则槽位、插件、消息与分页行为；覆盖成员、管理员、发言、提及、黑名单目标和黑名单投票者均按 `memberId` 运行，并确认不存在默认 MemberNFT 映射、默认身份发言入口、地址黑名单/投票/查询或其他地址主体接口，也不存在链群内 NFT 委托。治理黑名单覆盖代币治理票与行动 Proposal 投票两类票权、全社区治理票分母、支持票严格超过反对票 `10` 倍且达到 `0.3%` 的双阈值、撤票和任何人刷新。Group Chat 的链群资格以成员名单或 `isGroupMember` 为任一满足；最后一个 GroupAction 归属正常退出后，才失去归属分支；ActionTarget 的 `forceClearJoinState` 不单独改变资格。owner 快照及消息/事件调用地址只用于 NFT 转移有效性和审计，不得成为业务主体。
 
 **测试方式**：
 - 单元测试：`action/test/GroupActionExecutor.t.sol` 的参与索引分页与归属计数场景
@@ -316,7 +316,7 @@
 - 失败场景正确回滚
 
 ### GroupService 结算
-**覆盖要求**：覆盖服务代币与行动代币相同或为其直接父币、非直接关系拒绝；覆盖只有当轮已加入服务 Proposal 的群 owner/验证者 MemberNFT 才能按人结算、未加入角色份额不重分配、所有 GroupAction 总激励作为分母（未准备时按实时账本计算，行动代币轮次被 Mint 准备后才缓存分母；owner 权重按群切片 floor，未覆盖的分母份额不重分配、留在服务合约）、源行动激励查询自行处理验证条件、公共验证者按工作量直接分配，以及按确认后的 owner 治理票占比处理超额销毁；同时覆盖加入资格两类分支（社区激活链群 / 服务轮社区行动集内有效验证者申请）、`1e18` 乘数精度、100% 二次分配不下溢，以及逐笔付款与销毁事件可还原全部资产变化。
+**覆盖要求**：覆盖服务代币与行动代币相同或为其直接父币、非直接关系拒绝；覆盖只有当轮已加入服务 Proposal 的群 owner/验证者 MemberNFT 才能按人结算、未加入角色份额不重分配、所有 GroupAction 总激励作为分母（未准备时按实时账本计算，行动代币轮次被 Mint 准备后才缓存分母；owner 权重按群切片 floor，未覆盖的分母份额不重分配、留在服务合约）、源行动激励查询自行处理验证条件、公共验证者按工作量直接分配，以及按确认后的 owner 治理票占比处理超额销毁；同时覆盖加入资格两类分支（社区激活链群 / 服务轮社区行动集内有效验证者申请）、`1e18` 乘数精度、100% 二次分配不下溢，以及逐笔转账与销毁事件可还原全部资产变化。
 
 `totalGroupActionReward == 0` 时不执行除法；覆盖该情形下按轮**未加入**的成员仍先回成员级 `ZeroRewardWeight(tokenAddress, actionId, memberId)`（判定次序是加入状态先于轮级分母），已按轮加入的角色（owner 与验证者）回轮级 `MemberRewardPoolEmpty(tokenAddress, round)`，不会落到取整 `MemberRewardRoundedToZero`，整笔预留激励停留在未结算状态（无销毁入口、预留不释放），owner 超额销毁由 Executor 直接调用服务代币 `burn`。
 

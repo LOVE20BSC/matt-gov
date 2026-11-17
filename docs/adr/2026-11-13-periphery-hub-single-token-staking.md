@@ -14,8 +14,8 @@ BSC 版需要一个「单笔完成流动性质押」的便捷入口：用户只�
 
 ### 既有事实
 
-- [repositories.md](../repositories.md) 已规划 `periphery` 仓库：依赖协议已部署合约、可随时替换的聚合查看与便捷交互，例子一栏即为 `viewer`、`hub`；旧仓 `LOVE20TKM/periphery/src/LOVE20Hub.sol` 正是这一角色，其 `stakeLiquidity(..., address to)` 承担入池最优量折算与滑点校验。
-- [CHANGES-core.md](../specs/CHANGES-core.md) 记录 BSC 改造时把旧 Hub 的折算与滑点校验并进 `stakeLiquidity`，新增 `slippage` 参数。当时的背景是旧 periphery 不迁移、Hub 不再存在。
+- [repositories.md](../repositories.md) 已规划 `periphery` 仓库：依赖协议已部署合约、可随时替换的聚合查看与便捷交互，例子一栏即为 `viewer`、`hub`；旧仓 `LOVE20TKM/periphery/src/LOVE20Hub.sol` 正是这一角色，其 `stakeLiquidity(..., address to)` 承担入池最优量折算与滑点容忍度校验。
+- [CHANGES-core.md](../specs/CHANGES-core.md) 记录 BSC 改造时把旧 Hub 的折算与滑点容忍度校验并进 `stakeLiquidity`，新增 `slippage` 参数。当时的背景是旧 periphery 不迁移、Hub 不再存在。
 - `Stake.stakeLiquidity` 当前带 `onlyMemberOwner(memberId)` 修饰符（[Stake.sol](../../../core/src/Stake.sol)），校验 `ownerOf(memberId) == msg.sender`；`_pull` 直接从 `msg.sender` 拉双币。因此在 EVM 的 `msg.sender` 语义下，**任何中间合约编排的单笔质押都会撞 `NotMemberOwner`**——Hub 调 Stake 时 Stake 看到的调用者是 Hub。
 - [01-common-rules.md](../specs/core/01-common-rules.md) 把「处分成员资产须校验 ownerOf」定为通用规则，但同时已留例外：`mergeStake` 只校验源 memberId，目标侧仅 `ownerOf(targetMemberId)` 验存在，不比较 `msg.sender`（[04-stake.md](../specs/core/04-stake.md) §融合）。**「向他人 memberId 单向增加质押」这一能力在当前协议里已经开放**。
 - `Stake._optimalAmounts` 折算后 `_pull` **只拉折算后的量**，剩余从未进入 Stake；折算保留一侧全额、削减另一侧，因此只可能一侧有剩余，或比例一致时两侧都无剩余。
@@ -45,9 +45,9 @@ BSC 版需要一个「单笔完成流动性质押」的便捷入口：用户只�
 
 1. **`stakeLiquidity` / `stakeBoost` 放宽鉴权**：只调用 `ownerOf(memberId)` 校验存在（沿用 `mergeStake` 的写法），**不比较 `msg.sender`**。判据是「单向增加不损害目标资产」；`unstake` / `withdraw` / `mergeStake` 源侧仍收紧。
 2. **等待期约束**：当该 memberId 已有质押（`liquidityShares != 0 || boostShares != 0`，与 `_mergeIntoTarget` 的 `targetHadPosition` 同判据）时，非 owner 调用必须沿用现有 `promisedWaitingPhases`，不得改写；空仓位允许自由指定（含 MAX）。下调回滚 `PromisedWaitingPhasesDecreased`，非持有人改写回滚独立的 `PromisedWaitingPhasesRewritten(tokenAddress, memberId, requested, current)`——两条判据不同，按错误标准「一条件一错误」不共用 selector。**该约束对中间合约同样成立**：Hub 代用户调用时 `msg.sender` 是 Hub，永不等于 NFT 持有人，因此经 Hub 无法为已有仓位提升等待期；要提升须由持有人直接调 `Stake.stakeLiquidity`，Hub 不提供这条路径。理由：实际交互中首次质押仍由 owner 经 Hub 完成，强制降为 MIN 会逼出「质押 + 调整等待期」两步，拿真实用户成本去防一个已有补救的骚扰。
-3. **删除 `slippage`**：`stakeLiquidity` 不再承担滑点职责，只按 Pair 储备把收到的两种币尽可能放进流动性质押，放不下的留在调用者手里。价格保护完全交给 Hub 的 `tokenAmountMin` / `parentTokenAmountMin`（全链路终点口径）。
+3. **删除 `slippage`**：`stakeLiquidity` 不再承担滑点容忍度职责，只按 Pair 储备把收到的两种币尽可能放进流动性质押，放不下的留在调用者手里。滑点容忍度（最多可接受的价格变化）完全交给 Hub 的 `tokenAmountMin` / `parentTokenAmountMin`（全链路终点口径）。
    - Hub 以**调用前后自身余额差**取 Stake 实际拉走的量，做 `prepared − remaining >= Min` 的事后校验，不在 Hub 里复刻折算公式。
-   - 这是 [CHANGES-core.md](../specs/CHANGES-core.md) 所记「旧 Hub 折算与滑点并入 core」的一次反转：periphery 回归后职责还回去，但边界更清楚（core 只折算 + 记账，Hub 管价格与路由）。**该反转只写本 ADR，不写进 `CHANGES-core.md`**——后者只记录与 `LOVE20TKM/core` 的最终差异。
+   - 这是 [CHANGES-core.md](../specs/CHANGES-core.md) 所记「旧 Hub 折算与滑点容忍度并入 core」的一次反转：periphery 回归后职责还回去，但边界更清楚（core 只折算 + 记账，Hub 管价格与路由）。**该反转只写本 ADR，不写进 `CHANGES-core.md`**——后者只记录与 `LOVE20TKM/core` 的最终差异。
 4. **事件字段变更**（`LiquidityStaked` / `BoostStaked`）：
    - 加 `caller`（直接调用者 `msg.sender`）。理由：单笔交易涉及多层合约调用时，日志收据只带发日志的合约地址、`tx.from` 只有顶层 EOA，中间调用者需 `debug_traceTransaction` 才能还原；显式写出使事件流自包含。依据 [event-standards.md](../event-standards.md) §4.3「直接调用者仅在确有必要时另设 `caller`」。
    - 加 `memberOwner`（`ownerOf(memberId)` 在本次写入时点的快照）。与 `caller` / `tx.from` 比对即可判「本人直接质押 / 本人经 Hub / 第三方代付」。
@@ -105,7 +105,7 @@ BSC 版需要一个「单笔完成流动性质押」的便捷入口：用户只�
 
 | # | 仓库 | 写范围 | 内容 | 依赖 |
 | --- | --- | --- | --- | --- |
-| A | `matt-gov` | `docs/adr/`、`docs/repositories.md`、`docs/dev-standards.md`、`docs/event-standards.md`、`docs/specs/core/01-common-rules.md`、`docs/specs/core/04-stake.md`、`docs/specs/core/09-testing.md`、`docs/acceptance.md`、`docs/specs/CHANGES-core.md`、`registry/errors.*` | 本 ADR；仓库清单状态与例子；§6.1 部署规则；新增 `periphery.hub` 族与 `core.stake` 族字段变更；通用鉴权规则（处分收紧 / 单向增加放开，含「新增无许可写入口须说明谁都能调、为什么无害」的新类别）；04-stake 鉴权表删 `NotMemberOwner` 行、删滑点段与拒绝条件第 10 行、事件表补字段；覆盖矩阵与验收；`CHANGES-core.md` **只更新与旧仓的最终差异**（`stakeLiquidity` 不再有 `slippage`、错误集合去掉 `SlippageExceeded`），不记中间迭代；错误登记刷新 | 无（先做） |
+| A | `matt-gov` | `docs/adr/`、`docs/repositories.md`、`docs/dev-standards.md`、`docs/event-standards.md`、`docs/specs/core/01-common-rules.md`、`docs/specs/core/04-stake.md`、`docs/specs/core/09-testing.md`、`docs/acceptance.md`、`docs/specs/CHANGES-core.md`、`registry/errors.*` | 本 ADR；仓库清单状态与例子；§6.1 部署规则；新增 `periphery.hub` 族与 `core.stake` 族字段变更；通用鉴权规则（处分收紧 / 单向增加放开，含「新增无许可写入口须说明谁都能调、为什么无害」的新类别）；04-stake 鉴权表删 `NotMemberOwner` 行、删滑点容忍度段与拒绝条件第 10 行、事件表补字段；覆盖矩阵与验收；`CHANGES-core.md` **只更新与旧仓的最终差异**（`stakeLiquidity` 不再有 `slippage`、错误集合去掉 `SlippageExceeded`），不记中间迭代；错误登记刷新 | 无（先做） |
 | B | `core` | `src/Stake.sol`、`src/interfaces/IStake.sol`、`test/**`、`script/**` | 删 `slippage` 参数 / `SLIPPAGE_PRECISION` / `_checkSlippage` / `SlippageExceeded`；`_optimalAmounts` 变纯折算；`stakeLiquidity`/`stakeBoost` 只验 `ownerOf` 存在、已有仓位沿用等待期；两事件加 `caller`/`memberOwner`/`prevPromisedWaitingPhases`；全部调用点、mock、约 25 处测试常量与 Slippage Tests 段重写、部署脚本参数校验 | A（ABI 定稿） |
 | C | `compatibility` | `test/CompatibilityProbe.t.sol`、`test/CoreAuditFindings.t.sol` 等 7 处 | `stakeLiquidity` 调用去掉 `slippage` 实参，`SLIPPAGE` 常量删除；重跑 fork 探针 | B（selector 变更） |
 | D | `tools` | `src/UniswapV2Zap.sol`、`src/interfaces/IUniswapV2Zap.sol` 等 5 个最小外部接口、`test/UniswapV2Zap.t.sol`、`test/mocks/ZapMocks.sol`、`test/DeployUniswapV2Zap.t.sol`、`script/deploy/*uniswap_v2_zap*`、`script/network/**/*uniswap-v2-zap*`、`broadcast/DeployUniswapV2Zap.s.sol/`、`foundry.toml`、`README.md` | 删除 Zap 全部实现、接口、测试、部署脚本、广播记录、参数文件、lint 理由段；最小外部接口移交 periphery；README 改为「只放零依赖纯工具」 | 无（可与 A 并行） |
@@ -121,7 +121,7 @@ BSC 版需要一个「单笔完成流动性质押」的便捷入口：用户只�
 
 1. 单币质押一笔交易完成，无中间合约地址耦合、无 LP 转交、无二次退款；演进面收敛在 periphery，core 保持稳定的记账底座。
 2. `tools` 与 `periphery` 的边界变成一条编译期事实（是否 `import @core/`），不再靠人判断「算不算外围」。
-3. swap / 折算数学只存在 Hub 一份；core 不再承担价格保护，接口更宽容、更适合被合约调用。
+3. swap / 折算数学只存在 Hub 一份；core 不再承担滑点容忍度判定，接口更宽容、更适合被合约调用。
 4. 事件流自包含（两层 `caller` + `memberOwner`），链下无需 `debug_traceTransaction` 即可还原调用链与判断代付。
 
 ### 负面 / 成本

@@ -14,7 +14,7 @@
 
 计算结果小于 1 时，阶段尚未开始，查询和操作回滚 `RoundNotStarted(1, 0)`（`requiredRound` 为 1，`currentRound` 为推导出的 0），不得返回 0。结果有效只表示阶段已开始，实际参与或铸币条件仍由 Executor 校验。获得票的 Proposal 在全局 Phase 增加一后开放加入；此时加入 Round 为当前全局 Phase 减一。
 
-投票、加入、铸币 Round 见 [`IActionExecutor.sol`](https://github.com/LOVE20BSC/action/blob/main/src/interfaces/IActionExecutor.sol)。GroupAction 和 GroupService 额外提供 `currentVerifyRound()`；LP 不提供虚构的验证接口。加入类写操作只写当前加入 Round，验证只接受当前验证 Round，历史领取允许 `1 <= round <= currentMintRound()`。
+投票、加入、铸币 Round 见 [`IActionExecutor.sol`](https://github.com/LOVE20BSC/action/blob/main/src/interfaces/IActionExecutor.sol)。GroupAction 和 GroupService 额外提供 `currentVerifyRound()`；LP 不提供虚构的验证接口。加入类写操作只写当前加入 Round，验证只接受当前验证 Round，历史铸造允许 `1 <= round <= currentMintRound()`。
 
 **按加入轮读取历史**：令 `joinRound = ActionRoundAxis.joinRound(PHASE_ADDRESS)`。下列查询在 `round > joinRound` 时统一回滚 `RoundNotStarted(round, joinRound)`，两个载荷分别为请求轮次和当前加入轮；即使没有行动或成员记录，也先检查轮次。`phase` 为 0/1 时，任何正轮次都尚未开始。`round = 0` 沿用历史原语的起点查询语义；已开始但没有记录时，金额与加入标记仍为 `0` / `false`，成员等名单为空，验证资料按模板返回空字符串值；分页 `offset` 越界仍返回空列表与真实总数。
 
@@ -33,12 +33,12 @@
 
 | 当前 Phase | 已开始的最早业务 |
 | --- | --- |
-| 1 | Round 1 投票 |
-| 2 | Round 1 加入；Round 2 投票 |
-| 3 | Round 1 LP 铸币及 GroupAction 验证；Round 2 加入 |
-| 4 | Round 1 GroupAction/GroupService 铸币；其他轮次继续流水运行 |
+| 1 | 治理轮 1 / LP 行动轮 1 / 链群行动轮 1 / 链群服务轮 1 投票 |
+| 2 | LP 行动轮 1、链群行动轮 1、链群服务轮 1 加入；治理轮 2 投票 |
+| 3 | LP 行动轮 1 铸币及链群行动轮 1、链群服务轮 1 验证；LP 行动轮 2、链群行动轮 2、链群服务轮 2 加入 |
+| 4 | 链群行动轮 1、链群服务轮 1 与 LP 行动轮 2 铸币；其他轮次继续流水运行 |
 
-例：Phase 5 的加入 Round 为 4；LP 铸币 Round 为 3，链群/服务铸币 Round 为 2。
+例：Phase 5 时，LP 行动轮、链群行动轮、链群服务轮的加入轮为 4；LP 行动轮铸币轮为 3，链群行动轮、链群服务轮铸币轮为 2。
 
 ## 服务验证复用
 

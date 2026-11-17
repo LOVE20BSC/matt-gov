@@ -35,7 +35,7 @@ Proposal 由合约分配的头部与创建者提供的主体组成，对外以 `
 
 显式销毁可由专用 Target 合约接收后执行，不能用零 Target 隐式销毁。
 
-`target` 同时是提案奖励的唯一领取主体：`Mint.mintProposalReward` 只接受该地址调用，领取规则见 [Mint 的 Proposal 结算](07-mint.md#proposal-结算)。`Callback` 模式要求它是合约，`NoCallback` 模式允许 EOA。
+`target` 同时是提案激励的唯一铸造主体：`Mint.mintProposalReward` 只接受该地址调用，铸造规则见 [Mint 的 Proposal 结算](07-mint.md#proposal-结算)。`Callback` 模式要求它是合约，`NoCallback` 模式允许 EOA。
 
 结构体见 [`ISubmit.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/ISubmit.sol)。
 

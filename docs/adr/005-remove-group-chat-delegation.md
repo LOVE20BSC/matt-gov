@@ -9,7 +9,7 @@
 `GroupChatDelegate` 从旧 `LOVE20TKM/group/src/GroupDelegate.sol` 迁入，实现「按群、按 memberId 的运营权委派」：
 
 - 键为 `groupId`，值为 `{delegateId, ownerSnapshot, delegateOwnerSnapshot}`；
-- 群主把某个群的运营权委派给另一个 memberId，NFT 仍留在原钱包；
+- 链群 owner 把某个链群的运营权委派给另一个 memberId，NFT 仍留在原钱包；
 - 两个 owner 快照任一失配即自动失效；
 - 被委派人需先开启接受开关（默认关闭）；
 - 授予的能力：改群聊配置、授予/撤销管理员、增删成员、拉黑/解黑；发言时额外获得 `mentionAll` 与 scope/ban 豁免。
@@ -46,7 +46,7 @@
 
 ### 负面影响
 
-1. **失去按群委派配置权**：多人协作运营一个群时，配置修改必须由群 NFT 持有人执行。需要多人操作时，只能转移群 NFT 或等待上层托管方案。
+1. **失去按群委派配置权**：多人协作运营一个链群时，配置修改必须由链群 NFT 持有人执行。需要多人操作时，只能转移链群 NFT 或等待上层托管方案。
 2. **失去委托接受开关与反向枚举**：`isDelegationAcceptanceEnabled`、`delegatedGroupIds` 等查询不存在。
 3. **ABI 破坏性变更**：删除 `setDelegateId`、`clearDelegatedGroupIds`、`setDelegationAcceptanceEnabled`、`isDelegationAcceptanceEnabled`、`effectiveDelegateId`、`effectiveDelegateIdsByGroupIds`、`delegatedGroupIds`、`ownerOrDelegateId` 与三个事件；四个合约删除 `GROUP_DELEGATE_ADDRESS`；`GroupAdmin` 构造签名由 `(address,uint256)` 改语义为 `(groupAddress,uint256)`。本仓库无生产部署，只影响同批更新的调用方与索引。
 4. **`operatorId` 变为冗余参数**：配置与管理入口仍保留该参数以维持事件字段，但必须等于 `groupId`。后续如需彻底清理，可与事件字段一起在下一个 major 变更中移除。

@@ -43,7 +43,7 @@
 
 ### 3.1 冻结值为什么全大写
 
-`Mint.VOTE_ADDRESS` 在 `init` 后不可更改，`GroupChat.scopeSource` 可由群主 `setScopeSource` 更改。两者都是「某个合约的地址依赖」，但一个全大写、一个 camelCase——区别就是会不会变。若不用大小写编码，两者在 ABI 上完全同形，集成方必须读源码才能区分。本协议的安全模型建立在"哪些值部署后不再变"之上，这个区别必须在名字里可见，所以：**部署后冻结 = 全大写**，与它是 `constant`、`immutable` 还是 `init` 写入的存储无关。
+`Mint.VOTE_ADDRESS` 在 `init` 后不可更改，`GroupChat.scopeSource` 可由链群 owner `setScopeSource` 更改。两者都是「某个合约的地址依赖」，但一个全大写、一个 camelCase——区别就是会不会变。若不用大小写编码，两者在 ABI 上完全同形，集成方必须读源码才能区分。本协议的安全模型建立在"哪些值部署后不再变"之上，这个区别必须在名字里可见，所以：**部署后冻结 = 全大写**，与它是 `constant`、`immutable` 还是 `init` 写入的存储无关。
 
 这与 OZ 惯例（immutable 用 camelCase）不同，是有意偏离：OZ 面向可升级/可治理合约，冻结与否不是主要矛盾；本协议没有升级路径，冻结与否是主要矛盾。`dev-standards.md` §5.2 已经为 init 固定的配置常量选了大写，本条把它推广成一条轴，而不是引入新约定。
 
@@ -159,7 +159,7 @@
 - **双向索引成对出现时，两侧都是键，都要写进名字**：`tokenAddressByGroupId` / `groupIdByTokenAddress`、`actionByGroupId` / `groupIdByActionId`。它们不是「始终存在的上下文」——每一侧都是唯一能定位结果的那把键，省略任一侧都会让读者无法预测反向查询叫什么。
 - **入参与同名读取函数冲突时**（`adminIds()`、`memberIds()`、`groupIds()`、`rounds()` 这类集合 getter 占用了最自然的名字），按 §3 硬约束 4 改参数而不是函数名；改写形态是**封闭集合**：写方向用 `<noun>List`、判断用 `checked`、读入参用 `requested`。例：`addAdmins(…, adminIdList)`、`removeMemberIds(…, memberIdList)`、`isMemberIdBatch(…, checkedMemberIds)`、`chatInfosByGroupIds(requestedGroupIds)`。
   - 写方向不用 `added` / `removed`：方向已由函数名给出，`addAdmins(addedAdminIds)` 读作「把已加的管理员 id 加进去」，既重复又没说明是数组。`List` 只声明「这是数组」，且与内部双向辅助同名（`_setMemberIds(…, memberIdList, listed)`），内外一套词。`adminIdList` / `memberIdList` 与集合 getter（`adminIds` / `memberIds`）不同名，不触发同名声明。
-- Key 取入参名去掉用途前缀后的词干：`roundInfosByRounds(…, requestedRounds)`、`chatInfosByGroupIds(…, requestedGroupIds)`、`proposalInfosByProposalIds(…, requestedProposalIds)`。`Ids` 只在载荷确实是 id 数组时使用：轮次是纪元键不是 id，`roundInfosByRoundIds` 不合格。
+- Key 取入参名去掉用途前缀后的词干：`roundInfosByRounds(…, requestedRounds)`、`chatInfosByGroupIds(…, requestedGroupIds)`、`proposalInfosByProposalIds(…, requestedProposalIds)`。`Ids` 只在载荷确实是 id 数组时使用：轮次是轮次键不是 id，`roundInfosByRoundIds` 不合格。
 - 同一内部辅助函数同时服务增删两个方向时（`_checkAdminIdList`、`_setMemberIds`），入参用 `<noun>List`（`adminIdList`、`memberIdList`），与 §十一 返回值同名冲突时的逃生口一致。
 
 ### 7.4 聚合

@@ -8,7 +8,7 @@
 - 继承 `IProposalTarget`，实现 Core 层的三类回调；回调仅接受 ActionTarget 调用
 - `ACTION_TARGET_ADDRESS()` — 自证绑定：ActionTarget 在 `onProposalCreated` 用它与 `address(this)` 握手，防止 executor 误配
 - `exit(tokenAddress, actionId, memberId)` — 完全退出的签名是通用的
-- `mintMemberReward(...)` / `memberReward(...)` 与事件 `MemberRewardMinted` — 成员级奖励的铸造与查询，签名三家一致（成员级奖励裁决）
+- `mintMemberReward(...)` / `memberReward(...)` 与事件 `MemberRewardMinted` — 成员级激励的铸造与查询，签名三家一致（成员级激励裁决）
 - `mintMemberRewards(...)` — 批量成员结算（平行数组按下标配对，任一元素失败整笔回滚）
 - `joinedAmountByActionId(...)` / `joinedAmountByMemberId(...)` / `joinTokenAddress(...)` — 截止加入轮 `round` 结束的累计参与量、按成员累计量与参与计价代币（未来加入轮回滚 `RoundNotStarted(round, joinRound)`，边界见[阶段模型](02-phase-model.md)；计价代币与轮次无关，不带 `round`；口径由各 Executor 规格固定）。计价代币是 `joinedAmountByActionId` 的计价单位：LP 为 LP 对币、GroupAction 为 join token、GroupService 为行动代币（按激活质押代理计量）。前端展示行动列表与派生指标时只需读基座三者，无需按 Executor 分支。GroupAction 另有成员记录快照 `joinInfo(tokenAddress, actionId, round, memberId) returns (JoinInfo)`（`joinedRound` / `groupId` / `ownAmount` / `providerAmount`）：它**不重复给出聚合总量**，总量只有基座 `joinedAmountByMemberId` 一个来源
 - 基座 `joinTokenAddress` 是唯一的通用计价代币 getter；LP 与 GroupAction 直接使用该名（不再重复声明）。GroupService 的计价代币语义是行动代币，保留 `actionTokenAddress` 作为领域别名，与基座 `joinTokenAddress` 同键同值——这是登记在案的单点例外，改其一必须同批改另一个
@@ -83,7 +83,7 @@ interface IActionExecutor is IProposalTarget, IActionExecutorEvents, IActionExec
 }
 ```
 
-`IActionExecutor` 装六处真正共享的成员：自证绑定、初始化查询、完全退出、Round 查询、成员级奖励（`mintMemberReward`/`mintMemberRewards`/`memberReward` 与事件 `MemberRewardMinted`，成员级奖励裁决定稿）、参与量查询（`joinedAmount` 族，按加入轮累计）。各 Executor 的 `Errors` 子接口按各自旧文件拆分。
+`IActionExecutor` 装六处真正共享的成员：自证绑定、初始化查询、完全退出、Round 查询、成员级激励（`mintMemberReward`/`mintMemberRewards`/`memberReward` 与事件 `MemberRewardMinted`，成员级激励裁决定稿）、参与量查询（`joinedAmount` 族，按加入轮累计）。各 Executor 的 `Errors` 子接口按各自旧文件拆分。
 
 **可见性说明（已登记，不改代码）**：基座把 `mintMemberReward` 声明为 `external`，实现体是 `public`——`mintMemberRewards` 在合约内部复用同一条结算路径。`public` 是对 `external` 的合法放宽，外部 ABI 不变。若将来要收窄，只能拆成内部 `_mintMemberReward` 加两个外部入口，属于接口面整理，不改变任何权限语义。
 

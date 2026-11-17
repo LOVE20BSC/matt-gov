@@ -8,7 +8,7 @@
 | 代币治理 | 社区当前有效治理票 > 0 | 同左 |
 | 代币行动 | 最近 RECENT_ROUNDS 轮给该行动投票，或当前参与该行动 | 当前 Vote Round 给该 Proposal 的累计票数 |
 | 代币行动治理 | 最近 RECENT_ROUNDS 轮给该行动投票 | 当前 Vote Round 给该 Proposal 的累计票数 |
-| 群组 | 成员名单命中，或当前归属该群的 GroupAction | 人工黑名单，无治理加权 |
+| 链群 | 成员名单命中，或当前归属该链群的 GroupAction | 人工黑名单，无治理加权 |
 
 ## 资格数据
 
@@ -20,11 +20,11 @@
 
 ## 黑名单
 
-`targetSenderId` 只要求非零，不要求 MemberNFT 存在（允许预黑名单）；`0` 回 `ZeroTargetSenderId()`。批量入口按入参顺序返回第一个零值；`ZeroTargetSenderId()` 无载荷，定位靠调用方按入参顺序回放。人工黑名单的 operator state 记录最后一次实际变更的操作者，重复封禁同一目标不改写，不表示「最后请求者」；名单与 operator state 不随群 NFT 转移清空，转移后旧 operator 仅作历史字段。批量封禁/解封的顺序为「鉴权 → 群存在性 → 逐元素零值 → 逐元素重复 → 写入」，首个失败元素决定错误；空批次为 no-op，不写状态、不发事件。
+`targetSenderId` 只要求非零，不要求 MemberNFT 存在（允许预黑名单）；`0` 回 `ZeroTargetSenderId()`。批量入口按入参顺序返回第一个零值；`ZeroTargetSenderId()` 无载荷，定位靠调用方按入参顺序回放。人工黑名单的 operator state 记录最后一次实际变更的操作者，重复封禁同一目标不改写，不表示「最后请求者」；名单与 operator state 不随链群 NFT 转移清空，转移后旧 operator 仅作历史字段。批量封禁/解封的顺序为「鉴权 → 群存在性 → 逐元素零值 → 逐元素重复 → 写入」，首个失败元素决定错误；空批次为 no-op，不写状态、不发事件。
 
 `voteWeight(groupId, voterId)` 使用上表权重；两类 token Manager 和两类 action Manager 的 `totalVoteWeight(groupId)` 都取所属社区的当前总有效治理票，不取行动总票数或创建 Round。
 
-权重源不是独立配置项，而是群 NFT 的当前持有者：`GovVotedBanSource` 以 `MemberNFT.ownerOf(groupId)` 解析权重合约，再调用其 `voteWeight` / `totalVoteWeight`。四类 Manager 在托管群 NFT 的同时实现 `IBanVoteWeightSource`，因此只有 Manager 托管的 Chat 具备治理加权封禁。群不存在回 `GroupNotExist(groupId)`；群存在但持有者是 EOA，或未实现该接口的合约钱包时，写票回 `BanVoteWeightSourceUnavailable(groupId, source)`（`source` 为解析出的失败权重源地址），只能用人工黑名单；该错误同时覆盖「无代码」与「权重调用失败」两类，属同一「权重源不可用」语义，登记为已知边界，不拆 ABI。`setBanSource` 只校验地址有代码，误配不会在配置期报错。
+权重源不是独立配置项，而是链群 NFT 的当前持有者：`GovVotedBanSource` 以 `MemberNFT.ownerOf(groupId)` 解析权重合约，再调用其 `voteWeight` / `totalVoteWeight`。四类 Manager 在托管链群 NFT 的同时实现 `IBanVoteWeightSource`，因此只有 Manager 托管的 Chat 具备治理加权封禁。群不存在回 `GroupNotExist(groupId)`；群存在但持有者是 EOA，或未实现该接口的合约钱包时，写票回 `BanVoteWeightSourceUnavailable(groupId, source)`（`source` 为解析出的失败权重源地址），只能用人工黑名单；该错误同时覆盖「无代码」与「权重调用失败」两类，属同一「权重源不可用」语义，登记为已知边界，不拆 ABI。`setBanSource` 只校验地址有代码，误配不会在配置期报错。
 
 GovVotedBanSource 的接口见 [`IGovVotedBanSource.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/sources/ban/IGovVotedBanSource.sol)，其 voter 和 target 均使用 `memberId`。
 
@@ -48,16 +48,16 @@ supportWeight * 1e18 >= totalVoteWeight * 3e15
 
 ## forceClearJoinState 与资格
 
-采用组合资格源的群组，满足以下任一条件即可通过成员资格检查：在该群的成员名单中，或仍在该群下参加至少一个 GroupAction。仅名单型资格源只看成员名单。
+采用组合资格源的链群，满足以下任一条件即可通过成员资格检查：在该链群的成员名单中，或仍在该链群下参加至少一个 GroupAction。仅名单型资格源只看成员名单。
 
-- ActionTarget.forceClearJoinState 不修改 GroupAction 的群归属与 Executor 仓位，所以不会取消上述群组资格；但会取消代币社区/行动 Chat 中由该行动加入状态提供的资格。参与分支实现上只查 `isJoined`，`forceClearJoinState` 后返回 false 即不再满足。持币、治理票、近期投票等其他条件仍独立判断。
+- ActionTarget.forceClearJoinState 不修改 GroupAction 的链群归属与 Executor 仓位，所以不会取消上述链群资格；但会取消代币社区/行动 Chat 中由该行动加入状态提供的资格。参与分支实现上只查 `isJoined`，`forceClearJoinState` 后返回 false 即不再满足。持币、治理票、近期投票等其他条件仍独立判断。
 - GroupAction 实际退出（包括 Provider 额度撤回至总参与量为零）后，若成员已不在该群下参加任何行动，便不再满足行动归属条件；名单仍有效时，仍能通过成员资格检查。
 
 例：成员同时在群成员名单中、也在该群下参加一个行动。退出该行动后，因为仍在名单中，成员资格仍成立。实际发言还须通过发言开关、黑名单等检查。
 
 ## 成员与管理员
 
-成员/管理员和人工黑名单的旧批量增删、枚举、事件、owner 快照及幂等行为不变，只删除地址目标和默认身份查找。`MAX_ADMIN_IDS` 按已登记集合计数，失效（快照不再匹配）的条目仍占名额，需显式撤销后才能新增管理员；重复添加且快照变化会刷新快照并发出 `listed = true, prevListed = true`。`removeAdmins` / `removeMemberIds` 要求对应 NFT 当前存在，当前无 burn，未来引入 burn 后这两条删除入口会拒绝已销毁 ID。批量入参长度不设协议上限，去重为 O(n²)，整批失败整体回滚，gas 由调用者自担；空批次为 no-op。`addMemberIds` / `addAdmins` 的顺序为「鉴权 → 群存在性 → 逐元素 NFT 存在性 → 逐元素重复 → `addAdmins` 上限 → 写入」，首个失败元素决定错误；`remove*` 不校验上限。成员名单以 `groupId + memberId` 为键，不随群 NFT 或成员 NFT 转移清空或改写。权限见 [生命周期](01-lifecycle.md#权限范围)。
+成员/管理员和人工黑名单的旧批量增删、枚举、事件、owner 快照及幂等行为不变，只删除地址目标和默认身份查找。`MAX_ADMIN_IDS` 按已登记集合计数，失效（快照不再匹配）的条目仍占名额，需显式撤销后才能新增管理员；重复添加且快照变化会刷新快照并发出 `listed = true, prevListed = true`。`removeAdmins` / `removeMemberIds` 要求对应 NFT 当前存在，当前无 burn，未来引入 burn 后这两条删除入口会拒绝已销毁 ID。批量入参长度不设协议上限，去重为 O(n²)，整批失败整体回滚，gas 由调用者自担；空批次为 no-op。`addMemberIds` / `addAdmins` 的顺序为「鉴权 → 群存在性 → 逐元素 NFT 存在性 → 逐元素重复 → `addAdmins` 上限 → 写入」，首个失败元素决定错误；`remove*` 不校验上限。成员名单以 `groupId + memberId` 为键，不随链群 NFT 或成员 NFT 转移清空或改写。权限见 [生命周期](01-lifecycle.md#权限范围)。
 
 成员、管理员和人工黑名单接口见 [`IGroupAdmin.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/IGroupAdmin.sol)、[`IGroupMember.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/IGroupMember.sol) 与 [`IGroupChatBanList.sol`](https://github.com/LOVE20BSC/group-chat/blob/main/src/interfaces/IGroupChatBanList.sol)。写操作显式传入操作者 `operatorId`。
 

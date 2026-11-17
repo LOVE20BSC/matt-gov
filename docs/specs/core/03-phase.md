@@ -26,7 +26,7 @@ Phase 维护连续的、无业务语义的阶段、同步观测和动态校准�
 
 ## 同步
 
-任何地址可调用 `sync`，但同一 Phase 实例在每个治理投票 Round 最多执行一次有效同步。治理 Round 与 Phase 一对一，因此按调用前的 `currentPhase()` 全局限频，不按 token 或调用者分别计数。
+任何地址可调用 `sync`，但同一 Phase 实例在每个治理轮最多执行一次有效同步。治理轮与 Phase 一对一，因此按调用前的 `currentPhase()` 全局限频，不按 token 或调用者分别计数。
 
 维护 `lastSyncPhase`，初值为 0。若等于本次 Phase，直接返回 `(false, currentPhaseBlocks)`，不追加观测、不调整参数、不发事件；否则记录本 Phase 并追加 `block.number`、`block.timestamp`。首次同步或未达到调整条件仍消耗本轮同步机会，失败回滚则不消耗。
 

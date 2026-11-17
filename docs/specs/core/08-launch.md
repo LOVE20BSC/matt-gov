@@ -13,7 +13,7 @@ Launch 负责首币部署、LOVE20Token 创建、基础发射与次数账本。T
 部署顺序固定为 `Phase → AirdropDistributor → Launch → MemberNFT → Stake → Submit → Vote → Mint`：
 
 1. `Phase` 以构造参数部署。
-2. `AirdropDistributor` 以构造参数部署，接收脚本预测的 `Launch` 地址、已部署的 `Phase` 地址、脚本预测的首币地址，以及首币的 Merkle Root 与领取延迟轮数；首币的完整分发配置在它自己的构造函数内一次写入，见 [AirdropDistributor](10-airdrop-distributor.md)。
+2. `AirdropDistributor` 以构造参数部署，接收脚本预测的 `Launch` 地址、已部署的 `Phase` 地址、脚本预测的首币地址，以及首币的 Merkle Root 与空投铸造延迟轮数；首币的完整分发配置在它自己的构造函数内一次写入，见 [AirdropDistributor](10-airdrop-distributor.md)。
 3. `Launch` 以 `LaunchInitParams` 部署；构造函数内写入依赖（含 Pair Factory）、发射参数和供应量配置，按固定顺序创建首币 → 登记首币（`FIRST_TOKEN_ADDRESS` 与五个登记账本）→ **创建或复用首币的 Pair** → 发出 `GenesisTokenCreated`。构造函数内只允许这一次 CREATE，因此首币地址按 `computeCreateAddress(launchAddress, 1)` 预测；`Launch` 的 `distributor` 就是这个 `AirdropDistributor`，部署后核对首币地址与预测值一致。
 4. `MemberNFT` 以构造参数部署，首币地址取自 `Launch.FIRST_TOKEN_ADDRESS()`（真实地址，不使用 `tokens(0)` 查询）；`MemberNFT` 不保存 Launch 地址。
 5. `Stake`、`Submit`、`Vote`、`Mint` 依次构造。`Stake` 构造时 `Vote` 尚未部署，脚本按部署者 nonce 预测 `Vote` 地址，并在 `Vote` 部署后立即核对 `Stake.VOTE_ADDRESS()`；`MemberNFT` 与 `Mint` 的地址同样在部署前预测、部署后核对。构造函数只保存传入地址，不调用同批部署合约的任何 getter；`Launch` 对已部署第三方的 `factory.getPair`/`createPair` 是唯一例外。
@@ -34,7 +34,7 @@ Launch 负责首币部署、LOVE20Token 创建、基础发射与次数账本。T
 
 首币符号不套用 `TOKEN_SYMBOL_LENGTH` 校验：旧实现的第一个代币走 `tokensCount() == 0` 分支，跳过符号校验与测试网 `Test` 前缀（名称仍按 `tokenSymbol + "@" + parentTokenSymbol` 拼接）；BSC 版由构造参数直接给定首币名称和符号，因此首币符号长度可以与配置的子币符号长度不同。
 
-首币 `distributor` 为本仓库的 [`AirdropDistributor`](10-airdrop-distributor.md)，在 `Launch` 之前部署并把预测的首币地址、Merkle Root 与领取延迟传入其构造函数；`Launch` 构造函数只把首批供应铸给该地址，不调用它的回调。首币空投的份额数据来源于旧 `LOVE20TKM/burn` 记录在链上的销毁活动结果（来源链 ID、来源区块、来源地址与份额快照）；Burn 业务不迁移，旧仓库只读，`AirdropDistributor` 也不引用它的合约代码。部署记录必须公开记录实际使用的来源链、来源区块、Merkle Root 与首币地址，使任何人可独立复算，见 [仓库清单](../../repositories.md)。
+首币 `distributor` 为本仓库的 [`AirdropDistributor`](10-airdrop-distributor.md)，在 `Launch` 之前部署并把预测的首币地址、Merkle Root 与空投铸造延迟传入其构造函数；`Launch` 构造函数只把首批供应铸给该地址，不调用它的回调。首币空投的份额数据来源于旧 `LOVE20TKM/burn` 记录在链上的销毁活动结果（来源链 ID、来源区块、来源地址与份额快照）；Burn 业务不迁移，旧仓库只读，`AirdropDistributor` 也不引用它的合约代码。部署记录必须公开记录实际使用的来源链、来源区块、Merkle Root 与首币地址，使任何人可独立复算，见 [仓库清单](../../repositories.md)。
 
 ### 透传来源
 
@@ -130,7 +130,7 @@ Launch 只保存“成员可用整数次数”和“代币累计已产生次数�
 
 回调可重入 `launchToken`：外层账本（次数递减、代币列表、父币映射、符号映射、子币列表、distributor 代币列表）在回调前已封账，重入等价于同一交易内连续发射两次，两次都消耗该成员在对应父币维度的剩余次数。distributor 若需拒绝重入应自行加锁，不能依赖 Launch。
 
-distributor 自行实现领取与查询逻辑；`ILaunchDistributor` 只规定 `onTokenLaunched`，协议不要求 distributor 提供任何领取入口。本仓库的 [`AirdropDistributor`](10-airdrop-distributor.md) 提供了具体的领取与查询 ABI，属于该模块自己的约定，不构成对所有 distributor 的协议要求：它还允许子币发射者在发射后登记快照 URI（发现提示，不参与领取判定），其 URI 鉴权从 `ILaunch.MEMBER_NFT_ADDRESS()` 派生 MemberNFT 地址并按 `ownerOf` 实时判定当前 `launcherMemberId` 持有人，不新增本合约构造参数或回调数据字段。发射者负责选择分发目标，承担其失败和 Gas 耗尽风险。
+distributor 自行实现空投铸造与查询逻辑；`ILaunchDistributor` 只规定 `onTokenLaunched`，协议不要求 distributor 提供任何空投铸造入口。本仓库的 [`AirdropDistributor`](10-airdrop-distributor.md) 提供了具体的空投铸造与查询 ABI，属于该模块自己的约定，不构成对所有 distributor 的协议要求：它还允许子币发射者在发射后登记快照 URI（发现提示，不参与空投铸造判定），其 URI 鉴权从 `ILaunch.MEMBER_NFT_ADDRESS()` 派生 MemberNFT 地址并按 `ownerOf` 实时判定当前 `launcherMemberId` 持有人，不新增本合约构造参数或回调数据字段。发射者负责选择分发目标，承担其失败和 Gas 耗尽风险。
 
 校验顺序固定为鉴权 → 参数 → 存在性 → 账本 → 扣减 → 最终符号唯一性：先校验调用者持有 `memberId`，再校验参数（`tokenSymbol`、`distributor` 与分发模式），再校验存在性（`parentTokenAddress` 为已登记 LOVE20 代币；`memberId` 存在性由鉴权覆盖），再校验账本余量并扣减次数，最后按施加 `Test` 前缀后的最终符号校验唯一性。唯一性校验必须排在父币存在性校验之后：最终符号要先读取已登记父币的符号才能得到。
 
@@ -187,6 +187,6 @@ LOVE20Token 的错误走本地具体错误：零 `initialSupply` 回 `ZeroInitia
 - `MemberNFT` 的首币地址在自身构造函数传入（取自 `Launch.FIRST_TOKEN_ADDRESS()`）；MemberNFT 不保存 Launch 地址，费用代币地址是唯一外部地址依赖。
 - `MINT_ADDRESS` 在构造后不可变更，并作为此后每个 LOVE20Token 的 `MINTER`。升级 Mint 需要连同 `Launch` 一起重部署，已发射代币的 `minter` 不会随之改写。发布检查应同时核对 `Launch.MINT_ADDRESS` 与首币 `MINTER`：二者不一致说明部署引用了不同的 Mint，表现为「能加次数不能铸币」或反之。
 
-旧来源 `LOVE20TKM/core/src/LOVE20Launch.sol`（提交见[旧代码基线](../../repositories.md#旧代码基线)）已逐项核对。BSC 版**保留**的旧行为：`isLOVE20Token` 的登记判定、`tokenSymbol` 的字节长度口径（字符集在本版扩展出汉字，见[普通发射](#普通发射)）、`tokenSymbol + "@" + parentTokenSymbol` 名称拼法与测试网 `Test` 前缀、`launchToken` 的“检查—创建—登记”外部调用骨架、代币列表与某社区子币列表的链上枚举（旧 `tokensCount`/`tokensAtIndex`、`childTokensCount`/`childTokensAtIndex` 改为分页查询）、符号到地址账本（旧 `tokenAddressBySymbol` 与 `TokenSymbolAlreadyExists` 唯一性校验），以及代币地址到父币地址（旧 `LaunchInfo.parentTokenAddress`）。其余整块删除：公平发射募资与认购领取（`contribute`/`withdraw`/`claim`/`claimInfo`）、`LaunchInfo` 的其余 10 个字段、`CLAIM_DELAY_BLOCKS`，以及按发射者或募资状态划分的其余枚举（`childTokensByLauncher*`、`launching*`、`launched*`、`participatedTokens*`）。次数阈值换算、额度余数结转、每代币上限与次数融合都不在旧实现中，属新设计，见 [Mint 的发射额度](07-mint.md#发射额度的生成)。
+旧来源 `LOVE20TKM/core/src/LOVE20Launch.sol`（提交见[旧代码基线](../../repositories.md#旧代码基线)）已逐项核对。BSC 版**保留**的旧行为：`isLOVE20Token` 的登记判定、`tokenSymbol` 的字节长度口径（字符集在本版扩展出汉字，见[普通发射](#普通发射)）、`tokenSymbol + "@" + parentTokenSymbol` 名称拼法与测试网 `Test` 前缀、`launchToken` 的“检查—创建—登记”外部调用骨架、代币列表与某社区子币列表的链上枚举（旧 `tokensCount`/`tokensAtIndex`、`childTokensCount`/`childTokensAtIndex` 改为分页查询）、符号到地址账本（旧 `tokenAddressBySymbol` 与 `TokenSymbolAlreadyExists` 唯一性校验），以及代币地址到父币地址（旧 `LaunchInfo.parentTokenAddress`）。其余整块删除：公平发射募资与认购（`contribute`/`withdraw`/`claim`/`claimInfo`）、`LaunchInfo` 的其余 10 个字段、`CLAIM_DELAY_BLOCKS`，以及按发射者或募资状态划分的其余枚举（`childTokensByLauncher*`、`launching*`、`launched*`、`participatedTokens*`）。次数阈值换算、额度余数结转、每代币上限与次数融合都不在旧实现中，属新设计，见 [Mint 的发射额度](07-mint.md#发射额度的生成)。
 
 验收见 [Core 验收](09-testing.md)。

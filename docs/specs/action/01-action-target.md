@@ -69,7 +69,7 @@ targetData[SLOT_EXECUTOR] = abi.encode(executorAddress)
 
 **铸造信息查询**：`actionReward(tokenAddress, actionId, round)` 返回 `(amount, minted)`——`amount` 在已铸造时为本轮实际铸造金额、未铸造时为本轮理论可铸造数量（按 Mint 账本计算，未投票、未达门槛、零额度时为 `0`），`minted` 表示本轮是否已铸造；未关联的行动返回 `(0, false)`，已关联但未铸造的行动返回 `(理论数量, false)`，均不回滚。该查询不持有独立账本：已关联时直接委托 Mint 的 `proposalRewardByProposalId`（`amount` 由 Mint 按票数复算，与铸造时同源；Mint 侧已铸造的 `amount` 与 `ActionRewardMinted` 的 `amount` 相等），ActionTarget 只负责把未关联行动收敛为零：销毁不再经过本合约，因此不需要任何掩零。前端与索引据此判断某行动某轮是否已铸造与可铸造数量，不需要扫描事件；同一笔铸造另由 `ActionRewardMinted(tokenAddress, actionId, round, amount)` 留痕，`amount` 与该查询铸造后的返回值同源，供历史回溯与审计使用。
 
-**激励链路对成员不透明**：Executor 每轮经 `mintActionReward` 一次性铸造该行动的整笔激励，去重键 `tokenAddress + actionId + round` 即行动级；铸造后由 Executor 按自身账本分给参与成员。成员只与 Executor 的成员级入口打交道，不需要了解也不依赖 ActionTarget 这一层；ActionTarget 不向成员暴露任何领取入口。
+**激励链路对成员不透明**：Executor 每轮经 `mintActionReward` 一次性铸造该行动的整笔激励，去重键 `tokenAddress + actionId + round` 即行动级；铸造后由 Executor 按自身账本分给参与成员。成员只与 Executor 的成员级入口打交道，不需要了解也不依赖 ActionTarget 这一层；ActionTarget 不向成员暴露任何激励铸造入口。
 
 ## forceClearJoinState
 

@@ -31,7 +31,7 @@
 | 共享事件类 | 同一 schema、同一语义、可被多个发射者发射的事件类 |
 | 派生缓存 | 可由事件流、标准事件与不可变配置确定性推导的内部值；不进入事件（LP 账本的唯一例外见 §6.9） |
 | 捕获型失败 | 被显式捕获、业务继续执行的失败；与 revert 不同 |
-| 纪元 | 协议轮次 `round`，是业务键，不是时间值 |
+| 轮次 | `round`；是业务键，不是时间值 |
 
 ---
 
@@ -43,7 +43,7 @@
 
 - 必须使用事实增量模型：只携带该事实产生的字段，不重复未变化字段。
 - 快照型事件携带对象在该时点的整组取值，不适用上一条：`AdminChanged` 携带整组新快照（哪怕只改一项），`PhaseSynchronized` 同时给出 `phase` 与 `phase + 1` 的段长（未调整时两者相等）。「哪些字段变了」由消费方与前一快照逐字段比较得出，不靠字段缺席表达。
-- 涉及累计值时可以携带发射时点的累计值（总量、余额、累计奖励等）；该值必须等于按日志顺序折叠出的结果，且不得替代增量字段。
+- 涉及累计值时可以携带发射时点的累计值（总量、余额、累计激励等）；该值必须等于按日志顺序折叠出的结果，且不得替代增量字段。
 - 一个聚合量被多个事件改变时（例如 `Stake` 的治理票总量、加速份额总量），**每个改变点都应当携带后置总量**；只在一部分改变点携带属于族内漂移，消费方无法判断字段缺失是「没变」还是「没记」。只在单个事件上变化的聚合量（如 `Stake.totalBurnedToken`）同样在改变它的事件上携带总量，使该维度有可直接对账的锚点。
 - **族内漂移按槽位语义判定，不按「同族字段集合必须完全相同」判定**。同一族的事实若需要不同的角色或旧值，允许在族表给定的槽位序列内增减字段：`core.stake` 的 `LiquidityStaked` / `BoostStaked` 带 `caller` / `memberOwner` / `prevPromisedWaitingPhases`，而 `Unstaked` / `StakeWithdrawn` / `StakesMerged` 不带，是因为只有前两者会改变等待期、也只有它们需要回答「谁发起的这一笔、写的是谁的仓位」；后者的持仓归属已由鉴权与 `memberId` 唯一确定。判断标准是「该字段承载的事实是否属于本事件」，而不是「同族其它事件有没有这个字段」。
 - 同一金额出现在两条事件中不构成重复表达，前提是两条事件描述的是不同事实、且各自需要该金额：`GovRewardMinted.burnReward` 与同笔 `RewardBurned(BoostOverflow).amount` 同值，前者给出成员归属（`RewardBurned` 不带 `memberId`），后者记全局销毁账本。此类跨事件冗余必须在模块规格中登记理由。
@@ -141,7 +141,7 @@
 
 - actor 是业务语义上的发起人；接口有显式账户参数时取该参数。
 - 直接调用者 `msg.sender` 仅在确有必要时另设 `caller` 字段；actor 与 caller 不得共用一个字段名。
-- 当 actor 就是主对象的所有者、且主对象 id 已 indexed（例如群主对 `GroupActivated` / `GroupConfigChanged`），actor 由对象所有权隐含，不再单列字段。
+- 当 actor 就是主对象的所有者、且主对象 id 已 indexed（例如链群 owner 对 `GroupActivated` / `GroupConfigChanged`），actor 由对象所有权隐含，不再单列字段。
 
 ### 4.4 正常退出与注册表兜底清理
 
@@ -289,14 +289,14 @@ ERC-20 / ERC-721 标准事件保持不变，不进入本规范正文。`AddHolde
 ### 6.3 indexed
 
 - 每个事件最多 3 个 indexed。
-- `round` 是协议纪元键，可以 indexed；`block.timestamp` / `block.number` 不 indexed、也不进入 payload。
+- `round` 是协议轮次键，可以 indexed；`block.timestamp` / `block.number` 不 indexed、也不进入 payload。
 - 分配优先级：根键 → 主对象 id 链 → actor。主对象键占满时，actor 降为非 indexed 字段。
 - 纯链路事件（`TokenActionGroupActivated`）的 3 个槽给链路键；actor 入 payload。
 - `string` / `bytes` / 动态数组绝不 indexed；禁止 anonymous event。
 - actor 与主对象 id 应当 indexed；同组事件必须在迁移中对齐（`VerifierApplicationStopped`、`StakesMerged`）。
 - `gc.management` 族的 actor 在只剩一个槽时按「对象标识形态」择一：对象标识是 **id** 时第三个槽给 actor **地址**（`AdminChanged`、`MemberStatusChanged`、`AdminSenderBanChanged`）；对象标识是**地址**时第三个槽给 actor **id**（`ScopeSourceChanged`、`BanSourceChanged`、`BeforePostPluginChanged`、`AfterPostPluginChanged`）；对象只有根键时 id 与地址都 indexed（`PostingAllowedChanged`、`GroupChatActivated`；后者的 `ownerId` 是 actor id 且恒等于 `groupId`）。这样每个事件至少提供一个对象键和一个 actor 的可过滤形式——钱包按地址订阅、协议按 id 对账各取所需。
 - **已登记的三槽取舍**：`ApplicationVoteRecorded` 的三个槽被 `tokenAddress` / `actionId` / `applicationId` 占满，`voterId` 与 `verifierId` 降为 payload；它不与同族前 6 条「actor indexed」对齐，是槽位优先级的结果，不是漂移。`RecipientsChanged` / `RecipientPaid` 的三个槽被 `sourceTokenAddress` / `sourceActionId` / `groupId` 占满，`recipientIds`（动态数组，禁止 indexed）与 `recipientId` 不能作为 topic；按收款人检索必须从 payload 建链下索引，不改为可过滤而牺牲对象键。
-- **`core.stake` 的 `caller` / `memberOwner` 不占 indexed 槽**：`LiquidityStaked` / `BoostStaked` 的三个槽已被 `tokenAddress`（根键）/ `round`（纪元键）/ `memberId`（主对象 id）占满，按上面的优先级 `caller` 与 `memberOwner` 落 payload。它们的用途是**在事件流内自包含地还原调用链**（回填 `memberId` 与 `tx.from` 之间缺失的那一层），属于「拿到这条日志后现看」而非「按地址订阅」，与钱包按 actor 地址过滤的需求不同——后者已有 core 的 `memberId` 可先定位到人。同族的 `StakesMerged` 把 `round` 降为 payload 换得 `sourceMemberId` / `targetMemberId` 两个槽，是因为它的两个成员 id 都是主对象；两条规则一致：**主对象键优先于纪元键，纪元键优先于 actor 地址**。
+- **`core.stake` 的 `caller` / `memberOwner` 不占 indexed 槽**：`LiquidityStaked` / `BoostStaked` 的三个槽已被 `tokenAddress`（根键）/ `round`（轮次键）/ `memberId`（主对象 id）占满，按上面的优先级 `caller` 与 `memberOwner` 落 payload。它们的用途是**在事件流内自包含地还原调用链**（回填 `memberId` 与 `tx.from` 之间缺失的那一层），属于「拿到这条日志后现看」而非「按地址订阅」，与钱包按 actor 地址过滤的需求不同——后者已有 core 的 `memberId` 可先定位到人。同族的 `StakesMerged` 把 `round` 降为 payload 换得 `sourceMemberId` / `targetMemberId` 两个槽，是因为它的两个成员 id 都是主对象；两条规则一致：**主对象键优先于轮次键，轮次键优先于 actor 地址**。
 
 ### 6.4 角色词表
 
@@ -376,7 +376,7 @@ v1 基线：
 
 **唯一例外（LP 账本）**：`FeeReclassified.sqrtKOfLp` 可携带重分类后的基线。其推导来源是 Pair `Sync` + `totalLp`；同一交易内后续 `_updateSqrtKBaseline` 会再次刷新基线，事件值是重分类时点快照，不能作为最终值折叠；该字段不替代 `feeLpAdded`/`withdrawableLpRemoved`。`pairTotalSupply` 是 Pair ERC-20 `totalSupply()` 的外部标准值，不是派生缓存。其他派生缓存不得援引此例外。
 
-当前派生缓存清单与推导来源见 `.scratch/events-spec/01-gap-table.md` §7，包括 Launch credit、Stake LP 基准、pair 地址、Phase 观测、holder 集合、分红除数、`govRatioAtMint`、验证排名、provider 索引、join block/amount、mint nonce、ban operator 状态、admin 有效性与消息索引。
+当前派生缓存清单与推导来源见 `.scratch/events-spec/01-gap-table.md` §7，包括 Launch credit、Stake LP 基准、pair 地址、Phase 观测、holder 集合、手续费结算除数、`govRatioAtMint`、验证排名、provider 索引、join block/amount、mint nonce、ban operator 状态、admin 有效性与消息索引。
 
 以下字段**不承诺**由事件流重建，已登记为窄名单，不得视为遗漏：`JoinStateRegistered` 的持有人集合顺序（只保证集合相等）、`OriginScoresSubmitted.scores[]` 与 `memberId` 的逐项绑定（只保证同批同轮）、`ProviderQuotaRemoved` 的已用额度没有后置锚点（由 `ProviderQuotaAdded` 增量折叠）、`ServiceRewardsDistributed.ownerRemaining` 不能按来源行动拆分（只在服务级聚合）、`LpWithdrawn` 的部分提取扣减项、`LpExecutor` 时间权重的逐项扣减、`GroupActionVerify` 的 `hasPreviousApplication` 身份对（由申请事件全集推导）。
 
@@ -409,14 +409,14 @@ v1 基线：
 | 对象 | 状态迁移 | 事件类 |
 |---|---|---|
 | RootToken | 初始供给、增发、销毁 | `TokenMinted`、`TokenBurned`；标准 `Transfer` / `Approval` |
-| TokenRegistry | 创世、发起子币、额度发放/合并/消耗 | `GenesisTokenCreated`、`TokenLaunched`、`LaunchCountAdded`、`LaunchCountMerged`、`LaunchCountConsumed` |
+| TokenRegistry | 创世、发起子币、发射次数增加/融合/消耗 | `GenesisTokenCreated`、`TokenLaunched`、`LaunchCountAdded`、`LaunchCountMerged`、`LaunchCountConsumed` |
 | MemberNFT | 铸造、转移、持有人集合 | `MemberMinted`；标准 `Transfer` / `Approval` / `ApprovalForAll` |
 | Phase | 同步观测、段长快照 | `PhaseSynchronized` |
 | StakePosition | 加流动性、加 boost、解锁、提取、手续费结算、手续费重分类、合并 | `LiquidityStaked`、`BoostStaked`、`Unstaked`、`StakeWithdrawn`、`FeesSettled`、`FeeReclassified`、`StakesMerged` |
 | Proposal | 创建、提交 | `ProposalCreated`、`ProposalSubmitted` |
 | Vote | 投票 | `VoteCast` |
-| RewardRound | 准备奖池、gov 奖励、提案奖励、取消池燃烧 | `RewardPrepared`、`GovRewardMinted`、`ProposalRewardMinted`、`RewardBurned` |
-| AirdropConfig | 配置快照、按份额领取、快照 URI 更新 | `AirdropConfigured`、`AirdropClaimed`、`AirdropSnapshotUriUpdated` |
+| RewardRound | 准备激励池、治理激励、提案激励、取消池销毁 | `RewardPrepared`、`GovRewardMinted`、`ProposalRewardMinted`、`RewardBurned` |
+| AirdropConfig | 配置快照、按份额空投铸造、快照 URI 更新 | `AirdropConfigured`、`AirdropClaimed`、`AirdropSnapshotUriUpdated` |
 
 `MemberNFT` 的 `_safeMint` 回调先于 `MemberMinted`（E3），因此：
 
@@ -435,7 +435,7 @@ v1 基线：
 | ProviderQuota | 配额增加、移除、退出恢复 | `ProviderQuotaAdded`、`ProviderQuotaRemoved`、`ProviderQuotaRestored` |
 | Verification | 申请、描述更新、停止、处罚、取消、质押、退款、原始分、投票 | `VerifierApplicationSubmitted`、`VerifierApplicationDescriptionUpdated`、`VerifierApplicationStopped`、`VerifierApplicationPunished`、`VerifierApplicationCancelled`、`VerifierStakeDeposited`、`VerifierStakeRefunded`、`OriginScoresSubmitted`、`ApplicationVoteRecorded` |
 | Recipients | 设置收款表、分发 | `RecipientsChanged`、`RecipientPaid` |
-| Rewards | 行动奖励、成员奖励、服务分发 | `ActionRewardMinted`、`MemberRewardMinted`、`ServiceRewardsDistributed` |
+| Rewards | 行动激励、成员激励、服务分发 | `ActionRewardMinted`、`MemberRewardMinted`、`ServiceRewardsDistributed` |
 | JoinStateFallback | owner 兜底清理注册表（不回调 executor、不结算资金） | `JoinStateCleared(forced=true)` |
 
 `LpExecutor` 的清仓迁移必须统一：只要 `_clearJoinState` 执行（全额 `withdraw` 或 `exit`），必须同时产出 `LpWithdrawn`（金额事实）与 `LpExited`（生命周期事实），顺序按 §4.4。

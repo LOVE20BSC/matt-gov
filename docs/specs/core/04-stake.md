@@ -38,14 +38,14 @@ Stake 按 `tokenAddress + memberId` 维护流动性质押和加速质押，不�
 
 每个社区的唯一 Pair 由 [Launch](08-launch.md) 在发射该代币的同一笔交易内创建或复用；`Stake` 在首次质押时通过 `PAIR_FACTORY_ADDRESS.getPair(tokenAddress, parentTokenAddress)` 读取并保存，为零地址时回滚 `PairMissing(tokenAddress)`。**`Stake` 的所有入口都只接受 Launch 已登记的代币，只读取已登记的 Pair，不创建 Pair**，未登记回滚 `TokenNotRegistered(tokenAddress)`，无 Pair 回滚 `PairMissing(tokenAddress)`。
 
-调用者提供社区代币与父币的期望数量。`stakeLiquidity` 不承担价格保护，只按 Pair 储备把收到的两种币**尽可能**放进流动性质押——按储备比例一侧取期望值、另一侧按比例折算，只转入折算后的数量，再直接向 Pair 铸出 LP；**折算后放不下的部分不转账、留在调用者手里**（它们从未进入 Stake，无需退款）：
+调用者提供社区代币与父币的期望数量。`stakeLiquidity` 不承担滑点容忍度校验，只按 Pair 储备把收到的两种币**尽可能**放进流动性质押——按储备比例一侧取期望值、另一侧按比例折算，只转入折算后的数量，再直接向 Pair 铸出 LP；**折算后放不下的部分不转账、留在调用者手里**（它们从未进入 Stake，无需退款）：
 
 ```text
 parentTokenAmountOptimal = floor(tokenAmountDesired * reserveParent / reserveToken)
 tokenAmountOptimal      = floor(parentTokenAmountDesired * reserveToken / reserveParent)
 ```
 
-先算父币方向；该值不超过期望值时入池 `(期望代币量, 折算父币量)`，否则改算代币方向并入池 `(折算代币量, 期望父币量)`。折算保留一侧全额、削减另一侧，因此只可能一侧有剩余，或比例一致时两侧都无剩余。折算只是**纯比例计算**，不含任何容差、上限或回滚：比例失衡不 revert，只是静默少押、剩余留在自己钱包——资产无损，但少了偏离提醒。价格保护完全交给调用方自己指定的最小量（`periphery` 的 `LOVE20Hub` 用 `tokenAmountMin` / `parentTokenAmountMin` 在调用前做全链路终点口径的事后校验，不在 core 内复刻）。Pair 任一侧储备为零时不做折算，直接采用期望数量。Pair 铸出的 LP 数量为零时回滚 `ZeroLiquidityMinted()`；该分支保留给“返回 0 而不是回滚”的 V2 兼容 Pair，参考实现会先以 `INSUFFICIENT_LIQUIDITY_MINTED` 回滚。添加 LP 成功后按 LP 数量计份额，并按实际转入的社区代币数量增加本金台账 `totalLiquidityTokenAmount[tokenAddress]`；提取时移除 LP 并返还双币，同时按 `floor(liquidityShares × T / totalLiquidityShares)` 扣减该台账。
+先算父币方向；该值不超过期望值时入池 `(期望代币量, 折算父币量)`，否则改算代币方向并入池 `(折算代币量, 期望父币量)`。折算保留一侧全额、削减另一侧，因此只可能一侧有剩余，或比例一致时两侧都无剩余。折算只是**纯比例计算**，不含任何容差、上限或回滚：比例失衡不 revert，只是静默少押、剩余留在自己钱包——资产无损，但少了偏离提醒。滑点容忍度（最多可接受的价格变化）完全交给调用方自己指定的最小量（`periphery` 的 `LOVE20Hub` 用 `tokenAmountMin` / `parentTokenAmountMin` 在调用前做全链路终点口径的事后校验，不在 core 内复刻）。Pair 任一侧储备为零时不做折算，直接采用期望数量。Pair 铸出的 LP 数量为零时回滚 `ZeroLiquidityMinted()`；该分支保留给“返回 0 而不是回滚”的 V2 兼容 Pair，参考实现会先以 `INSUFFICIENT_LIQUIDITY_MINTED` 回滚。添加 LP 成功后按 LP 数量计份额，并按实际转入的社区代币数量增加本金台账 `totalLiquidityTokenAmount[tokenAddress]`；提取时移除 LP 并返还双币，同时按 `floor(liquidityShares × T / totalLiquidityShares)` 扣减该台账。
 
 `stakeLiquidity` 与 `stakeBoost` **不要求调用者持有该 `memberId` 的 NFT**，只调用 `ownerOf(memberId)` 校验存在（见[通用规则 · 无许可增项](01-common-rules.md#无许可增项)）。任一地址都可以为任意已存在的 `memberId` 增加质押，`_pull` 从 `msg.sender` 拉币。**已写入的等待期不可被第三方改写**：调用者不是该 NFT 持有人时，只要该成员记录的 `promisedWaitingPhases` 已非零，传入值就必须等于现有值，否则按下面的顺序回滚；未写过（`== 0`）的记录允许调用者自由指定（含 `MAX`）。判据是等待期本身，与 `mergeStake` 判空的 `targetHadPosition`（按份额）是两个不同的判据，各自服务于自己的规则。
 
@@ -206,7 +206,7 @@ m_i      = floor(C × v_i / V) × M
 - `M = BOOST_STAKE_MULTIPLIER`：部署参数，固定配置，不随轮次变化。
 - 所有除法向下取整；上限只会因取整而收紧，不会放宽。
 
-**`C` 只是单人上限的基数，不是社区聚合上限。** 入口只校验单人 allowance：
+**`C` 只是单人上限的基数，不是社区聚合上限。** 入口只校验单人上限 `m_i`：
 
 ```text
 stakeBoost 通过条件：member.boostShares + amount <= m_i
@@ -286,7 +286,7 @@ stakeBoost 通过条件：member.boostShares + amount <= m_i
 
 **这条约束对任何中间合约同样成立，包括 `periphery` 的 `LOVE20Hub`**：Hub 代用户调 `stakeLiquidity` 时 `msg.sender` 是 Hub 自己，永远不等于 NFT 持有人，因此经 Hub 对**已写入等待期**的成员二次质押只能**精确沿用**当前值，无法借 Hub 提升；要提升等待期，须由持有人**直接调用** `Stake.stakeLiquidity`。Hub 侧据此不提供提升入口，前端应先读 `memberStake(tokenAddress, memberId).promisedWaitingPhases` 原样回填。未写过的记录不受此限，经 Hub 可自由指定（含 `MAX`）。
 
-本入口**没有**滑点类拒绝条件：`slippage` 参数、`SLIPPAGE_PRECISION` 常量、`_checkSlippage` 守卫与 `SlippageExceeded` 错误已删除，折算出的剩余不转账、留在调用者手里，不构成回滚。第 10 行是本次新增：它由原第 9 行的复合条件拆出，见上。
+本入口**不设**滑点容忍度拒绝条件：`slippage` 参数、`SLIPPAGE_PRECISION` 常量、`_checkSlippage` 守卫与 `SlippageExceeded` 错误已删除，折算出的剩余不转账、留在调用者手里，不构成回滚。第 10 行是本次新增：它由原第 9 行的复合条件拆出，见上。
 
 ### `stakeBoost`
 

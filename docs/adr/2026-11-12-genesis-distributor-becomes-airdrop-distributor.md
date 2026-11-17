@@ -14,7 +14,7 @@
 2. **验证成本落在人身上**。外部合约要靠「公开源码 + 部署记录」举证，而部署记录是人写的：来源提交、来源区块、Merkle Root、部署地址任何一项写错，都只能靠复核发现。本仓合约则可以被 ABI 基线与测试直接锁定。
 3. **两条分发路径的语义会分叉**。普通发射的 distributor 是发射者自选的任意实现，首币的 distributor 是一个外部特例。同一份「首批供应按快照分发」的业务，在两处由两套代码、两套错误名、两套事件名承担。
 
-另一项独立发现是份额归一化。外部 `Airdrop` 的 `totalShare` 是构造参数，构造函数只校验 `0 < totalShare <= 1e18`；对应的快照生成器只做 `require(totalShare <= WAD)`，是上限而不是恒等。多次 `mulDiv` 向下取整会掉尘埃，使 `Σleaves < 1e18`，差额部分永久无人可领，而链上没有任何手段发现这件事。
+另一项独立发现是份额归一化。外部 `Airdrop` 的 `totalShare` 是构造参数，构造函数只校验 `0 < totalShare <= 1e18`；对应的快照生成器只做 `require(totalShare <= WAD)`，是上限而不是恒等。多次 `mulDiv` 向下取整会掉尘埃，使 `Σleaves < 1e18`，差额部分永久无人可空投铸造，而链上没有任何手段发现这件事。
 
 ## 决策
 
@@ -27,11 +27,11 @@
 - 新建 `core/src/distributor/AirdropDistributor.sol` 与 `core/src/interfaces/distributor/IAirdropDistributor.sol`；`ILaunchDistributor.sol` 迁入 `src/interfaces/distributor/`。错误按 local-first 在本模块的 `IAirdropDistributorErrors` 声明（11 个），事件在 `IAirdropDistributorEvents` 声明（2 个）。
 - 首币由 `AirdropDistributor` 的构造函数完成配置：`(launchAddress, phaseAddress, genesisTokenAddress, genesisMerkleRoot, genesisClaimDelayRounds)`。部署顺序变为 `Phase → AirdropDistributor → Launch → MemberNFT → Stake → Submit → Vote → Mint`，首币地址由部署脚本按 `computeCreateAddress(launchAddress, 1)` 预测。`Launch` 构造函数不调用回调，首币仍固定 `NoCallback`。
 - `TOTAL_SHARE = 1e18` 是编译期常量，不可按部署配置。份额分母统一，`claimableAmount` 与 `claim` 的分配公式对每个代币相同。
-- 领取按剩余份额比例分配：`amount = floor(balanceOf(this) × share ÷ remainingShare)`，`remainingShare = TOTAL_SHARE - claimedShare`。最后一名份额恰为 `totalRemainingShare` 的领取者清空合约余额。
+- 空投铸造按剩余份额比例分配：`amount = floor(balanceOf(this) × share ÷ remainingShare)`，`remainingShare = TOTAL_SHARE - claimedShare`。最后一名份额恰为 `totalRemainingShare` 的空投铸造者清空合约余额。
 - `claim` 的校验顺序固定为 存在性 → 状态 → 参数 → 账本 → 资格，共六层；其中 `share == 0` 是**显式拒绝**（回滚 `InvalidProof()`），位置在 `ShareExceedsRemaining` 与证明校验之前。零份额是链上链下双保险：链下生成器在 `_build()` 断言 `normalized[i] > 0` 拒绝产出零份额快照，链上仍独立拒绝，不依赖链下。
 - 叶子格式与 Burn 快照生成器逐字节兼容：`keccak256(bytes.concat(keccak256(abi.encode(claimer, share))))`，节点按字节序排序后哈希，与 OpenZeppelin `MerkleProof` 的排序证明一致。旧 `LOVE20TKM/burn` 只作为**链上数据来源**（销毁活动结果）与**链下快照生成器工具**被引用，不再作为合约依赖；`Airdrop.sol`、`DeployAirdrop.s.sol`、`airdrop-design.md` 三个链接从规格中删除。
 - 链下生成器补上归一化：先算 `rawTotal = Σshares`，再 `normalized[i] = floor(shares[i] × 1e18 ÷ rawTotal)`，把余数补给最大份额地址（并列取索引最小者），并断言 `Σnormalized == 1e18`。归一化必须在叶子构建之前完成，否则叶子哈希、JSON 份额与 Merkle Root 三者会不一致。「配满 100%」因此由三段独立事实串成：链下补尾差使 `Σ == 1e18`、`_build()` 断言 `Σ == 1e18` 且每个 `normalized[i] > 0`、链上 `TOTAL_SHARE` 是 `constant` 使发射者无法传入错误分母。
-- `claimDelayRounds` 的语义写死为 `claimableFromRound = baseRound + claimDelayRounds`，其中 `baseRound = currentPhase() == 0 ? 1 : currentPhase()`；`delay = 0` 当轮可领。夹取的理由是 `Phase` 在 `ORIGIN_BLOCKS` 之前返回 `0`，而 `0` 不是有效轮次。
+- `claimDelayRounds` 的语义写死为 `claimableFromRound = baseRound + claimDelayRounds`，其中 `baseRound = currentPhase() == 0 ? 1 : currentPhase()`；`delay = 0` 当轮可空投铸造。夹取的理由是 `Phase` 在 `ORIGIN_BLOCKS` 之前返回 `0`，而 `0` 不是有效轮次。
 - 新增分页查询 `airdropInfos(offset, limit, reverse)`，返回 `AirdropInfo[]`（6 个字段：`tokenAddress` / `merkleRoot` / `claimableFromRound` / `totalClaimedShare` / `totalRemainingShare` / `remainingAmount`）与 `totalCount`，使前端与索引器不必自己维护配置列表。语义与 `Phase.observations`、`Launch.tokens` 一致；不设独立计数入口，`airdropInfos(0, 0, false)` 即取基数。合约内新增只追加的 `_tokenAddresses` 列表作为分页数据源。
 - 独立 `launch` 仓库本阶段仍不创建（`repositories.md` 的分阶段结论不变）。`AirdropDistributor` 归 `core`，理由是它与 `Launch` 的发射流程共用同一次回调、同一条非零 distributor 校验，且只有 214 行、远低于 24576 B 体积上限。
 
@@ -43,9 +43,9 @@
 
 **`TOTAL_SHARE` 作为构造参数。** 否决理由是它把「快照是否配满」从编译期硬保证降级为部署期配置。硬编码使错误的 `totalShare` 变成编译错误而不是部署事故；代价是历史快照若 `Σleaves != 1e18` 必须重新生成，这是可接受的。
 
-**给 `claim` 加 `amount == 0` 检查。** 否决理由是分支不可达：`TOTAL_SHARE = 1e18`、`share == 0` 已被显式拒绝（故成功领取的 `share >= 1`）、部署脚本保证 `LAUNCH_AMOUNT >= 1e18` 且 `claim` 维持 `balanceOf(this) >= remainingShare`，故 `amount >= 1`。`LAUNCH_AMOUNT >= 1e18` 成为这条不变式的前提，由部署脚本在广播前校验。
+**给 `claim` 加 `amount == 0` 检查。** 否决理由是分支不可达：`TOTAL_SHARE = 1e18`、`share == 0` 已被显式拒绝（故成功空投铸造的 `share >= 1`）、部署脚本保证 `LAUNCH_AMOUNT >= 1e18` 且 `claim` 维持 `balanceOf(this) >= remainingShare`，故 `amount >= 1`。`LAUNCH_AMOUNT >= 1e18` 成为这条不变式的前提，由部署脚本在广播前校验。
 
-**让零份额靠 merkle 校验顺带拒绝。** 初版如此，已推翻：归一化可能把极小份额截断为 `0`，若树中真存在零份额叶子，不做显式拒绝会走到「证明通过 → `amount == 0` → 置领取标记 → 转出 0 代币」，该地址领取成功却什么也没拿到，并永久失去该批资格。现改为显式拒绝，且不复用 `ShareExceedsRemaining`。
+**让零份额靠 merkle 校验顺带拒绝。** 初版如此，已推翻：归一化可能把极小份额截断为 `0`，若树中真存在零份额叶子，不做显式拒绝会走到「证明通过 → `amount == 0` → 置空投铸造标记 → 转出 0 代币」，该地址空投铸造成功却什么也没拿到，并永久失去该批资格。现改为显式拒绝，且不复用 `ShareExceedsRemaining`。
 
 **引入 `ReentrancyGuard`。** 否决理由是三条前提同时成立时没有重入路径：`LOVE20Token` 无转账钩子；配置入口唯一（只接受 `LAUNCH_ADDRESS`，同一 token 二次配置回滚 `TokenAlreadyConfigured`）；`claim` 走 CEI 先写状态后转账。前提写进规格，任一条被破坏都必须重新评估。
 
@@ -69,10 +69,10 @@
 
 本决策落地后追加了「让子币发射者把 Merkle 快照 JSON 的 URL 登记到链上」的能力，使前端只读 `AirdropDistributor` 配置即可发现各子币快照、无需前端开发者手工整合（前端去中心化）。改动落在同一合约与接口，不新增构造参数：`MEMBER_NFT_ADDRESS` 从 `ILaunch(LAUNCH_ADDRESS).MEMBER_NFT_ADDRESS()` 派生（getter 已存在），URI 鉴权按 `IMemberNFT.ownerOf(launcherMemberId) == msg.sender` 实时判定，权限随 MemberNFT 转手；`launcherMemberId` 由 `onTokenLaunched` 回调第三个参数透传、配置期一次写定，创世币记为 `0`。新增 `AirdropInfo` 字段 `snapshotUri`、`MAX_SNAPSHOT_URI_BYTES = 256` 常量、`AirdropSnapshotUriUpdated` 事件与 3 个错误（`SnapshotUriEmpty`、`SnapshotUriTooLong`、`NotSnapshotUriUpdater`），错误与事件都只增不改。
 
-**核心取舍：链上不校验 URI 指向的 Merkle 文件内容。** `snapshotUri` 是**发现提示（hint），不是授权**：Merkle Root 在配置后不可变，领取资格只由 `proof` 对链上 Root 的校验决定，链上既读不到链下文件、也不应把「谁能领多少」交给一个可改口的 URL。因此：
+**核心取舍：链上不校验 URI 指向的 Merkle 文件内容。** `snapshotUri` 是**发现提示（hint），不是授权**：Merkle Root 在配置后不可变，空投铸造资格只由 `proof` 对链上 Root 的校验决定，链上既读不到链下文件、也不应把「谁能领多少」交给一个可改口的 URL。因此：
 
-- 链上不 `fetch`、不校验文件内容与 Root 是否匹配，也不因 URI 改变而调整任何领取逻辑。若链上要做这件事，只能由调用方把整份快照或树数据传进合约，代价是把链下可独立完成、可反复复算的校验搬上链，且 Root 不可变的前提下这种校验对领取结果没有增益。
-- 校验责任明确落在前端：`fetch(uri)` → 重建 Merkle 树 → 断言 `Σleaves == 1e18` 且重建 root == 链上 `merkleRoot` → 不匹配则**提交前拦截、不展示可领数量**。这把 URI 失效（错文件、被改成钓鱼站、失联）的最坏结果限定为「前端找不到数据」，不可能让任何人多领或少领，也不会产生错误的可领数量诱导。
+- 链上不 `fetch`、不校验文件内容与 Root 是否匹配，也不因 URI 改变而调整任何空投铸造逻辑。若链上要做这件事，只能由调用方把整份快照或树数据传进合约，代价是把链下可独立完成、可反复复算的校验搬上链，且 Root 不可变的前提下这种校验对空投铸造结果没有增益。
+- 校验责任明确落在前端：`fetch(uri)` → 重建 Merkle 树 → 断言 `Σleaves == 1e18` 且重建 root == 链上 `merkleRoot` → 不匹配则**提交前拦截、不展示可空投铸造数量**。这把 URI 失效（错文件、被改成钓鱼站、失联）的最坏结果限定为「前端找不到数据」，不可能让任何人多空投铸造或少空投铸造，也不会产生错误的可空投铸造数量诱导。
 - 代价是安全模型依赖前端正确实现这道校验；规格与验收把它写成明文前置条件，不靠链上兜底。这是「链上最小化 + 链下可独立复算」既有路线（Root 不可变、无管理员、无取回）的延续，不是新开的信任假设。
 
 创世币 `launcherMemberId = 0`，因 `MemberNFT._nextTokenId = 1` 使 `memberId 0` 永不铸造，故创世 URI 永久为空且无人可设——刻意设计，首币快照仍由部署记录公开举证，不依赖某个发射者。`onlySnapshotUriUpdater` modifier 第一行是 `TokenNotConfigured` 存在性检查、第二行起才是鉴权：若把鉴权放最前，未配置 token 会先落到 `ownerOf(0)` 抛 OZ `ERC721NonexistentToken`，掩盖 `TokenNotConfigured`；modifier 整体仍是函数体第一道判定，满足 dev-standards §5.5。
