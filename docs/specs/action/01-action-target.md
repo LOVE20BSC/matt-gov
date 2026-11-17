@@ -35,7 +35,7 @@ targetData[SLOT_EXECUTOR] = abi.encode(executorAddress)
 
 ## 加入与退出
 
-记录当前成员是否加入行动，供加入列表和外部资格查询；包括 GroupAction，但不保存 Executor 的资产、验证或群归属。
+记录当前成员是否加入行动，供加入列表和外部资格查询；包括 GroupAction，但不保存 Executor 的资产、验证或链群归属。
 
 **唯一写入者**：ActionTarget 是加入态的唯一所有者。Executor 判定「首次加入」必须读 `isJoined(tokenAddress, actionId, memberId)`，不得用自己的资产账本判定；成员全部退出时调用 `clearJoinState`。与行动类型无关的参与判定走 ActionTarget；某一行动类型的专属关系（如链群归属）走该 Executor。加入/退出是否满足阶段与资格条件由 Executor 判定，ActionTarget 只做登记。
 

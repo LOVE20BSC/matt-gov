@@ -6,10 +6,10 @@
 | --- | --- | --- |
 | 核心 | 一 NFT 一 Chat、激活、转移 | owner 实时变化，历史不回写 |
 | 身份 | 默认映射、地址发言、地址黑名单/投票 | ABI、状态、索引和专属事件完全删除，不仅是运行时拒绝 |
-| 身份 | 缺失成员/管理员 | post 缺失 senderId → `ERC721NonexistentToken`；非 owner → `NotMemberOwner(senderId)`；`GroupMember`/`GroupAdmin` 缺失成员/管理员 → `ERC721NonexistentToken`；GovVoted voter 非 owner → `NotMemberOwner(voterId)`；缺失群 → `GroupNotExist(groupId)` |
-| 身份 | 群权限、重复 ID | 链群 owner 非 owner → `NotGroupOwner(groupId)`；owner/admin 复合鉴权 → `NotGroupOperator(groupId, operatorId)`；数组内重复成员 → `DuplicateMemberId(memberId)`；缺失群进成员/黑名单写入口 → `GroupNotExist(groupId)` |
+| 身份 | 缺失成员/管理员 | post 缺失 senderId → `ERC721NonexistentToken`；非 owner → `NotMemberOwner(senderId)`；`GroupMember`/`GroupAdmin` 缺失成员/管理员 → `ERC721NonexistentToken`；GovVoted voter 非 owner → `NotMemberOwner(voterId)`；缺失链群 → `GroupNotExist(groupId)` |
+| 身份 | 链群权限、重复 ID | 链群 owner 非 owner → `NotGroupOwner(groupId)`；owner/admin 复合鉴权 → `NotGroupOperator(groupId, operatorId)`；数组内重复成员 → `DuplicateMemberId(memberId)`；缺失链群进成员/黑名单写入口 → `GroupNotExist(groupId)` |
 | 委托 | 机制整体移除 | `GroupChatDelegate` 与 `IGroupChatDelegate` 文件、`GROUP_DELEGATE_ADDRESS` getter、`setDelegateId`/`delegatedGroupIds` 等入口与事件均已删除；配置与管理员入口只接受链群 owner，负向用例覆盖 `setPostingAllowed` 与 `addAdmins`，其余入口共享 `onlyGroupOwner` 并由 `check_caller_auth.sh` 校验；`TestBase` 不再有委托夹具 |
-| 发言 | 鉴权先于群状态、scope/ban、before/after | 非持有人先回鉴权错误；未激活的合法持有者回 `ChatNotActivated(groupId)`；scope/ban 拒绝回带 `groupId`/`senderId`/`source` 的 `ScopeRejected`/`BanRejected`；源失败回带 `groupId`/`source` 的 `ScopeSourceFailed`/`BanSourceFailed`；before 回滚，after 失败保留消息并发出 `errorHash`/`errorLength`/`errorSelector`，重入的内部失败 `Reentrant` 由该 selector 断言 |
+| 发言 | 鉴权先于群聊状态、scope/ban、before/after | 非持有人先回鉴权错误；未激活的合法持有者回 `ChatNotActivated(groupId)`；scope/ban 拒绝回带 `groupId`/`senderId`/`source` 的 `ScopeRejected`/`BanRejected`；源失败回带 `groupId`/`source` 的 `ScopeSourceFailed`/`BanSourceFailed`；before 回滚，after 失败保留消息并发出 `errorHash`/`errorLength`/`errorSelector`，重入的内部失败 `Reentrant` 由该 selector 断言 |
 | 消息 | 提及、mentionAll、引用、ID | 规则和索引一致 |
 | 查询 | Round、sender、mention、分页 | 空值、越界与 reverse 符合标准分页契约，越界和 `limit = 0` 都返回真实 totalCount；单条缺失消息回 `MessageNotFound(groupId, messageId)`；swap-and-pop 集合的 `reverse` 按「当前存储顺序」而非插入序，对应 `testT123B_banListReverseWalksCurrentStorageOrder`、`testT135B_votedSenderIdsReverseWalksCurrentStorageOrder`、`testT135C_votersBySenderIdReverseWalksCurrentStorageOrder`，`memberIds` 见 `testT133B_adminCanAddAndRemoveMemberIds` |
 | 预检查 | `canPost` 原因枚举 | 返回 `PostRejectionReason`，缺失 sender 为 `SenderNotExist`，不以 selector 作数据 |
@@ -18,7 +18,7 @@
 | 类型 | 五类资格和黑名单权重 | 使用对应 memberId 和快照来源 |
 | 链群 | 成员名单、Executor 归属、forceClearJoinState | 最后关系退出才失去归属；forceClearJoinState 只清 ActionTarget 注册表，不改链群归属与 Executor 仓位 |
 | Manager | 激活付款、费用不一致、NFT 接收、重复激活 | 调用者支付，Manager 持有；失败整体回滚；一个 Manager 管理多个 Chat；构造参数与依赖由部署脚本校验，合约不检查 |
-| Manager | 首币符号以 `Test` 开头时的群名 | 名称按生成结果原样铸造，长度预算与查重不受首币符号影响；对应 `TypedManagersTest.testT115_tokenMainManagerIgnoresFirstTokenSymbol`、`testT120_firstTokenSymbolDoesNotChangeNameBudget`、`testT125_actionPayloadBoundary`、`testT128_tokenManagerIgnoresFirstTokenSymbolAtMinimumNameLength` |
+| Manager | 首币符号以 `Test` 开头时的链群名称 | 名称按生成结果原样铸造，长度预算与查重不受首币符号影响；对应 `TypedManagersTest.testT115_tokenMainManagerIgnoresFirstTokenSymbol`、`testT120_firstTokenSymbolDoesNotChangeNameBudget`、`testT125_actionPayloadBoundary`、`testT128_tokenManagerIgnoresFirstTokenSymbolAtMinimumNameLength` |
 | Manager | 转出 NFT、approve、重配、付费者接管 | 不新增这些入口，普通 owner Chat 不受此限制 |
 | 权限边界 | 配置/管理员仅 owner，成员/黑名单 owner 或 admin | 配置与管理员入口拒绝 admin；成员与人工黑名单接受有效 admin；发言豁免 scope/ban 仅 owner；mentionAll 接受 owner 与 admin |
 | 黑名单 | 当前行动 Vote Round、全社区分母、权重归零刷新 | 不使用创建 Round；保留 settledWeight、改票/撤票/刷新；未翻名单时只有投票事件；撤票与刷新归零发 `SenderBanVoteCleared`（`prevSupportBan`/`prevSettledWeight`），不再用 `settledWeight=0` 的 `SenderBanVoteCast` |

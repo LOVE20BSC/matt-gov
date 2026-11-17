@@ -35,7 +35,7 @@ GroupChat 的 11 个集合查询都是 `(作用域键 → offset → limit → r
 
 - `chatInfosByGroupIds(requestedGroupIds)` 按入参下标对齐返回，任一 groupId 不存在即整笔回滚 `GroupNotExist(groupId)`，不跳过、不补空（`dev-standards §4.3(7)`）。入参长度不设协议上限，gas 由调用者自担；`limit` 同样无协议上限。
 - 正向索引为 `offset + i`，反向为 `totalCount - 1 - offset - i`，ID 保持原值不重新编号。
-- 群不存在时相应群查询回滚 `GroupNotExist(groupId)`；有效群内单条 messageId 为 0 或超出消息数时回滚 `MessageNotFound(groupId, messageId)`。
+- 链群不存在时相应链群查询回滚 `GroupNotExist(groupId)`；有效链群内单条 messageId 为 0 或超出消息数时回滚 `MessageNotFound(groupId, messageId)`。
 - 空 Round 的总数为 0、消息数组为空，roundInfo 返回 `RoundSpan(round, 0, 0, 0)`；rounds 列表只枚举有消息的 Round。
 - BSC 动态 Phase 下，`Message.round` 在发言时按 `phase.currentPhase()` 固定保存；后续校准不能重算旧消息。
 - `messages*` 分页返回含 `string` / `uint256[]` 的 `Message[]`，是对旧 ABI 的保留，属 `dev-standards §4.3(2)` 的模块级例外；新增查询不得沿用该形态。

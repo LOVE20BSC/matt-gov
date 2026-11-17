@@ -6,7 +6,7 @@
 | --- | --- |
 | ActionTarget | 行动类型的统一 Proposal Target，负责映射、回调和加入状态 |
 | LP Executor | LP 时间权重和内部激励分配 |
-| GroupAction Executor | 群归属、参与历史、验证者申请与验证 |
+| GroupAction Executor | 链群归属、参与历史、验证者申请与验证 |
 | GroupService Executor | 聚合 GroupAction 激励并分配服务激励 |
 
 ## Core 依赖

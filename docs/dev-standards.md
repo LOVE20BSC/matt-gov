@@ -43,7 +43,9 @@
 - **导入约定**：跨仓 import 统一 `@` 前缀（如 `@core/interfaces/...`、`@libs/...`、`@openzeppelin/contracts/...`、`@forge-std/...`），本地相对导入不加；别名指向包的源码入口。`@forge-std/` 是本地约定，与 Foundry 示例写法不同。
 - **显式 remappings**：各仓提交 `remappings.txt`，`foundry.toml` 设 `auto_detect_remappings = false`；别名只追加不重指，每条必须有实际 import 命中。不得与同路径 vendored OZ 源码并存。
 - **版本凭证**：子模块 gitlink 与 `foundry.lock` 是唯一版本凭证且必须一致；lock 只记录直接子模块，传递版本由上游 commit 固定。具体版本不在文档登记；部署记录保存实际 commit 与字节码 hash。
+- **gitlink 与 lock 必须同一提交更新**（2026-11-17 踩过）：只 bump gitlink 不改 `foundry.lock`，`forge build --locked` 立即失败（`foundry.lock does not match installed dependencies`），各仓自己的检查脚本（如 `action/script/events/check-events.py`）也随之红。
 - **升级**：被依赖方先推送；消费方 fetch/checkout 后同步 gitlink 与 lock，并跑完整 `forge build` 与测试，不得只用“编译通过”当兼容性证明。升级单独提交，不用 `forge update <path>`；外部库主版本变化还须记录行为差异，上游 `lib/` 布局变化必须同步下游 remappings。
+- **升级波及面必须一次走完**（按顺序，缺一步就有人 CI 红）：① 被依赖方推送 → ② 直接消费方（gitlink + `foundry.lock`，同一提交）→ ③ 间接消费方（如 `group-chat` 的 `lib/action` 与它的 lock）→ ④ `anvil` 的 `siblings.lock`（`make pin-lock` 会拒绝被依赖方工作树为脏；之后 `make pin` + `PINNED=1` bootstrap 验证）→ ⑤ `interface-dev-dsh` 的 ABI manifest（`pnpm sync:anvil` 刷 provenance，`pnpm abis:check` 复核无 `HEAD moved` 提示）。
 - **双版本**：默认不并行保留；确需并行时用新别名（如 `@libs-v2/`）并隔离源码。
 
 ### 3.3 单合约 24KB 拆分

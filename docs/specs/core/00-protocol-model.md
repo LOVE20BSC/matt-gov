@@ -6,7 +6,7 @@
 
 | 组件 | 职责 |
 | --- | --- |
-| MemberNFT | 成员身份 NFT（统一业务主体） |
+| MemberNFT | 成员身份 NFT |
 | Stake | 流动性质押、加速质押、份额和手续费 |
 | Submit / Vote | Proposal 创建、推举、投票和 Target 回调 |
 | Mint | 轮次激励准备、治理激励及 Proposal 激励结算 |
