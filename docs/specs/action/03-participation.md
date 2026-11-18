@@ -58,7 +58,7 @@ Provider 额度接口见 [`IGroupActionJoin.sol`](https://github.com/LOVE20BSC/a
 
 ## 错误卷补记（2026-11，X-09）
 
-- `E-GAJ-02`：`ActionMaxJoinAmountExceeded(memberId, newTotal, 0)` 的上限 0 同时覆盖「本轮该行动无票」「`maxJoinAmountRatio` 配置为 0」「治理票总量为 0 且下限为 0」等情形；载荷不区分成因，需要区分时只能读 `maxJoinAmount` 与治理票视图。
+- `E-GAJ-02`：`ActionMaxJoinAmountExceeded(memberId, newTotal, 0)` 的上限 0 同时覆盖「本轮该行动无票」「`maxJoinAmountRatio` 配置为 0」「社区总治理权为 0 且下限为 0」等情形；载荷不区分成因，需要区分时只能读 `maxJoinAmount` 与治理权视图。
 - `E-GAJ-03`：`_join` 的 `currentJoinRound()` 排在链群约束之后，但 `phase < 2` 时不可能存在激活链群，故 `RoundNotStarted` 与 `GroupNotActive` 的可观测先后不变；保留现状，不改顺序。
 - `E-GAJ-04`：`removeProviderQuota` 是严格模式（逐项回 `QuotaNotGranted` 并整批回滚），属于「批量删除默认 no-op」的规范例外；链下必须先按 `memberId` 去重并过滤未授予者。
 - `E-GAJ-05`：`ZeroQuotaAmount(memberId)` 在单条 `withdrawProviderQuota` 与批量 `removeProviderQuota` 两处使用，载荷都是主体键（金额恒为 0），信息量相同，无需第二个错误。

@@ -14,7 +14,7 @@
 | 依赖 | 用途 |
 | --- | --- |
 | MemberNFT | 身份与当前控制者 |
-| Stake | 质押与治理票查询 |
+| Stake | 质押与治理权查询 |
 | Submit | Proposal 创建、推举及回调 |
 | Vote | 轮次投票与回调 |
 | Mint | Proposal 激励铸造 |

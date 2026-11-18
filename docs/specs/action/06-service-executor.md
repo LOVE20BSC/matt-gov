@@ -63,7 +63,7 @@ owner 权重按链群切片 floor 后汇总，因此 `Σ_m ownerWeightNumerator(
 
 ```text
 W(m)   = (1e18 - r) * ownerWeightNumerator(m)                            // 不提前取整
-govRatio(m) = totalValidGovVotes == 0 ? 0 : mulDiv(validGovVotes(actionTokenAddress, currentPhase, m), 1e18, totalValidGovVotes)
+govRatio(m) = totalGovVotes == 0 ? 0 : mulDiv(govVotes(actionTokenAddress, currentPhase, m), 1e18, totalGovVotes)
 cap(m)      = multiplier == 0 ? 上限关闭 : mulDiv(govRatio(m), multiplier, 1e18)
 
 actualOwnerReward(m) = (multiplier == 0 || cap(m) >= ceilDiv(W(m), D))
@@ -74,7 +74,7 @@ ownerOverflow(m) = theoreticalOwnerReward(m) - actualOwnerReward(m)
 
 上限判定等价于交叉相乘 `cap(m) * D >= W(m)`，即 `cap(m) >= ceilDiv(W(m), D)`；实现对 ratio 不先取整，但按后一形式比较：除法形式不会溢出，任意 `govRatioMultiplier`（含极大值）都不会让结算回滚并锁死该行动。上限未触发时 `actualOwnerReward == theoreticalOwnerReward`，不产生取整粉尘销毁；触发时按 `cap(m)` 全额向下取整。
 
-其中 `theoreticalOwnerReward(m)` 使用上节权重公式；治理票按**铸造时的当前 Round** 读取 `Stake.validGovVotes(actionTokenAddress, currentPhase, m)` 和 `Stake.totalValidGovVotes(actionTokenAddress, currentPhase)`，`currentPhase = IPhase.currentPhase()`，不是被结算的 `round`。上限启用且总治理票为零时只销毁 owner 理论激励；乘数为零直接关闭上限。已结算的查询返回记录结果，不重新套用后续票权。
+其中 `theoreticalOwnerReward(m)` 使用上节权重公式；治理权按**铸造时的当前 Round** 读取 `Stake.govVotes(actionTokenAddress, currentPhase, m)` 和 `Stake.totalGovVotes(actionTokenAddress, currentPhase)`，`currentPhase = IPhase.currentPhase()`，不是被结算的 `round`。上限启用且社区总治理权为零时只销毁 owner 理论激励；乘数为零直接关闭上限。已结算的查询返回记录结果，不重新套用后续票权。
 
 `govRatioMultiplier` 与 `publicVerifierRatio` 来自服务 Proposal 创建回调的 `targetData[SLOT_GOV_RATIO_MULTIPLIER]`、`targetData[SLOT_PUBLIC_VERIFIER_RATIO]`；owner 超额按每个 owner 单独记入 `ownerBurned`。服务代币已经由 Mint 直接铸给 Executor 后，销毁直接调用该代币的 `burn(amount)`；不重复修改 Core Mint 的 `totalRewardBurned`。服务 Proposal 本轮没有激励时由 Mint 的内部 Round 准备逻辑处理，Executor 不重复判断。
 
@@ -131,7 +131,7 @@ amount[i] = mulDiv(slice(a, m), ratios[i], 1e18)
 
 ## 状态口径
 
-- 结算金额依赖结算时点的治理票读面，不是 `(actionToken, round, memberId)` 的纯函数；同一键在不同区块可能算出不同数量，索引方不得把首次观察值当唯一真值。
+- 结算金额依赖结算时点的治理权读取结果，不是 `(actionToken, round, memberId)` 的纯函数；同一键在不同区块可能算出不同数量，索引方不得把首次观察值当唯一真值。
 - 分母缓存的时序前提：`_mintMemberReward` 在 `mintActionReward` 之前算出分母、之后写入 `cacheDenominator`；等值成立依赖「准备后 `A[a]` 冻结」与「同一 `(actionToken, round)` 只准备一次」。该前提由本规格承载（按 `dev-standards §5.3`，不在源码加注释）：读 `generatedActionReward` 前必须先调用一次 `mintMemberReward` 触发写入。
 - 零分母不写缓存（`0` 兼作「未缓存」），因此该轮每次尝试都重新枚举全部入榜行动；与 `GroupServiceStorage` 的哨兵二义同源。
 - 服务代币必须实现 `burn(uint256)`；合约不校验，上限绑定时才暴露，由部署期代币选择保证。

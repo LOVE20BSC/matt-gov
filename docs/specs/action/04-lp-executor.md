@@ -78,11 +78,11 @@ deductionByRound -= deductionReduction
 
 ## 治理上限与分配
 
-成员与社区治理票都在**铸造时按当前 Round** 读取：`Stake.validGovVotes(tokenAddress, currentPhase, memberId)` 与 `Stake.totalValidGovVotes(tokenAddress, currentPhase)`，其中 `currentPhase = IPhase.currentPhase()`。被结算的 `round`（`mintRound = currentPhase - 2`）不参与这张票权——旧版读的 `validGovVotes(tokenAddress, memberId)` / `globalGovVotes(tokenAddress)` 同样是当前值，口径不变。结果按被结算轮冻结在 `_mintedGovRatioByMemberId[tokenAddress][actionId][round][memberId]`：已铸造轮次的 `govRatio` 查询返回该记录，不再随质押变化；未铸造轮次（含尚未结算的过去轮）按当前 Round 现算，因此查询值与将来铸造时的取值同源。`MemberRewardMinted.round` 是本接口结算的业务轮（`currentPhase - 2`）；同一共享类在 GroupAction / Service 发射时是 `currentPhase - 3`，消费方按 emitter 选偏移（见[事件规范 §4.2](../../event-standards.md#42-共享事件类)）。
+成员与社区治理权都在**铸造时按当前 Round** 读取：`Stake.govVotes(tokenAddress, currentPhase, memberId)` 与 `Stake.totalGovVotes(tokenAddress, currentPhase)`，其中 `currentPhase = IPhase.currentPhase()`。被结算的 `round`（`mintRound = currentPhase - 2`）不参与这张票权——旧版读的 `validGovVotes(tokenAddress, memberId)` / `globalGovVotes(tokenAddress)` 同样是当前值，口径不变。结果按被结算轮冻结在 `_mintedGovRatioByMemberId[tokenAddress][actionId][round][memberId]`：已铸造轮次的 `govRatio` 查询返回该记录，不再随质押变化；未铸造轮次（含尚未结算的过去轮）按当前 Round 现算，因此查询值与将来铸造时的取值同源。`MemberRewardMinted.round` 是本接口结算的业务轮（`currentPhase - 2`）；同一共享类在 GroupAction / Service 发射时是 `currentPhase - 3`，消费方按 emitter 选偏移（见[事件规范 §4.2](../../event-standards.md#42-共享事件类)）。
 
 ```text
 theoreticalReward = floor(proposalReward * effectiveAmount / totalEffectiveAmount)
-govRatio = floor(validGovVotes * 1e18 / totalValidGovVotes)
+govRatio = floor(govVotes * 1e18 / totalGovVotes)
 govRatioCap = floor(govRatio * govRatioMultiplier / 1e18)
 mintReward = effectiveLpRatio <= govRatioCap
     ? theoreticalReward
@@ -92,7 +92,7 @@ burnReward = theoreticalReward - mintReward
 
 `cap` 不生效时直接取 `theoreticalReward`；若改用截断后的 `effectiveLpRatio` 重算，可能少 1 个单位，把本应零销毁的结算变成 1 单位销毁。
 
-乘数为 0 时关闭上限并返回理论激励；上限启用且总治理票为 0 时该成员理论激励全部销毁。未参与的轮次查询返回零。结算量为零（`mintAmount` 与 `burnAmount` 均为 0）时按成因三分：有效参与总量或行动激励为零（轮级）回滚 `MemberRewardPoolEmpty(tokenAddress, round)`；成员自身有效额为 0 回滚 `ZeroEffectiveJoinAmount(tokenAddress, actionId, memberId)`；分子非零但取整为零回滚 `MemberRewardRoundedToZero(tokenAddress, round, memberId)`。三者都不置位已结算、不发事件，不拉取整笔激励，可待行动激励就绪后重试；有销毁量即允许结算。销毁调用 Token.burn，不修改 Core 的取消预留账本。销毁量带成员归属，因此并入该成员 `MemberRewardMinted.burnAmount`，不单独立事件；纯销毁情形下 `mintAmount = 0` 而 `burnAmount > 0`，`minted` 仍为 true。
+乘数为 0 时关闭上限并返回理论激励；上限启用且社区总治理权为 0 时该成员理论激励全部销毁。未参与的轮次查询返回零。结算量为零（`mintAmount` 与 `burnAmount` 均为 0）时按成因三分：有效参与总量或行动激励为零（轮级）回滚 `MemberRewardPoolEmpty(tokenAddress, round)`；成员自身有效额为 0 回滚 `ZeroEffectiveJoinAmount(tokenAddress, actionId, memberId)`；分子非零但取整为零回滚 `MemberRewardRoundedToZero(tokenAddress, round, memberId)`。三者都不置位已结算、不发事件，不拉取整笔激励，可待行动激励就绪后重试；有销毁量即允许结算。销毁调用 Token.burn，不修改 Core 的取消预留账本。销毁量带成员归属，因此并入该成员 `MemberRewardMinted.burnAmount`，不单独立事件；纯销毁情形下 `mintAmount = 0` 而 `burnAmount > 0`，`minted` 仍为 true。
 
 成员结算按 [统一铸造链路](07-minting.md#铸造链路) 进行：整笔预期数量读 `ActionTarget.actionReward`（未铸造时返回理论可铸造数量），大于零且未铸造时经 `ActionTarget.mintActionReward` 取得该整笔激励再内部分配；该轮有效参与总量（`joinedAmountByActionId - deductionByRound`）为零或预期数量为零时，成员结算无产出，回滚 `MemberRewardPoolEmpty(tokenAddress, round)`；成员自身有效额为 0 时回滚 `ZeroEffectiveJoinAmount(tokenAddress, actionId, memberId)`；分子非零但逐项取整为零时回滚 `MemberRewardRoundedToZero(tokenAddress, round, memberId)`（均不拉取整笔激励、不记已结算）。轮次已到铸币轮而有效参与总量仍为零时，该轮没有任何有效分配路径：结算一律回滚 `MemberRewardPoolEmpty(tokenAddress, round)`，整笔激励停留在未结算状态，预留不释放（没有销毁入口）。未到铸币轮的轮次结算回滚（见上表），查询返回零值。
 

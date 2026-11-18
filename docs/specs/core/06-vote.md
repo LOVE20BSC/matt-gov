@@ -4,7 +4,7 @@ Vote 管理当前治理 Round 的 Proposal 投票和加速快照。Proposal 的�
 
 ## 投票和加速快照
 
-- 票数累加到 `_voteAmountByMemberId[tokenAddress][round][memberId]`。同轮可多次投票，累计值不得超过本次从 `Stake.validGovVotes` 读取的 `maxVoteAmount`。
+- 票数累加到 `_voteAmountByMemberId[tokenAddress][round][memberId]`。同轮可多次投票，累计值不得超过本次从 `Stake.govVotes` 读取的 `maxVoteAmount`。
 - Vote 按 `tokenAddress + round + memberId` 保存已计入的加速快照，同时维护其总和 `_totalVoterBoostByRound[tokenAddress][round]`。首次投票计入成员快照，再次投票仅补记当前质押高于已记值的正增量，不重复计入整份快照；未增加时不更新。
 - 质押增加但没有后续投票，不更新 Vote 快照。Round 结束后成员快照与总量冻结；Mint 的 `voterBoost` 和 `totalVoterBoost` 都从 Vote 读取，不能用 Stake 的最新余额替换其中一项。
 - Vote 只保存每个 Proposal 的冻结票数和本轮有票 Proposal 列表，不维护达标 Proposal 总票数；Mint 在准备时按冻结结果计算该总数并缓存，不依赖行动验证结果。
@@ -16,7 +16,7 @@ Vote 管理当前治理 Round 的 Proposal 投票和加速快照。Proposal 的�
 | --- | --- |
 | 当前 Round | `IPhase(PHASE_ADDRESS).currentPhase()` |
 | 成员身份 | `IMemberNFT(MEMBER_NFT_ADDRESS).ownerOf(memberId)` |
-| 本轮票上限 | `IStake(STAKE_ADDRESS).validGovVotes(tokenAddress, currentRound, memberId)` |
+| 本轮票上限 | `IStake(STAKE_ADDRESS).govVotes(tokenAddress, currentRound, memberId)` |
 | 加速快照 | `IStake(STAKE_ADDRESS).validBoostShares(tokenAddress, round, memberId)` |
 | 推举状态 | `ISubmit(SUBMIT_ADDRESS).isSubmitted(tokenAddress, round, proposalId)` |
 | 回调目标与模式 | `ISubmit(SUBMIT_ADDRESS).proposalTarget(tokenAddress, proposalId)` |
@@ -80,7 +80,7 @@ Vote 管理当前治理 Round 的 Proposal 投票和加速快照。Proposal 的�
 | `ISubmit.proposalTarget` | `ProposalNotFound(address,uint256)` | 每笔投票的存在性读取；Vote 不重复声明 |
 | `IMemberNFT.ownerOf` | `ERC721NonexistentToken(uint256)` | `onlyMemberOwner`；`memberId` 不存在时先于 `NotMemberOwner` |
 | `IProposalTarget.onProposalVoted` | 任意 revert data | 第三方回调；失败整笔回滚 |
-| `IStake.validGovVotes`、`validBoostShares` | 依赖自身错误 | 传当前轮，正常路径不触发；异常读取按 [`error-standards.md`](../../error-standards.md) 的「七、外部调用」冒泡 |
+| `IStake.govVotes`、`validBoostShares` | 依赖自身错误 | 传当前轮，正常路径不触发；异常读取按 [`error-standards.md`](../../error-standards.md) 的「七、外部调用」冒泡 |
 
 ## Target 回调
 
@@ -88,6 +88,6 @@ Vote 管理当前治理 Round 的 Proposal 投票和加速快照。Proposal 的�
 
 `voteAmount` 为本次增量，不是累计票数；Target Data 为不透明 `bytes[]`，由 Target 解释。空 Target Data 仍必须触发回调。投票回调仅接受 Vote，Executor 仅接受 ActionTarget 转发；回调前先写入投票状态，失败则一并回滚。
 
-回调可重入 `vote`：重入时重新读取 `Stake.validGovVotes` 作为票上限，成员累计票数仍受该上限约束，因此回调不能突破本轮票权；若回调期间成员自己在 Stake 增加了质押，重入可按新上限继续投，等价于同一交易内先加杠杆再投票。
+回调可重入 `vote`：重入时重新读取 `Stake.govVotes` 作为票上限，成员累计票数仍受该上限约束，因此回调不能突破本轮票权；若回调期间成员自己在 Stake 增加了质押，重入可按新上限继续投，等价于同一交易内先加杠杆再投票。
 
 Mint 的 `voterBoost` / `totalVoterBoost` 直接取 Vote 的同名冻结快照。验收见 [Core 验收](09-testing.md)。

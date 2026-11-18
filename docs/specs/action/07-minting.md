@@ -48,8 +48,8 @@ Core 的预留、铸造和取消额度账本见 [Mint](../core/07-mint.md)，不
 | `ZeroMinJoinAmount()` / `InvalidMaxJoinAmount(uint256 minAmount, uint256 maxAmount)` | 链群最小加入量为零 / 非零最大加入量低于最小加入量 |
 | `GroupAlreadyActivated(uint256 groupId)` / `GroupNotActive(uint256 groupId)` / `GroupNotExist(uint256 groupId)` / `ZeroGroupId()` | 重复激活 / 在未激活链群上操作 / 链群身份不存在 / 链群参数缺省（`groupId == 0`，与「链群身份不存在」分开） |
 | `DeactivationLockedInActivatedRound(uint256 groupId, uint256 round)` | 在链群激活的同一投票轮停用（`round` 为投票轮） |
-| `InsufficientActivationMinGovRatio(uint256 groupId, uint256 required, uint256 actual)` | 链群 owner 的治理票占比低于激活下限 |
-| `NoGovVotes(address tokenAddress)` | 激励代币没有全局治理票，无法计算激活下限 |
+| `InsufficientActivationMinGovRatio(uint256 groupId, uint256 required, uint256 actual)` | 链群 owner 的治理权占比低于激活下限 |
+| `NoGovVotes(address tokenAddress)` | 社区总治理权为零，无法计算激活下限 |
 | `ZeroParticipationAmount()` | 加入、撤回或 Provider 撤回金额为零 |
 | `BelowMinJoinAmount(uint256 actual, uint256 minAmount)` | 首次加入量低于链群最小加入量 |
 | `WithdrawAmountExceeded(uint256 amount, uint256 joined)` | 撤回超过自有余额 |
@@ -63,7 +63,7 @@ Core 的预留、铸造和取消额度账本见 [Mint](../core/07-mint.md)，不
 | `OriginScoresEmpty()` / `VerificationBatchTooLarge(uint256 count, uint256 maxCount)` / `ScoreLimitExceeded(uint256 index, uint256 score, uint256 maxScore)` | 验证批次为空 / 超过 100 项 / 原始分超过 100 |
 | `ScoreCountExceeded(uint256 startIndex, uint256 count, uint256 maxCount)` | 验证批次越过该链群成员总数；`maxCount` 为该链群该轮成员总数（限定名口径，不再是裸的实际值字段名） |
 | `StartIndexMismatch(uint256 expected, uint256 actual)` | 验证批次跳跃、重复或乱序；`expected` 为该链群当前已验证数量，`actual` 为调用者传入的 `startIndex` |
-| `ZeroVerifyVotes(address tokenAddress, uint256 verifierId)` | 验证者没有有效治理票 |
+| `ZeroVerifyVotes(address tokenAddress, uint256 verifierId)` | 验证者没有有效治理权 |
 | `NoActiveApplication(uint256 verifierId)` | 没有当前申请或申请已失效 |
 | `VerifierNotRanked(uint256 verifierId, uint256 round)` / `VerifierNotOpen(uint256 verifierId, uint256 round)` | 未进入当轮排名 / 分割窗口未开 |
 | `GroupVerificationAlreadyComplete(uint256 groupId, uint256 round)` | 已完成验证的链群重复提交 |

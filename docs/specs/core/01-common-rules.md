@@ -9,7 +9,7 @@
 - ERC721 的 `approve`/`setApprovalForAll` 只授予转移权，不授予业务权：所有**减少 / 处分**类成员入口一律校验 `ownerOf(memberId) == msg.sender`，被授权方不能代为解锁、提取、投票、推举或铸造激励。多签或托管合约须以自身地址作为调用者。单向增加类入口按上一条处理，被授权方同样不能借 `approve` 获得处分权——它本来就只能增加。
 - `memberId` 不存在时，`ownerOf` 直接回滚 `ERC721NonexistentToken(memberId)`，不会落到各合约的 `NotMemberOwner`。该错误对任意调用者可见，但 `memberId` 由 ERC721Enumerable 公开可枚举，不构成信息泄漏；链下按「不存在 → OZ 错误，非持有人 → `NotMemberOwner`」分类。**只验存在的入口（`stakeLiquidity` / `stakeBoost` / `mergeStake` 目标侧）不会产生 `NotMemberOwner`，其不存在分支只有 `ERC721NonexistentToken`。**
 - 跨合约读取会把上游错误原样穿透：`Mint.mintProposalReward` 对不存在的提案回滚 `Submit.ProposalNotFound(tokenAddress, proposalId)`，`Stake` 对无代码或返回空数据的依赖得到空 revert。链下分类须同时识别本合约错误与上游来源。
-- 未由 Launch 登记的代币没有质押入口（`Stake` 的写入口统一 `_checkToken`），因此其治理票权与加速份额恒为 `0`；`Submit`、`Vote` 不对 `tokenAddress` 做登记校验，由这条不变量兜底成 `NoGovVotes` / `NoVotingPower`。
+- 未由 Launch 登记的代币没有质押入口（`Stake` 的写入口统一 `_checkToken`），因此其治理权与加速份额恒为 `0`；`Submit`、`Vote` 不对 `tokenAddress` 做登记校验，由这条不变量兜底成 `NoGovVotes` / `NoVotingPower`。
 
 例：Phase 10 申请解锁，等待 5 个 Phase；Phase 12 转移 NFT，Phase 16 起由新持有人提取（第 15 个 Phase 仍然太早，口径见 [Stake 解锁与提取](04-stake.md#解锁与提取)）。
 

@@ -11,16 +11,16 @@ Stake 按 `tokenAddress + memberId` 维护流动性质押和加速质押，不�
 | `liquidityShares` / `boostShares` | 成员流动性质押份额 / 加速质押份额 |
 | `promisedWaitingPhases` | 承诺解锁期，单位 Phase |
 | `unlockRequestPhase` | 申请 Phase；0 表示未申请 |
-| `firstGovVoteRound`（成员级） | 当前仓位的**首次获取治理票的 Round**：`liquidityShares` 由 0 变为非 0 的那一轮写入，追加质押与提高等待期都不改写；`withdraw` 清空整个成员记录时一并归零，再次质押从新的那一轮重新记。0 表示当前没有仓位。加速质押不写该字段（它本身不产生票权） |
-| `firstGovVoteRound`（社区级） | 该社区**首次获取治理票的 Round**：社区第一笔流动性质押所在轮写入，**此后永不变更、永不重置**——全体成员提取完毕后仍保留原值。`mergeStake` 不改写它 |
+| `firstGovVoteRound`（成员级） | 当前仓位的**首次获取治理权的 Round**：`liquidityShares` 由 0 变为非 0 的那一轮写入，追加质押与提高等待期都不改写；`withdraw` 清空整个成员记录时一并归零，再次质押从新的那一轮重新记。0 表示当前没有仓位。加速质押不写该字段（它本身不产生票权） |
+| `firstGovVoteRound`（社区级） | 该社区**首次获取治理权的 Round**：社区第一笔流动性质押所在轮写入，**此后永不变更、永不重置**——全体成员提取完毕后仍保留原值。`mergeStake` 不改写它 |
 | `totalLiquidityShares` / `totalBoostShares` | 社区份额总量 |
 | `lastWithdrawableLp` | 上次结算后的可提取 LP 基准 |
 | `lastFeeLp` | 上次结算后的协议增值 LP 基准 |
 | `lastSqrtKOfLp` | 上次结算的 sqrt(k) 基准 |
 | `lastSettlePhase[tokenAddress]` | 上次**实际**结算的 Phase；等于当前 Phase 时本 Phase 不再结算，仅内部使用、不对外提供 getter |
-| `validGovVotes[tokenAddress][round][memberId]` | 成员在指定治理 Round 的**有效**治理票：`stakeLiquidity` 与提升等待期的 `stakeBoost` 加，申请解锁清零，融合按源→目标搬移；未开始的 Round 回滚 `RoundNotStarted` |
+| `govVotes[tokenAddress][round][memberId]` | 成员在指定治理 Round 的**有效治理权**（该轮治理票数上限）：`stakeLiquidity` 与提升等待期的 `stakeBoost` 加，申请解锁清零，融合按源→目标搬移；未开始的 Round 回滚 `RoundNotStarted` |
 | `validBoostShares[tokenAddress][round][memberId]` | 成员在指定治理 Round 的**有效**加速份额：`stakeBoost` 加、申请解锁清零、融合按源→目标搬移；未开始的 Round 回滚 `RoundNotStarted` |
-| `totalValidGovVotesAdded[tokenAddress][round]` / `Removed` | 截至该 Round 的**累计**有效治理票增量 / 减量。两者的差就是社区有效治理票总量 |
+| `totalGovVotesAdded[tokenAddress][round]` / `Removed` | 截至该 Round 的**累计**有效治理权增量 / 减量。两者的差就是社区总治理权 |
 | `totalValidBoostSharesAdded[tokenAddress][round]` / `Removed` | 截至该 Round 的**累计**有效加速份额增量 / 减量。两者的差就是社区有效加速份额总量 |
 | `pairAddress[tokenAddress]` | 社区对应的 Uniswap V2 兼容 Pair 地址 |
 | `totalBurnedToken[tokenAddress]` | 社区代币全局累计销毁量 |
@@ -165,29 +165,40 @@ FEE_SETTLEMENT_RATIO <= 池费率
 
 无质押的有效成员返回零状态；`canWithdraw` 对任意 `tokenAddress` 都返回布尔值、不回滚，未申请或未到期时为 false。历史查询读取不晚于目标 Round 的最近记录，含明确归零记录；尚未开始的未来轮按[时点值口径](00-protocol-model.md#实现约束)回滚 `RoundNotStarted(requestedRound, currentRound)`，不把最近记录当作未来轮的值。Vote 用同一入口按当前 Round 读取治理票上限与加速份额，并自行维护投票快照。
 
-## 治理票与加速质押
+## 治理权、治理票与加速质押
+
+**治理权（governance power）**是流动性质押份额与承诺解锁期的乘积，只统计未申请解锁的仓位（申请解锁当轮起清零）；它决定成员每一轮能投出的票数。成员治理权按下式计算，`govVotes` 就是它的轮次账本：
 
 ```text
 govVotes = liquidityShares * promisedWaitingPhases
 ```
 
-Vote 每次投票通过 `Stake.validGovVotes(tokenAddress, currentRound, memberId)` 读取当前有效票，不冻结治理票上限；追加质押、改变承诺等待期和申请解锁会影响票权。加速质押本身不产生票权。
+**治理票（votes）**是每一轮由治理权决定的可投票数，即投票动作可投出的那个计数。两者不是一个词：治理权是资格与存量，治理票是当轮可投出的票数；不用「治理票数」指资格。
+
+| 量 | 入口（`IStake`） | 口径 |
+| --- | --- | --- |
+| 成员有效治理权 | `govVotes(tokenAddress, round, memberId)` | `liquidityShares × promisedWaitingPhases` 的时点值；申请解锁当轮记 `0`，融合按源→目标搬移 |
+| 社区总治理权 | `totalGovVotes(tokenAddress, round)` | 该轮全体成员有效治理权之和 = `totalGovVotesAdded(R) − totalGovVotesRemoved(R)`；申请解锁即减记 |
+
+**社区总治理权 ≠ 流动性质押份额总量。** 流动性质押份额总量（`totalStake(tokenAddress)` 的返回项 `totalLiquidityShares`）包含已申请解锁、等待提取的份额；治理权只计未申请解锁的部分。例：成员 A 流动性质押份额 `100`、承诺解锁期 `1` 个阶段、未申请解锁；成员 B 份额 `200` 但已申请解锁。则社区总治理权 `totalGovVotes = 100 × 1 = 100`，而流动性质押份额总量 `totalLiquidityShares = 300`——其中 `200` 待解锁、治理权为 `0`；份额要到提取才离开总量，治理权在申请解锁当轮就已扣减。
+
+Vote 每次投票通过 `Stake.govVotes(tokenAddress, currentRound, memberId)` 读取成员当前有效治理权，作为本轮治理票数上限；该上限不冻结，追加质押、改变承诺解锁期和申请解锁都会影响它。加速质押本身不产生治理权。
 
 `validBoostShares` 在新 Round 首次操作时承接最近历史值，增减加速份额时更新本轮；无操作轮次读取最近记录，申请解锁后禁止追加，原说明要求累计值不再更新。它是**当轮有效值**而非余额：申请解锁即归零，而 `boostShares` 余额要到提取才清零——这两个量只在「已申请解锁、尚未提取」的窗口里不相等。申请解锁时即按旧行为把成员累计份额与全局累计同步扣减，提取时不再重复扣减；`totalBoostShares` 表示当前成员份额合计，在提取、份额真正离开合约时才减少。这是 Stake 的质押历史，不是 Mint 的结算快照；Mint 只读取 [Vote 保存的投票快照](06-vote.md#投票和加速快照)。
 
 例：Round 4 记录 50，Round 5 追加 30 后为 80；后续无变动轮次读取 80，不逐轮复制。
 
-治理票与加速份额走**同一套轮次账本**，两种口径都能按 Round 查：
+治理权与加速份额走**同一套轮次账本**，两种口径都能按 Round 查：
 
 ```text
-totalValidGovVotes(R)   = totalValidGovVotesAdded(R)   - totalValidGovVotesRemoved(R)
+totalGovVotes(R)   = totalGovVotesAdded(R)   - totalGovVotesRemoved(R)
 totalValidBoostShares(R) = totalValidBoostSharesAdded(R) - totalValidBoostSharesRemoved(R)
 ```
 
-- 成员口径 `validGovVotes(tokenAddress, round, memberId)` / `validBoostShares(tokenAddress, round, memberId)` 是**时点存量**：用 `RoundHistoryUint256` 做懒继承，每个 Round 只记录发生变更的那一次，未变更的轮次读最近记录，不必逐轮复制。
+- 成员口径 `govVotes(tokenAddress, round, memberId)` / `validBoostShares(tokenAddress, round, memberId)` 是**时点存量**：用 `RoundHistoryUint256` 做懒继承，每个 Round 只记录发生变更的那一次，未变更的轮次读最近记录，不必逐轮复制。
 - 社区口径拆成两个**累计**账本而不是直接存一个总量：`total = added - removed` 因此是结构性的恒等式，不靠维护、也不会漂移。`Added` / `Removed` 各自单调不减，差值恒等于该轮全体成员有效值之和。
 - 每轮流量由累计值差分得到：`Added(R) - Added(R-1)`。`Removed` 同理。
-- 事件里的 `totalValidGovVotes` / `totalValidBoostShares` 就是这个差值，与查询结果逐条相等。
+- 事件里的 `totalGovVotes` / `totalValidBoostShares` 就是这个差值，与查询结果逐条相等。
 
 ## 加速激励质押上限
 
@@ -202,7 +213,7 @@ m_i      = floor(C × v_i / V) × M
 - 第一个 `2` 是命名常量 `LIQUIDITY_TOKEN_EQUIVALENCE_FACTOR`：Uniswap V2 池内双币价值对等，一份社区代币本金对应池内两侧各一份价值，用它把本金折算成社区代币口径。
 - `totalSupply / MAX_SUPPLY` 是已铸造比例；两个值都从 `ILOVE20Token(token)` 读取。
 - `F = BOOST_STAKE_SUPPLY_FACTOR`：部署参数，不是字面量。
-- `v_i = validGovVotes(token, round, memberId)`，`V = totalValidGovVotes(token, round)`，`round` 为入口当轮。
+- `v_i = govVotes(token, round, memberId)`，`V = totalGovVotes(token, round)`，`round` 为入口当轮。
 - `M = BOOST_STAKE_MULTIPLIER`：部署参数，固定配置，不随轮次变化。
 - 所有除法向下取整；上限只会因取整而收紧，不会放宽。
 
@@ -228,7 +239,7 @@ stakeBoost 通过条件：member.boostShares + amount <= m_i
 
 ## 解锁与提取
 
-1. 当前 NFT 持有人申请统一解锁，记录申请 Phase 和承诺等待期，立即清零治理票，禁止追加及融合。**本 Round 已推举或已投票的成员不得申请解锁**：解锁只清零当前票权，撤不回已经计入本轮的票，放行等于让同一份质押资产在本轮既投票又退出。该限制与融合对源成员的「本轮已使用质押权」检查同口径，只作用于当前治理 Round，上一 Round 用过质押权的成员在新一轮可以解锁。
+1. 当前 NFT 持有人申请统一解锁，记录申请 Phase 和承诺等待期，立即清零治理权，禁止追加及融合。**本 Round 已推举或已投票的成员不得申请解锁**：解锁只清零当前票权，撤不回已经计入本轮的票，放行等于让同一份质押资产在本轮既投票又退出。该限制与融合对源成员的「本轮已使用质押权」检查同口径，只作用于当前治理 Round，上一 Round 用过质押权的成员在新一轮可以解锁。
 2. 满足 `currentPhase > unlockRequestPhase + promisedWaitingPhases` 后，当前持有人一次提取 LP 对应双币和加速代币；不能分别解锁、分别提取。等待期按「申请 Phase 之后再等满 `promisedWaitingPhases` 个完整 Phase」计量，与旧 `LOVE20Stake.withdraw` 同口径：申请轮加 `promisedWaitingPhases` 的那一个 Phase 仍然太早，例如在 Phase 100 申请、承诺 `1` 时，Phase 102 起才可提取。
 3. NFT 转移不重置等待期，不限制解锁中的 NFT 转移。查询应返回申请 Phase、承诺等待期和是否可提取，任何人可按社区和成员查询。
 
@@ -242,11 +253,11 @@ stakeBoost 通过条件：member.boostShares + amount <= m_i
 - 任一方待解锁时拒绝；源在当前治理 Round 已使用过质押权时拒绝，目标已使用过质押权不阻止融合。
 - 空目标（`liquidityShares == 0 && boostShares == 0`，与 `stakeLiquidity` / `stakeBoost` 判「已有仓位」的 `targetHadPosition` 同一判据；注意不是 `promisedWaitingPhases == 0`）继承源等待期；非空目标等待期短于源则拒绝，否则保持目标等待期。
 - 源全部流动性质押份额和加速份额并入目标，源当前质押清零。目标原资产不得减少，历史投票和激励不回写。
-- 目标本轮已投票仍可接收：融合只增加目标的流动性质押份额，按 `liquidityShares × promisedWaitingPhases` 重算后表现为治理票增量，与该成员自己追加质押产生的增量等价，可继续用这部分增量投票。
+- 目标本轮已投票仍可接收：融合只增加目标的流动性质押份额，按 `liquidityShares × promisedWaitingPhases` 重算后表现为治理权增量，与该成员自己追加质押产生的增量等价，可继续用这部分增量投票。
 - 源本轮已推举或已投票则禁止融合：推举或投票都视为使用质押权，融合会让同一份质押资产在本轮转移后再次使用。
 - 当前 Round 结束后限制清零；上一 Round 使用过质押权的来源，在下一 Round 可以再次融合。Submit 会先完成推举状态写入，再执行创建回调，回调不能绕过该限制。
 - 融合后按目标份额正常提取双币和加速代币；解锁中的成员需完成提取后才可再次融合。
-- **首次获取治理票的 Round**：目标在融合前没有流动性质押（空仓或只有加速余额）时，目标记本次融合所在 Round；目标已有流动性质押时保留其原有更早的 Round。源被清空，其成员级标记随记录一并归零。社区级标记不受融合影响。
+- **首次获取治理权的 Round**：目标在融合前没有流动性质押（空仓或只有加速余额）时，目标记本次融合所在 Round；目标已有流动性质押时保留其原有更早的 Round。源被清空，其成员级标记随记录一并归零。社区级标记不受融合影响。
 
 ## 拒绝条件与错误
 
@@ -360,21 +371,21 @@ stakeBoost 通过条件：member.boostShares + amount <= m_i
 
 ## 事件
 
-事件签名见 [`IStake.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/IStake.sol)。三个聚合量——流动性质押份额、加速份额、治理票——在**改变它们的每个事件**上都携带后置总量，与增量字段并存：增量用于折叠，总量用于对账。`totalLiquidityShares` / `totalBoostShares` 必须等于 `totalStake` 的同名字段；`totalValidGovVotes` / `totalValidBoostShares` 必须等于 `totalValidGovVotes(tokenAddress, round)` / `totalValidBoostShares(tokenAddress, round)`，也就是同轮 `Added` 与 `Removed` 之差。`lastFeeLp` 与 `lastWithdrawableLp` 同样在**每个改变它们的事件**上携带后置总量，两个账本可从事件逐笔折叠，不需要反推份额公式或读取 Pair 日志。
+事件签名见 [`IStake.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/IStake.sol)。三个聚合量——流动性质押份额、加速份额、治理权——在**改变它们的每个事件**上都携带后置总量，与增量字段并存：增量用于折叠，总量用于对账。`totalLiquidityShares` / `totalBoostShares` 必须等于 `totalStake` 的同名字段；`totalGovVotes` / `totalValidBoostShares` 必须等于 `totalGovVotes(tokenAddress, round)` / `totalValidBoostShares(tokenAddress, round)`，也就是同轮 `Added` 与 `Removed` 之差。`lastFeeLp` 与 `lastWithdrawableLp` 同样在**每个改变它们的事件**上携带后置总量，两个账本可从事件逐笔折叠，不需要反推份额公式或读取 Pair 日志。
 
 | 事件 | 触发入口 | 字段 |
 | --- | --- | --- |
-| `LiquidityStaked(tokenAddress, round, memberId, caller, memberOwner, tokenAmount, parentTokenAmount, promisedWaitingPhases, prevPromisedWaitingPhases, govVotesAdded, liquiditySharesAdded, liquidityShares, totalLiquidityShares, totalValidGovVotes, totalWithdrawableLp)` | `stakeLiquidity` | `caller` 是直接调用者 `msg.sender`（单笔交易涉及多层合约调用时日志只带发日志的合约地址、`tx.from` 只有顶层 EOA，中间调用者需 `debug_traceTransaction` 才能还原）；`memberOwner` 是 `ownerOf(memberId)` 在本次写入时点的快照；三者（`caller` / `memberOwner` / `tx.from`）比对即可判「本人直接质押 / 本人经 Hub / 第三方代付」。`tokenAmount`/`parentTokenAmount` 为折算后实际入池量（折算剩余从不进入 Stake，故不出现）；`promisedWaitingPhases` 为写入后的新值，`prevPromisedWaitingPhases` 为写入前的旧值（首次质押为 `0`）；`govVotesAdded` = `(旧份额 + 新份额) × promisedWaitingPhases - 旧票权`；`liquiditySharesAdded`/`liquidityShares` 为本次新增份额与成员后置份额；`totalLiquidityShares`/`totalValidGovVotes` 为社区后置总量；`totalWithdrawableLp` 为加入本次 LP 后的后置可提取 LP 账本。**成员后置票权不单独成字段**：它恒等于本 payload 内的 `liquidityShares × promisedWaitingPhases`（`Stake._govVotesOf` 的实现），属[事件规范 §6.9](../../event-standards.md#69-派生缓存) 的派生缓存，携带即冗余；`BoostStaked` 不同——它的 payload 里没有 `liquidityShares`，`govVotes` 不可推导，因此保留。该字段的删除同时受非 `via_ir` 的代码生成上限约束：3 个 indexed 加 13 个 payload 参数（共 16 个）在仓库锁定的 solc 0.8.37 + `optimizer_runs = 200` 下必然 `Stack too deep`，15 个才可通过；[开发规范 §3.1](../../dev-standards.md#31-工具链) 明令不使用 `via_ir`、遇此错误优先重构，因此该字段不能保留。 |
-| `BoostStaked(tokenAddress, round, memberId, caller, memberOwner, boostAmount, promisedWaitingPhases, prevPromisedWaitingPhases, govVotesAdded, govVotes, boostShares, totalBoostShares, totalValidBoostShares, totalValidGovVotes)` | `stakeBoost` | `caller` / `memberOwner` / `prevPromisedWaitingPhases` 与 `LiquidityStaked` 同义同口径。`boostAmount` 为本次转入的加速代币数量，同时也是本次份额增量（1:1，不再重复成 `boostSharesAdded`）；`govVotesAdded` 仅在等待期提升时为正；`boostShares` 为成员后置**余额**；`totalBoostShares` 为社区余额合计；`totalValidBoostShares` 为 `round` 当轮有效加速份额合计；`totalValidGovVotes` 为社区后置票权总量 |
-| `Unstaked(tokenAddress, round, memberId, promisedWaitingPhases, govVotes, liquidityShares, boostShares, totalValidBoostShares, totalValidGovVotes)` | `unstake` | `round` 同时是本次写入的 `unlockRequestPhase`；`govVotes` 为被清零的票权（社区总量同步减该值）；`liquidityShares`/`boostShares` 为成员仍保留的余额；`totalValidBoostShares` 为扣减后当轮有效加速份额合计；`totalValidGovVotes` 为扣减后社区票权总量 |
+| `LiquidityStaked(tokenAddress, round, memberId, caller, memberOwner, tokenAmount, parentTokenAmount, promisedWaitingPhases, prevPromisedWaitingPhases, govVotesAdded, liquiditySharesAdded, liquidityShares, totalLiquidityShares, totalGovVotes, totalWithdrawableLp)` | `stakeLiquidity` | `caller` 是直接调用者 `msg.sender`（单笔交易涉及多层合约调用时日志只带发日志的合约地址、`tx.from` 只有顶层 EOA，中间调用者需 `debug_traceTransaction` 才能还原）；`memberOwner` 是 `ownerOf(memberId)` 在本次写入时点的快照；三者（`caller` / `memberOwner` / `tx.from`）比对即可判「本人直接质押 / 本人经 Hub / 第三方代付」。`tokenAmount`/`parentTokenAmount` 为折算后实际入池量（折算剩余从不进入 Stake，故不出现）；`promisedWaitingPhases` 为写入后的新值，`prevPromisedWaitingPhases` 为写入前的旧值（首次质押为 `0`）；`govVotesAdded` = `(旧份额 + 新份额) × promisedWaitingPhases - 旧票权`；`liquiditySharesAdded`/`liquidityShares` 为本次新增份额与成员后置份额；`totalLiquidityShares`/`totalGovVotes` 为社区后置总量；`totalWithdrawableLp` 为加入本次 LP 后的后置可提取 LP 账本。**成员后置票权不单独成字段**：它恒等于本 payload 内的 `liquidityShares × promisedWaitingPhases`（`Stake._govVotesOf` 的实现），属[事件规范 §6.9](../../event-standards.md#69-派生缓存) 的派生缓存，携带即冗余；`BoostStaked` 不同——它的 payload 里没有 `liquidityShares`，`govVotes` 不可推导，因此保留。该字段的删除同时受非 `via_ir` 的代码生成上限约束：3 个 indexed 加 13 个 payload 参数（共 16 个）在仓库锁定的 solc 0.8.37 + `optimizer_runs = 200` 下必然 `Stack too deep`，15 个才可通过；[开发规范 §3.1](../../dev-standards.md#31-工具链) 明令不使用 `via_ir`、遇此错误优先重构，因此该字段不能保留。 |
+| `BoostStaked(tokenAddress, round, memberId, caller, memberOwner, boostAmount, promisedWaitingPhases, prevPromisedWaitingPhases, govVotesAdded, govVotes, boostShares, totalBoostShares, totalValidBoostShares, totalGovVotes)` | `stakeBoost` | `caller` / `memberOwner` / `prevPromisedWaitingPhases` 与 `LiquidityStaked` 同义同口径。`boostAmount` 为本次转入的加速代币数量，同时也是本次份额增量（1:1，不再重复成 `boostSharesAdded`）；`govVotesAdded` 仅在等待期提升时为正；`boostShares` 为成员后置**余额**；`totalBoostShares` 为社区余额合计；`totalValidBoostShares` 为 `round` 当轮有效加速份额合计；`totalGovVotes` 为社区后置票权总量 |
+| `Unstaked(tokenAddress, round, memberId, promisedWaitingPhases, govVotes, liquidityShares, boostShares, totalValidBoostShares, totalGovVotes)` | `unstake` | `round` 同时是本次写入的 `unlockRequestPhase`；`govVotes` 为被清零的票权（社区总量同步减该值）；`liquidityShares`/`boostShares` 为成员仍保留的余额；`totalValidBoostShares` 为扣减后当轮有效加速份额合计；`totalGovVotes` 为扣减后社区票权总量 |
 | `StakeWithdrawn(tokenAddress, round, memberId, promisedWaitingPhases, liquidityShares, tokenAmountForLiquidity, parentTokenAmountForLiquidity, boostShares, withdrawableLpBurned, withdrawableLpToMember, totalLiquidityShares, totalBoostShares, totalWithdrawableLp)` | `withdraw` | `tokenAmountForLiquidity`/`parentTokenAmountForLiquidity` 为销毁 LP 取回的双币数量；`boostShares` 为归还的加速代币；`withdrawableLpBurned` 与 `withdrawableLpToMember` **互斥**，二者之和等于本次折算出的 LP `floor(liquidityShares × lastWithdrawableLp / totalLiquidityShares)`——`liquidityShares` 是份额，与 LP 不同量纲，不能直接与这两个字段相加；`withdrawableLpBurned` 是可提取 LP 账本中真正烧成双币返还成员的部分，`withdrawableLpToMember` 是「非零但不可烧」时原样交给成员的那一支；`totalWithdrawableLp` 为扣减后的后置账本 |
 | `FeesSettled(tokenAddress, round, feeLpBurned, tokenBurned, parentTokenBurned, totalBurnedToken, totalParentTokenBurned, totalFeeLp)` | `settleFees`、`withdraw` 的结算段 | `feeLpBurned` 为本次销毁的费用 LP；`tokenBurned` 为社区代币销毁量（含父币换得的部分），`parentTokenBurned` 为换币前的父币数量；`totalBurnedToken`/`totalParentTokenBurned` 为社区累计销毁量；`totalFeeLp` 为扣减后的后置费用账本 |
 | `FeeReclassified(tokenAddress, round, feeLpAdded, withdrawableLpRemoved, totalFeeLp, totalWithdrawableLp, sqrtKOfLp, pairTotalSupply)` | `settleFees`、`withdraw` 的结算段、`stakeLiquidity` 的重分类段 | `feeLpAdded` 为本次转入手续费账本的 LP，`withdrawableLpRemoved` 为可提取 LP 的等量减少（`totalLp` 守恒，二者恒等，见恒等对登记）；`totalFeeLp`/`totalWithdrawableLp` 为后置总账；`sqrtKOfLp` 为重分类后的基线（同一交易内若随后增减流动性或销毁，会再次刷新）；`pairTotalSupply` 为重分类时的 LP 总供应。仅在 √K 增长时发射；`sqrtKOfLp` 是重分类时点快照，不作为折叠来源，`lastSqrtKOfLp` 仍由 Pair `Sync` + `totalLp` 派生 |
-| `StakesMerged(tokenAddress, round, sourceMemberId, targetMemberId, liquiditySharesMerged, boostSharesMerged, targetGovVotes, targetLiquidityShares, targetBoostShares, targetPromisedWaitingPhases, prevSourceGovVotes, prevSourcePromisedWaitingPhases, totalValidGovVotes)` | `mergeStake` | `*Merged` 为源侧迁出的份额；`target*` 为目标的后置状态；`prevSource*` 为**融合前**源成员的状态——融合后源被清空、等同于从未质押，因此这两个字段是旧值而非现状，`prevSourceGovVotes` = `liquiditySharesMerged × prevSourcePromisedWaitingPhases`；`totalValidGovVotes` 为社区后置票权总量 |
+| `StakesMerged(tokenAddress, round, sourceMemberId, targetMemberId, liquiditySharesMerged, boostSharesMerged, targetGovVotes, targetLiquidityShares, targetBoostShares, targetPromisedWaitingPhases, prevSourceGovVotes, prevSourcePromisedWaitingPhases, totalGovVotes)` | `mergeStake` | `*Merged` 为源侧迁出的份额；`target*` 为目标的后置状态；`prevSource*` 为**融合前**源成员的状态——融合后源被清空、等同于从未质押，因此这两个字段是旧值而非现状，`prevSourceGovVotes` = `liquiditySharesMerged × prevSourcePromisedWaitingPhases`；`totalGovVotes` 为社区后置票权总量 |
 
 事件里成员级**没有**单独的有效加速份额字段（查询侧有 `validBoostShares`）：`BoostStaked`、`StakesMerged`、`StakeWithdrawn` 三个时点上 `boostShares` 本身就是有效值（未申请解锁的成员，余额与当轮有效份额相等），而 `Unstaked` 之后有效值恒为 `0`，由事件名承载——另设字段只会是恒等对或常量。全局侧则相反：`totalBoostShares`（余额合计，提取才减）与 `totalValidBoostShares`（当轮有效合计，申请解锁即减）会在「已申请解锁、尚未提取」的成员上分叉，两者必须并存；加速质押的业务趋势以 `totalValidBoostShares` 为准，而不是滞后的 `totalBoostShares`；成员级同理，趋势看 `validBoostShares(tokenAddress, round, memberId)`，而不是 `boostShares`。两个 `valid*` 值都能直接查询，事件里的总量与查询结果必须逐条相等。
 
-`StakeWithdrawn` 不携带 `totalValidGovVotes`：票权在 `unstake` 已清零，提取不再改变它，重复携带属于复述未变化字段。
+`StakeWithdrawn` 不携带 `totalGovVotes`：票权在 `unstake` 已清零，提取不再改变它，重复携带属于复述未变化字段。
 
 **只有 `LiquidityStaked` / `BoostStaked` 带 `prevPromisedWaitingPhases`**：Stake 的全部入口里只有 `stakeLiquidity` 与 `stakeBoost` 会改变 `promisedWaitingPhases`；`unstake` 只写入 `unlockRequestPhase` 并读取等待期、`withdraw` 随记录删除一起读取、`mergeStake` 的源记录被 `delete`、目标等待期在空仓时取源值、非空时保持不变。`StakesMerged` 因而不补目标前置值：目标为空仓时该前置值恒为 `0`，非空仓时恒等于 `targetPromisedWaitingPhases`，两种情形都可由新值恒等推导，属[事件规范 §6.7](../../event-standards.md#67-旧值与新值)「旧值由新值恒等可推时可以省略」。
 
@@ -394,9 +405,9 @@ stakeBoost 通过条件：member.boostShares + amount <= m_i
 - `memberId == 0` 与不存在的 `memberId` 同走 `MemberNFT.ownerOf`，由 OpenZeppelin 抛出 `ERC721NonexistentToken`；Stake 不声明 `InvalidMemberId()`，与 `Launch` 的既有实现一致。
 - 鉴权 modifier 只有 `onlyMemberOwner` 一个，用在 `unstake`、`withdraw`、`mergeStake` 的源侧；`stakeLiquidity`、`stakeBoost` 与 `mergeStake` 的目标侧不走 modifier，改为在函数体内按 `// forge-lint: disable-next-item(unused-return)` + `IMemberNFT(MEMBER_NFT_ADDRESS).ownerOf(memberId);` 只验存在。**不得为放宽鉴权而给 modifier 加布尔开关**——两个鉴权面的判据不同（`!= msg.sender` 回滚 vs 只验存在），混进一个 modifier 会让「谁可以调」在阅读时不可见（[开发规范 §5.5](../../dev-standards.md#55-调用者校验)）。
 - **等待期约束在写点判定，不在 modifier 里**：判据同时依赖 `msg.sender` 与成员仓位的读写，属于业务校验而非调用者校验。统一实现为「该 `memberId` 的 NFT 持有人不是 `msg.sender`，且成员仓位非空（`liquidityShares != 0 || boostShares != 0`）时，入参 `promisedWaitingPhases` 必须等于 `member.promisedWaitingPhases`」，命中即回滚 `PromisedWaitingPhasesRewritten`；下调仍回滚 `PromisedWaitingPhasesDecreased`，两者是两行拒绝条件。
-- 治理票的**原始乘积**为 `liquidityShares × promisedWaitingPhases`，只用于在写点计算增量；对外可查的是轮次账本 `validGovVotes(round, memberId)`，申请解锁当轮记 `0`。`stakeLiquidity`、`stakeBoost` 提升等待期、`unstake`、`mergeStake` 四处写点必须同时更新成员账本与社区的 `Added` / `Removed`，使 `totalValidGovVotes(round)` 恒等于该轮全体成员 `validGovVotes` 之和。加速份额同构，但**只在社区净额变化时**写社区账本：`mergeStake` 的加速搬迁只在成员之间移动，净额为零，不写 `Added` / `Removed`（各记一笔等额会把 `total` 抬成两倍）。
+- 治理权的**原始乘积**为 `liquidityShares × promisedWaitingPhases`，只用于在写点计算增量；对外可查的是轮次账本 `govVotes(round, memberId)`，申请解锁当轮记 `0`。`stakeLiquidity`、`stakeBoost` 提升等待期、`unstake`、`mergeStake` 四处写点必须同时更新成员账本与社区的 `Added` / `Removed`，使 `totalGovVotes(round)` 恒等于该轮全体成员 `govVotes` 之和。加速份额同构，但**只在社区净额变化时**写社区账本：`mergeStake` 的加速搬迁只在成员之间移动，净额为零，不写 `Added` / `Removed`（各记一笔等额会把 `total` 抬成两倍）。
 - `memberStake()` 和 `totalStake()` 返回的 `tokenAmountForLiquidity` / `parentTokenAmountForLiquidity` 以及 `withdrawableLp` / `feeLp` 都是查询时根据当前 Pair 状态现算的值，不是直接读取存储的历史基准。加速上限不读这些现算值，只读本金台账 `_totalLiquidityTokenAmount`。
-- `memberStake(tokenAddress, memberId)` 返回 `(liquidityShares, boostShares, promisedWaitingPhases, unlockRequestPhase, tokenAmountForLiquidity, parentTokenAmountForLiquidity, firstGovVoteRound)`，`totalStake(tokenAddress)` 返回 `(totalLiquidityShares, totalLp, withdrawableLp, feeLp, totalBoostShares, tokenAmountForLiquidity, parentTokenAmountForLiquidity, firstGovVoteRound)`。两个 `firstGovVoteRound` 的口径见[状态](#状态)表：成员级随 `withdraw` 归零、社区级永不重置。两者都**不**由 `stakeBoost` 写入——加速质押本身不产生治理票，也不改变流动性质押份额。
+- `memberStake(tokenAddress, memberId)` 返回 `(liquidityShares, boostShares, promisedWaitingPhases, unlockRequestPhase, tokenAmountForLiquidity, parentTokenAmountForLiquidity, firstGovVoteRound)`，`totalStake(tokenAddress)` 返回 `(totalLiquidityShares, totalLp, withdrawableLp, feeLp, totalBoostShares, tokenAmountForLiquidity, parentTokenAmountForLiquidity, firstGovVoteRound)`。两个 `firstGovVoteRound` 的口径见[状态](#状态)表：成员级随 `withdraw` 归零、社区级永不重置。两者都**不**由 `stakeBoost` 写入——加速质押本身不产生治理权，也不改变流动性质押份额。
 - 加速份额不提供「哪些 Round 发生过变更」的链上枚举：该轮次集合完全可由 `BoostStaked`/`Unstaked`/`StakesMerged` 的 `round` 折叠得到，属派生缓存（事件规范 §6.9），不再单独开分页查询。
 
 历史来源：`LOVE20TKM/core/src/LOVE20Stake.sol` 和 `LOVE20TKM/core/src/LOVE20SLToken.sol`；提交已固定，当前 BSC 行为以本文件为准。验收见 [Core 验收](09-testing.md)。
