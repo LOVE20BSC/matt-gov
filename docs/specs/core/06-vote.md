@@ -7,7 +7,7 @@ Vote 管理当前治理 Round 的 Proposal 投票和加速快照。Proposal 的�
 - 票数累加到 `_voteAmountByMemberId[tokenAddress][round][memberId]`。同轮可多次投票，累计值不得超过本次从 `Stake.govVotes` 读取的 `maxVoteAmount`。
 - Vote 按 `tokenAddress + round + memberId` 保存已计入的加速快照，同时维护其总和 `_totalVoterBoostByRound[tokenAddress][round]`。首次投票计入成员快照，再次投票仅补记当前质押高于已记值的正增量，不重复计入整份快照；未增加时不更新。
 - 质押增加但没有后续投票，不更新 Vote 快照。Round 结束后成员快照与总量冻结；Mint 的 `voterBoost` 和 `totalVoterBoost` 都从 Vote 读取，不能用 Stake 的最新余额替换其中一项。
-- Vote 只保存每个 Proposal 的冻结票数和本轮有票 Proposal 列表，不维护达标 Proposal 总票数；Mint 在准备时按冻结结果计算该总数并缓存，不依赖行动验证结果。
+- Vote 记录每个 Proposal 的票权、本轮总票权和有票 Proposal 列表。Mint 以本轮总票权计算门槛与份额，首笔投票在同一交易内触发本轮激励池预留。
 - 批量投票或 Target 回调失败时，对应外层交易整体回滚。
 
 ## 读取来源

@@ -91,7 +91,7 @@ Executor 失效时的兜底清理：成员 NFT 当前持有人可清除加入态
 
 **本轮有投票的行动**：`votedActionIds(tokenAddress, round, offset, limit, reverse) returns (actionIds[], executors[], totalCount)` 一次读取 Vote 的 `votedProposalIds(tokenAddress, round, 0, type(uint256).max, false)` 取得本轮有票 Proposal 全列表（Pagination 对超限 `limit` 返回剩余；列表规模上界 = 该代币本轮有推举资格的成员数，出处 core [提交](../core/05-submit.md)：每个成员每轮最多推举一个提案），再按 `executor` 映射筛选，不在这里计算激励门槛；不能读成历史累计。其 `totalCount` 由「读完本轮列表 → 按映射筛选 → 切片」得出，单次调用在同一交易内完成，ActionTarget 不另设人工 Proposal 数量上限。
 
-**按 Executor 集合的本轮投票行动**：`votedActionIdsByExecutors(tokenAddress, round, executors[]) returns (actionIds[], actionExecutors[])` 与 `votedActionIds` 同源同序——在同一份「读 Vote 的本轮有票 Proposal 全列表 → 按 `executorByActionId` 筛掉未绑定项」的有效集合上，保留 executor 属于给定集合的行动；顺序沿用本轮投票列表原序（不提供 `reverse`），`actionExecutors` 与 `actionIds` 逐项对齐。给定集合为空返回空数组；入参中重复的 executor 不会产生重复项。不分页、不返回 `totalCount`（全量返回时它恒等于 `actionIds.length`）。它是只读派生、不落存储索引：每轮行动数上界受 core 的推举资格约束，遍历成本有界，投票路径不因它增加任何写入。链上消费方 GroupService 结算已用它替代「取全量后自行过滤」，结果等价。
+**按 Executor 集合的本轮投票行动**：`votedActionIdsByExecutors(tokenAddress, round, executors[]) returns (actionIds[], actionExecutors[])` 与 `votedActionIds` 同源同序——在同一份「读 Vote 的本轮有票 Proposal 全列表 → 按 `executorByActionId` 筛掉未绑定项」的有效集合上，保留 executor 属于给定集合的行动；顺序沿用本轮投票列表原序（不提供 `reverse`），`actionExecutors` 与 `actionIds` 逐项对齐。给定集合为空返回空数组；入参中重复的 executor 不会产生重复项。不分页、不返回 `totalCount`（全量返回时它恒等于 `actionIds.length`）。它是只读派生、不落存储索引：每轮行动数上界受 core 的推举资格约束，遍历成本有界，投票路径不因它增加任何写入。GroupService 结算读取 GroupAction 在验证完成时登记的来源激励和权重。见 [服务 Executor](06-service-executor.md#权重)。
 
 ## 实现约束
 

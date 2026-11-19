@@ -26,17 +26,18 @@
 ### Proposal 激励闭环
 **覆盖要求**：
 - 投票阶段结束前后准备
-- 准备只写轮次级总状态，缓存达标 Proposal 总票数且不逐个预写 Proposal
+- 首票预留两池，轮末准备只写轮次级状态
 - 重复准备不改写
-- 准备完成后 Proposal 激励结算不再扫描 Vote 列表
-- 约 300 个 Proposal 的准备交易可完成，且准备后的 `eligibleProposalVoteAmount` 只读不改
+- 准备、预览和单项结算均无需读取 Vote 的 Proposal 列表
+- 达标提案按全轮总票权计算份额，未达标提案可逐项释放预留。全轮未达标时最后一笔释放尾差
+- 1,000 个 Proposal 的准备交易在本地测试预算内完成
 - 非 Target 铸造拒绝
 - 各 Proposal Target 按冻结状态单独计算并铸造且单 Proposal 只能成功一次
 - 行动类 `executor -> ActionTarget -> Mint -> executor`：Mint 按 Target 指定的 `recipient` 直铸给 Executor，路径上无中间转账
 - 铸造失败整笔回滚
 
 **测试方式**：
-- 单元测试：`core/test/Mint.t.sol` 的 `testZeroVotePreparationMustEmitEvent()`、`testZeroProposalRewardMustRevert()`、`testPrepareScansProposalsOnceAndCachesResult()`、`testNonexistentRewardQueriesMustRevert()` 等
+- 单元测试覆盖 `testPreviewPrepareAndMintNeverReadTheProposalList`、`testBurnRewardReleasesOnlyTheBelowThresholdShare` 和 `testLastBelowThresholdProposalReleasesTheAllIneligiblePool`。
 - 集成测试：`love20-anvil/scenarios/proposal-lifecycle.yml` 完整流程
 - 验收证据：测试日志 + 覆盖率报告（要求该场景分支覆盖率 100%）
 
@@ -316,9 +317,11 @@
 - 失败场景正确回滚
 
 ### GroupService 结算
-**覆盖要求**：覆盖服务代币与行动代币相同或为其直接父币、非直接关系拒绝；覆盖只有当轮已加入服务 Proposal 的链群 owner/验证者 MemberNFT 才能按人结算、未加入角色份额不重分配、所有 GroupAction 总激励作为分母（未准备时按实时账本计算，行动代币轮次被 Mint 准备后才缓存分母；owner 权重按链群切片 floor，未覆盖的分母份额不重分配、留在服务合约）、源行动激励查询自行处理验证条件、公共验证者按工作量直接分配，以及按确认后的 owner 治理票占比处理超额销毁；同时覆盖加入资格两类分支（社区激活链群 / 服务轮社区行动集内有效验证者申请）、`1e18` 乘数精度、100% 二次分配不下溢，以及逐笔转账与销毁事件可还原全部资产变化。
+**覆盖要求**。验证完成的交易写入来源社区轮次总额和当选验证者权重。覆盖同币与父子币、两个加入资格分支、零票行动的验证申请、Owner 取消激活后领取已参与轮次的服务激励。Owner 权重按各链群切片向下取整，治理上限使用结算时的治理票。未加入角色和舍入剩余份额留在服务合约。覆盖 100% 二次分配及转账与销毁事件对账。
 
-`totalGroupActionReward == 0` 时不执行除法；覆盖该情形下按轮**未加入**的成员仍先回成员级 `ZeroRewardWeight(tokenAddress, actionId, memberId)`（判定次序是加入状态先于轮级分母），已按轮加入的角色（owner 与验证者）回轮级 `MemberRewardPoolEmpty(tokenAddress, round)`，不会落到取整 `MemberRewardRoundedToZero`，整笔预留激励停留在未结算状态（无销毁入口、预留不释放），owner 超额销毁由 Executor 直接调用服务代币 `burn`。
+`totalGroupActionReward == 0` 时，已加入者回滚 `MemberRewardPoolEmpty`，未加入者先回滚 `ZeroRewardWeight`。达标服务 Proposal 的预留额度继续保留。Owner 治理上限造成的超额由 Executor 销毁已铸出的服务代币。
+
+Owner 分页准备须覆盖交易回滚后续跑、多个调用者交错、成功页事件和无操作。满轮压测核对各准备状态的实付与收款余额，记录单笔和批量领取的 gas。见 [Action 验收](specs/action/08-testing.md)。
 
 **测试方式**：
 - 单元测试：`action/test/GroupServiceSettlement.t.sol`（治理上限、零分母结算与精度边界）、`action/test/GroupServiceEvents.t.sol`（事件还原）和 `action/test/GroupServiceRecipients.t.sol`（二次分配）的服务结算场景

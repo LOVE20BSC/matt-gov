@@ -63,7 +63,9 @@ GroupAction 使用 MemberNFT 身份，`groupId` 是链群主体的 `memberId`，
 
 加入阶段每笔加入、追加、部分撤回及退出（含 Provider 额度来源的加入），都更新当轮参与记录。同一 Round 多次操作只保留该轮最终值，不新增多个版本；无人交互的 Round 继承最近历史，不逐轮复制或同步。同一批历史同时给出两条**按轮读取**：`groupIdsByRound(tokenAddress, actionId, round, offset, limit, reverse)` 是该轮有参与成员的链群，验证者据此逐个验证链群；`memberIdsByGroupId(tokenAddress, actionId, round, groupId, offset, limit, reverse)` 是该轮某链群的成员历史顺序。两者与 `joined*` 同用标准分页签名，越界返回空数组与真实总数。
 
-加入结束后不得回写目标 Round。验证直接读取该轮 Group 和成员历史，不需要前置准备交易；验证集合只由目标 Round 历史决定，与验证阶段链群当前的激活状态无关——加入轮结束后停用、恢复或新增链群都不改变该轮验证集合。该轮集合在加入阶段结束后不再写入，因此按 `offset` 连续翻页等价于连续游标；验证按历史成员顺序使用连续游标，不能重复、跳过或乱序。
+`joinedActionIdsByGroupId` 反向查询链群在目标轮有成员参与的行动。首位成员加入时写入，最后一位成员退出时从当前加入轮移除。集合使用末项换位删除，当前轮的分页位置会随退出变动，`reverse` 按存储顺序反向读取。
+
+加入结束后目标轮参与快照冻结。验证读取该轮链群及历史成员集合。链群取消激活仅更新当前激活状态，已结束轮次可继续验证和结算。历史成员集合支持用 `offset` 连续翻页，验证按同一顺序使用连续游标。
 
 原存储示意为 `mapping(round => mapping(groupId => mapping(memberId => ParticipationData)))`；外层仍须隔离 token 和 action。沿用旧 RoundHistory 语义：无记录表示继承最近历史，退出通过显式记录零值形成终止点，不能直接删除历史记录。
 
@@ -99,7 +101,9 @@ openBlock = verifyPhaseStartBlock + openOffset
 
 `SPLITS[0]` 对应第 2 名。`block.number >= openBlock` 才开放，不能因取整提前。读取方用 `SPLITS()` 与 `IPhase.phaseInfo(round + 2)` 的 `(startBlock, phaseBlocks)` 自行计算各名次的开放区块；可开放人数为 `SPLITS().length + 1`，第 1 名在验证阶段起点即可提交。`SPLITS()` 为空数组时不分层，只有第 1 名作为当轮唯一公共验证者。
 
-首个有效验证批次永久锁定验证者 MemberNFT；NFT 转移后新持有人续验，不能由未经授权的验证者接管。需完成目标 Round 的全部 Group 验证；无验证者入榜或锁定者失联、未完成时，行动激励为零，底层 Proposal 激励仍可独立铸造或销毁。`generatedActionRewardByGroupId` 与一切行动分配查询按轮次读取，目标轮未完成验证时返回 0，不因部分批次已计入而返回正值；GroupService 与 GroupAction 阶段划分相同，其读取的轮次已经完成验证，正常不会命中该分支。相关验收见 [组织验收](../../acceptance.md#公共验证者与-round-历史)。
+`hasVerifierApplicationByRound` 读取社区与验证者维度的历史申请索引。申请提交时记录对应行动，撤回时从有效集合移到本轮的撤回集合。同轮重新申请时以新申请替换撤回条目。停止接票由原申请保留当轮及后续资格，直到撤回轮结束。
+
+当轮当选验证者提交评分，NFT 转移后由新持有人续验。整项行动验完之前，`generatedActionReward` 和 `generatedActionRewardByGroupId` 返回零。最后一批完成全行动验证时，总分和 Proposal 激励均为正才登记该行动。行动激励和链群切片查询使用登记时记录的 Proposal 激励。`totalGeneratedActionReward` 与 `verifierRewardWeight` 按社区和轮次累计原始激励，`generatedActionIdsByRound` 按验证完成顺序分页列出这些行动。达标但没有可分配验证结果的 Proposal 激励继续预留。未达标份额由 Core 的逐项销毁入口处理。
 
 **验证者信任模型（接受的取舍）**：原始分是验证者的自由裁量输入，合约只约束 `0 ≤ originScore ≤ 100`（`ScoreLimitExceeded`）与累计游标，不提供回避、交叉复核、挑战期或罚没；押金只担保「持有当前申请」，撤销即全额退款。对失信验证者的约束全部落在治理轮（逐轮投票与排名），而单轮锁定后不可替换、无接管，本轮行动激励可能被独占或因全 0 得分永久停留未结算（无销毁路径）；链下必须在投票前读取 `OriginScoresSubmitted` 等链上留痕，不能把当轮纠正寄望于合约。
 
@@ -130,7 +134,7 @@ Executor 先按 [统一铸造链路](07-minting.md#铸造链路) 取得整笔激
 - 链群配置事件：三个事件的 `round` 都是**投票轮**（`IPhase.currentPhase()`，与 `descriptionByRound` 的快照键同轴），不是加入轮。`activateGroup` 发 `GroupActivated`，携带激活押金 `stakeAmount` 与 4 项初始链群级配置（`maxCapacity`、`minJoinAmount`、`maxJoinAmount`、`maxAccounts`）及 `description`；`setGroupConfig` 发 `GroupConfigChanged`，按新组→旧组携带上述 4 项与 `description` / `prevDescription`；`deactivateGroup` 发 `GroupDeactivated`。旧值不是布尔取反可推，必须逐项携带。`GroupActivated` / `GroupDeactivated` 只带本次增减的 `stakeAmount`；`activationStakeAmountByActionId`、`totalActivationStakeAmount`、`activationStakeAmountByMemberId` 按增量折叠、不设后置锚点（低频两点族），`joinedAmountByActionId` 同理。`deactivatedRound` 取最后一条 `GroupDeactivated.round`；其后出现 `GroupActivated` 即按清零语义取 0。见[事件规范 §7.2](../../event-standards.md#72-action)。
 - Provider 额度事件的顺序：`addProviderQuota` / `removeProviderQuota` 在配额状态写入后立即 emit `ProviderQuotaAdded` / `ProviderQuotaRemoved`，转账/退款紧随其后；同笔交易内失败整体回滚，事件不会与资金分离。这不属于[事件规范 §4.4](../../event-standards.md#44-正常退出与注册表兜底清理)的退出四步。
 - 代币划转按资金类别各自留痕：参与量走 `GroupActionJoined`/`GroupActionWithdrawn`，Provider 额度恢复走 `ProviderQuotaRestored`，链群激活质押走 `GroupActivated`/`GroupDeactivated`，验证者押金走 `VerifierStakeDeposited`/`VerifierStakeRefunded`；状态类事件不带金额。
-- **无锁配置入口**：`submitOriginScores` 与 `setGroupConfig` 只调用只读外部依赖（Phase / Stake / MemberNFT / joinToken 的 getter），不设 `nonReentrant`。这是有意的不对称——19 个动钱入口全部有锁，而这两个不动钱；若将来在其中加入任何外部资金或回调调用，必须同批加锁（`setRecipients` 同理，见 [Service Executor](06-service-executor.md)）。
+- **无锁入口** `submitOriginScores` 与 `setGroupConfig` 仅调用 Phase、Stake、MemberNFT 和 joinToken 的只读接口。评分完成时也通过 `ActionTarget.actionReward` 读取已冻结的提案份额。若将来加入外部资金操作或回调，须在同批变更中加锁。`setRecipients` 适用同一规则。见 [服务 Executor](06-service-executor.md)。
 - **CEI 被退款切开但锁成立**：`exit` 与 `removeProviderQuota` 的状态清理与退款转账之间不是严格「先写完状态再外呼」（退款在中间），但两入口均带 `nonReentrant`，且 ERC20 转账无回调，不存在可利用的重入窗口；登记为已知形状，不重排代码。
 - **库内 modifier 的 `self` 形参**：`GroupActionJoin` / `GroupActionVerify` / `GroupActionManager` 的 `onlyMemberOwner`/`onlyGroupOwner` 保留了 `Layout storage self` 形参但未读取，目的是与库函数调用形状一致；登记为已接受写法，不加 `unused` 标记、不改签名。
 - **验证者申请的校验顺序（已由错误卷重排）**：`submitVerifierApplication` 的顺序为「轮次（`RoundNotStarted`）→ 参数（`DescriptionTooLong`）→ 行动存在性（`ActionNotCreated`）→ 资格（`ZeroVerifyVotes`）」，与 dev-standards §5.2.2 一致。`E-GAV-02` 已在本卷（`action-error-review-2026-11`）落地，不再留待后续。
@@ -174,7 +178,7 @@ Executor 是单例，全部逻辑落在一个地址上会超过 EIP-170 的 24,5
 
 成员级激励铸造不单独成库：它只有约 1.6KB，且成员结算三件（`mintMemberReward`/`mintMemberRewards`/`memberReward`）声明在基座 `IActionExecutor`，留在 Executor 实现即可，也省掉每笔结算的跨库开销。
 
-`IGroupActionExecutor` 自身声明 Executor 本地实现的成员（依赖 getter、`currentVerifyRound`、行动激励查询两件——`generatedActionReward` 与 `generatedActionRewardByGroupId`——与成员结算四件）、包不进行动配置与创建回调的错误，其余全部经上表三个模块接口继承；`GroupConfig` 声明在 `IGroupActionManager.sol`，`VerifierApplication` 声明在 `IGroupActionVerify.sol`。
+`IGroupActionExecutor` 声明依赖 getter、`currentVerifyRound`、行动激励查询和验证完成后写入的激励聚合查询。参与快照通过 `IGroupActionJoin` 声明，验证者申请快照通过 `IGroupActionVerify` 声明。
 
 **库不能继承接口**（Solidity 不允许），所以「接口文件 ↔ 库」是**声明归属的映射**，编译期唯一强制的契约是 Executor 继承全部接口、其包装函数再调用对应库：接口签名漂移在 Executor 编译不过，库侧签名漂移则在该调用点编译不过。
 

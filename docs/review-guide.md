@@ -184,8 +184,8 @@ rg -n 'core\.md|action\.md|group-chat\.md|launchFirstToken|initializeGenesis|TOD
 - [ ] Submit/Vote 的主体、门槛、增量投票和回调一致
 - [ ] `totalRewardReserved` 每轮只增加一次
 - [ ] `totalRewardReserved >= totalRewardMinted + totalRewardBurned`
-- [ ] `eligibleProposalVoteAmount` 的维护、冻结和零值处理明确
-- [ ] Proposal 激励分母只包含达标 Proposal
+- [ ] Proposal 激励以当轮总票权为分母，准备和单项预览无需读取提案列表
+- [ ] 未达标提案的逐项销毁幂等，全轮未达标时最终释放取整尾差
 - [ ] Launch 上限优先于阈值判断，`threshold == 0` 不除零
 - [ ] `Launch.init` 同时完成依赖绑定和首个代币部署
 - [ ] 代币创建只能通过 Launch 的内部路径完成
@@ -202,6 +202,7 @@ rg -n 'core\.md|action\.md|group-chat\.md|launchFirstToken|initializeGenesis|TOD
 - [ ] 验证者排名、分割线、批次游标和永久锁定规则可执行
 - [ ] 验证不完整时行动激励为零，底层 Proposal 激励仍可独立处理
 - [ ] Service 只复用已完成验证的 Group Action，聚合范围和代币关系明确
+- [ ] Owner 结算读取链群的当轮参与快照，取消激活后仍可领取历史激励
 - [ ] 全量扫描、批量铸造和二次分配有可执行边界
 
 ### Group Chat

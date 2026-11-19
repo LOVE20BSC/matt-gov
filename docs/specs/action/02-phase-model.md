@@ -42,9 +42,7 @@
 
 ## 服务验证复用
 
-服务 Proposal 面向整个 `actionTokenAddress` 社区的 GroupAction，不只绑定一个行动。服务在 Phase `N + 3` 结算 Round N，逐项读取 GroupAction 在 Phase `N + 2` 的同一 Round N 激励。
-
-每个 GroupAction 的激励查询已包含源行动的验证和激励条件，GroupService 不重复筛选。行动激励查询按轮次读取，目标轮未完成验证时返回 0，不返回部分结果；服务与链群行动阶段划分相同，Round N 的验证在 Phase `N + 2`、结算在 Phase `N + 3`，服务读取的轮次此时已经完成验证，正常不会命中该分支。不要求 GroupAction 先完成铸币，也不在 GroupService 内执行验证。聚合与分配公式见 [服务 Executor](06-service-executor.md)。
+服务 Proposal 面向整个 `actionTokenAddress` 社区的 GroupAction。来源行动在 Phase `N + 2` 完成 Round N 验证时累计社区总激励和验证者权重。Phase `N + 3` 开放同轮的服务结算，直接使用这两个累计值。Owner 权重只计算 Round N 产出行动中的链群切片。源行动完成验证即可计入，无需先铸造其成员激励。公式见 [服务 Executor](06-service-executor.md)。
 
 链群生命周期是唯一的旁路家族：`activateGroup` / `deactivateGroup` / `setGroupConfig` 及其描述快照直接用**投票轮**（`IPhase.currentPhase()`）记录，不落在上表的加入/验证/铸币轴上——它们只借用投票轮做「同一轮不可停用」的相等判定与快照键，激活只要求行动已创建，不要求加入已开放。
 

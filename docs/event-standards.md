@@ -234,7 +234,7 @@ ERC-20 / ERC-721 标准事件保持不变，不进入本规范正文。`AddHolde
 | core.token | 角色 → 数值 | `TokenMinted`、`TokenBurned` |
 | core.registry | 根键 → 父根键 → 对象 id → 角色 → 数值 → 枚举 → 文本 | `GenesisTokenCreated`、`TokenLaunched`、`LaunchCountAdded`、`LaunchCountMerged`、`LaunchCountConsumed` |
 | core.member | 对象 id → 角色 → 数值 → 文本 | `MemberMinted` |
-| core.round | 根键 → round → 对象 id → 角色 → 数值 → 枚举 | `RewardPrepared`、`GovRewardMinted`、`ProposalRewardMinted`、`RewardBurned` |
+| core.round | 根键 → round → 对象 id → 角色 → 数值 → 枚举 | `RoundRewardReserved`、`RewardPrepared`、`GovRewardMinted`、`ProposalRewardMinted`、`ProposalRewardBurned`、`RewardBurned` |
 | core.phase | 对象 id → 数值（当前段长 → 下一段长） | `PhaseSynchronized` |
 | core.stake | 根键 → round → memberId 链（0–2 个）→ 角色地址（`caller` → `memberOwner`）→ 数值（单字段维度的 `prev*` 紧邻其新值；整条源记录迁移的旧值组排在数值之后） | `LiquidityStaked`、`BoostStaked`、`Unstaked`、`StakeWithdrawn`、`FeesSettled`、`FeeReclassified`、`StakesMerged` |
 | core.proposal | 根键 → round → 对象/actor id 链（1–2 个）→ 地址 → 枚举 → bytes → 文本 | `ProposalCreated`、`ProposalSubmitted`、`VoteCast` |
@@ -244,6 +244,7 @@ ERC-20 / ERC-721 标准事件保持不变，不进入本规范正文。`AddHolde
 | action.group | 根键 → actionId → round → groupId → 配置值 → 旧值 | `GroupActivated`、`GroupDeactivated`、`GroupConfigChanged` |
 | action.participation | 根键 → actionId → memberId → round → groupId → providerId → 数值/布尔 → 文本数组 | `GroupActionJoined`、`GroupActionWithdrawn`、`GroupActionExited`、`LpJoined`、`LpWithdrawn`、`LpExited`、`ServiceJoined`、`ServiceExited`、`JoinStateRegistered`、`JoinStateCleared`、`MemberRewardMinted` |
 | action.round | 根键 → actionId → round → 数值 | `ActionRewardMinted` |
+| action.reward-preparation | 根键 → groupId → round → 本页起点 → 后置游标 → 总项数 → 本页权重 → 后置权重 | `GroupRewardPreparationAdvanced` |
 | action.quota | 根键 → actionId → groupId → providerId → memberId → 数值 | `ProviderQuotaAdded`、`ProviderQuotaRemoved`、`ProviderQuotaRestored` |
 | action.verification | 根键 → actionId → 主体 id（`memberId`/`groupId`/`voterId`/`verifierId`）→ round → `applicationId`/`verifierId` → 次级 id（被投的验证者 / 上一申请）→ 数值/布尔 → 文本/数组 | `OriginScoresSubmitted`、`VerifierApplicationSubmitted`、`VerifierApplicationDescriptionUpdated`、`VerifierApplicationPunished`、`VerifierApplicationStopped`、`VerifierApplicationCancelled`、`VerifierStakeDeposited`、`VerifierStakeRefunded`、`ApplicationVoteRecorded` |
 | action.recipients | 根键 → sourceActionId → round → groupId → 新表 → 旧表 | `RecipientsChanged` |
@@ -415,7 +416,7 @@ v1 基线：
 | StakePosition | 加流动性、加 boost、解锁、提取、手续费结算、手续费重分类、合并 | `LiquidityStaked`、`BoostStaked`、`Unstaked`、`StakeWithdrawn`、`FeesSettled`、`FeeReclassified`、`StakesMerged` |
 | Proposal | 创建、提交 | `ProposalCreated`、`ProposalSubmitted` |
 | Vote | 投票 | `VoteCast` |
-| RewardRound | 准备激励池、治理激励、提案激励、取消池销毁 | `RewardPrepared`、`GovRewardMinted`、`ProposalRewardMinted`、`RewardBurned` |
+| RewardRound | 预留和准备激励池、治理和提案激励结算、逐项释放未过线提案份额、取消加速池和释放全轮未过线的取整尾差 | `RoundRewardReserved`、`RewardPrepared`、`GovRewardMinted`、`ProposalRewardMinted`、`ProposalRewardBurned`、`RewardBurned` |
 | AirdropConfig | 配置快照、按份额空投铸造、快照 URI 更新 | `AirdropConfigured`、`AirdropClaimed`、`AirdropSnapshotUriUpdated` |
 
 `MemberNFT` 的 `_safeMint` 回调先于 `MemberMinted`（E3），因此：
@@ -434,6 +435,7 @@ v1 基线：
 | JoinState | 注册表注册/清除、加入、提取、退出 | `JoinStateRegistered`、`JoinStateCleared`、`GroupActionJoined`、`GroupActionWithdrawn`、`GroupActionExited`、`LpJoined`、`LpWithdrawn`、`LpExited`、`ServiceJoined`、`ServiceExited` |
 | ProviderQuota | 配额增加、移除、退出恢复 | `ProviderQuotaAdded`、`ProviderQuotaRemoved`、`ProviderQuotaRestored` |
 | Verification | 申请、描述更新、停止、处罚、取消、质押、退款、原始分、投票 | `VerifierApplicationSubmitted`、`VerifierApplicationDescriptionUpdated`、`VerifierApplicationStopped`、`VerifierApplicationPunished`、`VerifierApplicationCancelled`、`VerifierStakeDeposited`、`VerifierStakeRefunded`、`OriginScoresSubmitted`、`ApplicationVoteRecorded` |
+| GroupRewardPreparation | 按来源代币、链群和轮次推进 Owner 权重准备 | `GroupRewardPreparationAdvanced` |
 | Recipients | 设置收款表、分发 | `RecipientsChanged`、`RecipientPaid` |
 | Rewards | 行动激励、成员激励、服务分发 | `ActionRewardMinted`、`MemberRewardMinted`、`ServiceRewardsDistributed` |
 | JoinStateFallback | owner 兜底清理注册表（不回调 executor、不结算资金） | `JoinStateCleared(forced=true)` |
@@ -445,6 +447,8 @@ v1 基线：
 `GroupActivated` / `GroupDeactivated` 只携带本次增减的 `stakeAmount`。因果链上的三个聚合量（`activationStakeAmountByActionId`、`totalActivationStakeAmount`、`activationStakeAmountByMemberId`）按增量折叠，不设后置锚点：这是「每群一次写入 + 低频停用/重启」的两点族，不是每轮高频聚合，增量不会因配置变更失配。`ServiceRewardsDistributed.joinedAmountByActionId` 沿用同一折叠规则。
 
 `GroupActionCreated` / `ServiceActionCreated` / `LpActionCreated` 的 `round` 取上游 `ActionTarget.ActionRegistered` 的创建轮，不在创建事件里另设锚点。
+
+`GroupRewardPreparationAdvanced` 由 GroupAction Executor 在页写入后发射。每条事件覆盖 `[startIndex, processedActionCount)`，同键第一条从零开始，下一条从上一条的 `processedActionCount` 开始。按顺序累加 `weightAdded` 得到每条事件的 `totalWeight`。零份额页仍报告游标推进。零长度页、已完成的重复调用和回滚的交易均无已提交事件。
 
 ### 7.3 Group-chat
 

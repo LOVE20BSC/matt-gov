@@ -9,11 +9,10 @@ Mint 准备并结算治理和 Proposal 激励，不读取行动验证结果。�
 | `totalRewardReserved` | 每个 token 的累计预留总额，包含后来铸造或销毁的额度 |
 | `totalRewardMinted` | 每个 token 的累计已铸造激励 |
 | `totalRewardBurned` | 每个 token 的累计已取消预留额度；不铸造该部分代币 |
-| `govReward` / `proposalReward` | 每个 token、Round 准备后冻结的完整治理池 / Proposal 池。**这是取消前的全额，不是可支付额**：加速池或 Proposal 池在准备阶段被取消时，对应额度已计入 `totalRewardBurned`，但这两个 getter 仍返回取消前的值；需要净可铸造额的下游必须自行按 `totalVoterBoost == 0` / `eligibleProposalVoteAmount == 0` 扣减 |
+| `govReward` / `proposalReward` | 每个 token、Round 首票预留时冻结的完整治理池 / Proposal 池。两项 getter 始终返回原始池值，供单项激励计算 |
 | `totalVoteAmount` | Vote 的本轮 `totalVoteAmount(tokenAddress, round)` |
 | `voterBoost` | 成员本轮在 Vote 的加速快照，`voterBoost(tokenAddress, round, memberId)` |
 | `totalVoterBoost` | 本轮全局加速快照，`totalVoterBoost(tokenAddress, round)` |
-| `eligibleProposalVoteAmount` | Mint 准备时按 Vote 冻结结果计算并缓存的本轮所有达标 Proposal 票数之和 |
 | `launchCredit` | 每个 token、成员尚未转换为发射次数的治理激励额度，见[发射额度的生成](#发射额度的生成)。累加不单独发事件：`count == 0` 的累加与被 `MAX_LAUNCH_COUNT` 削平后留下的余额只能通过 `launchCredit()` 轮询，链下不要试图仅凭事件重建 |
 
 Proposal 达标条件（链上查询通过 `isProposalIdWithReward(tokenAddress, round, proposalId)`）：
@@ -23,7 +22,7 @@ proposalVoteAmount > 0
 proposalVoteAmount * 1e18 >= totalVoteAmount * proposalRewardMinVoteRatio
 ```
 
-`isProposalIdWithReward` 无论已准备或未准备，均读取 Vote 的 `voteAmountByProposalId(tokenAddress, round, proposalId)` 与 `totalVoteAmount(tokenAddress, round)` 实时判定。准备后若 `eligibleProposalVoteAmount == 0` 可快速返回 `false`（全轮无达标 Proposal 的缓存优化）。已铸造不影响返回值（仍返回 `true`）。本入口不做 Proposal 存在性校验；无效 `proposalId` 返回 `false`。
+`isProposalIdWithReward` 读取 Vote 的单项票权和当轮总票权判定。已铸造的达标 Proposal 仍返回 `true`。未知 `proposalId` 的票权为零，查询返回 `false`。
 
 三个激励比例参数统一 `1e18` 精度，例如门槛 `5e16` 表示 5%。`proposalRewardMinVoteRatio` 允许 `0..1e18`，上界由 DeployCore 广播前校验、21_check 复核；零门槛仍要求 Proposal 有正数票。账本始终满足：
 
@@ -37,22 +36,15 @@ available = MAX_SUPPLY - totalSupply - reservedAvailable
 
 `MAX_SUPPLY` 约束的是**任一时刻可铸出总量的上限**，不是累计发行量：`LOVE20Token.burn` 无许可，任何人销毁自己的余额都会抬高 `MAX_SUPPLY − totalSupply`，未来轮次据此重新预留；因此 `totalRewardMinted` 可以超过 `MAX_SUPPLY`，把两者直接比较的判断都是错的。
 
-各项向下取整产生的余数是明确的永久保留量：继续计入 `reservedAvailable`，不进入后续轮次池，也不单独铸造或销毁；该保留量属于最大铸币上限内的协议保留额度。
+各项向下取整的余数通常继续计入 `reservedAvailable`。若一轮所有有票 Proposal 均未达标，最后一次逐项销毁释放整个 Proposal 池的取整余数。
 
 ## 准备一次
 
 完整 ABI 见 [`IMint.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/IMint.sol)。
 
-准备由两种方式触发：调用无许可入口 `prepareRewardIfNeeded(tokenAddress, round)`，或首次调用治理 / Proposal 铸造入口时由 Mint 内部自动准备。两个路径复用同一实现，池子算法只有一份。`tokenAddress` 与 `round` 是唯一的定位参数，调用者不能指定收款地址、成员或金额，因此该入口符合 [通用规则](01-common-rules.md#无许可入口) 的无许可判据：它只把一个已经成立的轮次状态（轮次结束）推进为「池子已冻结」。此前定池只能由铸造者触发；补上该入口后，任何地址都可以在第一个铸造者之前中立地定池。池值仍按准备时点的 `rewardAvailable` 计算，首次准备的时点仍决定池子大小，但已不再只由铸造权持有人掌握。同一 `(tokenAddress, round)` 幂等，重复调用直接返回；未结束的 Round 拒绝准备。
+Vote 在每个社区每轮首笔正数投票时调用 `reserveRoundReward`，按当时的可用额度计算并冻结两池。零票轮次的两池均为零。跨轮准备和结算顺序与已预留的池值无关。
 
-池值不只依赖「第 R 轮的准备时点」，还依赖**跨轮准备顺序**：`available` 扣除的是累计 `reservedAvailable`，而任意已结束轮次都可准备，所以先准备的轮次拿走 `ratio × available`、后准备的轮次只能在更小的基数上取同比例，第 R 轮与第 R+1 轮的相对份额由两次准备的先后决定。诚实路径上这不构成博弈——早准备让池子更大，对全轮次受益人都占优，任何人都能一次调用完成；只有在全员整整一个 Phase 都不准备的前提下顺序才被推迟，因此按「无许可入口 + 早准备占优」接受，不做跨轮强制排序。
-
-1. 本轮已准备则直接返回，不更新状态，也不发事件。未准备时先判 `tokenAddress` 是否由 Launch 登记，未登记回滚 `TokenNotRegistered(tokenAddress)`（与 Stake 的写入口同口径，否则任何人可对任意地址写满四个轮次映射；该门禁早于 Round 结束判定，由 Mint 本地 `IMintErrors` 声明，selector 与 `ILaunch` 的同名错误一致）；再判 Round 已结束（`round != 0 && Phase.currentPhase() > round`，回滚 `RoundNotEnded(round)`；与 `Vote.isRoundEnded` 语义一致，`round == 0` 一律拒绝）。
-2. 读取 Vote 的冻结结果。若 `totalVoteAmount == 0`，两池和 `eligibleProposalVoteAmount` 记为 0 并标记已准备，累计账本不变。
-3. 否则遍历 Vote 本轮有票 Proposal，按冻结 `totalVoteAmount` 判断每个 Proposal 是否达到阈值，并把达标 Proposal 的票数总和写入 `_eligibleProposalVoteAmountByRound[tokenAddress][round]`。
-4. 用准备前的 `available` 计算两池，并在本步骤唯一一次增加 `totalRewardReserved`。
-5. 若 `totalVoterBoost == 0`，准备时直接取消加速池；若缓存的 `eligibleProposalVoteAmount == 0`，准备时直接取消完整 Proposal 池。两个条件可同时成立，此时按顺序发射两条 `RewardBurned` 事件（先加速池、后 Proposal 池）。
-6. 保存轮次池值、达标票数和已准备状态，不逐个预写 Proposal 额度。后续 Proposal 结算只读取缓存，不再扫描 Vote 列表。
+任何人可在轮末调用 `prepareRewardIfNeeded`。治理铸造、Proposal 铸造和逐项销毁也会自动准备。首次准备先验证社区代币已登记，再验证 `round != 0 && Phase.currentPhase() > round`。准备读取已预留池值，在治理池为正且 `totalVoterBoost == 0` 时释放加速池，随后记录已准备状态。重复准备直接返回。
 
 ```text
 govReward = floor(available * roundRewardGovRatio / 1e18)
@@ -61,17 +53,13 @@ totalRewardReserved += govReward + proposalReward
 
 if totalVoterBoost == 0:
     totalRewardBurned += govReward - floor(govReward / 2)  // 加速池
-if eligibleProposalVoteAmount == 0:
-    totalRewardBurned += proposalReward
 ```
 
-这是每轮唯一增加 `totalRewardReserved` 的位置。后续治理结算按 `voteReward + boostReward` 增加 `totalRewardMinted`；Proposal 结算按实际铸造量增加 `totalRewardMinted`。准备阶段已经取消的额度不得再次销毁；任何失败均整体回滚。**Mint 侧不再有加速激励输出上限，也没有 `burnReward`**：加速池按理论份额全额铸造，超出部分既不截断也不销毁。
-
-例（最小单位）：两池为 5 和 3，且 `totalVoterBoost = eligibleProposalVoteAmount = 0`。准备增加预留 8、销毁 6，留下投票激励 2；再次准备不变。
+首票预留是每轮唯一增加 `totalRewardReserved` 的位置。治理结算按 `voteReward + boostReward` 增加 `totalRewardMinted`，Proposal 结算按实际铸造量增加 `totalRewardMinted`。
 
 ## Proposal 结算
 
-入口为 `mintProposalReward(tokenAddress, round, proposalId, recipient)`：每个 token、Round、Proposal 只能结算一次，代币铸给被授权的 Target 指定的 `recipient`。**Mint 只支付，不销毁**。
+`mintProposalReward` 将某个 Proposal 的激励一次性铸给其 Target 指定的 `recipient`。
 
 只允许该 Proposal 已记录的 Target 调用，每个 token、Round、Proposal 只能结算一次；未结束、Proposal 不达标或该轮 `proposalReward` 为零时拒绝。若该 Round 尚未准备，入口先自动准备。
 
@@ -92,18 +80,26 @@ if eligibleProposalVoteAmount == 0:
 通过后写状态并铸造：
 
 ```text
-实际结算量 = floor(proposalReward * proposalVoteAmount / eligibleProposalVoteAmount)
+实际结算量 = floor(proposalReward * proposalVoteAmount / totalVoteAmount)
 ```
 
 结算量为 0 时按「单提案 → 整轮 → 取整」逐层定位：
 
 1. **单提案**：`voteAmount < minVoteAmount` 回 `ProposalBelowThreshold`，两个条件值都写进载荷，调用方据此区分“有票但不够”与“一票没拿到”。零票只在门槛大于 0、且本轮另有提案拿到票时才落到这一层；整轮零票时 `minVoteAmount` 也是 `0`，`0 < 0` 不成立，进入下一层。
-2. **整轮**：`proposalReward == 0` 回 `ProposalPoolEmpty`——该轮没有任何可支付的 Proposal 激励，调用方对该轮全部 Proposal 一并无从结算、处置相同，因此“整轮零票”与“可用额度按比例取整为 0”共用同一个错误而不按来源拆分。判据只有池值一项：整轮零票时准备阶段直接跳过预留，池值必为 `0`；整轮有票但无提案达标时池值是非零值，而该轮任一提案都已被上一层拦下，走不到这里。
-3. **取整**：门槛通过、池值非零，但 `floor(proposalReward * proposalVoteAmount / eligibleProposalVoteAmount) == 0` 时回 `ProposalRewardRoundedToZero`。`PROPOSAL_REWARD_MIN_VOTE_RATIO` 配成 `0` 时门槛关闭，零票提案也落到这一层——此时“取整为 0”与“没有票”在算术上是同一件事，不为它另设错误。
+2. **整轮**。`proposalReward == 0` 回 `ProposalPoolEmpty`。整轮零票时未发生首票预留。预留份额向下取整为零也触发此错误。
+3. **取整**：门槛通过、池值非零，但 `floor(proposalReward * proposalVoteAmount / totalVoteAmount) == 0` 时回 `ProposalRewardRoundedToZero`。零门槛且池为正时，零票提案也落到这一层。
 
 先具体后整轮：同一 Proposal 同时满足两组条件时报门槛，否则调用方会被轮级错误引去查整轮，而实际该提案本身就不够票。必须在除法前判零，否则会 panic。
 
-代币铸给 `recipient`，`totalRewardMinted` 按实际铸造量累计，并以 `ProposalRewardMinted` 留痕；此后该 Proposal 一律回滚 `ProposalRewardAlreadyMinted(tokenAddress, round, proposalId)`。`recipient` 由被授权的 Target 指定，因此行动类 Target 可以直接让 Mint 铸给绑定的 Executor，不必先铸给自己再转一次；行动侧见 [行动铸造链路](../action/07-minting.md#铸造链路)。某个行动的激励无法分配时不在这里作废：全链路没有销毁路径，该笔激励永久停留在未结算状态、预留不释放（详见下段）。无合格 Proposal 的完整池已在准备时取消，不能再次销毁。
+代币铸给 `recipient`，`totalRewardMinted` 按实际铸造量累计，并以 `ProposalRewardMinted` 留痕。此后再次铸造回滚 `ProposalRewardAlreadyMinted`。行动类 Target 可以指定绑定的 Executor 收款，详见 [行动铸造链路](../action/07-minting.md#铸造链路)。
+
+### 逐项销毁
+
+轮末任何人可调用 `burnProposalReward` 处理一个有票但未过线的 Proposal。每个 `(tokenAddress, round, proposalId)` 最多处理一次。零票和达标 Proposal 跳过逐项销毁。未准备的轮次会先完成准备。
+
+每笔增加 `totalRewardBurned` 的额度按同一个原始池值和分母计算，即 `floor(proposalReward * proposalVoteAmount / totalVoteAmount)`。协议同时记录已处理票权，份额取整为零也计入票权。累计处理票权等于当轮总票权时，最后一笔释放原始池值扣除已释放份额后的尾差。若有达标 Proposal，逐项释放未达标份额，取整尾差仍计入预留。释放额度立即回到可用供应，代币供应量保持原值。
+
+达标行动的激励仍由 Executor 按各自验证和分配规则结算。达标后无法分配的额度继续保留。
 
 ## 治理结算
 
@@ -197,16 +193,12 @@ B_i / V_i ≤ min(C × M / B, 1 / s_i)
 
 `proposalRewardByProposalId` 和 `govRewardByMemberId` 两个查询函数无论轮次是否已准备均能返回金额：
 
-- **已准备**：读取准备时冻结的 `govReward`、`proposalReward` 和 `eligibleProposalVoteAmount`，按缓存值计算。
-- **未准备**：实时读取 `rewardAvailable` 计算轮次池，扫描 Vote 冻结结果计算 `eligibleProposalVoteAmount`，按当前状态计算。**警告**：未准备查询需要扫描本轮所有有票 Proposal（O(N) 复杂度，N 为 Proposal 数量）；调用方应优先读取已准备 Round，或在前端/链下环境使用，避免对未准备轮次批量查询。**未准备时返回的是按当前状态计算的投影值，实际金额以铸造入口自动准备时冻结的池值为准。**
+- **已预留**时读取首票冻结的池值，结合 Vote 的票权或加速份额计算。轮内票权仍可变化，轮末冻结。
+- **尚未预留**时若需要池值，查询用当前 `rewardAvailable` 计算投影。正常投票流程在首票的同一笔交易内写入预留。
 
 两个查询函数均先校验存在性（`proposalRewardByProposalId` 调用 `Submit.proposalTarget`、`govRewardByMemberId` 调用 `MemberNFT.ownerOf`），后计算金额；不存在的 Proposal/成员回滚。未达标 Proposal 或未投票成员返回零金额；已铸造不影响金额，`minted` 返回 `true` 并仍返回原金额。
 
-未准备查询返回的金额是按**当前状态计算的投影值**，实际结算金额以准备时冻结的池值为准。查询与结算之间若有新铸造消耗供应量上限，查询投影可能高于最终准备结果；若有准备其他轮次预留池值，查询投影可能低于最终结果。
-
 `mintGovReward` 与 `mintProposalReward` 在结算量为 0 时拒绝，两侧都按“具体对象 → 整轮 → 取整为零”的顺序：治理侧「未投票 / 池为空 / 取整为零」分别回 `MemberHasNoVote`、`MemberRewardPoolEmpty`、`MemberRewardRoundedToZero`；Proposal 侧「低于门槛 / 池值为零 / 取整为零」分别回 `ProposalBelowThreshold`、`ProposalPoolEmpty`、`ProposalRewardRoundedToZero`。重复保护使用独立状态位，不能用金额是否大于零判断。
-
-`mintProposalReward` 没有销毁分支：Mint 只支付，也**不判断**某笔激励该不该作废——那个判断属于各 Executor 的业务账本，而 Executor 侧没有任何销毁入口。无法分配的行动激励因此永久停留在未结算状态：`totalRewardReserved` 不释放，后续轮次的 `rewardAvailable` 相应被压低，代币永不铸出。`RewardBurned` 只记录 Mint 自己在准备阶段取消整池的会计行为；治理结算没有溢出分支，`BurnReason` 不再包含 `BoostOverflow`。
 
 `isRewardPrepared` 查询本轮是否已准备；未准备时返回 `false`。
 
@@ -248,23 +240,11 @@ launchCredit -= count * threshold
 
 ## 事件
 
-- **`RewardPrepared(address indexed tokenAddress, uint256 indexed round, uint256 govReward, uint256 proposalReward, uint256 eligibleProposalVoteAmount, uint256 totalRewardReserved, uint256 totalRewardBurned)`**  
-  准备完成后发射。`govReward` 与 `proposalReward` 为本轮冻结池值；`eligibleProposalVoteAmount` 为缓存的达标票数之和（`eligibleProposalVoteAmount == 0` 时该字段为 0）；`totalRewardReserved` 与 `totalRewardBurned` 为准备完成后的**累计值**（不是增量）。`totalVoteAmount == 0` 时两池与 `eligibleProposalVoteAmount` 均为 0，`totalRewardReserved` 与 `totalRewardBurned` 不变。
-
-  `prepareRewardIfNeeded` 只在真正完成准备时发射本条（以及准备期取消池的 `RewardBurned`）；已准备时的重复调用是无操作，不发射任何事件。无操作不是业务事实，按 [事件规范](../../event-standards.md) §3.5 不引入「尝试 / 未变更」类事件，也不新增事件族。
-
-- **`GovRewardMinted(address indexed tokenAddress, uint256 indexed round, uint256 indexed memberId, uint256 voteReward, uint256 boostReward, uint256 totalRewardMinted)`**  
-  治理结算成功后发射。`memberId` 为被结算成员；两项金额按公式计算（`totalVoterBoost == 0` 时 `boostReward` 为 0），实际铸造量为 `voteReward + boostReward`，且 `totalRewardMinted` 为铸造后的社区累计已铸激励（后置值，等于此前全部 `GovRewardMinted` 的铸造量与 `ProposalRewardMinted.amount` 之和）。事件不再携带 `burnReward`：输出侧没有溢出，载荷中也没有任何“被销毁”的数字；`voteReward + boostReward == 0` 是拒绝条件，不会发事件。
-
-- **`ProposalRewardMinted(address indexed tokenAddress, uint256 indexed round, uint256 indexed proposalId, address recipient, uint256 amount, uint256 totalRewardMinted)`**  
-  Proposal 以 `burn = false` 结算成功后发射。`recipient` 为调用者指定的收款地址（行动类为绑定的 Executor）；`amount` 为实际铸造量；`totalRewardMinted` 为铸造后的社区累计已铸激励（后置值），与 `GovRewardMinted.totalRewardMinted` 是同一账本。
-
-- **`RewardBurned(address indexed tokenAddress, uint256 indexed round, uint256 amount, uint256 totalRewardBurned, BurnReason reason)`**  
-  准备期取消池时发射。一次准备可能发射 0～2 条；有多条时顺序为先加速池、后 Proposal 池。事件只在对应池金额大于 0 时发射；金额为 0 时账本仍 `+0`、不发事件。`totalRewardBurned` 为销毁后的社区累计已销毁额度（后置值，包含本条）。`reason` 为 `BurnReason` enum（按 `uint8` 编码，故 topic0 与旧的 `bytes32` 版本不同）：
-  - `BoostPoolCancelled` - 准备期取消加速池（`totalVoterBoost == 0`）
-  - `ProposalPoolCancelled` - 准备期取消 Proposal 池（`eligibleProposalVoteAmount == 0`）
-
-  枚举只有这两项。删除末位 `BoostOverflow` 不改变前两项的序号与 `RewardBurned` 的 topic0；治理结算不再发 `RewardBurned`。
+- `RoundRewardReserved` 在首票预留时发射，记录两池原始额度。
+- `RewardPrepared` 在首次准备后发射，记录两池原始额度与预留、销毁累计值。若同笔释放加速池，`RewardBurned` 在前。
+- `GovRewardMinted` 与 `ProposalRewardMinted` 记录各自的实际铸造量及同一个 `totalRewardMinted` 后置值。
+- `ProposalRewardBurned` 在每项首次处理后发射，记录提案 ID、释放额度和 `totalRewardBurned` 后置值。份额为零时仍发射，供索引方识别已处理 Proposal。
+- `RewardBurned` 记录正数的加速池释放（`BoostPoolCancelled`），以及全轮未过线时最后一笔逐项销毁释放的正数尾差（`ProposalPoolCancelled`）。两类销毁事件的 `amount` 之和对应 `totalRewardBurned`。
 
 ## 实现约束
 
@@ -272,8 +252,7 @@ launchCredit -= count * threshold
 
 - 两项激励比例之和 `<= 1e18`、`proposalRewardMinVoteRatio <= 1e18` 由 DeployCore 广播前校验；四个依赖有代码与 `PHASE_ADDRESS` 非零由 DeployCore 部署后校验；两者均由 21_check 独立复核；构造函数只保存入参。`MAX_GOV_BOOST_REWARD_MULTIPLIER` 已删除。
 - `PHASE_ADDRESS` 是构造参数，由部署脚本从 `Phase` 地址直接传入，经同名 getter 暴露，供发布前检查脚本核对与 Vote 的 `PHASE_ADDRESS()` 一致；轮次结束判定直读 `PHASE_ADDRESS`（`round != 0 && IPhase(PHASE_ADDRESS).currentPhase() > round`），语义与 `Vote.isRoundEnded` 一致，不再经 Vote 二跳。
-- Mint 的内部准备路径只在首次准备时扫描 Vote 本轮有票 Proposal；实现和验收至少覆盖约 300 个 Proposal 的准备交易。准备成功后，`_eligibleProposalVoteAmountByRound[tokenAddress][round]` 只读，不得再次读取 Vote 列表或改写。零额事件行为见[事件](#事件)节。
-- 各项分配向下取整产生的极小舍入余数不单独维护，也不追加结算状态；累计账本只记录实际铸造和明确销毁的额度。
+- 准备、单项预览、单项铸造和逐项销毁的开销与本轮 Proposal 数量无关。单个 Proposal 的份额计算读取 Vote 的轮次总票权和该 Proposal 的票权。
 - 历史来源 `LOVE20TKM/core/src/LOVE20Mint.sol` 只作为行为参考，不替代本文件的账本规则。
 
 验收见 [Core 验收](09-testing.md)。
