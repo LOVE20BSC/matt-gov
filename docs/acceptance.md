@@ -25,19 +25,18 @@
 
 ### Proposal 激励闭环
 **覆盖要求**：
-- 投票阶段结束前后准备
-- 首票预留两池，轮末准备只写轮次级状态
-- 重复准备不改写
-- 准备、预览和单项结算均无需读取 Vote 的 Proposal 列表
+- 每社区每轮首笔有效投票预留治理池和 Proposal 池。重复预留保持原始池值，零票轮次不预留
+- 首票预留、单项查询和结算均无需读取 Vote 的 Proposal 列表
 - 达标提案按全轮总票权计算份额，未达标提案可逐项释放预留。全轮未达标时最后一笔释放尾差
-- 1,000 个 Proposal 的准备交易在本地测试预算内完成
+- 轮末未用加速池可独立销毁。1,000 个 Proposal 时，该操作在本地 160,000 gas 预算内完成
 - 非 Target 铸造拒绝
-- 各 Proposal Target 按冻结状态单独计算并铸造且单 Proposal 只能成功一次
+- 单个 Proposal 的铸造与销毁互斥，重复销毁幂等，结算查询保留实际铸造额或销毁额
 - 行动类 `executor -> ActionTarget -> Mint -> executor`：Mint 按 Target 指定的 `recipient` 直铸给 Executor，路径上无中间转账
 - 铸造失败整笔回滚
 
 **测试方式**：
-- 单元测试覆盖 `testPreviewPrepareAndMintNeverReadTheProposalList`、`testBurnRewardReleasesOnlyTheBelowThresholdShare` 和 `testLastBelowThresholdProposalReleasesTheAllIneligiblePool`。
+- 单元测试覆盖 `testFirstVoteReservationFixesBudgetsBeforeReverseSettlement`、`testPreviewAndMintNeverReadTheProposalList`、`testBurnRewardReleasesOnlyTheBelowThresholdShare` 和 `testLastBelowThresholdProposalReleasesTheAllIneligiblePool`。
+- 压力测试 `ProposalDoSTest.testBurnUnusedBoostWith1000Proposals` 验证轮末销毁的本地执行预算。
 - 集成测试：`love20-anvil/scenarios/proposal-lifecycle.yml` 完整流程
 - 验收证据：测试日志 + 覆盖率报告（要求该场景分支覆盖率 100%）
 
@@ -78,7 +77,7 @@
 
 **测试方式**：
 - 单元测试：`core/test/Stake.t.sol` 的融合场景、等待期提升场景
-- 单元测试：`core/test/Mint.t.sol` 的 `testGovernanceQueryMatchesMintAndBoostBurn()`、`testBatchMustPreserveMemberOwner()`、`testBatchFailureRollsBackRewardsAndLaunchCounts()`、`testEmptyBatchHasNoSideEffects()`
+- `core/test/Mint.t.sol` 的单元测试包括 `testGovernanceQueryMatchesMintAndBoost()`、`testBatchMustPreserveMemberOwner()`、`testBatchFailureRollsBackRewardsAndLaunchCounts()` 和 `testEmptyBatchHasNoSideEffects()`
 - 验收证据：测试日志显示融合前后状态变化、批量铸造的原子性
 
 **判定标准**：

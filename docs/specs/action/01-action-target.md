@@ -63,11 +63,11 @@ targetData[SLOT_EXECUTOR] = abi.encode(executorAddress)
 
 **写操作权限**：`registerJoinState`/`clearJoinState`/`mintActionReward` 仅该 `(tokenAddress, actionId)` 已注册绑定的 Executor 可调用——判据是 `executor[tokenAddress][actionId] == msg.sender` 且该绑定非零，未注册绑定时任何调用者都拒绝；不满足即回滚 `UnauthorizedExecutor(tokenAddress, actionId)`。`registerJoinState` 另有硬性入口校验：当前投票轮必须**大于**该行动的创建轮（`ActionRegistered` 的 round），否则回滚 `JoinNotOpen(tokenAddress, actionId, currentRound, createdRound)`——加入在投票后一个阶段开放，投票轮未走完不得登记加入；`clearJoinState`/`forceClearJoinState` 无需该校验（已加入本身蕴含加入轮已开放，且轮次单调不减）。`mintActionReward` 只接受已创建关联行动的 `actionId`，绑定键与铸造键一致，不存在「持某个行动的 Executor 去铸另一个行动」的路径。`forceClearJoinState` 仅该 memberId 的 MemberNFT 当前持有人可调用：存在但不是持有人回 `NotMemberOwner(memberId)`，id 不存在时 `ownerOf` 的 `ERC721NonexistentToken` 原样冒泡（与 03-participation 的 Provider 额度路径同口径）。
 
-**`mintActionReward` 不校验 `round` 的可结算窗口**：窗口随行动类型不同（LP 执行器 `phase−2`，Group/Service 执行器 `phase−3`），由调用方 Executor 负责；新 Executor 必须实现等价约束，否则可对任意已结束轮次发起铸造。ActionTarget 不掌握行动类型，因此不在入口做半套检查——该边界与 core 卷 `MNT-01` 一致（准备时点属机制设计，不在此重开）。
+**结算窗口由 Executor 校验。** LP 执行器使用 `phase−2`，Group/Service 执行器使用 `phase−3`。`mintActionReward` 把已投票行动交给 Mint 结算，Mint 校验投票轮是否已结束。
 
 重复加入、重复退出均不改状态、不发重复事件；因此 `forceClearJoinState` 后，Executor 正常调用 `clearJoinState` 必须成功且不改状态。重复铸造回滚 Mint 的 `ProposalRewardAlreadyMinted(tokenAddress, round, proposalId)`——行动级去重键 `tokenAddress + actionId + round` 由 Mint 的状态位承担，ActionTarget 不另存铸造状态位。不存在关联时 `executor` 返回零，但写操作拒绝零关联。`isJoined` 无记录时返回 false；`isJoinedByRound` 在加入轮已开始但无记录时返回 false。
 
-**铸造信息查询**：`actionReward(tokenAddress, actionId, round)` 返回 `(amount, minted)`——`amount` 在已铸造时为本轮实际铸造金额、未铸造时为本轮理论可铸造数量（按 Mint 账本计算，未投票、未达门槛、零额度时为 `0`），`minted` 表示本轮是否已铸造；未关联的行动返回 `(0, false)`，已关联但未铸造的行动返回 `(理论数量, false)`，均不回滚。该查询不持有独立账本：已关联时直接委托 Mint 的 `proposalRewardByProposalId`（`amount` 由 Mint 按票数复算，与铸造时同源；Mint 侧已铸造的 `amount` 与 `ActionRewardMinted` 的 `amount` 相等），ActionTarget 只负责把未关联行动收敛为零：销毁不再经过本合约，因此不需要任何掩零。前端与索引据此判断某行动某轮是否已铸造与可铸造数量，不需要扫描事件；同一笔铸造另由 `ActionRewardMinted(tokenAddress, actionId, round, amount)` 留痕，`amount` 与该查询铸造后的返回值同源，供历史回溯与审计使用。
+**铸造信息查询。** `actionReward(tokenAddress, actionId, round)` 返回 `(amount, minted)`。绑定 Executor 的行动从 Mint 的 `proposalRewardSettlement` 读取结算结果。`Unsettled` 返回可铸造金额和 `false`，`Minted` 返回实际铸造金额和 `true`。`Burned` 和未绑定的行动返回 `(0, false)`，供 Executor 判断可分配额度。已销毁的实际金额可从 Core 查询。铸造时发出的 `ActionRewardMinted.amount` 与查询的已铸造金额一致。
 
 **激励链路对成员不透明**：Executor 每轮经 `mintActionReward` 一次性铸造该行动的整笔激励，去重键 `tokenAddress + actionId + round` 即行动级；铸造后由 Executor 按自身账本分给参与成员。成员只与 Executor 的成员级入口打交道，不需要了解也不依赖 ActionTarget 这一层；ActionTarget 不向成员暴露任何激励铸造入口。
 

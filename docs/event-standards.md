@@ -234,7 +234,7 @@ ERC-20 / ERC-721 标准事件保持不变，不进入本规范正文。`AddHolde
 | core.token | 角色 → 数值 | `TokenMinted`、`TokenBurned` |
 | core.registry | 根键 → 父根键 → 对象 id → 角色 → 数值 → 枚举 → 文本 | `GenesisTokenCreated`、`TokenLaunched`、`LaunchCountAdded`、`LaunchCountMerged`、`LaunchCountConsumed` |
 | core.member | 对象 id → 角色 → 数值 → 文本 | `MemberMinted` |
-| core.round | 根键 → round → 对象 id → 角色 → 数值 → 枚举 | `RoundRewardReserved`、`RewardPrepared`、`GovRewardMinted`、`ProposalRewardMinted`、`ProposalRewardBurned`、`RewardBurned` |
+| core.round | 根键 → round → 对象 id → 角色 → 数值 → 枚举 | `RoundRewardReserved`、`GovRewardMinted`、`ProposalRewardMinted`、`ProposalRewardBurned`、`RewardBurned` |
 | core.phase | 对象 id → 数值（当前段长 → 下一段长） | `PhaseSynchronized` |
 | core.stake | 根键 → round → memberId 链（0–2 个）→ 角色地址（`caller` → `memberOwner`）→ 数值（单字段维度的 `prev*` 紧邻其新值；整条源记录迁移的旧值组排在数值之后） | `LiquidityStaked`、`BoostStaked`、`Unstaked`、`StakeWithdrawn`、`FeesSettled`、`FeeReclassified`、`StakesMerged` |
 | core.proposal | 根键 → round → 对象/actor id 链（1–2 个）→ 地址 → 枚举 → bytes → 文本 | `ProposalCreated`、`ProposalSubmitted`、`VoteCast` |
@@ -416,7 +416,7 @@ v1 基线：
 | StakePosition | 加流动性、加 boost、解锁、提取、手续费结算、手续费重分类、合并 | `LiquidityStaked`、`BoostStaked`、`Unstaked`、`StakeWithdrawn`、`FeesSettled`、`FeeReclassified`、`StakesMerged` |
 | Proposal | 创建、提交 | `ProposalCreated`、`ProposalSubmitted` |
 | Vote | 投票 | `VoteCast` |
-| RewardRound | 预留和准备激励池、治理和提案激励结算、逐项释放未过线提案份额、取消加速池和释放全轮未过线的取整尾差 | `RoundRewardReserved`、`RewardPrepared`、`GovRewardMinted`、`ProposalRewardMinted`、`ProposalRewardBurned`、`RewardBurned` |
+| RewardRound | 首票预留激励池、治理和提案激励结算、逐项释放未过线提案份额、取消加速池和释放全轮未过线的取整尾差 | `RoundRewardReserved`、`GovRewardMinted`、`ProposalRewardMinted`、`ProposalRewardBurned`、`RewardBurned` |
 | AirdropConfig | 配置快照、按份额空投铸造、快照 URI 更新 | `AirdropConfigured`、`AirdropClaimed`、`AirdropSnapshotUriUpdated` |
 
 `MemberNFT` 的 `_safeMint` 回调先于 `MemberMinted`（E3），因此：
@@ -497,8 +497,8 @@ Hub 不自建份额 / 票权 / 等待期账本，也**不折叠** core 的质押
 4. 事件声明与 emit 点不写注释；语义只写在本文。
 5. 事件签名以各仓 `src/interfaces/` 为准；本文不复制签名。
 6. 共享事件类的全部发射者必须在本文 §4.2 与 ABI 基线中列明。
-7. 顺序测试必须覆盖依赖序（§3.4 第 5 条），至少：`RewardBurned → RewardPrepared`、`FeeReclassified → FeesSettled`、`FeeReclassified → StakeWithdrawn`/`LiquidityStaked`、`FeesSettled → StakeWithdrawn`、`TokenMinted`/`LaunchCountAdded` → 依赖它们的 `GovRewardMinted`。
-8. 累计值测试必须断言 `cumulative == fold`，至少覆盖 `RewardPrepared.totalRewardBurned`/`totalRewardReserved`、`OriginScoresSubmitted.totalFinalScore`、`LaunchCountAdded.issuedCount`、`ApplicationVoteRecorded.voteAmountTotal`、`FeesSettled.totalBurnedToken`/`totalParentTokenBurned`、`MemberMinted.totalBurnedForMint`、`VoteCast.voteAmountTotal`/`totalVoteAmount`、`RewardBurned.totalRewardBurned`、`GovRewardMinted`/`ProposalRewardMinted` 的 `totalRewardMinted`，以及按事件逐个枚举的聚合量：`totalValidGovVotes` 在 `LiquidityStaked`/`BoostStaked`/`Unstaked`/`StakesMerged`；`totalValidBoostShares` 在 `BoostStaked`/`Unstaked`；`totalBoostShares` 在 `BoostStaked`/`StakeWithdrawn`；`totalLiquidityShares` 在 `LiquidityStaked`/`StakeWithdrawn`；`totalWithdrawableLp` 在 `FeeReclassified`/`LiquidityStaked`/`StakeWithdrawn`；`totalFeeLp` 在 `FeeReclassified`/`FeesSettled`。两个 `valid*` 总量必须等于同轮 `Added - Removed`，两个余额/份额总量必须等于 `totalStake` 的同名字段——只断言其中一个锚点不算覆盖。
+7. 顺序测试必须覆盖依赖序（§3.4 第 5 条）。销毁未用加速池若与提案销毁同笔发生，`RewardBurned` 必须先于 `ProposalRewardBurned`。其它必测顺序包括 `FeeReclassified → FeesSettled`、`FeeReclassified → StakeWithdrawn`/`LiquidityStaked`、`FeesSettled → StakeWithdrawn`、`TokenMinted`/`LaunchCountAdded` → 依赖它们的 `GovRewardMinted`。
+8. 累计值测试必须断言 `cumulative == fold`，至少覆盖 `RoundRewardReserved.totalRewardReserved`、`OriginScoresSubmitted.totalFinalScore`、`LaunchCountAdded.issuedCount`、`ApplicationVoteRecorded.voteAmountTotal`、`FeesSettled.totalBurnedToken`/`totalParentTokenBurned`、`MemberMinted.totalBurnedForMint`、`VoteCast.voteAmountTotal`/`totalVoteAmount`、`RewardBurned`/`ProposalRewardBurned` 共享的 `totalRewardBurned`、`GovRewardMinted`/`ProposalRewardMinted` 的 `totalRewardMinted`，以及按事件逐个枚举的聚合量：`totalValidGovVotes` 在 `LiquidityStaked`/`BoostStaked`/`Unstaked`/`StakesMerged`；`totalValidBoostShares` 在 `BoostStaked`/`Unstaked`；`totalBoostShares` 在 `BoostStaked`/`StakeWithdrawn`；`totalLiquidityShares` 在 `LiquidityStaked`/`StakeWithdrawn`；`totalWithdrawableLp` 在 `FeeReclassified`/`LiquidityStaked`/`StakeWithdrawn`；`totalFeeLp` 在 `FeeReclassified`/`FeesSettled`。两个 `valid*` 总量必须等于同轮 `Added - Removed`，两个余额/份额总量必须等于 `totalStake` 的同名字段——只断言其中一个锚点不算覆盖。
 9. 例外路径测试必须逐条覆盖 E1–E4：
    - E1：`TokenMinted → GenesisTokenCreated`/`TokenLaunched`，事件中的地址与部署地址一致；
    - E2：mock 返回值与预计算不同，事件报告实际返回值；

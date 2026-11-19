@@ -29,9 +29,9 @@ theoreticalVerifierReward(m) = mulDiv(serviceReward, r * verifierWeightNumerator
 theoreticalOwnerReward(m)    = mulDiv(serviceReward, (1e18 - r) * ownerWeightNumerator(m), D * 1e18)
 ```
 
-每个 GroupAction 在所有参与链群完成评分、且总分与来源激励均为正时，将 `A[a]` 计入来源社区的轮次总额和该轮当选验证者的权重。投票已在验证前结束，Core 的奖池自首票预留，单项激励在该轮关闭后固定。`totalGroupActionReward` 直接读取 `totalGeneratedActionReward`。验证者权重读取 `verifierRewardWeight`，服务行动在结算时应用自己的 `publicVerifierRatio`。
+每个 GroupAction 在所有参与链群完成评分、且总分与来源激励均为正时，将 `A[a]` 计入来源社区的轮次总额和该轮当选验证者的权重。投票已在验证前结束，Core 的奖池自首票预留，单项激励在该轮关闭后固定。`totalGroupActionReward` 直接读取 `totalGeneratedActionReward`。验证者权重读取 `totalGeneratedActionRewardByVerifierId`，服务行动在结算时应用自己的 `publicVerifierRatio`。
 
-Owner 结算和预览从 GroupAction 的 `totalGeneratedActionRewardByGroupId` 读取权重。链群在目标轮没有参与记录时，权重为零。有参与记录时，GroupAction 遍历 `generatedActionIdsByRound` 对应的产出行动集合，用登记的 `A[a]` 和链群历史得分计算每项的 `floor(A[a] × finalScore(a, m) ÷ totalFinalScore(a))`。链群无正分时切片为零。取消激活或后续轮次的退出不影响已结束轮次的切片。所有 Owner 权重之和至多为 `D`。逐项舍入和未加入角色的份额留在服务合约。
+Owner 结算和预览从 GroupAction 的 `totalGeneratedActionRewardByGroupId` 读取权重。链群在目标轮没有参与记录时，权重为零。有参与记录时，GroupAction 遍历 `actionIdsWithGeneratedActionReward` 对应的产出行动集合，用登记的 `A[a]` 和链群历史得分计算每项的 `floor(A[a] × finalScore(a, m) ÷ totalFinalScore(a))`。链群无正分时切片为零。取消激活或后续轮次的退出不影响已结束轮次的切片。所有 Owner 权重之和至多为 `D`。逐项舍入和未加入角色的份额留在服务合约。
 
 验证窗口关闭后，任何地址都可调用 GroupAction 的 `prepareGeneratedActionRewardByGroupId`，从链上已提交的游标开始累计最多 `limit` 个行动的切片。`groupRewardPreparation` 返回已处理数与总数。链群权重按来源社区、轮次、链群保存，预览和领取均使用已累计权重加尚未处理的切片。准备完成后，领取直接读取累计权重。同一来源社区与轮次的各服务行动共用累计结果。
 

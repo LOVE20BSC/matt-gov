@@ -30,6 +30,10 @@ STD_EXEMPT = {
 
 BANNED_VERBS = ("get", "fetch", "query", "read", "load", "do", "handle", "process", "manage")
 MEMBER_KEYS = {"memberId", "voterId", "verifierId", "providerId", "recipientId", "adminId"}
+MEMBER_TOTAL_EXEMPT = {
+    ("action", "GroupActionExecutor", "totalGeneratedActionRewardByVerifierId"),
+    ("action", "IGroupActionExecutor", "totalGeneratedActionRewardByVerifierId"),
+}
 BANNED_TOKENS = {
     "num", "amt", "addr", "cnt", "idx", "len", "val", "tmp", "temp",
     "arr", "str", "mgr", "cfg", "args", "param",
@@ -324,7 +328,8 @@ def check(files):
                         add("N06", name, f, line, "Count 必须是最后一个词")
                     if re.search(r"Of(?=[A-Z]|$)", name) and name not in STD_EXEMPT:
                         add("N20", name, f, line, "自有读取函数用 By<Key>，不用 Of（中缀也算）")
-                    if name.startswith("total") and any(p[1] in MEMBER_KEYS for p in fn["params"]):
+                    if (name.startswith("total") and any(p[1] in MEMBER_KEYS for p in fn["params"])
+                            and (f.repo, c["name"], name) not in MEMBER_TOTAL_EXEMPT):
                         add("N21", name, f, line, "total* 只用于社区级聚合，成员级聚合用 By<MemberId>")
                     if name.startswith("g") and name[1:2].isupper():
                         add("N22", name, f, line, "禁用单字母语义前缀 g，按语义命名")

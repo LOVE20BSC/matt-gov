@@ -37,14 +37,15 @@ Vote 管理当前治理 Round 的 Proposal 投票和加速快照。Proposal 的�
    4. 记录加速快照：首投记全量，后续只补正增量
    5. **额度**：先算加上本笔后的成员累计票数，超过票上限回滚（`VoteLimitExceeded(tokenAddress, round, memberId, cumulativeVoteAmount, maxVoteAmount)`，`cumulativeVoteAmount` 为加上本笔后的成员累计票数）
    6. 累加票数，维护本轮有票 Proposal 与投票者集合
-   7. 发出 `VoteCast` 事件（含本次 `voteAmount`、该成员本轮后置累计 `voteAmountTotal`、该轮后置总量 `totalVoteAmount`，以及成员加速快照 `voterBoost` 与全局 `totalVoterBoost`）
-   8. `Callback` 且 `target` 非零时回调 `IProposalTarget.onProposalVoted`，失败回滚整笔
+   7. 若该社区当轮累计票数从零变为正，调用 `MINT_ADDRESS` 对应的 Mint 预留当轮激励
+   8. 发出 `VoteCast` 事件（含本次 `voteAmount`、该成员本轮后置累计 `voteAmountTotal`、该轮后置总量 `totalVoteAmount`，以及成员加速快照 `voterBoost` 与全局 `totalVoterBoost`）
+   9. `Callback` 且 `target` 非零时回调 `IProposalTarget.onProposalVoted`，失败回滚整笔
 
 额度按整批累计判定：同一批里先投的票数计入后投的判定基准，超过上限的那笔回滚整批。
 
 上述回滚都发生在 `voteAmounts` 循环内，载荷携带逐笔上下文的错误因此能定位到具体 Proposal 或累计值，而不是只报一个批次级错误。
 
-构造函数只保存入参，不做静态校验；`PHASE_ADDRESS`、`STAKE_ADDRESS`、`SUBMIT_ADDRESS`、`MEMBER_NFT_ADDRESS` 有代码由 DeployCore 部署后校验、21_check 独立复核。
+构造函数保存依赖地址，并将 `mintAddress` 固定为 `MINT_ADDRESS`。部署脚本在创建 Vote 时传入预测的 Mint 地址。Mint 部署完成后，`DeployCore` 和 `21_check.sh` 检查各依赖的代码和绑定，并核对 `Vote.MINT_ADDRESS()` 与 `Mint.VOTE_ADDRESS()` 互相指向。
 
 ## 接口
 

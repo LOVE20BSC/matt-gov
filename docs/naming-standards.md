@@ -166,6 +166,7 @@
 
 - 基数用 `Count`，且必须在末尾：`RoundSpan.messageCount`、`MessagePosted.mentionedSenderCount`。**函数级不设独立计数入口**：集合总数由分页返回的 `totalCount` 承担（§7.5），`limit = 0` 即取基数；同一集合的「分页 + Count」是两条读取路径。
 - 可加量总和用 `total` 前缀，且只用于**社区级**：`totalStaked`、`totalValidGovVotes`。成员级聚合用 `ByMemberId`：`stakedByMemberId`，不得写 `totalStakedByMemberId`。
+- GroupAction 的 `totalGeneratedActionRewardByVerifierId` 沿用 `totalGeneratedActionRewardByGroupId` 的命名。前者以验证者为键，汇总其完成验证的整笔行动激励。N21 的例外仅覆盖该查询的接口声明和实现。
 
 ### 7.5 分页
 

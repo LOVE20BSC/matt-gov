@@ -4,7 +4,7 @@
 
 事件和错误定义分别位于 [`IMemberNFT.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/IMemberNFT.sol)、[`IPhase.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/IPhase.sol)、[`IStake.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/IStake.sol)、[`ISubmit.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/ISubmit.sol)、[`IVote.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/IVote.sol)、[`IMint.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/IMint.sol)、[`ILaunch.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/ILaunch.sol)、[`IAirdropDistributor.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/distributor/IAirdropDistributor.sol) 和 [`ILOVE20Token.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/ILOVE20Token.sol)。
 
-必须拒绝无效成员或非来源控制者、零 Target/Distributor、非法模式、Target Data 长度不等、重复 Proposal/推举、投票超额、Round 未结束、重复铸造/销毁、待解锁时追加或融合、解锁期不足、跨社区次数操作、次数不足或超上限。Mint 在铸造入口内部自动准备未准备的 Round，不把“未准备”作为公开拒绝条件。未冻结专用 selector 的拒绝条件不能冒充已确定 ABI。
+必须拒绝无效成员或非来源控制者、零 Target/Distributor、非法模式、Target Data 长度不等、重复 Proposal/推举、投票超额、Round 未结束、重复铸造、跨铸造和销毁的重复结算、待解锁时追加或融合、解锁期不足、跨社区次数操作、次数不足或超上限。Mint 的销毁入口允许同向重试，累计额度只改一次。未冻结专用 selector 的拒绝条件不能冒充已确定 ABI。
 
 批量治理激励中任一 Round 无效，以及 Pair、Router、Target、distributor 回调等外部调用失败时，整笔交易回滚。
 
@@ -57,11 +57,11 @@
 | Proposal | 鉴权、参数、存在性与门槛的顺序 | 非持有人 + 非法参数 → `NotMemberOwner`；非法参数 + 不满足门槛 → 精确参数错误；`submit` 不存在 `proposalId` + 不满足门槛 → `ProposalNotFound`；对应 `testSubmitNewProposalChecksAuthBeforeParameters`、`testSubmitNewProposalChecksParametersBeforeThreshold`、`testSubmitChecksAuthBeforeProposalExistence`、`testSubmitChecksProposalExistenceBeforeThreshold` |
 | Proposal | 两个入口的名额与去重交叉：先 `submitNewProposal` 再 `submit`、同轮重复创建、跨轮推举已有 Proposal | 同一成员同轮第二次推举回滚 `MemberAlreadySubmitted(tokenAddress, round, memberId)`；同一 Proposal 同轮第二次回滚 `ProposalAlreadySubmitted(tokenAddress, round, proposalId)`；跨轮推举已有 Proposal 成功且不触发创建回调 |
 | Proposal | 每社区每 Round 的 1,000 个推举上限：两个入口、回滚、跨轮、跨社区 | 第 1,000 个允许，第 1,001 个新旧推举均回滚 `SubmitRoundFull(tokenAddress, round, 1000)`，不遗留创建或推举记录；`canSubmit` 仍只判断票权门槛；其他社区与下一轮正常推举，历史总数可以超过 1,000；对应 `SubmitTest.testSubmissionLimitPerTokenAndRound` |
-| [Mint](07-mint.md) | Round 准备、单 Proposal 结算、重复准备 | 每轮仅预留一次，单项不能重复结算；对应 `MintTest.testZeroVotePreparationMustEmitEvent`、`testZeroProposalRewardMustRevert` |
-| Mint | 300 个 Proposal 的准备和单项计算 | 首次准备、单项预览与铸造均无需读取 Vote 的提案列表。对应 `MintTest.testPreviewPrepareAndMintNeverReadTheProposalList` |
-| Submit / Vote / Mint | 真实 Core 创建、推举、投票至每轮上限 1,000 个，再铸造两类激励 | 冷访问首次准备在本地 160,000 gas 执行预算内完成，随后铸造无需再次预留。对应 `ProposalDoSTest.testPrepare1000Proposals`，DEX 为模拟依赖 |
+| [Mint](07-mint.md) | 首票预留、Proposal 结算三态、重复调用 | 每轮预留一次，包括池值取整为零的轮次。零票轮无预留及销毁。铸造与销毁互斥，销毁重试幂等，查询返回实际结算额。对应 `Mint.t.sol` |
+| Mint | 300 个 Proposal 的单项计算 | 单项查询与铸造均无需读取 Vote 的提案列表。对应 `MintTest.testPreviewAndMintNeverReadTheProposalList` |
+| Submit / Vote / Mint | 真实 Core 创建、推举、投票至每轮上限 1,000 个，再铸造两类激励 | 冷访问释放未用加速池在本地 160,000 gas 执行预算内完成，随后铸造保持原始预留。对应 `ProposalDoSTest.testBurnUnusedBoostWith1000Proposals`，DEX 为模拟依赖 |
 | Mint | 两种零总量、三段治理结果、批量多轮 | 预留不重加，取消池销毁不重复，任一失败整体回滚；批量入口先鉴权，空数组在鉴权通过后返回空；`mintGovReward` 零 recipient 回 `ZeroRecipientAddress()`；对应 `testBatchMustPreserveMemberOwner`、`testBatchFailureRollsBackRewardsAndLaunchCounts`、`testGovernanceQueryMatchesMintAndBoost`、`testEmptyBatchChecksOwner`、`testGovMintRejectsZeroRecipient` |
-| Mint | 加速池取消、逐项 Proposal 销毁与尾差 | 准备期 `totalVoterBoost == 0` 释放加速池。未达标份额按单项释放，重复调用幂等，达标份额保持原值。全轮未达标时最后一次释放尾差，已处理票权包括零额份额。对应 `Mint.t.sol`、`MintCoverage.t.sol`、`MintInvariant.t.sol` |
+| Mint | 加速池取消、逐项 Proposal 销毁与尾差 | 轮末 `totalVoterBoost == 0` 允许释放加速池。未达标份额按单项释放，重复调用幂等，达标份额保持原值。全轮未达标时最后一次释放尾差，已处理票权包括零额份额。对应 `Mint.t.sol`、`MintCoverage.t.sol`、`MintInvariant.t.sol` |
 | Mint | 零额结算的错误优先级 | 提案低于门槛且提案池为零时，优先回滚 `ProposalBelowThreshold`。错误中的 `voteAmount` 可区分零票与有票但未达标。整轮零票或提案池取整为零时回滚 `ProposalPoolEmpty`。通过门槛且池值为正但单项份额取整为零时回滚 `ProposalRewardRoundedToZero`。门槛为零、池值为正时，零票提案也触发此错误。对应 `MintTest.testBelowThresholdOutranksAnEmptyPool`、`testZeroProposalRewardMustRevert` 和 `testProposalRewardRoundedToZeroMustRevert` |
 | Vote / Mint | 投票时快照为 50，随后追加 30；再次投票或不投票；NFT 转移 | 不投票仍按 50，再投票按 80、总量仅加 30；结算和转移不重算；Vote 快照由 `VoteTest` 覆盖，Mint 结算由 `MintTest.testGovernanceQueryMatchesMintAndBoost` 覆盖 |
 | Vote | `VoteCast` 的票数与加速锚点：同轮第二名投票人、两名有加速的成员、逐条折叠 | 单条日志同时给出本次增量、成员本轮后置累计、本轮后置总量与成员/全局加速快照；同一事件内各数值字段取值两两可区分；逐条折叠 `VoteCast` 得到的成员累计与轮总量等于事件携带的后置值，并与 `voteAmountByMemberId` / `totalVoteAmount` 一致；对应 `VoteTest.testVoteCastEventCarriesTheExactPayload`、`testVoteCastCumulativeAnchorsMatchTheFold` |
@@ -95,6 +95,6 @@
 | AirdropDistributor | URI 长度 256/257 边界与空 URI | `snapshotUri == ""` 回滚 `SnapshotUriEmpty()`；长度 257 回滚 `SnapshotUriTooLong(257, 256)`；长度恰好 256 成功，超过上限不截断；GitHub Pages 形态 URL（约 60 字节）登记成功 |
 | AirdropDistributor | `AirdropSnapshotUriUpdated` 事件载荷与 URI 不影响空投铸造 | 三字段逐个断言（`tokenAddress` 为唯一 indexed、`snapshotUri` 与 `prevSnapshotUri` 两个 string 不 indexed 且可区分）；设置 URI 前后 `claim` 的 `amount`、状态与 `AirdropClaimed` 完全一致，证明 URI 纯发现提示、无授权作用 |
 
-ProposalDoS 压力测试把 `SUBMIT_MIN_RATIO` 设为 `1`：成员逐个入池时，后加入者的票权占全局票权的比例远低于 1%，而该测试只度量每轮 1,000 个提案的准备成本，不验证门槛语义。门槛本身由 `Submit` 的专项用例覆盖。
+ProposalDoS 压力测试把 `SUBMIT_MIN_RATIO` 设为 `1`。成员逐个入池时，后加入者的票权占全局票权的比例远低于 1%。该测试度量每轮 1,000 个提案条件下的加速池释放成本。推举门槛由 `Submit` 的专项用例覆盖。
 
 存在“待确认”的场景必须先确定预期，不得用当前实现结果反推规格。

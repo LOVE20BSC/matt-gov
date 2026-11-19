@@ -9,7 +9,7 @@
 | MemberNFT | 成员身份 NFT |
 | Stake | 流动性质押、加速质押、份额和手续费 |
 | Submit / Vote | Proposal 创建、推举、投票和 Target 回调 |
-| Mint | 轮次激励准备、治理激励及 Proposal 激励结算 |
+| Mint | 轮次激励预留、治理激励及 Proposal 激励结算 |
 | Phase | 无业务语义的阶段 |
 | LOVE20Token | 代币实例与代币树 |
 | Launch | 首币部署、LOVE20Token 创建、发射次数、次数融合及子币发射 |
@@ -36,7 +36,7 @@ Core 不解释具体 Proposal 的业务字段，扩展通过 Target 接入。
 | Stake | `feeSettlementRatio` | 单笔手续费结算占 Pair 的 LP 总供应的比例，`1e18` 表示 100%（如 `25e14` 为 0.25%）；同时是结算阈值与单笔处理量；须不大于部署期上界（0.25%），见 [Stake](04-stake.md#手续费结算与销毁) |
 | Submit | `PHASE_ADDRESS`、`STAKE_ADDRESS`、`MEMBER_NFT_ADDRESS` | 时间、质押和身份依赖 |
 | Submit | `submitMinRatio` | 推举门槛，`1e18` 表示 100%，如 `1e16 = 1%` |
-| Vote | `PHASE_ADDRESS`、`STAKE_ADDRESS`、`SUBMIT_ADDRESS`、`MEMBER_NFT_ADDRESS` | 时间、票权、提案和身份依赖 |
+| Vote | `PHASE_ADDRESS`、`STAKE_ADDRESS`、`SUBMIT_ADDRESS`、`MEMBER_NFT_ADDRESS`、`MINT_ADDRESS` | 时间、票权、提案、身份和激励预留依赖。部署脚本在构造 Vote 时传入预测的 Mint 地址 |
 | Mint | `PHASE_ADDRESS`、`VOTE_ADDRESS`、`SUBMIT_ADDRESS`、`LAUNCH_ADDRESS`、`MEMBER_NFT_ADDRESS` | 时间、投票、提案、发射和身份依赖；BSC 版本已移除原 `STAKE_ADDRESS`（加速数据源改为 Vote 快照）；`PHASE_ADDRESS` 由部署脚本直接传入，不再从 Vote 派生 |
 | Mint | `proposalRewardMinVoteRatio` | 提案激励门槛；状态变量和公开 getter 为 `PROPOSAL_REWARD_MIN_VOTE_RATIO`，`1e18` 表示 100%，如 `5e16 = 5%` |
 | Mint | `roundRewardGovRatio`、`roundRewardProposalRatio` | 治理池、提案池占可用供应的比例；状态变量和公开 getter 为 `ROUND_REWARD_GOV_RATIO`、`ROUND_REWARD_PROPOSAL_RATIO`，`1e18` 表示 100%，如 `1e17 = 10%` |

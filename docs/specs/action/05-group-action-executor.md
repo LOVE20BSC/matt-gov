@@ -103,7 +103,7 @@ openBlock = verifyPhaseStartBlock + openOffset
 
 `hasVerifierApplicationByRound` 读取社区与验证者维度的历史申请索引。申请提交时记录对应行动，撤回时从有效集合移到本轮的撤回集合。同轮重新申请时以新申请替换撤回条目。停止接票由原申请保留当轮及后续资格，直到撤回轮结束。
 
-当轮当选验证者提交评分，NFT 转移后由新持有人续验。整项行动验完之前，`generatedActionReward` 和 `generatedActionRewardByGroupId` 返回零。最后一批完成全行动验证时，总分和 Proposal 激励均为正才登记该行动。行动激励和链群切片查询使用登记时记录的 Proposal 激励。`totalGeneratedActionReward` 与 `verifierRewardWeight` 按社区和轮次累计原始激励，`generatedActionIdsByRound` 按验证完成顺序分页列出这些行动。达标但没有可分配验证结果的 Proposal 激励继续预留。未达标份额由 Core 的逐项销毁入口处理。
+当轮当选验证者提交评分，NFT 转移后由新持有人续验。整项行动验完之前，`generatedActionReward` 和 `generatedActionRewardByGroupId` 返回零。最后一批完成全行动验证时，总分和 Proposal 激励均为正才登记该行动。行动激励和链群切片查询使用登记时记录的 Proposal 激励。`totalGeneratedActionReward` 返回社区当轮的行动激励总额，`totalGeneratedActionRewardByVerifierId` 返回其中由指定验证者完成验证的行动激励总额。`actionIdsWithGeneratedActionReward` 按指定社区和轮次分页列出已登记的行动，默认按验证完成的先后顺序排列。达标但没有可分配验证结果的 Proposal 激励继续预留。未达标份额由 Core 的逐项销毁入口处理。
 
 **验证者信任模型（接受的取舍）**：原始分是验证者的自由裁量输入，合约只约束 `0 ≤ originScore ≤ 100`（`ScoreLimitExceeded`）与累计游标，不提供回避、交叉复核、挑战期或罚没；押金只担保「持有当前申请」，撤销即全额退款。对失信验证者的约束全部落在治理轮（逐轮投票与排名），而单轮锁定后不可替换、无接管，本轮行动激励可能被独占或因全 0 得分永久停留未结算（无销毁路径）；链下必须在投票前读取 `OriginScoresSubmitted` 等链上留痕，不能把当轮纠正寄望于合约。
 
