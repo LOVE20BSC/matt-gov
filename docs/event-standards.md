@@ -497,7 +497,7 @@ Hub 不自建份额 / 票权 / 等待期账本，也**不折叠** core 的质押
 4. 事件声明与 emit 点不写注释；语义只写在本文。
 5. 事件签名以各仓 `src/interfaces/` 为准；本文不复制签名。
 6. 共享事件类的全部发射者必须在本文 §4.2 与 ABI 基线中列明。
-7. 顺序测试必须覆盖依赖序（§3.4 第 5 条）。销毁未用加速池若与提案销毁同笔发生，`RewardBurned` 必须先于 `ProposalRewardBurned`。其它必测顺序包括 `FeeReclassified → FeesSettled`、`FeeReclassified → StakeWithdrawn`/`LiquidityStaked`、`FeesSettled → StakeWithdrawn`、`TokenMinted`/`LaunchCountAdded` → 依赖它们的 `GovRewardMinted`。
+7. 顺序测试必须覆盖依赖序（§3.4 第 5 条），包括 `FeeReclassified → FeesSettled`、`FeeReclassified → StakeWithdrawn`/`LiquidityStaked`、`FeesSettled → StakeWithdrawn`、`TokenMinted`/`LaunchCountAdded` → 依赖它们的 `GovRewardMinted`。
 8. 累计值测试必须断言 `cumulative == fold`，至少覆盖 `RoundRewardReserved.totalRewardReserved`、`OriginScoresSubmitted.totalFinalScore`、`LaunchCountAdded.issuedCount`、`ApplicationVoteRecorded.voteAmountTotal`、`FeesSettled.totalBurnedToken`/`totalParentTokenBurned`、`MemberMinted.totalBurnedForMint`、`VoteCast.voteAmountTotal`/`totalVoteAmount`、`RewardBurned`/`ProposalRewardBurned` 共享的 `totalRewardBurned`、`GovRewardMinted`/`ProposalRewardMinted` 的 `totalRewardMinted`，以及按事件逐个枚举的聚合量：`totalValidGovVotes` 在 `LiquidityStaked`/`BoostStaked`/`Unstaked`/`StakesMerged`；`totalValidBoostShares` 在 `BoostStaked`/`Unstaked`；`totalBoostShares` 在 `BoostStaked`/`StakeWithdrawn`；`totalLiquidityShares` 在 `LiquidityStaked`/`StakeWithdrawn`；`totalWithdrawableLp` 在 `FeeReclassified`/`LiquidityStaked`/`StakeWithdrawn`；`totalFeeLp` 在 `FeeReclassified`/`FeesSettled`。两个 `valid*` 总量必须等于同轮 `Added - Removed`，两个余额/份额总量必须等于 `totalStake` 的同名字段——只断言其中一个锚点不算覆盖。
 9. 例外路径测试必须逐条覆盖 E1–E4：
    - E1：`TokenMinted → GenesisTokenCreated`/`TokenLaunched`，事件中的地址与部署地址一致；

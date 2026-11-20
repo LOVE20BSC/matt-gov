@@ -28,7 +28,7 @@
 - 每社区每轮首笔有效投票预留治理池和 Proposal 池。重复预留保持原始池值，零票轮次不预留
 - 首票预留、单项查询和结算均无需读取 Vote 的 Proposal 列表
 - 达标提案按全轮总票权计算份额，未达标提案可逐项释放预留。全轮未达标时最后一笔释放尾差
-- 轮末未用加速池可独立销毁。1,000 个 Proposal 时，该操作在本地 160,000 gas 预算内完成
+- 轮末未用加速池由 `burnUnusedBoostReward` 显式释放，治理和 Proposal 结算可独立执行。1,000 个 Proposal 时，显式释放在本地 160,000 gas 预算内完成
 - 非 Target 铸造拒绝
 - 单个 Proposal 的铸造与销毁互斥，重复销毁幂等，结算查询保留实际铸造额或销毁额
 - 行动类 `executor -> ActionTarget -> Mint -> executor`：Mint 按 Target 指定的 `recipient` 直铸给 Executor，路径上无中间转账
@@ -36,6 +36,7 @@
 
 **测试方式**：
 - 单元测试覆盖 `testFirstVoteReservationFixesBudgetsBeforeReverseSettlement`、`testPreviewAndMintNeverReadTheProposalList`、`testBurnRewardReleasesOnlyTheBelowThresholdShare` 和 `testLastBelowThresholdProposalReleasesTheAllIneligiblePool`。
+- 单元测试 `MintTest.testUnusedBoostPoolRequiresExplicitBurn` 验证常规结算和显式销毁独立执行，重复销毁只释放一次。
 - 压力测试 `ProposalDoSTest.testBurnUnusedBoostWith1000Proposals` 验证轮末销毁的本地执行预算。
 - 集成测试：`love20-anvil/scenarios/proposal-lifecycle.yml` 完整流程
 - 验收证据：测试日志 + 覆盖率报告（要求该场景分支覆盖率 100%）

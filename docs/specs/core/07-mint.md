@@ -54,9 +54,9 @@ totalRewardReserved += govReward + proposalReward
 
 ## 销毁未用加速池
 
-任何人可在轮末调用 `burnUnusedBoostReward`。治理铸造、Proposal 铸造和逐项销毁也会尝试释放该轮的未用加速池。结算先验证社区代币已登记，再验证 `round != 0 && Phase.currentPhase() > round`。
+`burnUnusedBoostReward` 是释放未用加速池的唯一入口。任何人可在该轮结束后调用。入口先验证社区代币已登记，再验证 `round != 0 && Phase.currentPhase() > round`。治理铸造、Proposal 铸造和逐项销毁可独立执行。
 
-治理池为正且 `totalVoterBoost == 0` 时，释放 `govReward - floor(govReward / 2)`，将该额度计入 `totalRewardBurned`。治理池为空、当轮有加速份额或已释放时直接返回。释放保留原始池值，释放的额度可供后续轮次预留。
+治理池为正且 `totalVoterBoost == 0` 时，释放 `govReward - floor(govReward / 2)`，将该额度计入 `totalRewardBurned`。治理池为空、当轮有加速份额或已释放时直接返回。未用加速池在释放前仍计入未结算预留。释放的额度可供尚未预留的后续轮次使用，已冻结的池值保持原值。
 
 ## Proposal 结算
 
@@ -136,7 +136,7 @@ else:
 
 `memberVoteAmount` 为本轮累计投出票数；`voterBoost` 和 `totalVoterBoost` 均取 Vote 的同轮冻结快照，记账时机见 [Vote](06-vote.md#投票和加速快照)。投票后仅追加质押、不再投票，不增加本轮加速权重；NFT 转移不重算快照。两池按固定 50/50 拆分，奇数余量归加速池。`totalVoterBoost == 0` 时成员加速激励为零，整份加速池可在轮末释放一次。未投票者即使有加速质押也不能铸造治理激励。
 
-批量接口 `mintGovRewards` 先鉴权，再逐轮执行与 `mintGovReward` 相同的检查和结算。任一轮失败整笔回滚，包括同笔已经释放的加速池。空 `rounds` 数组在鉴权通过后返回空数组。轮次数量由调用者自行决定，接口不设数量上限；数量过大导致交易失败及 gas 成本由调用者承担，这是写入批量长度上限规则的明确例外。
+批量接口 `mintGovRewards` 先鉴权，再逐轮执行与 `mintGovReward` 相同的检查和结算。任一轮失败整笔回滚。空 `rounds` 数组在鉴权通过后返回空数组。轮次数量由调用者自行决定，接口不设数量上限；数量过大导致交易失败及 gas 成本由调用者承担，这是写入批量长度上限规则的明确例外。
 
 ### 反资本约束的落点
 
