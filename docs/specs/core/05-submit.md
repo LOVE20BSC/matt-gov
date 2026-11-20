@@ -53,27 +53,32 @@ Proposal 由合约分配的头部与创建者提供的主体组成，对外以 `
 
 | 类 | 函数 | 用途 |
 | --- | --- | --- |
-| 分页 | `proposalIds`、`proposalIdsByAuthor`、`submitInfos` | 按 `(offset, limit, reverse)` 遍历集合，返回当页与集合真实总数 |
+| 分页 | `proposalIds`、`proposalIdsByAuthor`、`submitInfos` 及对应的 `ByTarget` 查询 | 按 `(offset, limit, reverse)` 遍历集合，返回当页与集合真实总数 |
 | 按 id 批量取详情 | `proposalInfosByProposalIds` | 按显式 ID 数组批量读，返回数组与入参下标一一对应 |
 | 单键 | `isSubmitted`、`proposalIdBySubmitterId`、`submitterIdByProposalId` | 按键取布尔或单个标量 |
 
 命名记号三条：**数组返回值在名字里体现载荷**——`Ids` 表示只回轻量标识，`Infos` 表示回记录本体，裸集合名不用于返回数组的函数，标量返回值不加后缀（`isSubmitted`、`proposalIdBySubmitterId`、`submitterIdByProposalId`、`currentRound`）。**筛选条件进名字**——默认形态（集合全量）不加标记，按键筛选用 `By<key>`，显式 ID 数组用 `By<Key>Ids`，多键串联时 id 数组的那把键带 `Ids`（`voteAmountsByMemberIdByProposalIds`）。**是否分页不进名字**——分页由入参 `(offset, limit, reverse)` 决定，不为同一集合另设无窗口的全量重载。
 
-分页函数的返回值形态随集合成员而定：`proposalIds`/`proposalIdsByAuthor` 只回 `proposalId`，`submitInfos` 回完整记录。判据是**页内每一项是否定长**——只有定长才能保证任意一页的体量与 `limit` 成正比（见 [分页查询](#分页查询)）。
+提案分页只返回 `proposalId`，推举分页返回定长的 `SubmitInfo`。两类列表的页内数据量都随 `limit` 成正比（见 [分页查询](#分页查询)）。
 
 上表三条单键查询：`isSubmitted(tokenAddress, round, proposalId)` 判某提案本轮是否已被推举；`proposalIdBySubmitterId(tokenAddress, round, submitterId)` 与 `submitterIdByProposalId(tokenAddress, round, proposalId)` 是同一份推举记录的两个方向。每个成员每轮最多推举一个提案、每个提案每轮最多被推举一次，两种键在 `(tokenAddress, round)` 下**都是唯一键**，故两条都回标量，`0` 表示「本轮未推举」（`0` 既不是合法 `memberId` 也不是合法 `proposalId`，无需回滚）。三条并存不构成重复：**存在性判定与取值是两个不同的值**，`isSubmitted` 的 `bool` 不覆盖另外两条的返回，正如 `IMemberNFT.isNameUsed` 与 `memberId(name)` 同键并存。
 
 ## 分页查询
 
-三个分页查询都按 `(offset, limit, reverse)` 分页，并同时返回集合的真实总数；语义与 `Phase.observations` 一致：`offset` 大于或等于总数时返回空数组与真实 `totalCount`，不校验也不回滚；`limit` 大于剩余条数时按剩余条数返回；`reverse` 为 `true` 时按从新到旧返回。不提供全量遍历，也不提供单独的计数入口——只取总数时传 `limit = 0`。
+分页查询都按 `(offset, limit, reverse)` 分页，并同时返回集合的真实总数；语义与 `Phase.observations` 一致：`offset` 大于或等于总数时返回空数组与真实 `totalCount`，不校验也不回滚；`limit` 大于剩余条数时按剩余条数返回；`reverse` 为 `true` 时按从新到旧返回。不提供全量遍历，也不提供单独的计数入口——只取总数时传 `limit = 0`。
 
 | 查询 | 作用域 | 返回 |
 | --- | --- | --- |
 | `proposalIds(tokenAddress, offset, limit, reverse)` | 某社区的全部 Proposal，按创建顺序 | `(proposalIdList, totalCount)` |
+| `proposalIdsByTarget` | 某社区指向指定 Target 的 Proposal，按创建顺序 | `(proposalIdList, totalCount)` |
 | `proposalIdsByAuthor(tokenAddress, author, offset, limit, reverse)` | 某成员创建的 Proposal，按创建顺序 | `(proposalIdList, totalCount)` |
+| `proposalIdsByAuthorByTarget` | 某成员创建且指向指定 Target 的 Proposal，按创建顺序 | `(proposalIdList, totalCount)` |
 | `submitInfos(tokenAddress, round, offset, limit, reverse)` | 某社区某 Round 的推举记录，按推举顺序 | `(submitInfoList, totalCount)` |
+| `submitInfosByTarget` | 某社区某 Round 内指向指定 Target 的提案推举记录，按推举顺序 | `(submitInfoList, totalCount)` |
 
-前两个只回 `proposalId`，详情走 [`proposalInfosByProposalIds`](#按-id-批量取详情)。`submitInfos` 的每条记录含 `submitterId` 与 `proposalId`，「本轮推举了哪些提案」与「谁推举了哪个提案」由同一条读路径给出，不再拆成两个入口。某 Round 尚无推举或尚未开始时，`submitInfos` 返回空数组与 `0`，不回滚（取该轮记录集合的口径，见[跨模块约定](00-protocol-model.md#实现约束)）。
+提案详情可通过 [`proposalInfosByProposalIds`](#按-id-批量取详情) 按 ID 读取。每条推举记录含 `submitterId` 与 `proposalId`。某个 Round 尚无推举时，推举分页返回空数组与总数 `0`。
+
+`ByTarget` 按 Proposal 创建时保存的 Target 地址匹配，两种 Target Mode 均可命中。筛选后的集合决定总数和分页范围。未知 Target 或没有匹配记录时返回空数组与总数 `0`。
 
 **分页只回定长数据**：页内成员由别人决定，`ProposalBody` 的 `title`/`details`（各 ≤1024 字节）与 `targetData`（≤16 KiB、≤16 项）虽有链上上限，但仍足以把整页顶高，一旦分页回本体，某条大 `targetData` 的 Proposal 就能把包含它的整页顶到调用方 gas 上限之上，而且跳不过去——只能反复调小 `limit` 试探。需要详情时走 [按 id 批量取详情](#按-id-批量取详情)。`SubmitInfo` 全为 `uint256` 字段，分页回记录不触这条红线。
 
@@ -81,7 +86,7 @@ Proposal 由合约分配的头部与创建者提供的主体组成，对外以 `
 
 ## 按 id 批量取详情
 
-`proposalInfosByProposalIds(tokenAddress, requestedProposalIds)` 返回的数组与入参下标一一对应，调用方据此把详情拼回 [`proposalIds`/`proposalIdsByAuthor`](#分页查询) 给出的顺序。
+`proposalInfosByProposalIds(tokenAddress, requestedProposalIds)` 返回的数组与入参下标一一对应，调用方据此把详情拼回[提案分页](#分页查询)给出的顺序。
 
 **入参数组不设上限**：它是只读、无状态写的批量查询，批量大小与由此产生的返回体量都由调用方自己选择，超限表现为调用方自己的 out-of-gas 回滚（减小批量即可重试），不会把代价转嫁给别人。这与 [复查清单](../../review-guide.md) 的「数组、批量参数和分页参数有最大边界」并不冲突——该条约束的是合约替调用者执行、且会写入状态的批量。
 
@@ -111,9 +116,9 @@ Proposal 由合约分配的头部与创建者提供的主体组成，对外以 `
 2. **参数校验**：`title` 非空（`TitleEmpty()`）、`target` 非零（`ZeroTargetAddress()`）、`targetMode` 合法（枚举范围内且 `Callback` 时 `target.code.length > 0`，否则 `CallbackTargetNotContract(target)`）
 3. **门槛**：社区总治理权为零回 `NoGovVotes(tokenAddress)`；否则 `canSubmit(tokenAddress, memberId)`（`InsufficientSubmitPower(tokenAddress, memberId, validVotes, requiredVotes)`）
 4. **本轮名额**：同一成员同社区同 Round 尚未推举过（`MemberAlreadySubmitted(tokenAddress, round, memberId)`），且社区本 Round 已推举数小于 1,000（`SubmitRoundFull(tokenAddress, round, 1000)`）
-5. 分配 `proposalId`，写入 `ProposalInfo` 与作者索引
+5. 分配 `proposalId`，写入 `ProposalInfo` 以及按作者、按 Target、按作者和 Target 联合查询的索引
 6. 发出 `ProposalCreated` 事件
-7. 写入三处推举状态：推举记录列表（供 `submitInfos`）、按 `proposalId` 的推举者（供 `isSubmitted` 与 `submitterIdByProposalId`）、按 `submitterId` 的反查（供 `proposalIdBySubmitterId`）
+7. 写入全轮及按 Target 的推举记录列表、按 `proposalId` 取推举者的映射、按 `submitterId` 取 Proposal 的映射
 8. 发出 `ProposalSubmitted` 事件
 9. 本社区本轮首笔推举时调用 `Phase.sync()`
 10. `Callback` 时回调 `IProposalTarget.onProposalCreated`
@@ -128,7 +133,7 @@ Proposal 由合约分配的头部与创建者提供的主体组成，对外以 `
 3. **门槛**：社区总治理权为零回 `NoGovVotes(tokenAddress)`；否则 `canSubmit(tokenAddress, memberId)`（`InsufficientSubmitPower(tokenAddress, memberId, validVotes, requiredVotes)`）
 4. **提案去重**：同一 Proposal 同轮尚未推举（`ProposalAlreadySubmitted(tokenAddress, round, proposalId)`）
 5. **本轮名额**：同一成员同社区同 Round 尚未推举其他 Proposal（`MemberAlreadySubmitted(tokenAddress, round, memberId)`），且社区本 Round 已推举数小于 1,000（`SubmitRoundFull(tokenAddress, round, 1000)`）
-6. 写入三处状态：推举记录列表、按 `proposalId` 的推举者、按 `submitterId` 的反查
+6. 写入全轮及按 Target 的推举记录列表、按 `proposalId` 取推举者的映射、按 `submitterId` 取 Proposal 的映射
 7. 发出 `ProposalSubmitted` 事件
 8. 本社区本轮首笔推举时调用 `Phase.sync()`
 9. `Callback` 时回调 `IProposalTarget.onProposalSubmitted`

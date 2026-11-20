@@ -36,7 +36,7 @@ Vote 管理当前治理 Round 的 Proposal 投票和加速快照。Proposal 的�
    3. **推举状态**：本轮已推举（`ProposalNotSubmitted(tokenAddress, round, proposalId)`）
    4. 记录加速快照：首投记全量，后续只补正增量
    5. **额度**：先算加上本笔后的成员累计票数，超过票上限回滚（`VoteLimitExceeded(tokenAddress, round, memberId, cumulativeVoteAmount, maxVoteAmount)`，`cumulativeVoteAmount` 为加上本笔后的成员累计票数）
-   6. 累加票数，维护本轮有票 Proposal 与投票者集合
+   6. 累加票数，维护本轮有票 Proposal、投票者集合及按 Target 查询的索引
    7. 若该社区当轮累计票数从零变为正，调用 `MINT_ADDRESS` 对应的 Mint 预留当轮激励
    8. 发出 `VoteCast` 事件（含本次 `voteAmount`、该成员本轮后置累计 `voteAmountTotal`、该轮后置总量 `totalVoteAmount`，以及成员加速快照 `voterBoost` 与全局 `totalVoterBoost`）
    9. `Callback` 且 `target` 非零时回调 `IProposalTarget.onProposalVoted`，失败回滚整笔
@@ -52,6 +52,10 @@ Vote 管理当前治理 Round 的 Proposal 投票和加速快照。Proposal 的�
 完整 ABI 见 [`IVote.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/IVote.sol)。它沿用旧 `LOVE20TKM/core/src/interfaces/ILOVE20Vote.sol` 的投票记录、增量机制和批量查询；BSC 将所有业务主体改为 `memberId`，并增加逐 Proposal 的不透明 Target Data 回调。
 
 旧接口的三对 `*Count`/`AtIndex` 枚举（共 6 个函数）改为三个分页入口：`votedProposalIds`（本轮有票 Proposal）、`votedProposalIdsByMemberId`（成员本轮投过的 Proposal，票数随 id 一起返回）、`voterIdsByProposalId`（Proposal 的投票者）。按指定 id 批量取票数走 `voteAmountsByMemberIdByProposalIds`。
+
+`votedProposalIdsByTarget` 按 Target 查询某社区一轮内收到过票的 Proposal，按该 Proposal 当轮首次收票的顺序排列。`votedProposalIdsByMemberIdByTarget` 限定为指定成员投过的 Proposal，按该成员当轮首次投给各 Proposal 的顺序排列，并逐项返回成员对该 Proposal 的当轮累计票数。重复投票累加票数，每个 Proposal 在对应列表中只出现一次。
+
+两条查询都按 Proposal 保存的 Target 地址匹配，涵盖 `Callback` 和 `NoCallback`。`totalCount` 为匹配的 Proposal 数量，`limit = 0` 或 `offset` 越界时只返回总数。未匹配任何 Proposal 时返回空数组与总数 `0`。`reverse = true` 按对应列表的逆序分页。
 
 `isRoundEnded(0)` 返回 `false`。投票调用者须持有 `memberId`，Proposal 必须已在当前轮推举。`proposalIds` 与 `voteAmounts` 必须非空且等长；`targetData` 可以传空外层数组，表示每笔回调均使用空 Target Data，若传入则必须与 `proposalIds` 等长；每笔票数必须为正。Proposal 为 `NoCallback` 时忽略对应 Target Data，不做额外校验；Proposal 为 `Callback` 时按输入顺序原样透传。批量没有协议固定长度上限，调用方可按区块 Gas 分批提交；测试记录首次失败规模。Core 不解析 Target Data 的业务内容。
 

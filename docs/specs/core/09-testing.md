@@ -49,10 +49,11 @@
 | Stake | 加速余额融合后的聚合守恒 | 源不带加速、目标已在额度内时融合前后 `totalBoostShares` 不变；对应 `StakeTest.testMergePreservesAggregate` |
 | [Proposal](05-submit.md) / [Vote](06-vote.md) | 零 Target、三类回调失败 | 拒绝并整体回滚 |
 | Proposal | `proposalIds`/`proposalIdsByAuthor`/`submitInfos` 分页：`offset` 越界、`limit` 超剩余、`reverse`、只取总数 | 三个查询都按 `(offset, limit, reverse)` 按页返回并给出真实总数，越界返回空数组且不回滚，`reverse` 时从新到旧；`proposalIds`/`proposalIdsByAuthor` 只回 `proposalId`；`limit = 0` 只回总数 |
+| Proposal | 按 Target、按作者与 Target、按 Round 与 Target 分页 | 按匹配后的集合计数和分页。提案列表按创建顺序，推举列表按当轮推举顺序。跨轮推举已有提案只更新当轮推举列表。对应 `SubmitTest.testProposalAndSubmitPaginationByTarget` |
 | Proposal | `proposalInfosByProposalIds(requestedProposalIds)` 批量：未分配 ID、批量缺项、批量大小 | 回 `ProposalInfo` 数组，与入参下标一一对应，无长度上限；任一 ID 未分配回滚 `ProposalNotFound`，不静默补空 |
 | Proposal | `submitInfos` 记录内容与轮次边界：同轮多笔推举、无推举的 Round、未开始的 Round | 每条记录同时含 `submitterId` 与 `proposalId`；无推举或未开始的 Round 返回空数组与 `0` 而不回滚 |
 | Proposal | 两条方向单键：`proposalIdBySubmitterId` 与 `submitterIdByProposalId` 互为逆、回 `0` 的三种情形 | 已推举时两条互为逆映射；未分配过的 `proposalId`、已分配但本轮未推举、本轮未推举的成员都回 `0` 而不回滚 |
-| Proposal | `submitNewProposal` 创建后立即推举：事件顺序、回调顺序、本轮名额、`Phase.sync` | 同一笔内先 `ProposalCreated` 后 `ProposalSubmitted`，先 `onProposalCreated` 后 `onProposalSubmitted`；写满三处推举状态并占用本 Round 名额；本轮首笔推举触发 `sync` |
+| Proposal | `submitNewProposal` 创建后立即推举：事件顺序、回调顺序、本轮名额、`Phase.sync` | 同一笔内先 `ProposalCreated` 后 `ProposalSubmitted`，先 `onProposalCreated` 后 `onProposalSubmitted`；写入推举状态与 Target 索引并占用本 Round 名额；本轮首笔推举触发 `sync` |
 | Proposal | 本轮首笔推举与 `Phase.sync` 的跨合约顺序 | `ProposalSubmitted` 的日志下标小于同笔 `PhaseSynchronized`；对应 `SubmitTest.testFirstSubmitPrecedesPhaseSync` |
 | Proposal | 鉴权、参数、存在性与门槛的顺序 | 非持有人 + 非法参数 → `NotMemberOwner`；非法参数 + 不满足门槛 → 精确参数错误；`submit` 不存在 `proposalId` + 不满足门槛 → `ProposalNotFound`；对应 `testSubmitNewProposalChecksAuthBeforeParameters`、`testSubmitNewProposalChecksParametersBeforeThreshold`、`testSubmitChecksAuthBeforeProposalExistence`、`testSubmitChecksProposalExistenceBeforeThreshold` |
 | Proposal | 两个入口的名额与去重交叉：先 `submitNewProposal` 再 `submit`、同轮重复创建、跨轮推举已有 Proposal | 同一成员同轮第二次推举回滚 `MemberAlreadySubmitted(tokenAddress, round, memberId)`；同一 Proposal 同轮第二次回滚 `ProposalAlreadySubmitted(tokenAddress, round, proposalId)`；跨轮推举已有 Proposal 成功且不触发创建回调 |
@@ -64,6 +65,7 @@
 | Mint | 独立销毁未用加速池、逐项 Proposal 销毁与尾差 | 轮末 `totalVoterBoost == 0` 时，通过 `burnUnusedBoostReward` 显式释放加速池，重复调用幂等。治理和提案结算期间未用加速池仍计入预留。未达标 Proposal 份额按单项释放，达标份额保持原值。全轮未达标时最后一次释放尾差，已处理票权包括零额份额。对应 `MintTest.testUnusedBoostPoolRequiresExplicitBurn`、`MintCoverage.t.sol`、`MintInvariant.t.sol` |
 | Mint | 零额结算的错误优先级 | 提案低于门槛且提案池为零时，优先回滚 `ProposalBelowThreshold`。错误中的 `voteAmount` 可区分零票与有票但未达标。整轮零票或提案池取整为零时回滚 `ProposalPoolEmpty`。通过门槛且池值为正但单项份额取整为零时回滚 `ProposalRewardRoundedToZero`。门槛为零、池值为正时，零票提案也触发此错误。对应 `MintTest.testBelowThresholdOutranksAnEmptyPool`、`testZeroProposalRewardMustRevert` 和 `testProposalRewardRoundedToZeroMustRevert` |
 | Vote / Mint | 投票时快照为 50，随后追加 30；再次投票或不投票；NFT 转移 | 不投票仍按 50，再投票按 80、总量仅加 30；结算和转移不重算；Vote 快照由 `VoteTest` 覆盖，Mint 结算由 `MintTest.testGovernanceQueryMatchesMintAndBoost` 覆盖 |
+| Vote | 按 Target 和按成员与 Target 查询本轮有票提案 | 每个列表按首次投票顺序记录匹配提案。重复投票累加票数，提案只出现一次。成员查询的票数与提案 ID 逐项对齐。对应 `VoteTest.testVotedProposalIdsByTarget`、`testVotedProposalIdsByMemberIdByTarget` |
 | Vote | `VoteCast` 的票数与加速锚点：同轮第二名投票人、两名有加速的成员、逐条折叠 | 单条日志同时给出本次增量、成员本轮后置累计、本轮后置总量与成员/全局加速快照；同一事件内各数值字段取值两两可区分；逐条折叠 `VoteCast` 得到的成员累计与轮总量等于事件携带的后置值，并与 `voteAmountByMemberId` / `totalVoteAmount` 一致；对应 `VoteTest.testVoteCastEventCarriesTheExactPayload`、`testVoteCastCumulativeAnchorsMatchTheFold` |
 | Mint | 销毁和铸造事件的累计值 | `ProposalRewardBurned` 和 `RewardBurned` 共用销毁累计值，两条铸造事件共用铸造累计值。对应 `MintEvents.t.sol` |
 | [Mint](07-mint.md) | 向上取整、跨多个阈值、社区上限 | 余数保留，新增次数不超上限，仅 Mint 可 `addLaunchCount`；对应 `testLaunchCreditMustUseActualPreMintSupply`、`testLaunchThresholdMustRoundUp`、`testLaunchCapRetainsUnconvertedCredit` |
