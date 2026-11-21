@@ -7,19 +7,19 @@ Rows are grouped by repo + signature; interfaces list every local declaration si
 | repo | signature | selector | interfaces | declarations | revert sites |
 | --- | --- | --- | --- | --- | --- |
 | action | `ActionMaxJoinAmountExceeded(uint256,uint256,uint256)` | `0x2de9248d` | `IGroupActionJoinErrors` | 1 | `action/src/GroupActionJoin.sol:707` |
-| action | `ActionNotCreated(address,uint256)` | `0x36c193ae` | `IActionExecutorErrors` | 1 | `action/src/ExecutorBase.sol:120`, `action/src/GroupActionManager.sol:117`, `action/src/GroupActionVerify.sol:1028`, `action/src/GroupServiceExecutor.sol:114`, `action/src/LpExecutor.sol:152` |
+| action | `ActionNotCreated(address,uint256)` | `0x36c193ae` | `IActionExecutorErrors` | 1 | `action/src/ExecutorBase.sol:120`, `action/src/GroupActionManager.sol:117`, `action/src/GroupActionVerify.sol:1034`, `action/src/GroupServiceExecutor.sol:114`, `action/src/LpExecutor.sol:152` |
 | action | `ActionTokenParentMismatch(address,address,address)` | `0x4757480b` | `IGroupServiceExecutorErrors` | 1 | `action/src/GroupServiceExecutor.sol:403` |
 | action | `AlreadyCreated(address,uint256)` | `0xca699de2` | `IActionTargetErrors` | 1 | `action/src/ActionTarget.sol:493` |
 | action | `AlreadyInOtherGroup(uint256,uint256,uint256)` | `0x246d0493` | `IGroupActionJoinErrors` | 1 | `action/src/GroupActionJoin.sol:76` |
 | action | `AlreadyJoined(address,uint256,uint256)` | `0x8a8846f7` | `IGroupServiceExecutorErrors` | 1 | `action/src/GroupServiceExecutor.sol:117` |
-| action | `ApplicationOverdue(uint256,uint256)` | `0x1020b409` | `IGroupActionVerifyErrors` | 1 | `action/src/GroupActionVerify.sol:694` |
-| action | `ApplicationStillResponsible(uint256,uint256)` | `0xc3bdbd45` | `IGroupActionVerifyErrors` | 1 | `action/src/GroupActionVerify.sol:284` |
-| action | `ApplicationStopped(uint256)` | `0x4b5e5960` | `IGroupActionVerifyErrors` | 1 | `action/src/GroupActionVerify.sol:247`, `action/src/GroupActionVerify.sol:690` |
+| action | `ApplicationOverdue(uint256,uint256)` | `0x1020b409` | `IGroupActionVerifyErrors` | 1 | `action/src/GroupActionVerify.sol:700` |
+| action | `ApplicationStillResponsible(uint256,uint256)` | `0xc3bdbd45` | `IGroupActionVerifyErrors` | 1 | `action/src/GroupActionVerify.sol:285` |
+| action | `ApplicationStopped(uint256)` | `0x4b5e5960` | `IGroupActionVerifyErrors` | 1 | `action/src/GroupActionVerify.sol:247`, `action/src/GroupActionVerify.sol:696` |
 | action | `BatchLengthMismatch(uint256,uint256)` | `0x81b5b207` | `IActionExecutorErrors` | 1 | `action/src/ExecutorBase.sol:77` |
 | action | `BelowMinJoinAmount(uint256,uint256)` | `0x21bb7f42` | `IGroupActionJoinErrors` | 1 | `action/src/GroupActionJoin.sol:693` |
 | action | `CreationDataTooShort(uint256,uint256)` | `0xe72efb98` | `IActionTargetErrors` | 1 | `action/src/ActionTarget.sol:485` |
 | action | `DeactivationLockedInActivatedRound(uint256,uint256)` | `0xb1f4faaf` | `IGroupActionManagerErrors` | 1 | `action/src/GroupActionManager.sol:167` |
-| action | `DescriptionTooLong(uint256,uint256)` | `0x71a24cf3` | `IGroupActionExecutorErrors` | 1 | `action/src/GroupActionManager.sol:426`, `action/src/GroupActionVerify.sol:1023` |
+| action | `DescriptionTooLong(uint256,uint256)` | `0x71a24cf3` | `IGroupActionExecutorErrors` | 1 | `action/src/GroupActionManager.sol:426`, `action/src/GroupActionVerify.sol:1029` |
 | action | `DistributionOverflow(uint256,uint256)` | `0x81281d08` | `IGroupRecipientsErrors` | 1 | `action/src/GroupRecipients.sol:345`, `action/src/GroupRecipients.sol:348` |
 | action | `DuplicateMemberId(uint256)` | `0x1a494813` | `IGroupRecipientsErrors` | 1 | `action/src/GroupRecipients.sol:339` |
 | action | `DuplicateVerificationKey(uint256,uint256)` | `0x55317718` | `IGroupActionManagerErrors` | 1 | `action/src/GroupActionManager.sol:380` |
@@ -32,7 +32,7 @@ Rows are grouped by repo + signature; interfaces list every local declaration si
 | action | `GroupMaxJoinAmountExceeded(uint256,uint256,uint256)` | `0xda731d54` | `IGroupActionJoinErrors` | 1 | `action/src/GroupActionJoin.sol:684` |
 | action | `GroupNotActive(uint256)` | `0xd28fa9ad` | `IGroupActionManagerErrors` | 1 | `action/src/GroupActionJoin.sol:370`, `action/src/GroupActionJoin.sol:677`, `action/src/GroupActionManager.sol:162`, `action/src/GroupActionManager.sol:214` |
 | action | `GroupNotExist(uint256)` | `0xfeddf96a` | `IGroupActionManagerErrors`, `IGroupServiceExecutorErrors` | 2 | `action/src/GroupActionManager.sol:50`, `action/src/GroupServiceExecutor.sol:54` |
-| action | `GroupVerificationAlreadyComplete(uint256,uint256)` | `0xec3ddd72` | `IGroupActionVerifyErrors` | 1 | `action/src/GroupActionVerify.sol:908` |
+| action | `GroupVerificationAlreadyComplete(uint256,uint256)` | `0xec3ddd72` | `IGroupActionVerifyErrors` | 1 | `action/src/GroupActionVerify.sol:914` |
 | action | `InexactJoinTokenTransfer(uint256,uint256)` | `0x783aa4d5` | `IGroupActionJoinErrors` | 1 | `action/src/GroupActionJoin.sol:123`, `action/src/GroupActionJoin.sol:142` |
 | action | `InsufficientActivationMinGovRatio(uint256,uint256,uint256)` | `0xfc04f2b0` | `IGroupActionManagerErrors` | 1 | `action/src/GroupActionManager.sol:454` |
 | action | `InsufficientGovRatio(uint256,uint256)` | `0x39a246e7` | `ILpExecutorErrors` | 1 | `action/src/LpExecutor.sol:162` |
@@ -48,11 +48,11 @@ Rows are grouped by repo + signature; interfaces list every local declaration si
 | action | `InvalidMinGovRatio(uint256)` | `0x30a418eb` | `ILpExecutorErrors` | 1 | `action/src/LpExecutor.sol:111` |
 | action | `InvalidRatioForPublicVerifier(uint256)` | `0x790182dd` | `IGroupServiceExecutorErrors` | 1 | `action/src/GroupServiceExecutor.sol:398` |
 | action | `InvalidVerifierPunishmentRatio(uint256)` | `0x85b55622` | `IGroupActionExecutorErrors` | 1 | `action/src/GroupActionManager.sol:84` |
-| action | `InvalidVoteDataLength(uint256,uint256)` | `0x29a6cba7` | `IGroupActionExecutorErrors` | 1 | `action/src/GroupActionVerify.sol:604` |
+| action | `InvalidVoteDataLength(uint256,uint256)` | `0x29a6cba7` | `IGroupActionExecutorErrors` | 1 | `action/src/GroupActionVerify.sol:610` |
 | action | `JoinNotOpen(address,uint256,uint256,uint256)` | `0x81013803` | `IActionTargetErrors` | 1 | `action/src/ActionTarget.sol:114` |
-| action | `MemberRewardPoolEmpty(address,uint256)` | `0x86b94627` | `IActionExecutorErrors` | 1 | `action/src/GroupActionExecutor.sol:817`, `action/src/GroupActionExecutor.sol:824`, `action/src/GroupServiceExecutor.sol:632`, `action/src/LpExecutor.sol:490`, `action/src/LpExecutor.sol:500` |
-| action | `MemberRewardRoundedToZero(address,uint256,uint256)` | `0xd632d7c1` | `IActionExecutorErrors` | 1 | `action/src/GroupActionExecutor.sol:829`, `action/src/GroupServiceExecutor.sol:634`, `action/src/LpExecutor.sol:512` |
-| action | `NoActiveApplication(uint256)` | `0xcda5095d` | `IGroupActionVerifyErrors` | 1 | `action/src/GroupActionVerify.sol:245`, `action/src/GroupActionVerify.sol:281`, `action/src/GroupActionVerify.sol:608` |
+| action | `MemberRewardPoolEmpty(address,uint256)` | `0x86b94627` | `IActionExecutorErrors` | 1 | `action/src/GroupActionExecutor.sol:833`, `action/src/GroupActionExecutor.sol:840`, `action/src/GroupServiceExecutor.sol:632`, `action/src/LpExecutor.sol:498`, `action/src/LpExecutor.sol:508` |
+| action | `MemberRewardRoundedToZero(address,uint256,uint256)` | `0xd632d7c1` | `IActionExecutorErrors` | 1 | `action/src/GroupActionExecutor.sol:845`, `action/src/GroupServiceExecutor.sol:634`, `action/src/LpExecutor.sol:520` |
+| action | `NoActiveApplication(uint256)` | `0xcda5095d` | `IGroupActionVerifyErrors` | 1 | `action/src/GroupActionVerify.sol:245`, `action/src/GroupActionVerify.sol:282`, `action/src/GroupActionVerify.sol:614` |
 | action | `NoGovVotes(address)` | `0xa0d4ddef` | `IGroupActionManagerErrors` | 1 | `action/src/GroupActionManager.sol:448` |
 | action | `NotActionTarget(address)` | `0x67b7e647` | `IActionExecutorErrors` | 1 | `action/src/ExecutorBase.sol:39` |
 | action | `NotGroupOwner(uint256)` | `0x54a55079` | `IGroupActionManagerErrors`, `IGroupServiceExecutorErrors` | 2 | `action/src/GroupActionManager.sol:39`, `action/src/GroupServiceExecutor.sol:57` |
@@ -61,7 +61,7 @@ Rows are grouped by repo + signature; interfaces list every local declaration si
 | action | `NotQualified(address,uint256,uint256)` | `0xd52b235e` | `IGroupServiceExecutorErrors` | 1 | `action/src/GroupServiceExecutor.sol:122` |
 | action | `NotSubmit(address)` | `0x3c7708ea` | `IActionTargetErrors` | 1 | `action/src/ActionTarget.sol:72` |
 | action | `NotVote(address)` | `0x20edde6a` | `IActionTargetErrors` | 1 | `action/src/ActionTarget.sol:79` |
-| action | `OriginScoresEmpty()` | `0xaafa066e` | `IGroupActionVerifyErrors` | 1 | `action/src/GroupActionVerify.sol:883` |
+| action | `OriginScoresEmpty()` | `0xaafa066e` | `IGroupActionVerifyErrors` | 1 | `action/src/GroupActionVerify.sol:889` |
 | action | `ProposalNotVoted(address,uint256)` | `0x82bbc7fd` | `IActionTargetErrors` | 1 | `action/src/ActionTarget.sol:259` |
 | action | `QuotaArrayLengthMismatch(uint256,uint256)` | `0x4a0b0bf7` | `IGroupActionJoinErrors` | 1 | `action/src/GroupActionJoin.sol:363` |
 | action | `QuotaMemberIsProvider(uint256)` | `0x3791977c` | `IGroupActionJoinErrors` | 1 | `action/src/GroupActionJoin.sol:380` |
@@ -74,10 +74,10 @@ Rows are grouped by repo + signature; interfaces list every local declaration si
 | action | `RewardAlreadyMinted(address,uint256,uint256,uint256)` | `0xf41a3e9f` | `IActionExecutorErrors` | 1 | `action/src/ExecutorBase.sol:133` |
 | action | `RoundAfterMintWindow(uint256,uint256)` | `0x45297019` | `IActionExecutorErrors` | 1 | `action/src/ExecutorBase.sol:130`, `action/src/GroupActionExecutor.sol:125` |
 | action | `RoundBeforeActionCreated(uint256,uint256)` | `0x1edd1ded` | `IActionExecutorErrors` | 1 | `action/src/ExecutorBase.sol:123` |
-| action | `RoundNotStarted(uint256,uint256)` | `0xea74f32b` | `IActionExecutorErrors`, `IActionTargetErrors` | 2 | `action/src/ActionTarget.sol:439`, `action/src/ExecutorBase.sol:106`, `action/src/ExecutorBase.sol:127`, `action/src/ExecutorBase.sol:143`, `action/src/ExecutorBase.sol:90`, `action/src/ExecutorBase.sol:98`, `action/src/GroupActionExecutor.sol:122`, `action/src/GroupActionManager.sol:506`, `action/src/GroupActionVerify.sol:1019`, `action/src/GroupActionVerify.sol:803` |
-| action | `ScoreCountExceeded(uint256,uint256,uint256)` | `0xc6f0561d` | `IGroupActionVerifyErrors` | 1 | `action/src/GroupActionVerify.sol:914` |
-| action | `ScoreLimitExceeded(uint256,uint256,uint256)` | `0x743bbb84` | `IGroupActionVerifyErrors` | 1 | `action/src/GroupActionVerify.sol:892` |
-| action | `StartIndexMismatch(uint256,uint256)` | `0xdadbe49c` | `IGroupActionVerifyErrors` | 1 | `action/src/GroupActionVerify.sol:911` |
+| action | `RoundNotStarted(uint256,uint256)` | `0xea74f32b` | `IActionExecutorErrors`, `IActionTargetErrors` | 2 | `action/src/ActionTarget.sol:439`, `action/src/ExecutorBase.sol:106`, `action/src/ExecutorBase.sol:127`, `action/src/ExecutorBase.sol:143`, `action/src/ExecutorBase.sol:90`, `action/src/ExecutorBase.sol:98`, `action/src/GroupActionExecutor.sol:122`, `action/src/GroupActionManager.sol:506`, `action/src/GroupActionVerify.sol:1025`, `action/src/GroupActionVerify.sol:809` |
+| action | `ScoreCountExceeded(uint256,uint256,uint256)` | `0xc6f0561d` | `IGroupActionVerifyErrors` | 1 | `action/src/GroupActionVerify.sol:920` |
+| action | `ScoreLimitExceeded(uint256,uint256,uint256)` | `0x743bbb84` | `IGroupActionVerifyErrors` | 1 | `action/src/GroupActionVerify.sol:898` |
+| action | `StartIndexMismatch(uint256,uint256)` | `0xdadbe49c` | `IGroupActionVerifyErrors` | 1 | `action/src/GroupActionVerify.sol:917` |
 | action | `TooManyRecipients(uint256,uint256)` | `0x3971ddf8` | `IGroupRecipientsErrors` | 1 | `action/src/GroupRecipients.sol:321` |
 | action | `TooManyVerificationEntries(uint256,uint256)` | `0x60eec811` | `IGroupActionManagerErrors` | 1 | `action/src/GroupActionManager.sol:354` |
 | action | `TooManyVerificationValues(uint256,uint256)` | `0x4097cdca` | `IGroupActionJoinErrors` | 1 | `action/src/GroupActionJoin.sol:753` |
@@ -85,17 +85,17 @@ Rows are grouped by repo + signature; interfaces list every local declaration si
 | action | `UnboundProposal(address,uint256)` | `0x283a3095` | `IActionTargetErrors` | 1 | `action/src/ActionTarget.sol:570` |
 | action | `UnexpectedVoteData()` | `0xfad300e6` | `IGroupServiceExecutorErrors`, `ILpExecutorErrors` | 2 | `action/src/GroupServiceExecutor.sol:431`, `action/src/LpExecutor.sol:138` |
 | action | `UnknownSourceAction(address,uint256)` | `0x6ea46b42` | `IGroupRecipientsErrors` | 1 | `action/src/GroupRecipients.sol:88` |
-| action | `VerificationBatchTooLarge(uint256,uint256)` | `0x3b91a8c8` | `IGroupActionVerifyErrors` | 1 | `action/src/GroupActionVerify.sol:886` |
+| action | `VerificationBatchTooLarge(uint256,uint256)` | `0x3b91a8c8` | `IGroupActionVerifyErrors` | 1 | `action/src/GroupActionVerify.sol:892` |
 | action | `VerificationDescriptionTooLong(uint256,uint256,uint256)` | `0xb9e185d5` | `IGroupActionManagerErrors` | 1 | `action/src/GroupActionManager.sol:373` |
 | action | `VerificationInfoLengthMismatch(uint256,uint256)` | `0xe5b734dc` | `IGroupActionExecutorErrors` | 1 | `action/src/GroupActionJoin.sol:758`, `action/src/GroupActionManager.sol:351` |
 | action | `VerificationKeyEmpty(uint256)` | `0x018dba2b` | `IGroupActionManagerErrors` | 1 | `action/src/GroupActionManager.sol:362` |
 | action | `VerificationKeyTooLong(uint256,uint256,uint256)` | `0xcbe7d4ac` | `IGroupActionManagerErrors` | 1 | `action/src/GroupActionManager.sol:366` |
 | action | `VerificationValueTooLong(uint256,uint256,uint256)` | `0x762fe301` | `IGroupActionJoinErrors` | 1 | `action/src/GroupActionJoin.sol:764` |
-| action | `VerifierNotElected(uint256,uint256)` | `0x068d9c34` | `IGroupActionVerifyErrors` | 1 | `action/src/GroupActionVerify.sol:817` |
+| action | `VerifierNotElected(uint256,uint256)` | `0x068d9c34` | `IGroupActionVerifyErrors` | 1 | `action/src/GroupActionVerify.sol:823` |
 | action | `WithdrawAmountExceeded(uint256,uint256)` | `0xbffdd230` | `IGroupActionJoinErrors`, `ILpExecutorErrors` | 2 | `action/src/GroupActionJoin.sol:162`, `action/src/LpExecutor.sol:207` |
 | action | `ZeroActionTokenAddress()` | `0x95bf90a9` | `IGroupServiceExecutorErrors` | 1 | `action/src/GroupServiceExecutor.sol:395` |
-| action | `ZeroEffectiveJoinAmount(address,uint256,uint256)` | `0xcf075bed` | `IActionExecutorErrors` | 1 | `action/src/LpExecutor.sol:510` |
-| action | `ZeroFinalScore(address,uint256,uint256)` | `0xd4553417` | `IActionExecutorErrors` | 1 | `action/src/GroupActionExecutor.sol:827` |
+| action | `ZeroEffectiveJoinAmount(address,uint256,uint256)` | `0xcf075bed` | `IActionExecutorErrors` | 1 | `action/src/LpExecutor.sol:518` |
+| action | `ZeroFinalScore(address,uint256,uint256)` | `0xd4553417` | `IActionExecutorErrors` | 1 | `action/src/GroupActionExecutor.sol:843` |
 | action | `ZeroGroupId()` | `0x32002782` | `IGroupActionJoinErrors` | 1 | `action/src/GroupActionJoin.sol:200`, `action/src/GroupActionJoin.sol:366`, `action/src/GroupActionJoin.sol:417`, `action/src/GroupActionJoin.sol:70` |
 | action | `ZeroJoinTokenAddress()` | `0x8a1b296f` | `IGroupActionExecutorErrors`, `ILpExecutorErrors` | 2 | `action/src/GroupActionManager.sol:68`, `action/src/LpExecutor.sol:105` |
 | action | `ZeroMinJoinAmount()` | `0x155083e4` | `IGroupActionManagerErrors` | 1 | `action/src/GroupActionManager.sol:419` |
@@ -103,9 +103,9 @@ Rows are grouped by repo + signature; interfaces list every local declaration si
 | action | `ZeroQuotaAmount(uint256)` | `0xb88ef067` | `IGroupActionJoinErrors` | 1 | `action/src/GroupActionJoin.sol:197`, `action/src/GroupActionJoin.sol:383` |
 | action | `ZeroRecipientRatio(uint256)` | `0x4a3b43a3` | `IGroupRecipientsErrors` | 1 | `action/src/GroupRecipients.sol:331` |
 | action | `ZeroRewardWeight(address,uint256,uint256)` | `0x7a448f07` | `IActionExecutorErrors` | 1 | `action/src/GroupServiceExecutor.sol:629` |
-| action | `ZeroVerifyVotes(address,uint256)` | `0x131e332f` | `IGroupActionVerifyErrors` | 1 | `action/src/GroupActionVerify.sol:1031` |
+| action | `ZeroVerifyVotes(address,uint256)` | `0x131e332f` | `IGroupActionVerifyErrors` | 1 | `action/src/GroupActionVerify.sol:1037` |
 | core | `AirdropAlreadyClaimed(address,address)` | `0x3349f079` | `IAirdropDistributorErrors` | 1 | `core/src/distributor/AirdropDistributor.sol:108` |
-| core | `BoostCapExceeded(address,uint256,uint256,uint256)` | `0x837ed964` | `IStakeErrors` | 1 | `core/src/Stake.sol:464`, `core/src/Stake.sol:688` |
+| core | `BoostCapExceeded(address,uint256,uint256,uint256)` | `0x837ed964` | `IStakeErrors` | 1 | `core/src/Stake.sol:464`, `core/src/Stake.sol:692` |
 | core | `CallbackTargetNotContract(address)` | `0x5816a336` | `ISubmitErrors` | 1 | `core/src/Submit.sol:288` |
 | core | `ClaimDelayRoundsExceeded(uint256,uint256)` | `0x4e25c8d7` | `IAirdropDistributorErrors` | 1 | `core/src/distributor/AirdropDistributor.sol:249` |
 | core | `ClaimRoundNotReached(address,uint256,uint256)` | `0xff978a22` | `IAirdropDistributorErrors` | 1 | `core/src/distributor/AirdropDistributor.sol:104` |
@@ -113,11 +113,11 @@ Rows are grouped by repo + signature; interfaces list every local declaration si
 | core | `DeadlineExpired(uint256)` | `0xbc3088ef` | `IStakeErrors` | 1 | `core/src/Stake.sol:209` |
 | core | `DetailsTooLong(uint256,uint256)` | `0x8be47d4d` | `ISubmitErrors` | 1 | `core/src/Submit.sol:280` |
 | core | `DistributorNotContract(address)` | `0x7c7610b0` | `ILaunchErrors` | 1 | `core/src/Launch.sol:321` |
-| core | `InexactTokenTransfer(address,uint256,uint256)` | `0xc1a4db95` | `IStakeErrors` | 1 | `core/src/Stake.sol:1176`, `core/src/Stake.sol:1178`, `core/src/Stake.sol:1272`, `core/src/Stake.sol:1274`, `core/src/Stake.sol:968`, `core/src/Stake.sol:975` |
+| core | `InexactTokenTransfer(address,uint256,uint256)` | `0xc1a4db95` | `IStakeErrors` | 1 | `core/src/Stake.sol:1184`, `core/src/Stake.sol:1186`, `core/src/Stake.sol:1280`, `core/src/Stake.sol:1282`, `core/src/Stake.sol:976`, `core/src/Stake.sol:983` |
 | core | `InsufficientLaunchCount(uint256,uint256,uint256)` | `0x750e6e06` | `ILaunchErrors` | 1 | `core/src/Launch.sol:108`, `core/src/Launch.sol:169` |
 | core | `InsufficientSubmitPower(address,uint256,uint256,uint256)` | `0x6898aba8` | `ISubmitErrors` | 1 | `core/src/Submit.sol:100` |
 | core | `InvalidDistributorDataLength(uint256,uint256)` | `0xecd41092` | `IAirdropDistributorErrors` | 1 | `core/src/distributor/AirdropDistributor.sol:86` |
-| core | `InvalidPromisedWaitingPhases(uint256,uint256,uint256)` | `0x50a046ad` | `IStakeErrors` | 1 | `core/src/Stake.sol:699` |
+| core | `InvalidPromisedWaitingPhases(uint256,uint256,uint256)` | `0x50a046ad` | `IStakeErrors` | 1 | `core/src/Stake.sol:703` |
 | core | `InvalidProof()` | `0x09bde339` | `IAirdropDistributorErrors` | 1 | `core/src/distributor/AirdropDistributor.sol:112`, `core/src/distributor/AirdropDistributor.sol:115` |
 | core | `InvalidTokenSymbolCharacters()` | `0x7e279c58` | `ILaunchErrors` | 1 | `core/src/Launch.sol:277` |
 | core | `InvalidTokenSymbolLength(uint256,uint256)` | `0x18a4669e` | `ILaunchErrors` | 1 | `core/src/Launch.sol:276` |
@@ -135,7 +135,7 @@ Rows are grouped by repo + signature; interfaces list every local declaration si
 | core | `NameInvalidCharacters()` | `0x9954195a` | `IMemberNFTErrors` | 1 | `core/src/MemberNFT.sol:189` |
 | core | `NameTooLong(uint256,uint256)` | `0x243cf1c9` | `IMemberNFTErrors` | 1 | `core/src/MemberNFT.sol:188` |
 | core | `NoGovVotes(address)` | `0xa0d4ddef` | `ISubmitErrors` | 1 | `core/src/Submit.sol:97` |
-| core | `NoStakedLiquidity(address,uint256)` | `0x42b29552` | `IStakeErrors` | 1 | `core/src/Stake.sol:722` |
+| core | `NoStakedLiquidity(address,uint256)` | `0x42b29552` | `IStakeErrors` | 1 | `core/src/Stake.sol:726` |
 | core | `NoVotingPower(address,uint256)` | `0x8102b749` | `IVoteErrors` | 1 | `core/src/Vote.sol:92` |
 | core | `NotLaunchContract(address)` | `0x78654bfe` | `IAirdropDistributorErrors` | 1 | `core/src/distributor/AirdropDistributor.sol:47` |
 | core | `NotMemberOwner(uint256)` | `0x33393244` | `ILaunchErrors`, `IMintErrors`, `IStakeErrors`, `ISubmitErrors`, `IVoteErrors` | 5 | `core/src/Launch.sol:36`, `core/src/Mint.sol:277`, `core/src/Stake.sol:202`, `core/src/Submit.sol:106`, `core/src/Vote.sol:68` |
@@ -145,11 +145,11 @@ Rows are grouped by repo + signature; interfaces list every local declaration si
 | core | `NotSnapshotUriUpdater(address,uint256)` | `0x52ed8447` | `IAirdropDistributorErrors` | 1 | `core/src/distributor/AirdropDistributor.sol:54`, `core/src/distributor/AirdropDistributor.sol:57` |
 | core | `NotVoteContract(address)` | `0x2d4ffecc` | `IMintErrors` | 1 | `core/src/Mint.sol:103` |
 | core | `PairCreationFailed(address)` | `0x90fa4b05` | `ILaunchErrors` | 1 | `core/src/Launch.sol:264` |
-| core | `PairMissing(address)` | `0xeabd8816` | `IStakeErrors` | 1 | `core/src/Stake.sol:756` |
+| core | `PairMissing(address)` | `0xeabd8816` | `IStakeErrors` | 1 | `core/src/Stake.sol:760` |
 | core | `ParentTokenNotRegistered(address)` | `0x7201021d` | `ILaunchErrors` | 1 | `core/src/Launch.sol:104` |
 | core | `PhaseNotStarted()` | `0xf2469089` | `IPhaseErrors` | 1 | `core/src/Phase.sol:55`, `core/src/Phase.sol:64`, `core/src/Phase.sol:95` |
-| core | `PromisedWaitingPhasesDecreased(uint256,uint256)` | `0x80336ded` | `IStakeErrors` | 1 | `core/src/Stake.sol:315`, `core/src/Stake.sol:737` |
-| core | `PromisedWaitingPhasesRewritten(address,uint256,uint256,uint256)` | `0xf2be37f2` | `IStakeErrors` | 1 | `core/src/Stake.sol:734` |
+| core | `PromisedWaitingPhasesDecreased(uint256,uint256)` | `0x80336ded` | `IStakeErrors` | 1 | `core/src/Stake.sol:315`, `core/src/Stake.sol:741` |
+| core | `PromisedWaitingPhasesRewritten(address,uint256,uint256,uint256)` | `0xf2be37f2` | `IStakeErrors` | 1 | `core/src/Stake.sol:738` |
 | core | `ProposalAlreadySubmitted(address,uint256,uint256)` | `0x9dcaa584` | `ISubmitErrors` | 1 | `core/src/Submit.sol:142` |
 | core | `ProposalBelowThreshold(address,uint256,uint256,uint256,uint256)` | `0xbdf55b4f` | `IMintErrors` | 1 | `core/src/Mint.sol:245` |
 | core | `ProposalIdsEmpty()` | `0x46b9908e` | `IVoteErrors` | 1 | `core/src/Vote.sol:81` |
@@ -168,23 +168,23 @@ Rows are grouped by repo + signature; interfaces list every local declaration si
 | core | `SnapshotUriEmpty()` | `0xdd461fc3` | `IAirdropDistributorErrors` | 1 | `core/src/distributor/AirdropDistributor.sol:145` |
 | core | `SnapshotUriTooLong(uint256,uint256)` | `0xf2f9c2c9` | `IAirdropDistributorErrors` | 1 | `core/src/distributor/AirdropDistributor.sol:146` |
 | core | `SourceEqualsTarget(uint256)` | `0xbbef66e9` | `ILaunchErrors`, `IStakeErrors` | 2 | `core/src/Launch.sol:158`, `core/src/Stake.sol:432` |
-| core | `StakeNotStarted()` | `0xcd329a46` | `IStakeErrors` | 1 | `core/src/Stake.sol:694` |
+| core | `StakeNotStarted()` | `0xcd329a46` | `IStakeErrors` | 1 | `core/src/Stake.sol:698` |
 | core | `StakeRightsUsed(address,uint256,uint256)` | `0xd2632e80` | `IStakeErrors` | 1 | `core/src/Stake.sol:340`, `core/src/Stake.sol:446` |
 | core | `SubmitRoundFull(address,uint256,uint256)` | `0x0fe6aa6e` | `ISubmitErrors` | 1 | `core/src/Submit.sol:340` |
 | core | `SwapFeeRatiosConsumeTheWholeAmount(uint256,uint256)` | `0x8a727c00` | `IStakeErrors` | 1 | `core/src/Stake.sol:176` |
-| core | `TargetPromisedWaitingPhasesTooShort(uint256,uint256)` | `0xe393d50b` | `IStakeErrors` | 1 | `core/src/Stake.sol:772` |
+| core | `TargetPromisedWaitingPhasesTooShort(uint256,uint256)` | `0xe393d50b` | `IStakeErrors` | 1 | `core/src/Stake.sol:776` |
 | core | `TitleEmpty()` | `0x5d0ff12d` | `ISubmitErrors` | 1 | `core/src/Submit.sol:276` |
 | core | `TitleTooLong(uint256,uint256)` | `0x83dc6558` | `ISubmitErrors` | 1 | `core/src/Submit.sol:277` |
 | core | `TokenAlreadyConfigured(address)` | `0x54d67cef` | `IAirdropDistributorErrors` | 1 | `core/src/distributor/AirdropDistributor.sol:246` |
 | core | `TokenNameEmpty()` | `0x0d7673b5` | `ILaunchErrors` | 1 | `core/src/Launch.sol:246` |
 | core | `TokenNameTooLong(uint256,uint256)` | `0x312f5772` | `ILaunchErrors` | 1 | `core/src/Launch.sol:247` |
 | core | `TokenNotConfigured(address)` | `0xa5be5e0f` | `IAirdropDistributorErrors` | 1 | `core/src/distributor/AirdropDistributor.sol:52`, `core/src/distributor/AirdropDistributor.sol:99` |
-| core | `TokenNotRegistered(address)` | `0xddef98d7` | `ILaunchErrors`, `IMintErrors`, `IStakeErrors` | 3 | `core/src/Launch.sol:163`, `core/src/Launch.sol:191`, `core/src/Mint.sol:110`, `core/src/Mint.sol:144`, `core/src/Stake.sol:706` |
+| core | `TokenNotRegistered(address)` | `0xddef98d7` | `ILaunchErrors`, `IMintErrors`, `IStakeErrors` | 3 | `core/src/Launch.sol:163`, `core/src/Launch.sol:191`, `core/src/Mint.sol:110`, `core/src/Mint.sol:144`, `core/src/Stake.sol:710` |
 | core | `TokenSymbolAlreadyExists(bytes32)` | `0x98f23aa3` | `ILaunchErrors` | 1 | `core/src/Launch.sol:124` |
 | core | `TokenSymbolEmpty()` | `0xf09ce013` | `ILaunchErrors` | 1 | `core/src/Launch.sol:250` |
 | core | `TokenSymbolTooLong(uint256,uint256)` | `0xb77a560d` | `ILaunchErrors` | 1 | `core/src/Launch.sol:251` |
 | core | `UnlockRoundNotReached(uint256,uint256)` | `0x39cb81ec` | `IStakeErrors` | 1 | `core/src/Stake.sol:388` |
-| core | `UnstakeAlreadyRequested(address,uint256)` | `0xe8e88f47` | `IStakeErrors` | 1 | `core/src/Stake.sol:714` |
+| core | `UnstakeAlreadyRequested(address,uint256)` | `0xe8e88f47` | `IStakeErrors` | 1 | `core/src/Stake.sol:718` |
 | core | `UnstakeNotRequested(address,uint256)` | `0x44357cd8` | `IStakeErrors` | 1 | `core/src/Stake.sol:380` |
 | core | `VoteDataLengthMismatch(uint256,uint256)` | `0x1b25029d` | `IVoteErrors` | 1 | `core/src/Vote.sol:87` |
 | core | `VoteLimitExceeded(address,uint256,uint256,uint256,uint256)` | `0xb60c38d3` | `IVoteErrors` | 1 | `core/src/Vote.sol:283` |
@@ -192,7 +192,7 @@ Rows are grouped by repo + signature; interfaces list every local declaration si
 | core | `ZeroCount()` | `0x047b9cec` | `ILaunchErrors` | 1 | `core/src/Launch.sol:160`, `core/src/Launch.sol:190` |
 | core | `ZeroDistributorAddress()` | `0x71702079` | `ILOVE20TokenErrors`, `ILaunchErrors` | 2 | `core/src/LOVE20Token.sol:24`, `core/src/Launch.sol:100` |
 | core | `ZeroInitialSupply()` | `0x9243dc6c` | `ILOVE20TokenErrors` | 1 | `core/src/LOVE20Token.sol:22` |
-| core | `ZeroLiquidityMinted()` | `0xf4791324` | `IStakeErrors` | 1 | `core/src/Stake.sol:979` |
+| core | `ZeroLiquidityMinted()` | `0xf4791324` | `IStakeErrors` | 1 | `core/src/Stake.sol:987` |
 | core | `ZeroLpFeeRatio()` | `0x7d3a91cd` | `IStakeErrors` | 1 | `core/src/Stake.sol:171` |
 | core | `ZeroMerkleRoot()` | `0x9266ee62` | `IAirdropDistributorErrors` | 1 | `core/src/distributor/AirdropDistributor.sol:247` |
 | core | `ZeroParentTokenAmount()` | `0xe6e1b13a` | `IStakeErrors` | 1 | `core/src/Stake.sol:232` |
