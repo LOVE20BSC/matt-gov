@@ -137,7 +137,7 @@ EIP-170 限制部署字节码 ≤ 24,576 字节。超过时：
 
 - **下标对齐**：返回数组长度等于入参长度，第 `i` 项对应第 `i` 个 id；不做「只回存在的那几条」，否则调用方无从得知缺哪个。
 - **无效即整笔回滚、不补空**：任何 id 不可用就回滚（`proposalInfosByProposalIds` 给 `ProposalNotFound`）。这条只管数组——标量没有位置语义，`proposalIdBySubmitterId` 与 `submitterIdByProposalId` 回 `0` 表示「本轮未推举」是合法的。
-- **只读且不写状态的不设长度上限**：上限是为防「调用方传大数组、让合约替它在本笔里干活」的 gas 转嫁；只读没有这条路径，超限只是调用方自己 out-of-gas，上限由区块 gas 自然给出。决定成本的是单条体量而非条数——`proposalInfosByProposalIds` 回含可能较大的 `title`/`details`/`targetData`（各有上限）的记录，所以能按 id 批量读、却不能进分页。写状态或成本会落在第三方的批量不适用本豁免，必须有明确上限并写明来源。
+- **只读且不写状态的不设长度上限**：上限是为防「调用方传大数组、让合约替它在本笔里干活」的 gas 转嫁；只读没有这条路径，超限只是调用方自己 out-of-gas，上限由区块 gas 自然给出。决定成本的是单条体量而非条数——`proposalInfosByProposalIds` 回含可能较大的 `title`/`details`/`creationData`（各有上限）的记录，所以能按 id 批量读、却不能进分页。写状态或成本会落在第三方的批量不适用本豁免，必须有明确上限并写明来源。
 
 审查时按本节核对，并在报告里写明该集合的**有界性判据**与**页内成员是否定长**。
 
@@ -162,7 +162,7 @@ EIP-170 限制部署字节码 ≤ 24,576 字节。超过时：
 - 账本与映射状态不写成 `public`：自动 getter 的 JSON ABI 入参没有字段名，与冻结接口声明的 `tokenAddress`/`memberId`/`symbol` 不一致。改用 `internal` 状态 + 显式 getter 函数，函数名、参数名与返回形态与冻结接口逐字段对齐，selector 不变。
 - `init` 与构造函数的参数名与对应 getter、参数表一致；状态变量按 naming-standards §八 大写或在 `_` 命名空间，参数不带 `_` 后缀。
 - 错误名、参数与 selector 不轻改；只有无法表达语义、产生歧义或造成安全问题时才修改。
-- Core 统一使用 `Proposal`；Action 层对已绑定 Executor 的 Proposal ID 统一以 Action ID 称呼——通用别名 `actionId`，带业务前缀时用 `<业务名>ActionId`（如服务提案的 `serviceActionId`）；未绑定场景（如 `UnboundProposal`）保留 `proposalId`。
+- Core 统一使用 `Proposal`；Action 层对已绑定 Executor 的 Proposal ID 统一以 Action ID 称呼——通用别名 `actionId`，带业务前缀时用 `<业务名>ActionId`（如服务提案的 `serviceActionId`）；共享的 `IProposalTarget` 回调和未绑定场景（如 `UnboundProposal`）保留 `proposalId`。
 - 按成员身份筛选的接口统一用 `ByMemberId`，不再用 `ByAccount`。
 - **社区级聚合一律用 `total*`，不用 `global*`**。成对命名：`memberStake` / `totalStake`、`validGovVotes` / `totalValidGovVotes`、`validBoostShares` / `totalValidBoostShares`；结构体 `MemberStake` / `TotalStake`。事件与结构体里的聚合字段同样是 `total*`（`totalLiquidityShares`、`totalVotes`、`totalVoterBoost`），因此 getter 与它喂给的事件字段通常同名，折叠对账时可按名字配对（`totalValidGovVotes()` ≡ `LiquidityStaked.totalValidGovVotes`）；LP 账本是本段末登记的窄例外。只在社区级存在的累计计数器同样是 `total*`（`totalBurnedToken`、`totalParentTokenBurned`、`MemberNFT.totalBurnedForMint`）。`total*` 是**时点存量**；需要按轮给出社区流量时，拆成 `total*Added` / `total*Removed` 两条**累计**账本，`total*` 恒等于二者之差——不单独维护，也不引入第三种口径。两条账本只在社区净额变化时写：成员之间的搬运净额为零，各记一笔会把差值抬成两倍。LP 账本是一个窄例外：`lastFeeLp` / `lastWithdrawableLp` 是存储基准，`totalStake()` 返回的 `feeLp` / `withdrawableLp` 是查询时现值，事件里的 `totalFeeLp` / `totalWithdrawableLp` 是后置总账；三者语义不同，按各自时点命名，不强行同名。
 - **比例参数统一 `1e18` 精度**：以 `1e18` 表示 100%；纯比值（如 `withdrawable : fee`）以 `1e18` 表示 1:1。命名用 `*_RATIO` / `*_THRESHOLD`；不得再用千分比、百分比、万分比等刻度。阈值比较一律交叉相乘（如 `a * 1e18 >= b * threshold`），避免先除后比引入截断；当交叉相乘可能溢出时，改用 `Math.mulDiv` 计算 `ceil` 门槛后再比较（数学等价）。历史 `*_PER_THOUSAND` 属旧命名，随该模块下一次接口变更改为 `*_RATIO` 并重定标，不为改名单开提交；新接口不得沿用。

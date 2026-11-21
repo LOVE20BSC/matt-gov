@@ -5,7 +5,7 @@
 ## 设计原则
 
 **通用部分**（在 `IActionExecutor` 中定义）：
-- 继承 `IProposalTarget`，实现 Core 层的三类回调；回调仅接受 ActionTarget 调用
+- [`IActionExecutor`](https://github.com/LOVE20BSC/action/blob/main/src/interfaces/IActionExecutor.sol) 从 Core 的 `IProposalTarget` 继承创建、推举和投票回调的声明。Executor 侧由 ActionTarget 调用。创建收到已经拆出的执行配置，推举和投票收到各自当次的数据。内置 Executor 的推举回调只校验调用者。共享回调的 ABI 参数沿用 `proposalId`，同一编号在行动业务接口中称为 `actionId`
 - `ACTION_TARGET_ADDRESS()` — 自证绑定：ActionTarget 在 `onProposalCreated` 用它与 `address(this)` 握手，防止 executor 误配
 - `exit(tokenAddress, actionId, memberId)` — 完全退出的签名是通用的
 - `mintMemberReward(...)` / `memberReward(...)` 与事件 `MemberRewardMinted` — 成员级激励的铸造与查询，签名三家一致（成员级激励裁决）
@@ -16,7 +16,7 @@
   推导与守卫分层见 [阶段模型](02-phase-model.md)：轴库只做 `phase → round` 纯换算，不 import 错误接口；`joinRound` 由中立库 `ActionRoundAxis` 唯一定义，`ExecutorBase._joinRound()` 是它的单一实现点（非 `virtual`），类型轴只保留各自的 `verifyRound` / `mintRound`。
 
 **非通用部分**（各 Executor 自行定义）：
-- 构造函数与配置项 — LpExecutor / GroupActionExecutor 只收 ActionTarget（后者另收 splits），GroupServiceExecutor 只收 GroupActionExecutor（ActionTarget 从它反查）；行动配置来自行动创建时的 Target Data
+- 构造函数与配置项 — LpExecutor / GroupActionExecutor 只收 ActionTarget（后者另收 splits），GroupServiceExecutor 只收 GroupActionExecutor（ActionTarget 从它反查）。每种 Executor 的创建配置结构体在各自接口中定义
 - `join` — 参数因行动类型而异：
   - `ILpExecutor`: `join(tokenAddress, actionId, memberId, amount)`
   - `IGroupActionExecutor`: `join(tokenAddress, actionId, groupId, memberId, amount, providerId, verificationValues)` — 多了 `groupId` 与 `providerId`
@@ -56,34 +56,7 @@ event GroupActionJoined(address indexed tokenAddress, uint256 indexed actionId,
 
 ## 接口定义
 
-```solidity
-interface IActionExecutor is IProposalTarget, IActionExecutorEvents, IActionExecutorErrors {
-    function ACTION_TARGET_ADDRESS() external view returns (address);
-    function STAKE_ADDRESS() external view returns (address);
-    function MEMBER_NFT_ADDRESS() external view returns (address);
-    function PHASE_ADDRESS() external view returns (address);
-
-    function exit(address tokenAddress, uint256 actionId, uint256 memberId) external;
-    function mintMemberReward(address tokenAddress, uint256 actionId, uint256 round, uint256 memberId)
-        external returns (uint256 mintAmount, uint256 burnAmount);
-    function mintMemberRewards(address tokenAddress, uint256[] calldata actionIds, uint256[] calldata rounds,
-        uint256 memberId)
-        external returns (uint256[] memory mintAmounts, uint256[] memory burnAmounts);
-
-    function currentVoteRound() external view returns (uint256);
-    function currentJoinRound() external view returns (uint256);
-    function currentMintRound() external view returns (uint256);
-    function memberReward(address tokenAddress, uint256 actionId, uint256 round, uint256 memberId)
-        external view returns (uint256 mintAmount, uint256 burnAmount, bool minted);
-    function joinedAmountByActionId(address tokenAddress, uint256 actionId, uint256 round) external view returns (uint256 amount);
-    function joinedAmountByMemberId(address tokenAddress, uint256 actionId, uint256 round, uint256 memberId)
-        external view returns (uint256 amount);
-    function joinTokenAddress(address tokenAddress, uint256 actionId)
-        external view returns (address joinedTokenAddress);
-}
-```
-
-`IActionExecutor` 装六处真正共享的成员：自证绑定、初始化查询、完全退出、Round 查询、成员级激励（`mintMemberReward`/`mintMemberRewards`/`memberReward` 与事件 `MemberRewardMinted`，成员级激励裁决定稿）、参与量查询（`joinedAmount` 族，按加入轮累计）。各 Executor 的 `Errors` 子接口按各自旧文件拆分。
+`IActionExecutor` 提供绑定查询、完全退出、轮次查询、成员级激励与参与量查询，以及继承自 `IProposalTarget` 的三类回调。各 Executor 的专属错误在各自接口中声明。完整定义见 [`IActionExecutor.sol`](https://github.com/LOVE20BSC/action/blob/main/src/interfaces/IActionExecutor.sol)。
 
 **可见性说明（已登记，不改代码）**：基座把 `mintMemberReward` 声明为 `external`，实现体是 `public`——`mintMemberRewards` 在合约内部复用同一条结算路径。`public` 是对 `external` 的合法放宽，外部 ABI 不变。若将来要收窄，只能拆成内部 `_mintMemberReward` 加两个外部入口，属于接口面整理，不改变任何权限语义。
 

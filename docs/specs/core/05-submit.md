@@ -23,14 +23,14 @@ Proposal 由合约分配的头部与创建者提供的主体组成，对外以 `
 | `details` | 可空正文 |
 | `target` | 非零激励接收地址 |
 | `targetMode` | `NoCallback` 或 `Callback` |
-| `targetData` | 可选的不透明 Target Data 数组，可以为空 |
+| `creationData` | 提案创建时提供的一段 `bytes`，可以传 `0x` |
 
 `ProposalBody` 既是 `submitNewProposal` 的入参，也是 `ProposalInfo` 的组成部分；两者同名同字段，不设第二套参数结构。
 
 | target | NoCallback | Callback |
 | --- | --- | --- |
 | 非零 EOA | 合法，不回调 | 拒绝 |
-| 非零合约 | 合法，不回调 | 创建、推举、投票都回调，空 Target Data 也回调 |
+| 非零合约 | 合法，不回调 | 创建、推举、投票都回调，数据为空时也回调 |
 | 零地址 | 拒绝 | 拒绝 |
 
 显式销毁可由专用 Target 合约接收后执行，不能用零 Target 隐式销毁。
@@ -41,11 +41,11 @@ Proposal 由合约分配的头部与创建者提供的主体组成，对外以 `
 
 `submitNewProposal` 在一笔交易内完成「创建 + 推举」两步：先保存 Proposal，再写入当前 Round 的推举状态，最后执行创建与推举回调。调用者须持有 `memberId` 且满足 `canSubmit`，并因此消耗本 Round 的推举名额；回调执行时 Proposal 与推举状态都已完整写入，不能通过融合转出来源质押。创建后内容和 Target 不变，重名标题不等于重复 Proposal。
 
-`NoCallback` 忽略 `targetData`，不要求为空；`Callback` 允许 `targetData` 为空，并在回调时原样透传。Target Data 的业务编码由 Target 自行定义。
+`creationData` 随提案正文保存。`submitData` 由本次推举者提供，可以每轮传不同的内容。`Callback` 模式下，创建回调收到 `creationData`，推举回调收到 `submitData`。两者的业务编码均由 Target 定义，无附加数据时传 `0x`。
 
 ## 接口
 
-完整 ABI 见 [`ISubmit.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/ISubmit.sol)。它沿用旧 `LOVE20TKM/core/src/interfaces/ILOVE20Submit.sol` 的 Proposal 创建、推举、枚举和查询职责；旧接口中的行动专属字段已按 BSC 规则移出命名结构，改由不透明的 Target Data 经 `ProposalBody.targetData` 传递，业务主体由地址改为 `memberId`。
+`submitNewProposal` 接收含 `creationData` 的 `ProposalBody`，并另收本次 `submitData`。已有提案的 `submit` 接收 `proposalId` 和本次 `submitData`。完整 ABI 见 [`ISubmit.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/ISubmit.sol)。
 
 两个写入口沿用旧接口的动词配对与语义，`submitNewProposal` 就是「提交一个新提案」：创建与推举在同一笔内完成。`submit` 不创建，只把已有 `proposalId` 推举进当前 Round；两个入口都在回调前完成推举状态写入。Proposal 一经创建即长期存在，可在后续每个 Round 各被推举一次，推举者可以是作者以外的人。
 
@@ -80,7 +80,7 @@ Proposal 由合约分配的头部与创建者提供的主体组成，对外以 `
 
 `ByTarget` 按 Proposal 创建时保存的 Target 地址匹配，两种 Target Mode 均可命中。筛选后的集合决定总数和分页范围。未知 Target 或没有匹配记录时返回空数组与总数 `0`。
 
-**分页只回定长数据**：页内成员由别人决定，`ProposalBody` 的 `title`/`details`（各 ≤1024 字节）与 `targetData`（≤16 KiB、≤16 项）虽有链上上限，但仍足以把整页顶高，一旦分页回本体，某条大 `targetData` 的 Proposal 就能把包含它的整页顶到调用方 gas 上限之上，而且跳不过去——只能反复调小 `limit` 试探。需要详情时走 [按 id 批量取详情](#按-id-批量取详情)。`SubmitInfo` 全为 `uint256` 字段，分页回记录不触这条红线。
+分页返回定长数据。`ProposalBody` 的 `title` 和 `details` 各可达 1024 字节，`creationData` 可达 16 KiB。把它们放进分页会让单页成本随内容体量变化。调用方可以按需 [按 id 批量取详情](#按-id-批量取详情)。
 
 分页与批量查询都不校验 `tokenAddress` 是否已登记，也不校验 `memberId` 是否存在，与 [Proposal](#proposal) 一节的口径一致。
 
@@ -94,7 +94,7 @@ Proposal 由合约分配的头部与创建者提供的主体组成，对外以 `
 
 `submitInfos` 分页与两条方向单键（`proposalIdBySubmitterId`、`submitterIdByProposalId`）的分工：分页是集合的完整读取路径，两条单键是它在两把唯一键上的定点通道，三者读到的是同一份推举记录，不各自维护状态。
 
-`proposalTarget(tokenAddress, proposalId)` 回该 Proposal 的 `target` 与 `targetMode`，未分配过的 ID 同样回滚 `ProposalNotFound(tokenAddress, proposalId)`。它是 `proposalInfosByProposalIds` 之外的轻量取值入口，供每笔投票都要判断回调目标的 Vote 使用：整条 `ProposalInfo` 含较大的 `title`/`details`/`targetData`（上限 1024B / 16 KiB / 16 项），随正文大小线性变贵（实测每笔 3 万～9 万 gas），而 Vote 只需要这两个字段。按 `migration-standards.md`「按键取单值」的第四种情况加入——先量后加，省下的开销与调用方自身的写入开销同量级。
+`proposalTarget(tokenAddress, proposalId)` 返回该 Proposal 的 `target` 与 `targetMode`，未分配过的 ID 回滚 `ProposalNotFound(tokenAddress, proposalId)`。Vote 只需这两个字段即可判断是否回调，读取成本与正文大小无关。
 
 ## 推举
 
@@ -113,7 +113,7 @@ Proposal 由合约分配的头部与创建者提供的主体组成，对外以 `
 `submitNewProposal` 的创建段与推举段在同一笔内依次执行，任一步回滚整笔。按下列顺序校验：
 
 1. **鉴权**：`memberId` 存在且 `ownerOf(memberId) == msg.sender`（鉴权 modifier；不存在由 MemberNFT 回滚，非持有人回滚 `NotMemberOwner(memberId)`）
-2. **参数校验**：`title` 非空（`TitleEmpty()`）、`target` 非零（`ZeroTargetAddress()`）、`targetMode` 合法（枚举范围内且 `Callback` 时 `target.code.length > 0`，否则 `CallbackTargetNotContract(target)`）
+2. **参数校验**：先校验 `title` 非空与 `title`、`details`、`creationData` 的字节上限，再校验 `target` 非零且 `Callback` 模式下有合约代码
 3. **门槛**：社区总治理权为零回 `NoGovVotes(tokenAddress)`；否则 `canSubmit(tokenAddress, memberId)`（`InsufficientSubmitPower(tokenAddress, memberId, validVotes, requiredVotes)`）
 4. **本轮名额**：同一成员同社区同 Round 尚未推举过（`MemberAlreadySubmitted(tokenAddress, round, memberId)`），且社区本 Round 已推举数小于 1,000（`SubmitRoundFull(tokenAddress, round, 1000)`）
 5. 分配 `proposalId`，写入 `ProposalInfo` 以及按作者、按 Target、按作者和 Target 联合查询的索引
@@ -144,11 +144,11 @@ Proposal 由合约分配的头部与创建者提供的主体组成，对外以 `
 
 事件与错误定义见 [`ISubmit.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/ISubmit.sol)。
 
-`ProposalCreated` 由 `submitNewProposal` 的创建段发出，字段顺序为 `tokenAddress`、`proposalId`、`authorId`、`target`、`targetMode`、`targetData`、`title`、`details`；不含 `round`。创建者一律写作 `authorId`（创建者 `memberId`），不再使用 `author`。
+`ProposalCreated` 由 `submitNewProposal` 的创建段发出，记录提案编号、作者 `authorId`（创建者的 `memberId`）和完整正文。索引器可从中读出 `creationData`。
 
-动态字段带上限，属于事件契约：`title`、`details` 各不超过 `1024` 字节（`MAX_TITLE_LENGTH` / `MAX_DETAILS_LENGTH`），`targetData` 总量不超过 `16 KiB` 且不超过 `16` 个元素；超限分别回滚 `TitleTooLong(length, maxLength)`、`DetailsTooLong(length, maxLength)`、`TargetDataTooLarge(totalLength, maxLength)`、`TargetDataTooMany(count, maxCount)`。事件已携带 `targetData`，提案的执行载荷可由事件流直接重建，无需按 id 回读。代价是创建交易的日志体量随 `targetData` 线性增长（LOG 数据约 8 gas/byte，16 KiB 上限下最坏约 +131k gas），这是「用 gas 换可重建」的有意取舍。
+`title` 和 `details` 的上限各为 1024 字节，`creationData` 的上限为 16 KiB。创建日志体量随这三个字段增长。
 
-`ProposalSubmitted` 由推举段发出，`submitNewProposal` 与 `submit` 各发一次，包含 `round`（= `currentRound()`）、`submitterId`、`proposalId`。走 `submitNewProposal` 时同一笔内先 `ProposalCreated`、后 `ProposalSubmitted`。
+`ProposalSubmitted` 由推举段发出，记录推举记账所用的 `round`、`submitterId` 和 `proposalId`。`submitData` 只用于本次回调。走 `submitNewProposal` 时同一笔内先 `ProposalCreated`、后 `ProposalSubmitted`。
 
 错误：
 
@@ -157,8 +157,7 @@ Proposal 由合约分配的头部与创建者提供的主体组成，对外以 `
 | `TitleEmpty()` | `title` 为空 |
 | `TitleTooLong(uint256 length, uint256 maxLength)` | `title` 字节数超过 `MAX_TITLE_LENGTH`（1024） |
 | `DetailsTooLong(uint256 length, uint256 maxLength)` | `details` 字节数超过 `MAX_DETAILS_LENGTH`（1024） |
-| `TargetDataTooMany(uint256 count, uint256 maxCount)` | `targetData` 元素数超过 `MAX_TARGET_DATA_COUNT`（16） |
-| `TargetDataTooLarge(uint256 totalLength, uint256 maxLength)` | `targetData` 总字节数超过 `MAX_TARGET_DATA_BYTES`（16 KiB） |
+| `CreationDataTooLarge` | `creationData` 字节数超过 `MAX_CREATION_DATA_BYTES`（16 KiB） |
 | `ZeroTargetAddress()` | `submitNewProposal` 的 `target` 为零 |
 | `CallbackTargetNotContract(address target)` | `targetMode == Callback` 且 `target.code.length == 0` |
 | `NotMemberOwner(uint256 memberId)` | `ownerOf(memberId) != msg.sender`；`memberId` 不存在时由 MemberNFT 回滚 `ERC721NonexistentToken` |
@@ -173,6 +172,6 @@ Proposal 由合约分配的头部与创建者提供的主体组成，对外以 `
 
 回调接口见 [`IProposalTarget.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/IProposalTarget.sol)。
 
-创建和推举分别触发对应回调。创建与推举在同一笔交易内完成时，固定先 `onProposalCreated`、再 `onProposalSubmitted`，任一回调失败都回滚整笔。回调不要求 Target Data 非空；空 `targetData` 仍必须调用回调并传递空数组。创建回调仅接受 Submit；Executor 仅接受 ActionTarget 转发。回调前先写入对应 Proposal 或推举状态，失败则一并回滚。
+创建与推举在同一笔交易内完成时，先写提案和推举账本，再依次调用 `onProposalCreated` 和 `onProposalSubmitted`。推举回调的 `round` 与该笔推举记录一致。`Callback` 模式即使数据为 `0x` 也调用对应回调。任一回调失败都回滚整笔。
 
 验收见 [Core 验收](09-testing.md)。

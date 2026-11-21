@@ -88,15 +88,7 @@ amount = floor(balanceOf(this) × share ÷ remainingShare)
 
 仅 `LAUNCH_ADDRESS` 可调用。`Launch` 在代币创建、首批供应到账、代币登记与次数扣减之后调用一次，原样透传 `distributorData`；`Launch` 不开放额外的补触发回调入口。
 
-回调数据格式固定：
-
-| 条件 | 值 |
-| --- | --- |
-| `distributorData` 元素个数 | 恰好 `1` |
-| `distributorData[0]` 字节长度 | 恰好 `64` |
-| 解码方式 | `abi.decode(distributorData[0], (bytes32, uint256))`，依次为 `merkleRoot`、`claimDelayRounds` |
-
-`Launch` 只原样透传，不解析、不遍历；形状校验全部在本合约完成，任一不符即整笔发射回滚。
+`distributorData` 传 `abi.encode(merkleRoot, claimDelayRounds)`。`AirdropDistributor` 先检查数据恰为 64 字节，再按 `(bytes32, uint256)` 解码。长度不符时整笔发射回滚。
 
 ### 轮次夹取与 claimDelayRounds
 
@@ -113,18 +105,17 @@ claimableFromRound = baseRound + claimDelayRounds
 
 ### 校验顺序与错误集合
 
-首币与普通发射共用同一条 `_configure` 路径，因此两处的错误集合、判定顺序与轮次夹取完全一致。只有入口不同：构造函数直接传入三个参数，`onTokenLaunched` 先从 `distributorData` 解出 `merkleRoot` 与 `claimDelayRounds`。下表从 `onTokenLaunched` 的入口开始，构造函数的入口从第 4 步起（没有鉴权与形状校验两道）。
+首币与普通发射共享 `_configure` 的校验和轮次夹取规则。构造函数直接提供配置项，从第 3 步开始。`onTokenLaunched` 从第 1 步开始。
 
 ```text
 1. 鉴权  调用者不是 LAUNCH_ADDRESS                   → NotLaunchContract(address caller)
-2. 参数  distributorData.length != 1                 → InvalidDistributorDataCount(uint256 count, uint256 expectedCount)
-3. 参数  distributorData[0].length != 64             → InvalidDistributorDataLength(uint256 length, uint256 expectedLength)
-4. 存在  tokenAddress 已配置                         → TokenAlreadyConfigured(address tokenAddress)
-5. 参数  merkleRoot == bytes32(0)                    → ZeroMerkleRoot()
-6. 参数  claimDelayRounds > MAX_CLAIM_DELAY_ROUNDS   → ClaimDelayRoundsExceeded(uint256 claimDelayRounds, uint256 maxClaimDelayRounds)
+2. 参数  distributorData.length != 64               → InvalidDistributorDataLength(uint256 length, uint256 expectedLength)
+3. 存在  tokenAddress 已配置                         → TokenAlreadyConfigured(address tokenAddress)
+4. 参数  merkleRoot == bytes32(0)                    → ZeroMerkleRoot()
+5. 参数  claimDelayRounds > MAX_CLAIM_DELAY_ROUNDS   → ClaimDelayRoundsExceeded(uint256 claimDelayRounds, uint256 maxClaimDelayRounds)
 ```
 
-第 2、3 步必须先于解码：字节序列未通过形状校验时无法安全 `abi.decode`。第 4 步排在参数校验之前，偏离 [错误与回滚标准](../../error-standards.md#五失败契约) 的默认序「参数 → 存在性」；理由是重复配置是比载荷内容更根本的拒绝条件——对已配置的 token，第二次配置无论载荷是什么都非法，先命中先回滚使失败原因不随载荷变化。首币与子币共用这条判定，故两处的错误优先级一致。
+回调在第 2 步通过后解码。进入 `_configure` 后，重复配置的错误先于零根和延迟超限。
 
 解码后 `merkleRoot` 为零即 `ZeroMerkleRoot()`；`claimDelayRounds` 为零是合法值。
 
@@ -180,7 +171,7 @@ leafHash(msg.sender, share) = keccak256(bytes.concat(keccak256(abi.encode(msg.se
 - 第 8 步**不做 `amount == 0` 检查**，这是已论证的不可达分支而非遗漏，论证见下节。
 - `ShareExceedsRemaining` 的载荷是请求份额与实际剩余份额，单位都是 `TOTAL_SHARE = 1e18` 的份额单位，不是代币数量。
 
-`claim` 可能失败的错误全集 = 本合约自有 14 个错误中可达的 5 个（`TokenNotConfigured`、`ClaimRoundNotReached`、`AirdropAlreadyClaimed`、`ShareExceedsRemaining`、`InvalidProof`，其中 `InvalidProof` 在第 5、7 两处出现但只有一个 selector）**加上** OZ `SafeERC20` 透传的 `SafeERC20FailedOperation(address token)`。后者不属于本合约自有错误，链下分类必须同时识别它的来源。其余 9 个自有错误（配置路径 6 个：`NotLaunchContract`、`InvalidDistributorDataCount`、`InvalidDistributorDataLength`、`TokenAlreadyConfigured`、`ZeroMerkleRoot`、`ClaimDelayRoundsExceeded`；快照 URI 路径 3 个：`SnapshotUriEmpty`、`SnapshotUriTooLong`、`NotSnapshotUriUpdater`）`claim` 不产生；`TokenNotConfigured` 同时是空投铸造与 URI 更新两条路径的存在性错误，只计一次。5 + 9 恰好是全部 14 个。
+`claim` 可回滚 `TokenNotConfigured`、`ClaimRoundNotReached`、`AirdropAlreadyClaimed`、`ShareExceedsRemaining`、`InvalidProof`，并透传 OZ `SafeERC20` 的 `SafeERC20FailedOperation`。`TokenNotConfigured` 同时用于 URI 更新校验。
 
 ### 资产去向与事件字段
 

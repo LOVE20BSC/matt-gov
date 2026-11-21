@@ -28,7 +28,7 @@ Vote 管理当前治理 Round 的 Proposal 投票和加速快照。Proposal 的�
 `vote` 的校验与写入顺序，任一步回滚整笔：
 
 1. **持有权**：`IMemberNFT.ownerOf(memberId) == msg.sender`（`NotMemberOwner(memberId)`）；`memberId` 不存在时由 `ownerOf` 抛出 `ERC721NonexistentToken(memberId)`
-2. **形状**：`proposalIds` 非空（`ProposalIdsEmpty()`）；`voteAmounts` 与 `proposalIds` 等长（`ProposalVoteAmountsLengthMismatch(proposalIdsLength, voteAmountsLength)`）；`targetData` 传入时必须与 `proposalIds` 等长（`TargetDataLengthMismatch(proposalIdsLength, targetDataLength)`），传空外层数组表示每笔回调都使用空 Target Data
+2. **形状**：`proposalIds` 非空（`ProposalIdsEmpty()`），`voteAmounts` 与 `proposalIds` 等长（`ProposalVoteAmountsLengthMismatch`），`voteData` 为空数组或与 `proposalIds` 等长（`VoteDataLengthMismatch`）
 3. **资格**：取当前 Round 与票上限，即 `maxVoteAmount(tokenAddress, memberId)`（`canVote` 同源）；票上限为零回 `NoVotingPower(tokenAddress, memberId)`。该读数供整批复用，不重复读取
 4. 逐 Proposal 处理（复用第 3 步的 Round 与票上限）：
    1. **票数**：本次增量为正（`ZeroVoteAmount(tokenAddress, round, proposalId)`）
@@ -49,7 +49,7 @@ Vote 管理当前治理 Round 的 Proposal 投票和加速快照。Proposal 的�
 
 ## 接口
 
-完整 ABI 见 [`IVote.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/IVote.sol)。它沿用旧 `LOVE20TKM/core/src/interfaces/ILOVE20Vote.sol` 的投票记录、增量机制和批量查询；BSC 将所有业务主体改为 `memberId`，并增加逐 Proposal 的不透明 Target Data 回调。
+`Vote` 的业务主体为 `memberId`。`vote` 逐提案处理票数增量，并按提案模式决定是否回调。完整 ABI 见 [`IVote.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/IVote.sol)。
 
 旧接口的三对 `*Count`/`AtIndex` 枚举（共 6 个函数）改为三个分页入口：`votedProposalIds`（本轮有票 Proposal）、`votedProposalIdsByMemberId`（成员本轮投过的 Proposal，票数随 id 一起返回）、`voterIdsByProposalId`（Proposal 的投票者）。按指定 id 批量取票数走 `voteAmountsByMemberIdByProposalIds`。
 
@@ -57,7 +57,7 @@ Vote 管理当前治理 Round 的 Proposal 投票和加速快照。Proposal 的�
 
 两条查询都按 Proposal 保存的 Target 地址匹配，涵盖 `Callback` 和 `NoCallback`。`totalCount` 为匹配的 Proposal 数量，`limit = 0` 或 `offset` 越界时只返回总数。未匹配任何 Proposal 时返回空数组与总数 `0`。`reverse = true` 按对应列表的逆序分页。
 
-`isRoundEnded(0)` 返回 `false`。投票调用者须持有 `memberId`，Proposal 必须已在当前轮推举。`proposalIds` 与 `voteAmounts` 必须非空且等长；`targetData` 可以传空外层数组，表示每笔回调均使用空 Target Data，若传入则必须与 `proposalIds` 等长；每笔票数必须为正。Proposal 为 `NoCallback` 时忽略对应 Target Data，不做额外校验；Proposal 为 `Callback` 时按输入顺序原样透传。批量没有协议固定长度上限，调用方可按区块 Gas 分批提交；测试记录首次失败规模。Core 不解析 Target Data 的业务内容。
+`isRoundEnded(0)` 返回 `false`。投票调用者须持有 `memberId`，提案须已在当前轮推举，每笔票数须为正。`voteData[i]` 是传给 `proposalIds[i]` 的一段 `bytes`。传 `[]` 表示每个回调都收到 `0x`。`Callback` 提案按输入顺序收到对应数据，业务解析由 Target 完成。批量大小由区块 Gas 决定，调用方可分批提交。
 
 ## 事件与错误
 
@@ -71,7 +71,7 @@ Vote 管理当前治理 Round 的 Proposal 投票和加速快照。Proposal 的�
 | `NoVotingPower(address tokenAddress, uint256 memberId)` | 本轮票上限为零 |
 | `ProposalIdsEmpty()` | `proposalIds` 为空 |
 | `ProposalVoteAmountsLengthMismatch(uint256 proposalIdsLength, uint256 voteAmountsLength)` | `voteAmounts` 与 `proposalIds` 不等长 |
-| `TargetDataLengthMismatch(uint256 proposalIdsLength, uint256 targetDataLength)` | 传入的 `targetData` 外层数组与 `proposalIds` 不等长 |
+| `VoteDataLengthMismatch` | `voteData` 非空且与 `proposalIds` 不等长 |
 | `ProposalNotSubmitted(address tokenAddress, uint256 round, uint256 proposalId)` | 该 Proposal 已分配但本轮未推举 |
 | `ZeroVoteAmount(address tokenAddress, uint256 round, uint256 proposalId)` | 该笔票数为零 |
 | `VoteLimitExceeded(address tokenAddress, uint256 round, uint256 memberId, uint256 cumulativeVoteAmount, uint256 maxVoteAmount)` | 成员本轮累计票数超过票上限；`cumulativeVoteAmount` 为加上该笔后的累计值 |
@@ -91,7 +91,7 @@ Vote 管理当前治理 Round 的 Proposal 投票和加速快照。Proposal 的�
 
 回调接口见 [`IProposalTarget.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/IProposalTarget.sol)。
 
-`voteAmount` 为本次增量，不是累计票数；Target Data 为不透明 `bytes[]`，由 Target 解释。空 Target Data 仍必须触发回调。投票回调仅接受 Vote，Executor 仅接受 ActionTarget 转发；回调前先写入投票状态，失败则一并回滚。
+`voteAmount` 是本次增量。回调收到该提案对应的一段 `bytes`，由 Target 解释。`Callback` 模式即使数据为 `0x` 也调用。Vote 先写入投票状态，再调用 Target，失败则一并回滚。
 
 回调可重入 `vote`：重入时重新读取 `Stake.govVotes` 作为票上限，成员累计票数仍受该上限约束，因此回调不能突破本轮票权；若回调期间成员自己在 Stake 增加了质押，重入可按新上限继续投，等价于同一交易内先加杠杆再投票。
 

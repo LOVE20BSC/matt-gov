@@ -145,7 +145,7 @@
 - `parentToken` 对首币返回 `ROOT_PARENT_TOKEN_ADDRESS`、对子币返回其父币、对未登记地址返回零地址；`isLOVE20Token` 与它一致
 
 ### 首币空投分发
-**覆盖要求**：覆盖 `AirdropDistributor` 的构造配置（`TOTAL_SHARE = 1e18`、`MAX_CLAIM_DELAY_ROUNDS = 1000`、`MAX_SNAPSHOT_URI_BYTES = 256`、首币在构造期完成配置并写入非空 `genesisSnapshotUri`）、回调数据形状（`distributorData` 恰好 1 元素、恰好 64 字节）、回调鉴权、配置拒绝（零根、延迟超上限、同一 token 二次配置）、轮次夹取（`currentPhase() == 0` 时 `baseRound = 1`）、`claimDelayRounds` 为 `0` 当轮可空投铸造与为 `1` 下一轮可空投铸造、`claim` 的六层失败契约与优先级、零份额的链上链下双层拒绝、按剩余份额的比例分配与最后一人清空余额、`claimableAmount` 预检与 `claim` 返回一致、`AirdropConfigured` / `AirdropClaimed` 的字段与 indexed 布局，以及 `airdropInfos` 的分页语义与「不设独立计数入口」。URI 能力另覆盖：`updateSnapshotUri` 的校验顺序与错误集合（存在性 → 鉴权 → 参数）、创世币 `launcherMemberId = 0` 永久不可更新、发射者更新成功与非发射者拒绝、NFT 转手后权限随 `ownerOf` 实时跟随、长度 256/257 边界与空 URI、`AirdropSnapshotUriUpdated` 三字段（含旧值），以及 URI 设置前后 `claim` 的金额与状态完全一致；并核对 `snapshotUri` 作为 `AirdropInfo` 第 7 字段、`airdropInfo` / （无公开 getter） 两个单点 getter。
+**覆盖要求**：覆盖 `AirdropDistributor` 的构造配置（`TOTAL_SHARE = 1e18`、`MAX_CLAIM_DELAY_ROUNDS = 1000`、`MAX_SNAPSHOT_URI_BYTES = 256`、首币在构造期完成配置并写入非空 `genesisSnapshotUri`）、回调数据恰为 64 字节、回调鉴权、配置拒绝（零根、延迟超上限、同一 token 二次配置）、轮次夹取（`currentPhase() == 0` 时 `baseRound = 1`）、`claimDelayRounds` 为 `0` 当轮可空投铸造与为 `1` 下一轮可空投铸造、`claim` 的六层失败契约与优先级、零份额的链上链下双层拒绝、按剩余份额的比例分配与最后一人清空余额、`claimableAmount` 预检与 `claim` 返回一致、`AirdropConfigured` / `AirdropClaimed` 的字段与 indexed 布局，以及 `airdropInfos` 的分页语义与「不设独立计数入口」。URI 能力另覆盖：`updateSnapshotUri` 的校验顺序与错误集合（存在性 → 鉴权 → 参数）、创世币 `launcherMemberId = 0` 永久不可更新、发射者更新成功与非发射者拒绝、NFT 转手后权限随 `ownerOf` 实时跟随、长度 256/257 边界与空 URI、`AirdropSnapshotUriUpdated` 三字段（含旧值），以及 URI 设置前后 `claim` 的金额与状态完全一致；并核对 `snapshotUri` 作为 `AirdropInfo` 第 7 字段、`airdropInfo` / （无公开 getter） 两个单点 getter。
 
 **测试方式**：
 - 单元测试：`core/test/AirdropDistributor.t.sol` 的配置、空投铸造、比例分配与 URI 更新场景
@@ -155,7 +155,7 @@
 
 **判定标准**：
 - 首币在 `AirdropDistributor` 构造期即完成配置，`Launch` 构造函数不调用回调；首币与子币的 Root、起始轮次、`totalClaimedShare` 相互独立
-- 非 `LAUNCH_ADDRESS` 调用 `onTokenLaunched` 回滚 `NotLaunchContract(caller)`；形状错误先于解码，回滚 `InvalidDistributorDataCount` / `InvalidDistributorDataLength`
+- 非 `LAUNCH_ADDRESS` 调用 `onTokenLaunched` 回滚 `NotLaunchContract`。分发数据长度错误在解码前回滚 `InvalidDistributorDataLength`
 - `claim` 的校验顺序固定为 存在性 → 状态 → 参数 → 账本 → 资格 → 外部，先命中先回滚；`share == 0` 由链上**显式**回滚 `InvalidProof()`，位置在 `ShareExceedsRemaining` 与证明校验之前，不依赖链下生成器，也不出现「空投铸造成功但拿到 0 代币并失去资格」的静默结果
 - `claim` 不设调用者限制（`claimer` 即 `msg.sender`，只能给自己空投铸造）；第 8 步算出的 `amount` 不做零值检查，第 9 步写状态先于第 10 步转账；转账失败透传 OZ `SafeERC20FailedOperation`，`claim` 的错误全集为 5 个自有 selector + 该透传错误
 - `amount = floor(balanceOf(this) × share ÷ remainingShare)`；全部份额空投铸造完后合约余额为零，且每个人累计所得不超过其份额比例
@@ -219,7 +219,7 @@
 - Executor 归属判断使用 `isGroupMember`
 
 ### Target 组合与幂等性
-**覆盖要求**：覆盖 `NoCallback`/`Callback` 与 EOA/合约的合法组合、Callback + EOA 拒绝、缺少 executor 保留项的行动创建 Target Data 拒绝、仅 executor 项可创建，以及同一 `tokenAddress + proposalId` 重复创建回调回滚。
+**覆盖要求**：覆盖 `NoCallback`/`Callback` 与 EOA/合约的组合、格式错误的创建数据、Executor 握手、内层配置转发，以及同一 `tokenAddress + proposalId` 重复创建回调回滚。
 
 **测试方式**：
 - 单元测试：`action/test/ActionTarget.t.sol` 的 Target 模式组合场景
@@ -228,7 +228,7 @@
 **判定标准**：
 - 不合法组合被拒绝
 - 重复创建回调回滚
-- executor 保留项校验正确
+- Executor 地址握手正确，内层创建配置原样转发
 
 ### ActionTarget / Executor 状态边界
 **覆盖要求**：覆盖仅关联 Executor 可调用 `ActionTarget.registerJoinState`/`clearJoinState`、当前 MemberNFT 持有人可 `forceClearJoinState`、强制退出后 ActionTarget 当前加入查询清除而 Executor 资产及 GroupAction 归属状态不回写，以及后续 Executor 正常调用 `clearJoinState` 不回滚，也不通过旧 Executor 状态自动恢复加入。
@@ -245,7 +245,7 @@
 - Executor 后续正常调用 exit 成功
 
 ### Proposal Target 回调
-**覆盖要求**：覆盖 Proposal 创建、提案推举、提案投票三类回调；覆盖创建回调只发生一次、推举已有 Proposal 不重复创建回调、`submitterId`、`voterId`、增量票和 Target Data 透传；`submitNewProposal` 在同一笔内先创建后推举，固定先 `onProposalCreated` 再 `onProposalSubmitted`；空 Target Data 也必须触发回调；回调失败时对应外层交易整体回滚。
+**覆盖要求**：创建回调收到 `creationData`。首次和后续推举回调各自收到本次的 `submitData`、记账轮次和推举者。投票回调收到对应提案的 `voteData`、投票者和票数增量。`submitNewProposal` 在同一笔内先调用 `onProposalCreated`，再调用 `onProposalSubmitted`。`Callback` 模式即使数据为 `0x` 也触发。回调失败时对应外层交易整体回滚。
 
 **测试方式**：
 - 单元测试：`core/test/Submit.t.sol`、`core/test/Vote.t.sol` 的回调场景

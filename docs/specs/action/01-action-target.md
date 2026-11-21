@@ -4,34 +4,25 @@ ActionTarget 是社群行动 Proposal 的统一 Target。Core 和回调使用 `p
 
 ## 创建与回调
 
-创建行动时指定 `tokenAddress`、`title`、`details`，并固定 `target = ActionTarget`、`targetMode = Callback`。Proposal 回调本身不要求 Target Data 非空；ActionTarget 创建行动另有一个必须的 `executor` 保留项，使用 Core 的 `targetData` 数组：
+创建行动时指定 `tokenAddress`、`title`、`details`，并设 `target = ActionTarget`、`targetMode = Callback`。`ProposalBody.creationData` 的前 20 字节是 Executor 地址，剩余字节按该 Executor 的约定编码。Executor 无需配置时只传地址。使用内置 Executor 时按其配置结构体填写 `executorParams`。
 
-```text
-targetData[SLOT_EXECUTOR] = abi.encode(executorAddress)
+```solidity
+creationData = abi.encodePacked(executorAddress, abi.encode(executorParams));
 ```
 
-`onProposalCreated` 按以下顺序校验，任一失败回滚整个创建操作：
+`onProposalCreated` 鉴权后检查创建数据至少有 20 字节，长度不足时回滚 `InvalidActionTargetCreationData`。随后校验 `executor` 地址有代码、调用 `ACTION_TARGET_ADDRESS()` 握手，再检查该行动尚未绑定 Executor。地址没有代码时回滚 `ExecutorNotContract`，握手调用失败或返回其他地址时分别回滚 `ExecutorHandshakeFailed` 或 `ExecutorTargetMismatch`。重复绑定回滚 `AlreadyCreated`。绑定后，ActionTarget 将地址后的所有字节原样交给 Executor。
 
-```text
-1. targetData.length >= 1
-2. 第 0 项恰为 32 字节（abi.encode(address) 的形态），abi.decode 后非零且有代码
-3. IActionExecutor(executor).ACTION_TARGET_ADDRESS() == address(this)
-4. 该 (tokenAddress, proposalId) 尚未记录 executor
-```
-
-第 1 步缺失回滚 `InsufficientTargetDataItems(0, 1)`、第 `0` 项不恰为 32 字节回滚 `InvalidTargetDataShape(0, length)`；第 2 步零地址或 EOA 回滚 `ExecutorNotContract(executor)`；第 3 步握手返回值不是 `address(this)` 回滚 `ExecutorTargetMismatch(expected, actual)`（`expected` 为 ActionTarget，`actual` 为 Executor 自报地址），握手调用本身回滚则归一为 `ExecutorHandshakeFailed(executor)`；第 4 步回滚 `AlreadyCreated(tokenAddress, actionId)`，拒绝同一复合键重复创建，不覆盖已记录映射。**顺序保留**：第 3 步握手先于第 4 步重复创建判定——握手失败代表接线错误（地址/返回约定不符），比「已创建」更需优先暴露；重复创建时多付一次握手外呼，但重复创建本身是异常路径，成本可接受（`E-AT-02` 登记的口径）。
-
-**Target Data 的位置契约**：Target Data 是无键的 `bytes[]`，只能按位置读取。ActionTarget 只读取并校验第 `0` 项（executor 保留项）并原样转发整个数组；其余各项的数量、位置与编码**一律由该 Executor 在自己的规格中固定并在对应回调内自行校验**。**创建与推举回调传入同一份** `body.targetData`（core `Submit.sol:301,308`）：第 `0` 项均为 executor 保留项，业务项从 `1` 起算；投票回调传入投票者在 `vote()` 中提供的该项数据（core `Vote.sol:322`）：非空时第 `0` 项必须为已绑定 Executor 地址、其后为业务项，为空时不携带业务数据。**转发门禁**：三类回调中 `targetData` 非空时，第 `0` 项必须恰为 32 字节并解码为该行动已绑定的 Executor 地址；第 `0` 项缺失回滚 `InsufficientTargetDataItems(0, 1)`、长度不对回滚 `InvalidTargetDataShape(0, length)`，解码结果不是已绑定 Executor 回滚 `TargetDataExecutorMismatch(expected, actual)`（`expected` 为绑定地址，`actual` 为解码结果）。投票回调的 `targetData` 可为空，为空时原样转发。项数与位置不匹配由各 Executor 用自己的错误拒绝，不在本层设通用错误。
+推举与投票直接按已保存的绑定找到 Executor。`submitData` 和 `voteData` 由各自操作者提供，可传 `0x`，业务格式由 Executor 定义。内置 Executor 的推举回调只校验调用者。
 
 | Core 调用时点 | ActionTarget 行为 |
 | --- | --- |
-| `onProposalCreated` | 按上表校验，保存 Executor 映射并登记行动索引（`actions`/`actionIdsByExecutor` 的数据源，追加写入、从不删除），原样转发完整创建 Target Data |
-| `onProposalSubmitted` | 读取已保存映射，转发本次推举上下文和 Target Data |
-| `onProposalVoted` | 读取映射，转发 `round`、`voterId`、本次增量票数及 Target Data，由 Executor 记账 |
+| `onProposalCreated` | 保存 Executor 绑定并登记行动索引，转发内层创建配置 |
+| `onProposalSubmitted` | 按绑定转发本次推举的轮次、成员和 `submitData` |
+| `onProposalVoted` | 按绑定转发本次投票的轮次、成员、票数增量和 `voteData` |
 
-完整签名统一见 [Core Target 回调](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/IProposalTarget.sol)。ActionTarget 与每个 Executor 都实现这三类回调：ActionTarget 的 `onProposalCreated`/`onProposalSubmitted` 仅 Submit 可调用（否则回滚 `NotSubmit(caller)`），`onProposalVoted` 仅 Vote 可调用（否则回滚 `NotVote(caller)`）；Executor 的同名回调仅接受 ActionTarget 调用，其他调用者回滚 `NotActionTarget(caller)`。推举与投票回调遇到未绑定 `(tokenAddress, proposalId)` 时回滚 `UnboundProposal(tokenAddress, proposalId)`——结构上不可达（创建回调必先于推举），仅防御 Core 侧缺陷。任一回调失败均回滚对应外层操作。
+ActionTarget 的创建和推举回调仅接受 Submit 调用，投票回调仅接受 Vote。Executor 的回调仅接受 ActionTarget。未绑定时，推举和投票回调回滚 `UnboundProposal`。任一回调失败均回滚对应外层操作。完整声明见 [IProposalTarget](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/IProposalTarget.sol) 与 [IActionExecutor](https://github.com/LOVE20BSC/action/blob/main/src/interfaces/IActionExecutor.sol)。
 
-**Executor 的实现来源不在本合约的校验范围**：创建回调只做握手（有代码 + `ACTION_TARGET_ADDRESS()` 回指），没有注册表、白名单或实现指纹。提案创建者可以绑定自造合约，该合约随即获得该行动的 `registerJoinState`/`clearJoinState`/`mintActionReward` 三项写入权；这属于「授权主体把权益导向任意地址」，风险由提案投票承担（`targetData[SLOT_EXECUTOR]` 在提案正文中对投票者可见）。集成方不应假设存在可信 Executor 名单。
+提案创建者可以绑定任何通过握手的 Executor。绑定授予该合约在此行动上调用 `registerJoinState`、`clearJoinState` 和 `mintActionReward` 的权限。投票者可从提案正文的 `creationData` 核对 Executor。
 
 ## 加入与退出
 

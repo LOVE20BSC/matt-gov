@@ -32,15 +32,13 @@ Core 的预留、铸造和取消额度账本见 [Mint](../core/07-mint.md)，不
 | `JoinNotOpen(tokenAddress, actionId, currentRound, createdRound)` | 注册加入时当前投票轮不大于该行动创建轮（投票轮未走完，加入未开放） |
 | `NotMemberOwner(memberId)` | 调用者非该 NFT 当前持有人 |
 | `ProposalNotVoted(tokenAddress, proposalId)` | Proposal 无票或未达门槛 |
-| `InsufficientTargetDataItems(uint256 count, uint256 minCount)` / `InvalidTargetDataShape(uint256 index, uint256 length)` | 创建/推举/投票转发的第 `0` 项缺失或不是 32 字节 |
-| `ExecutorNotContract(address executor)` | 第 `0` 项解码为零地址或 EOA |
+| `ExecutorNotContract(address executor)` | 创建数据中的 Executor 地址无合约代码 |
 | `ExecutorTargetMismatch(address expected, address actual)` | 创建握手：`executor.ACTION_TARGET_ADDRESS()` 不是本 ActionTarget |
 | `ExecutorHandshakeFailed(address executor)` | 创建握手的 `ACTION_TARGET_ADDRESS()` 调用回滚 |
-| `TargetDataExecutorMismatch(address expected, address actual)` | 推举/投票转发的第 `0` 项不是已绑定 Executor |
 | `AlreadyCreated(tokenAddress, actionId)` | 同一 `(tokenAddress, actionId)` 的重复创建回调 |
-| `InsufficientTargetDataItems(uint256 count, uint256 minCount)` | Target Data 项数少于约定（GroupAction 创建少于 6、LP/GroupService 创建少于 4、创建回调第 `0` 项缺失；`count` 为实际项数，`minCount` 为下界） |
-| `TooManyTargetDataItems(uint256 count, uint256 maxCount)` | Target Data 项数多于约定（GroupAction 创建多于 7、LP/GroupService 创建多于 4、投票回调多于 1/2；`count` 为实际项数，`maxCount` 为上界） |
-| `InvalidTargetDataShape(uint256 index, uint256 length)` | 第 `index` 项不是 `abi.encode` 的 32 字节形态 |
+| `InvalidCreationDataLength` | LP 或链群服务的内层创建配置不等于 96 字节 |
+| `UnexpectedVoteData` | LP 或链群服务收到非空投票数据 |
+| `InvalidVoteDataLength` | 链群行动收到非空且不等于 32 字节的投票数据 |
 | `VerificationInfoLengthMismatch(uint256 expected, uint256 actual)` | 验证信息 schema 两数组不等长，或成员值项数与 schema 不符 |
 | `DescriptionTooLong(uint256 length, uint256 maxLength)` | 链群描述或验证者申请说明超过 1024 字节 |
 | `InvalidMaxJoinAmountRatio(uint256 value)` / `InvalidActivationMinGovRatio(uint256 value)` / `InvalidRatioForPublicVerifier(uint256 value)` | 创建回调的比例非法（按字段分别报错）：前两者超出 `1e18`，`InvalidRatioForPublicVerifier` 为 `== 0` 或 `>= 1e18`（公共验证者比例须严格位于 (0, 100%)） |
@@ -85,7 +83,7 @@ Core 的预留、铸造和取消额度账本见 [Mint](../core/07-mint.md)，不
 | `NotQualified(address actionTokenAddress, uint256 round, uint256 memberId)` | 服务加入者既非社区激活链群 owner，也没有该轮有效验证者申请 |
 | `ActionTokenParentMismatch(address actionTokenAddress, address serviceTokenAddress, address actualParentTokenAddress)` | 服务代币不是行动代币，且行动代币的实际父币不是服务代币；载荷同时给出行动代币、服务代币与实际父币 |
 
-Target Data 的项数、每项位置与编码由各 Executor 在自己的规格中固定，并在对应回调内自行校验，错误也声明在各自的 `Errors` 子接口；ActionTarget 只解析创建回调的第 `0` 项 executor。错误名自带字段，不复用「一个 `InvalidAddress` 覆盖多个字段」的写法：零地址按字段分别报 `Zero<Field>Address()`，比例按字段分别报 `Invalid<Field>(value)`，参与量按条件分别报 `ZeroParticipationAmount`/`BelowMinJoinAmount`/`WithdrawAmountExceeded`；参数为零与非零非法分开（如 `ZeroMinJoinAmount()` / `InvalidMaxJoinAmount(...)`、`ZeroGroupId()` / `GroupNotExist(...)`）；Target Data 项数的下界与上界分开（`InsufficientTargetDataItems` / `TooManyTargetDataItems`）；结算轮次按轴分别报 `RoundBeforeActionCreated` 与 `RoundAfterMintWindow`（后者只用于「铸币阶段已开始但已过窗」）；阶段未开始（`mintRound == 0`）时统一报 `RoundNotStarted(requiredRound, currentRound)`，读面 `currentMintRound()` 与写面同口径。以上错误均在对应外层交易中回滚。
+ActionTarget 解码创建数据里的 Executor 地址和内层配置。Executor 按自己的结构体及投票约定校验业务数据。零地址和比例错误按字段命名，参与量按原因分别报 `ZeroParticipationAmount`、`BelowMinJoinAmount` 或 `WithdrawAmountExceeded`。结算轮次在行动创建轮之前时回滚 `RoundBeforeActionCreated`，已开始铸造且超出窗口时回滚 `RoundAfterMintWindow`。阶段未开始时回滚 `RoundNotStarted`，与 `currentMintRound()` 的读面口径一致。以上错误均回滚对应外层交易。
 
 验收见 [Action 验收](08-testing.md)。
 

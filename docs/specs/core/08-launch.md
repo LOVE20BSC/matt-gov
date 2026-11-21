@@ -42,7 +42,7 @@ Launch 负责首币部署、LOVE20Token 创建、基础发射与次数账本。T
 | --- | --- | --- |
 | `LOVE20Token` 构造函数 | `ZeroInitialSupply()`、`MaxSupplyBelowInitialSupply(uint256,uint256)`、`ZeroDistributorAddress()` | 构造函数创建首币与 `launchToken` 创建子币都会经过；Launch 不重复声明 |
 | `IMemberNFT.ownerOf` | `ERC721NonexistentToken(uint256)` | `onlyMemberOwner` 与 `mergeLaunchCount` 的目标存在性 |
-| `ILaunchDistributor.onTokenLaunched` | 任意 revert data（不转译、原样冒泡） | `Callback` 模式；distributor 由发射者自选，属不可信输入。首币 distributor 是本仓库的 `AirdropDistributor`，其 `NotLaunchContract`、`InvalidDistributorDataCount`、`InvalidDistributorDataLength`、`TokenAlreadyConfigured`、`ZeroMerkleRoot`、`ClaimDelayRoundsExceeded` 在 `Callback` 模式下同样原样冒泡 |
+| `ILaunchDistributor.onTokenLaunched` | 原样冒泡分发合约的错误 | `Callback` 模式调用发射者选定的分发合约，失败则整笔发射回滚 |
 
 ## 代币登记与查询
 
@@ -120,7 +120,7 @@ Launch 只保存“成员可用整数次数”和“代币累计已产生次数�
 
 测试网前缀沿用旧实现：先按配置长度校验 `tokenSymbol`，再读取 `parentTokenAddress` 的符号作为前缀判定符号；判定符号前 `TEST_PREFIX_BYTES`（4）个字节等于 `Test` 时给符号加上 `Test` 前缀，然后生成名称。该前缀施加在校验之后，因此测试网子币的**配置长度**可以超出实际符号长度；但施加前缀后的最终符号仍受 `MAX_TOKEN_SYMBOL_LENGTH = 32` 约束，超出即回滚 `TokenSymbolTooLong(length, 32)`。因此测试网要求 `tokenSymbolLength + TEST_PREFIX_BYTES <= MAX_TOKEN_SYMBOL_LENGTH`，部署脚本在配置校验阶段校验该不等式，并在部署后断言两个常量与 `Launch` 一致。首币不施加该前缀。
 
-普通发射的父币必须是已登记 LOVE20 代币，`distributor` 非零。分发支持 `NoCallback` 和 `Callback` 两种模式。普通发射携带一个 `bytes[] distributorData` 数组；可以为空，不设长度上限，元素内容与编码由 distributor 自行约定：Launch 只原样透传，不遍历、不解析。
+普通发射的父币必须是已登记 LOVE20 代币，`distributor` 非零。分发支持 `NoCallback` 和 `Callback` 两种模式。`distributorData` 是一段 `bytes`，无附加数据时传 `0x`。分发合约定义编码，Launch 原样透传。
 
 分发回调接口见 [`ILaunchDistributor.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/distributor/ILaunchDistributor.sol)。
 

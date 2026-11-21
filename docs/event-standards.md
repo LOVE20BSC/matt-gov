@@ -349,7 +349,7 @@ v1 基线：
 | `MemberNFT` 名称 / `normalizedName` | 现有 `MAX_NAME_LENGTH` |
 | `TokenLaunched` / `GenesisTokenCreated` 的 name/symbol | `MAX_TOKEN_NAME_LENGTH = 96`、`MAX_TOKEN_SYMBOL_LENGTH = 32`（init 与发起路径统一，按 Test 前缀后的实际长度校验） |
 | `ProposalCreated.title` / `details` | 各 ≤1024 字节 |
-| `ProposalCreated.targetData` | ≤16 KiB、≤16 个元素 |
+| `ProposalCreated.creationData` | ≤16 KiB |
 | `GroupConfigChanged.description` | 现有 1024 字节 |
 | `GroupActivated.description` | 现有 1024 字节 |
 | `RecipientsChanged.remarks` | 每条 ≤256 字节，条数 ≤`MAX_RECIPIENTS_PER_ACTION` |
@@ -365,7 +365,7 @@ v1 基线：
 
 无界字段不得进入事件。确实无法加上限的文本属于元数据，必须列入「不承诺重建」的窄名单，不得静默遗漏。
 
-`GroupActionCreated.verificationKeys` / `verificationDescriptions` 的「16 项 ×1024 字节」是**事件字段上界**；实际创建路径还要受 `ProposalCreated.targetData` 的 16 KiB 总量约束（schema 作为 `targetData[SLOT_VERIFICATION_INFO]` 传输），链上可达的最坏值低于该上界。绕过 `Submit` 直调 `onProposalCreated` 的边界测试不覆盖这层约束。
+`GroupActionCreated.verificationKeys` 与 `verificationDescriptions` 各有 16 项、每项 1024 字节的上限。它们随 `GroupActionCreationParams` 编入 `creationData`，创建交易还须满足整个 `creationData` 的 16 KiB 上限。
 
 ### 6.9 派生缓存
 
@@ -504,7 +504,7 @@ Hub 不自建份额 / 票权 / 等待期账本，也**不折叠** core 的质押
    - E2：mock 返回值与预计算不同，事件报告实际返回值；
    - E3：接收方在 `onERC721Received` 中重入 `mint`，外层 `MemberMinted` 仍正确；
    - E4：`*Withdrawn`/`*Refunded` → `JoinStateCleared` → `*Exited`；部分撤回不产生 `*Exited`；真实 ActionTarget 下顺序一致。
-10. 边界成功值必须有测试（恰好等于上限时成功，上限 +1 时失败）：16 个 verification key/value、1024 字节 title/details/description、16 KiB 与 16 个 targetData 元素、8 个 recipient、256 字节 remark、96/32 字节 name/symbol。
+10. 边界成功值必须有测试（恰好等于上限时成功，上限 +1 时失败）：16 个 verification key/value、1024 字节 title/details/description、16 KiB 创建数据、8 个 recipient、256 字节 remark、96/32 字节 name/symbol。
 11. §6.11 的声明侧「一参数一行」与发射侧 kv 形式、「一 KV 一行」由各仓 `script/events/check-events.py` 扫描 `src/`、`test/`、`script/` 守护（`log_*` 豁免、零字段事件 `event E();` / `emit E()`）；键名与顺序由同一脚本对照 `out/` 的 ABI 校验（同名事件按声明集合匹配，允许一个名字对应多份声明）。
 
 ---

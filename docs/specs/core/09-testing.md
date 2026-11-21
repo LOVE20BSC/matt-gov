@@ -4,7 +4,7 @@
 
 事件和错误定义分别位于 [`IMemberNFT.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/IMemberNFT.sol)、[`IPhase.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/IPhase.sol)、[`IStake.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/IStake.sol)、[`ISubmit.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/ISubmit.sol)、[`IVote.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/IVote.sol)、[`IMint.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/IMint.sol)、[`ILaunch.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/ILaunch.sol)、[`IAirdropDistributor.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/distributor/IAirdropDistributor.sol) 和 [`ILOVE20Token.sol`](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/ILOVE20Token.sol)。
 
-必须拒绝无效成员或非来源控制者、零 Target/Distributor、非法模式、Target Data 长度不等、重复 Proposal/推举、投票超额、Round 未结束、重复铸造、跨铸造和销毁的重复结算、待解锁时追加或融合、解锁期不足、跨社区次数操作、次数不足或超上限。Mint 的销毁入口允许同向重试，累计额度只改一次。未冻结专用 selector 的拒绝条件不能冒充已确定 ABI。
+必须拒绝无效成员或非来源控制者、零 Target/Distributor、非法模式、投票数据与提案数量不匹配、重复 Proposal/推举、投票超额、Round 未结束、重复铸造、跨铸造和销毁的重复结算、待解锁时追加或融合、解锁期不足、跨社区次数操作、次数不足或超上限。Mint 的销毁入口允许同向重试，累计额度只改一次。未冻结专用 selector 的拒绝条件不能冒充已确定 ABI。
 
 批量治理激励中任一 Round 无效，以及 Pair、Router、Target、distributor 回调等外部调用失败时，整笔交易回滚。
 
@@ -54,6 +54,7 @@
 | Proposal | `submitInfos` 记录内容与轮次边界：同轮多笔推举、无推举的 Round、未开始的 Round | 每条记录同时含 `submitterId` 与 `proposalId`；无推举或未开始的 Round 返回空数组与 `0` 而不回滚 |
 | Proposal | 两条方向单键：`proposalIdBySubmitterId` 与 `submitterIdByProposalId` 互为逆、回 `0` 的三种情形 | 已推举时两条互为逆映射；未分配过的 `proposalId`、已分配但本轮未推举、本轮未推举的成员都回 `0` 而不回滚 |
 | Proposal | `submitNewProposal` 创建后立即推举：事件顺序、回调顺序、本轮名额、`Phase.sync` | 同一笔内先 `ProposalCreated` 后 `ProposalSubmitted`，先 `onProposalCreated` 后 `onProposalSubmitted`；写入推举状态与 Target 索引并占用本 Round 名额；本轮首笔推举触发 `sync` |
+| Proposal | 首次与后续推举携带独立数据 | 创建回调收到正文的 `creationData`。首次和后续推举回调各自收到本次 `submitData` 和账本记下的轮次。回调失败时撤销本次写入 |
 | Proposal | 本轮首笔推举与 `Phase.sync` 的跨合约顺序 | `ProposalSubmitted` 的日志下标小于同笔 `PhaseSynchronized`；对应 `SubmitTest.testFirstSubmitPrecedesPhaseSync` |
 | Proposal | 鉴权、参数、存在性与门槛的顺序 | 非持有人 + 非法参数 → `NotMemberOwner`；非法参数 + 不满足门槛 → 精确参数错误；`submit` 不存在 `proposalId` + 不满足门槛 → `ProposalNotFound`；对应 `testSubmitNewProposalChecksAuthBeforeParameters`、`testSubmitNewProposalChecksParametersBeforeThreshold`、`testSubmitChecksAuthBeforeProposalExistence`、`testSubmitChecksProposalExistenceBeforeThreshold` |
 | Proposal | 两个入口的名额与去重交叉：先 `submitNewProposal` 再 `submit`、同轮重复创建、跨轮推举已有 Proposal | 同一成员同轮第二次推举回滚 `MemberAlreadySubmitted(tokenAddress, round, memberId)`；同一 Proposal 同轮第二次回滚 `ProposalAlreadySubmitted(tokenAddress, round, proposalId)`；跨轮推举已有 Proposal 成功且不触发创建回调 |
@@ -78,11 +79,11 @@
 | Launch | 次数按社区代币维度记账 | 首币产生 `count` 时只增加首币维度并产生 `LaunchCountAdded`；每个代币的累计次数各自受 `MAX_LAUNCH_COUNT` 约束；对应 `LaunchTest.testAddLaunchCountUpdatesTokenLedgerAndEmitsOnce` |
 | Launch | 一次成功写入产生一条 `LaunchCountAdded` 与构造期末位日志 | 每次产生次数发一条 `LaunchCountAdded`；`GenesisTokenCreated` 是构造期的最后一条日志；对应 `LaunchTest.testAddLaunchCountUpdatesTokenLedgerAndEmitsOnce`、`testAddLaunchCountIssuedCountMatchesFold`、`testConstructorEmitsGenesisTokenCreatedForFirstToken` |
 | [AirdropDistributor](10-airdrop-distributor.md) | 构造配置、首币创世前的轮次夹取、首币与子币配置互不干扰 | `TOTAL_SHARE() == 1e18`、`MAX_CLAIM_DELAY_ROUNDS() == 1000`；首币在构造期即已配置并发 `AirdropConfigured`；`currentPhase() == 0` 时 `claimableFromRound = 1 + delay`；每个 token 的 Root、起始轮次与 `totalClaimedShare` 相互独立 |
-| AirdropDistributor | 回调数据形状：元素个数、字节长度、非 Launch 调用 | 非 `LAUNCH_ADDRESS` 调用回滚 `NotLaunchContract(caller)`；`distributorData` 为 0 或 2 个元素回滚 `InvalidDistributorDataCount(count, 1)`；元素长度不为 64 回滚 `InvalidDistributorDataLength(length, 64)`；形状错误先于解码 |
+| AirdropDistributor | 回调数据长度和调用者 | 非 `LAUNCH_ADDRESS` 调用回滚 `NotLaunchContract`。分发数据须恰为 64 字节，长度错误先于解码 |
 | AirdropDistributor | 配置拒绝：根为零、延迟超上限、同一 token 二次配置 | 回滚 `ZeroMerkleRoot()` / `ClaimDelayRoundsExceeded(claimDelayRounds, 1000)` / `TokenAlreadyConfigured(tokenAddress)`；`claimDelayRounds == 0` 与 `== 1000` 合法，超上限不截断 |
 | AirdropDistributor | 空投铸造失败契约与优先级：未配置、未到轮、重复空投铸造、零份额、份额超剩余、证明错误 | 依次回滚 `TokenNotConfigured` → `ClaimRoundNotReached` → `AirdropAlreadyClaimed` → `InvalidProof()`（`share == 0`）→ `ShareExceedsRemaining` → `InvalidProof()`（证明不匹配）；零份额是**显式拒绝**、排在 `ShareExceedsRemaining` 与证明校验之前，由链上独立保证而不依赖链下生成器；同一入口内不重排 |
 | AirdropDistributor | `claim` 的完整执行顺序与非校验步骤 | 12 步顺序固定：5 个自有错误在第 1–7 步按序回滚，第 8 步算 `amount` 不做零值检查，第 9 步写状态（CEI）先于第 10 步转账，第 11 步 `totalRemainingShare` 为空投铸造后值，第 12 步返回 `amount`；转账失败透传 OZ `SafeERC20FailedOperation`，不属于本合约自有错误 |
-| AirdropDistributor | `claim` 无调用者限制 | 任意地址可调，`claimer` 取 `msg.sender`，只能给自己空投铸造；不得出现指定收款地址的参数或代为空投铸造的路径；错误全集为 5 个自有 selector + OZ 透传，5 + 6（配置路径）= 全部 11 个自有错误 |
+| AirdropDistributor | `claim` 无调用者限制 | 任意地址可调，`claimer` 取 `msg.sender`，只能给自己空投铸造。错误集合为 5 个自有错误与 OZ 转账错误 |
 | AirdropDistributor | 延迟轮次语义：`delay = 0` 当轮可空投铸造、`delay = 1` 下一轮可空投铸造、创世前夹取 | 当前轮次等于 `claimableFromRound` 即可空投铸造，不等下一轮；`delay = 1` 时配置当轮回滚、下一个 Phase 起允许；创世前配置不得让空投铸造发生在轮次 `0` |
 | AirdropDistributor | 按剩余份额的比例分配与最后一人清空余额 | `amount = floor(balanceOf(this) × share ÷ remainingShare)`；同一份额在不同空投铸造顺序下得到的数量不同但各自不超过份额比例；全部份额空投铸造完后合约余额为零；`AirdropClaimed.remainingShare` 是扣除本次后的值，逐条折叠等于 `airdropInfo` |
 | AirdropDistributor | `claimableAmount` 只读预检与 `claim` 的一致性 | 它是 `claim` 前 8 步的只读镜像：判定条件、顺序、短路方向相同；未配置、未到轮、已空投铸造、`share == 0`、份额超剩余、证明错误都返回 `0`；全部通过时返回值等于随后 `claim` 的 `amount`；返回 `0` 不能当作「无资格」的判据；查询结果不承诺下一笔交易的数额 |
