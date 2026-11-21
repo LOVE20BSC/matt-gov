@@ -142,7 +142,7 @@ rg -n 'core\.md|action\.md|group-chat\.md|launchFirstToken|initializeGenesis|TOD
 | --- | --- | --- |
 | 身份 | `CONTEXT.md`、Core、Action、Group Chat | 业务主体是否始终是 `memberId` |
 | 时间 | `CONTEXT.md`、`core/03`、`action/02`、Group Chat Query | Phase、治理 Round、行动轮次是否可推导且不冲突 |
-| 回调 | `core/05`、`core/06`、`action/01`、CHANGES | 签名、参数顺序、透传数据（两侧都是 Target Data）、失败回滚是否一致 |
+| 回调 | `core/01`、`core/05`、`core/06`、`core/08`、`action/01` | 签名、参数顺序、各操作的数据来源和失败回滚是否一致 |
 | 激励 | `core/07`、`action/07`、`acceptance.md` | 预留、铸造、销毁和分配是否守恒 |
 | 发射 | `core/00`、`core/08`、`acceptance.md`、CHANGES | `Launch.init`、首币、次数和阈值是否一致 |
 | 参与 | `action/01`、`action/03`、Group Chat 类型 | 加入/退出、forceClearJoinState、资产和资格来源是否一致 |
@@ -193,7 +193,7 @@ rg -n 'core\.md|action\.md|group-chat\.md|launchFirstToken|initializeGenesis|TOD
 ### Action
 
 - [ ] `ActionTarget` 只负责映射、回调、通用加入/退出状态和 forceClearJoinState
-- [ ] `executor` 保留项在第 `0` 项、其余 Target Data 项由各 Executor 自定并校验、编码位置固定
+- [ ] `creationData` 的前 20 字节是 Executor 地址，剩余字节原样交给 Executor 校验。推举与投票使用已保存的绑定。[创建数据格式](specs/action/01-action-target.md#创建与回调)
 - [ ] `proposalId == actionId` 的别名边界清楚
 - [ ] LP、Group Action、Service 的阶段映射分别可推导
 - [ ] 加入、追加、Provider 额度资产、部分撤回、退出的账本互不抵扣

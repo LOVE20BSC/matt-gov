@@ -10,7 +10,11 @@ ActionTarget 是社群行动 Proposal 的统一 Target。Core 和回调使用 `p
 creationData = abi.encodePacked(executorAddress, abi.encode(executorParams));
 ```
 
-`onProposalCreated` 鉴权后检查创建数据至少有 20 字节，长度不足时回滚 `InvalidActionTargetCreationData`。随后校验 `executor` 地址有代码、调用 `ACTION_TARGET_ADDRESS()` 握手，再检查该行动尚未绑定 Executor。地址没有代码时回滚 `ExecutorNotContract`，握手调用失败或返回其他地址时分别回滚 `ExecutorHandshakeFailed` 或 `ExecutorTargetMismatch`。重复绑定回滚 `AlreadyCreated`。绑定后，ActionTarget 将地址后的所有字节原样交给 Executor。
+1. 调用者须为 Submit，否则回滚 `NotSubmit`。
+2. 创建数据须至少有 20 字节，否则回滚 `CreationDataTooShort`。取前 20 字节得到 Executor 地址。地址没有合约代码时回滚 `ExecutorNotContract`。
+3. 调用 `ACTION_TARGET_ADDRESS()` 握手。调用回滚或返回的数据无法解码为地址时回滚 `ExecutorHandshakeFailed`。返回的地址与当前 ActionTarget 不同时回滚 `ExecutorTargetMismatch`。
+4. 检查行动尚未绑定 Executor，重复绑定回滚 `AlreadyCreated`。先检查握手能优先报告调用方传入的 Executor 接线错误。
+5. 记录绑定，发出 `ActionRegistered`，并将地址后的所有字节原样交给 Executor。
 
 推举与投票直接按已保存的绑定找到 Executor。`submitData` 和 `voteData` 由各自操作者提供，可传 `0x`，业务格式由 Executor 定义。内置 Executor 的推举回调只校验调用者。
 
@@ -20,7 +24,7 @@ creationData = abi.encodePacked(executorAddress, abi.encode(executorParams));
 | `onProposalSubmitted` | 按绑定转发本次推举的轮次、成员和 `submitData` |
 | `onProposalVoted` | 按绑定转发本次投票的轮次、成员、票数增量和 `voteData` |
 
-ActionTarget 的创建和推举回调仅接受 Submit 调用，投票回调仅接受 Vote。Executor 的回调仅接受 ActionTarget。未绑定时，推举和投票回调回滚 `UnboundProposal`。任一回调失败均回滚对应外层操作。完整声明见 [IProposalTarget](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/IProposalTarget.sol) 与 [IActionExecutor](https://github.com/LOVE20BSC/action/blob/main/src/interfaces/IActionExecutor.sol)。
+ActionTarget 的推举回调仅接受 Submit 调用，投票回调仅接受 Vote。Executor 的回调仅接受 ActionTarget。未绑定时，推举和投票回调回滚 `UnboundProposal`。Executor 的回调可能携带任意 revert data，ActionTarget 原样传出，外层操作随之回滚。完整声明见 [IProposalTarget](https://github.com/LOVE20BSC/core/blob/main/src/interfaces/IProposalTarget.sol) 与 [IActionExecutor](https://github.com/LOVE20BSC/action/blob/main/src/interfaces/IActionExecutor.sol)。
 
 提案创建者可以绑定任何通过握手的 Executor。绑定授予该合约在此行动上调用 `registerJoinState`、`clearJoinState` 和 `mintActionReward` 的权限。投票者可从提案正文的 `creationData` 核对 Executor。
 

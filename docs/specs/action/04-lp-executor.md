@@ -10,6 +10,8 @@
 
 内层创建配置传 `abi.encode(LpCreationParams(...))`，含 `joinTokenAddress`、`govRatioMultiplier` 和 `minGovRatio`，共 96 字节。创建成功时，`LpActionCreated` 记录完整配置，`ActionRegistered` 记录 Executor 绑定。LP 必须是已配置 Pair Factory 登记的交易对，允许选择未包含激励代币的交易对。两个治理比例使用 `1e18` 精度，`minGovRatio <= 1e18`。LP 投票传 `0x`。
 
+创建回调先校验调用者，再依次校验配置长度、地址编码、`joinTokenAddress` 非零、交易对登记和 `minGovRatio`。
+
 写操作要求调用者持有 memberId；加入/追加金额为正，首次加入满足 `minGovRatio`。LP 从调用者转入 Executor，撤回时转给当前持有人。首次加入时调用 `ActionTarget.registerJoinState`；全额撤回与 `exit` 都调用 `ActionTarget.clearJoinState`；失败全部回滚。激励接口见 [行动铸造](07-minting.md#铸造链路)。
 
 **每次加入都重判行动归属**：`registerJoinState` 只在首次加入调用，后续 `join` 不再经过它，ActionTarget 的绑定校验因此不为再次加入兜底。若行动不是本 Executor 创建，非首次加入会跳过该回调，直接走到零地址 join token 的 `safeTransferFrom`，只靠 OpenZeppelin 的 `extcodesize` 检查偶然回滚。为此 `join` 在金额校验之后、`currentJoinRound()` 之前先判本 Executor 的创建记录：`createdRound == 0` 回滚 `ActionNotCreated(tokenAddress, actionId)`，首次与非首次加入一视同仁；该记录由创建回调一次写入且不删除，首次认定仍只读 `isJoined`，不自建副本。
@@ -23,6 +25,7 @@
 | 条件 | 回滚错误 |
 | --- | --- |
 | 内层创建配置长度不等于 96 字节 | `InvalidCreationDataLength` |
+| 内层创建配置的地址字高 96 位非零 | `InvalidCreationDataEncoding` |
 | 投票数据非空 | `UnexpectedVoteData` |
 | `joinTokenAddress` 为零 | `ZeroJoinTokenAddress()` |
 | `joinTokenAddress` 未在 `pairFactoryAddress` 登记为交易对 | `InvalidJoinTokenFactory(joinTokenAddress, pairFactoryAddress)` |

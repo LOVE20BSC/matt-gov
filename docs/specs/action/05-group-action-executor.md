@@ -16,6 +16,8 @@ GroupAction 使用 MemberNFT 身份，`groupId` 是链群主体的 `memberId`，
 
 内层创建配置传 `abi.encode(GroupActionCreationParams(...))`。鉴权后先验证编码，无法解码成该结构时回滚 `InvalidGroupActionCreationData`。参与代币必须实现 ERC20 的 `totalSupply`。`maxJoinAmountRatio` 和 `activationMinGovRatio` 最高为 `1e18`，`verifierPunishmentRatio` 必须严格位于 `(0, 1e18)`。`verifierStakeAmount = 0` 表示申请免押金。创建成功时，`GroupActionCreated` 记录完整配置及验证模板，`ActionRegistered` 记录 Executor 绑定。
 
+创建成功时只解码一次。创建出错时单独复验编码，编码有效则原样传出创建失败的原因，包括 Phase 的错误。
+
 链群配置中，`maxCapacity = 0` 使用理论容量，`maxJoinAmount` 和 `maxAccounts` 为零表示未另设链群级上限。非零最大加入量须大于或等于最小加入量。链群描述与验证者申请说明各限 1024 字节。`descriptionByRound` 按**投票轮**读取链群描述，与 `GroupActivated` 和 `GroupConfigChanged` 的轮次一致。空缺轮继承最近一次记录，从未设置时返回空串。
 
 **验证信息**：由 [`IGroupActionVerify.sol`](https://github.com/LOVE20BSC/action/blob/main/src/interfaces/IGroupActionVerify.sol) 继承 [`IVerificationInfo`](https://github.com/LOVE20BSC/action/blob/main/src/interfaces/IVerificationInfo.sol)，`IGroupActionExecutor` 再继承 `IGroupActionVerify`。验证信息分为两层：

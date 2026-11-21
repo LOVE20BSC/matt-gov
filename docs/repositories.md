@@ -39,6 +39,11 @@
 
 `compatibility` 只保存外部依赖兼容性测试、参考实现夹具、目标网络地址清单和测试证据，不提供生产合约，也不作为 `core` 的运行时依赖。它验证接口和实际状态/数值行为，尤其是 WETH、Uniswap V2 兼容 DEX（如 PancakeSwap）的 Factory/Pair/Router 与 Uniswap V2 参考实现的差异；测试通过后才允许把对应外部地址用于 BSC 部署。
 
+### 提案与发射回调的跨仓影响
+
+- `core` 定义创建、推举、投票和发射的回调接口。`action` 继承提案回调接口，按 ActionTarget 的创建数据格式绑定 Executor。`compatibility` 的 Core 探针使用相同接口。[Core 回调约定](specs/core/01-common-rules.md#回调接口) · [ActionTarget 的创建数据](specs/action/01-action-target.md#创建与回调)
+- `periphery` 跟随 `core`，`group-chat` 跟随 `action`。接口定稿后安排 `anvil` 的合约编排和 ABI 导出，以及 `interface-dev-dsh` 的接口同步和调用验收。
+
 ### 外围仓库的划分规则
 
 新增合约归属哪个仓库，按它**是否依赖协议已部署的合约**判断，这条规则决定仓库边界而不是按合约功能命名：

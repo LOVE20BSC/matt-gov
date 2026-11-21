@@ -115,7 +115,7 @@ claimableFromRound = baseRound + claimDelayRounds
 5. 参数  claimDelayRounds > MAX_CLAIM_DELAY_ROUNDS   → ClaimDelayRoundsExceeded(uint256 claimDelayRounds, uint256 maxClaimDelayRounds)
 ```
 
-回调在第 2 步通过后解码。进入 `_configure` 后，重复配置的错误先于零根和延迟超限。
+回调在第 2 步通过后解码。配置只允许写入一次，所以 `_configure` 先拒绝重复配置。对于已配置的代币，零根或延迟超限也会得到相同的 `TokenAlreadyConfigured`。
 
 解码后 `merkleRoot` 为零即 `ZeroMerkleRoot()`；`claimDelayRounds` 为零是合法值。
 
