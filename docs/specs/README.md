@@ -1,6 +1,6 @@
 # BSC 规格入口
 
-当前规范是以下拆分规格和兼容性规格。阅读顺序：范围与依赖、相关模块、验收；不以历史票据代替当前规则。
+当前开发规格按模块编排。先读范围与依赖，再查相关模块与验收。面向社区的协议说明见 [LOVE20BSC 协议文档](https://github.com/LOVE20BSC/docs/blob/main/index.md)。
 
 | 范围 | 入口 | 验收 |
 | --- | --- | --- |
@@ -18,3 +18,5 @@
 - `core/`、`action/`、`group-chat/` 迁移时原样移入各仓库 `docs/specs/`，不保留重复正文。
 
 历史差异见 [CHANGES-core](CHANGES-core.md)、[CHANGES-action](CHANGES-action.md)、[CHANGES-group-chat](CHANGES-group-chat.md)；更早讨论见 [迁移地图](../../.scratch/bsc-protocol-migration/map.md)。历史来源尚未逐条核验，不能凭“沿用旧版”视为规格完整。
+
+早期文档草稿保留原条款编号，供追溯。[阶段与轮次](drafts/02-time.md) · [空投铸造](drafts/07-airdrop.md)

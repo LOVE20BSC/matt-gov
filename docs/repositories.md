@@ -33,7 +33,9 @@
 | `docs` | BSC 版协议对外公开文档 | 各业务仓库 | 活跃；公开仓库与文档站已启用 |
 | `tools` | 不依赖协议部署合约、功能单一的独立工具合约 | 无 | 活跃；`BatchTransfer` 已迁移并通过测试 |
 
-`docs` 是公开仓库 [LOVE20BSC/docs](https://github.com/LOVE20BSC/docs)，文档站入口为 [love20bsc.github.io/docs](https://love20bsc.github.io/docs/)。它只收录定稿的对外内容；协议行为与合约接口仍分别以 `matt-gov/docs/specs` 和 `core/src/interfaces` 为准。
+`docs` 为社区成员发布 Core 协议基础、Action 社群行动框架和正式术语。[文档仓库](https://github.com/LOVE20BSC/docs) · [公开文档站](https://love20bsc.github.io/docs/)
+
+开发所需的详细行为规则见[模块规格](specs/README.md)。合约接口查各代码仓的 `src/interfaces/`。
 
 `launch` 本阶段暂不创建。`core` 负责基础子币发射流程，包括发射次数账本、次数融合、次数消耗和子币创建；公平发射后的复杂分配机制未来需求明确后再另建独立代码库。
 

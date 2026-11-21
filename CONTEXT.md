@@ -1,8 +1,6 @@
 # LOVE20BSC 领域上下文
 
-本文件只维护跨仓库共享的领域术语和关系。合约接口、公式、KV 编码、部署参数和代码库内验收场景以对应代码库规格为准；代码库创建前以 `docs/specs/` 中的对应规格为准。迁移票据只保存决策过程和来源证据，不是当前规范。
-
-**术语约定**：BSC 版中文继续使用“激励”和“铸造激励”，英文合约、接口和状态统一使用 `Reward` 及其派生名称。`Reward` 表示协议按规则准备的激励额度，可被预留、铸造、分配或销毁，不仅指已经到账的金额。
+协议的公开说明和正式术语见 [LOVE20BSC 协议文档](https://github.com/LOVE20BSC/docs/blob/main/index.md)和[术语表](https://github.com/LOVE20BSC/docs/blob/main/GLOSSARY.md)（本地 `../docs/`）。本文件补充跨仓库领域关系，行为细节查[开发规格](docs/specs/README.md)，迁移票据用于查决策过程和证据。
 
 ## 参与主体
 
@@ -24,10 +22,7 @@
 
 ## Phase 与 Round
 
-- **Phase（阶段）**：全局时钟的一个刻度，底层时间线中的无语义单位；不命名投票、加入、验证、铸币这些业务环节，也不定义业务轮次。中文统一写「阶段」（旧称「时间片」已废弃，只在解释协议结构时可用）。
-- **Round**：上层业务把相邻若干 Phase 串成的一条流水线（投票 →（加入）→（验证）→ 铸币），编号从 `1` 开始。第 X 轮的各个环节落在阶段 X、X+1、X+2、X+3（环节数量按轮次类型不同）。四类轮次——治理轮、LP 行动轮、链群行动轮、链群服务轮——同号 Round 不表示相等，引用时必须带类型；不使用「层」这类集合说法。
-- **行动轮次**：`action` 代码库按 Executor 定义轮次。LP 使用三阶段（投票、加入、铸币），GroupAction 和 GroupService 使用四阶段（投票、加入、验证、铸币）。当前 `Phase = p` 时，LP 的投票、加入、铸币 Round 分别为 `p`、`p-1`、`p-2`；GroupAction 和 GroupService 的投票、加入、验证、铸币 Round 分别为 `p`、`p-1`、`p-2`、`p-3`。结果小于 `1` 表示该阶段尚未开始，查询回滚而不返回 `0`。加入阶段包括行动参与、加入、退出和资产状态变化；LP 与 GroupService 没有独立验证业务，GroupService 复用 GroupAction 验证结果。是否满足铸币条件仍由具体执行合约判断。
-- **治理 Round**：核心 `Submit` 和 `Vote` 把 `Phase N` 解释为治理 `Round N`；该 Phase 结束后，Round N 的核心激励可以准备和铸造。
+用词见[阶段与轮次词条](https://github.com/LOVE20BSC/docs/blob/main/GLOSSARY.md#phase)。共同的阶段与治理轮规则见 [Core 规格](docs/specs/core/03-phase.md)，行动轮次的阶段安排见 [Action 规格](docs/specs/action/02-phase-model.md)。
 
 ## Proposal 与 Target
 

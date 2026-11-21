@@ -1,5 +1,6 @@
 # Matt Governance 工作规则
 
+- 写术语时查 [LOVE20BSC 正式术语表](https://github.com/LOVE20BSC/docs/blob/main/GLOSSARY.md)（本地 `../docs/GLOSSARY.md`）。评审协议行为时核对[开发规格](docs/specs/README.md)和对应的公开说明。
 - 本仓库只维护 LOVE20BSC 的组织级迁移、协作规范和跨仓库决策；允许存放可直接迁移到目标仓库的纯 Solidity 接口声明，不存放实现、测试或部署脚本。
 - 自有 ABI 以各代码库的 `src/interfaces/` 为准（`core`、`action`、`group-chat` 已迁出本仓库，`interfaces/` 只保留说明）；标准能力只注明继承来源，目标仓库引用对应依赖接口。错误按 local-first 在各仓本地 `I<Name>Errors` 声明，规则见 `docs/error-standards.md`。规格正文解释行为并链接接口，不重复维护函数、事件和错误签名。
 - 文档、地图、票据、ADR 和讨论结论默认使用中文；合约、函数、接口、仓库、路径、命令和专有名词保留原文。
@@ -22,5 +23,5 @@ Use the default labels: `needs-triage`, `needs-info`, `ready-for-agent`,
 
 ### Domain docs
 
-This is a single-context repository. Use root `CONTEXT.md` and `docs/adr/`.
+Use the official glossary for terms, root `CONTEXT.md` for cross-repo context, and `docs/adr/` for decisions.
 See `docs/agents/domain.md`.
