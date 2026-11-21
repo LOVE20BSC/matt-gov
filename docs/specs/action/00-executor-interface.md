@@ -10,7 +10,7 @@
 - `exit(tokenAddress, actionId, memberId)` — 完全退出的签名是通用的
 - `mintMemberReward(...)` / `memberReward(...)` 与事件 `MemberRewardMinted` — 成员级激励的铸造与查询，签名三家一致（成员级激励裁决）
 - `mintMemberRewards(...)` — 批量成员结算（平行数组按下标配对，任一元素失败整笔回滚）
-- `joinedAmountByActionId(...)` / `joinedAmountByMemberId(...)` / `joinTokenAddress(...)` — 截止加入轮 `round` 结束的累计参与量、按成员累计量与参与计价代币（未来加入轮回滚 `RoundNotStarted(round, joinRound)`，边界见[阶段模型](02-phase-model.md)；计价代币与轮次无关，不带 `round`；口径由各 Executor 规格固定）。计价代币是 `joinedAmountByActionId` 的计价单位：LP 为 LP 对币、GroupAction 为 join token、GroupService 为行动代币（按激活质押代理计量）。前端展示行动列表与派生指标时只需读基座三者，无需按 Executor 分支。GroupAction 另有成员记录快照 `joinInfo(tokenAddress, actionId, round, memberId) returns (JoinInfo)`（`joinedRound` / `groupId` / `ownAmount` / `providerAmount`）：它**不重复给出聚合总量**，总量只有基座 `joinedAmountByMemberId` 一个来源
+- `joinedAmountByActionId(...)` / `joinedAmountByMemberId(...)` / `joinTokenAddress(...)` — 截止加入轮 `round` 结束的累计参与量、按成员累计量与参与计价代币（未来加入轮回滚 `RoundNotStarted(round, joinRound)`，边界见[阶段模型](02-phase-model.md)；计价代币与轮次无关，不带 `round`；口径由各 Executor 规格固定）。计价代币是 `joinedAmountByActionId` 的计价单位：LP 为 LP 对币、GroupAction 为 join token、GroupService 为行动代币（按激活质押代理计量）。前端展示行动列表与派生指标时只需读基座三者，无需按 Executor 分支。GroupAction 另有成员记录快照 `joinInfo(tokenAddress, round, actionId, memberId) returns (JoinInfo)`（`joinedRound` / `groupId` / `ownAmount` / `providerAmount`）：它**不重复给出聚合总量**，总量只有基座 `joinedAmountByMemberId` 一个来源
 - 基座 `joinTokenAddress` 是唯一的通用计价代币 getter；LP 与 GroupAction 直接使用该名（不再重复声明）。GroupService 的计价代币语义是行动代币，保留 `actionTokenAddress` 作为领域别名，与基座 `joinTokenAddress` 同键同值——这是登记在案的单点例外，改其一必须同批改另一个
 - `currentVoteRound()` / `currentJoinRound()` / `currentMintRound()` — 从 `Phase.currentPhase()` 推导的三阶段 Round；未开始回滚 `RoundNotStarted(1, 0)`（`requiredRound` 为 1，`currentRound` 为推导出的 0；0 是派生轮未开始的哨兵，需要当前 phase 时读 `Phase.currentPhase()`）
   推导与守卫分层见 [阶段模型](02-phase-model.md)：轴库只做 `phase → round` 纯换算，不 import 错误接口；`joinRound` 由中立库 `ActionRoundAxis` 唯一定义，`ExecutorBase._joinRound()` 是它的单一实现点（非 `virtual`），类型轴只保留各自的 `verifyRound` / `mintRound`。
@@ -66,8 +66,8 @@ event GroupActionJoined(address indexed tokenAddress, uint256 indexed actionId,
 
 | 入口 | 鉴权主体 | 实现位置 |
 | --- | --- | --- |
-| `mintMemberReward(tokenAddress, actionId, round, memberId)` | `memberId` 当前持有人 | `ExecutorBase.onlyMemberOwner` |
-| `mintMemberRewards(tokenAddress, actionIds[], rounds[], memberId)` | 同上 | `ExecutorBase.onlyMemberOwner` |
+| `mintMemberReward(tokenAddress, round, actionId, memberId)` | `memberId` 当前持有人 | `ExecutorBase.onlyMemberOwner` |
+| `mintMemberRewards(tokenAddress, rounds[], actionIds[], memberId)` | 同上 | `ExecutorBase.onlyMemberOwner` |
 | `onProposalCreated` / `onProposalSubmitted` / `onProposalVoted` | ActionTarget | `ExecutorBase.onlyActionTarget` |
 | `exit(tokenAddress, actionId, memberId)` | `memberId` 当前持有人 | 各 Executor 覆盖（同时带 `nonReentrant`） |
 | `ACTION_TARGET_ADDRESS` 等 getter | 无（只读） | — |

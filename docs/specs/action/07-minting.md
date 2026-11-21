@@ -12,7 +12,7 @@ executor -> ActionTarget -> Mint -> executor
 
 **事件例外（推举转发）**：`ActionTarget.onProposalSubmitted` 与各 Executor 的同名回调是纯转发，不新增 action 层的领域事件——推举事实由 Core 的 `ProposalSubmitted` 记录，action 层再发一条只会制造两份同义事实。这是本族「写入口必有事件」的唯一例外，登记在此以免被当成遗漏。
 
-成员级结算支持批量：`mintMemberRewards(tokenAddress, actionIds[], rounds[], memberId)` 以平行数组按下标配对，逐元素执行与 `mintMemberReward` 相同的结算，返回按下标对齐的 `(mintAmounts[], burnAmounts[])`。两数组长度不一致回滚 `BatchLengthMismatch(actionIdsLength, roundsLength)`；任一元素失败整笔回滚（下标对齐、不补空）；空数组在鉴权通过后返回空结果、不改状态；不设长度上限——成本由调用方自付，区块 gas 为自然上界（与 core `mintGovRewards` 同型）。批量入口同样先鉴权，权限与单条入口一致，由各 Executor 规格固定。
+成员级结算支持批量：`mintMemberRewards(tokenAddress, rounds[], actionIds[], memberId)` 以平行数组按下标配对，逐元素执行与 `mintMemberReward` 相同的结算，返回按下标对齐的 `(mintAmounts[], burnAmounts[])`。两数组长度不一致回滚 `BatchLengthMismatch(actionIdsLength, roundsLength)`；任一元素失败整笔回滚（下标对齐、不补空）；空数组在鉴权通过后返回空结果、不改状态；不设长度上限——成本由调用方自付，区块 gas 为自然上界（与 core `mintGovRewards` 同型）。批量入口同样先鉴权，权限与单条入口一致，由各 Executor 规格固定。
 
 有票但未达标的行动 Proposal 由 Core 的 `burnProposalReward` 逐项释放预留额度。达标后因缺少有效执行或验证结果而无法分配的额度继续保留，`ActionTarget.actionReward` 返回理论额和未铸造状态。成员结算时因治理上限销毁的代币单独计入 `MemberRewardMinted.burnAmount`。
 

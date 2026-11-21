@@ -19,10 +19,10 @@
 | `serviceReward` | 本服务 Proposal 的整笔激励 |
 
 ```text
-A[a] = generatedActionReward(actionTokenAddress, a, round)                 // 该行动自身的行动激励
+A[a] = generatedActionReward(actionTokenAddress, round, a)                 // 该行动自身的行动激励
 D    = Σ_a A[a]                                                          // 验证完成时累计
 
-verifierWeightNumerator(m) = Σ_{a: lockedVerifierId(actionTokenAddress, a, round) == m} A[a]
+verifierWeightNumerator(m) = Σ_{a: lockedVerifierId(actionTokenAddress, round, a) == m} A[a]
 ownerWeightNumerator(m)    = Σ_{a: A[a] > 0} groupReward(a, m)
 
 theoreticalVerifierReward(m) = mulDiv(serviceReward, r * verifierWeightNumerator(m), D * 1e18)
@@ -90,7 +90,7 @@ groupId 的当前 NFT 持有人按 `sourceTokenAddress + sourceActionId + groupI
 
 setRecipients 沿用旧 GroupRecipients：只写当前验证 Round，不允许指定已结束轮次；同轮更新覆盖该轮配置。源行动未由本 Executor 创建时回滚 `UnknownSourceAction(sourceTokenAddress, sourceActionId)`；三数组等长回滚 `RecipientArrayLengthMismatch(recipientIdsLength, ratiosLength, remarksLength)`、最多 8 项回滚 `TooManyRecipients(count, MAX_RECIPIENTS_PER_ACTION)`（协议级编译期常量）、逐项比例为正回滚 `ZeroRecipientRatio(recipientId)`、接收 NFT 有效（无效由 `IMemberNFT.ownerOf` 回滚）、不得重复回滚 `DuplicateMemberId(memberId)`、不得等于 groupId 回滚 `RecipientIsGroupId(groupId, recipientId)`；缺失链群回 `GroupNotExist(groupId)`，非 groupId 当前持有人调用回滚 `NotGroupOwner(groupId)`，且鉴权先于轮次校验。**校验次序（实现口径）**：链群存在性与调用者（`onlyGroupOwner`：`GroupNotExist` → `NotGroupOwner`）→ 轮次（`currentVerifyRound()` 作为实参先求值）→ 参数（`_checkRecipients`：三数组等长 / 条数 / 比例 / 重复 / 自身 / 接收 NFT 有效）→ 源行动存在性（`UnknownSourceAction`）→ 上限资格（非空配置、该 action 不在累计集合、集合已达 `MAX_RECIPIENT_ACTIONS_PER_TOKEN_GROUP` 时回滚 `RecipientActionsLimitExceeded(address sourceTokenAddress, uint256 groupId, uint256 actual, uint256 limit)`，`actual` 为判定时集合内的源行动数、`limit` 为该上限常量）。`E-GR-02` 的处置范围是**库内顺序**：参数先于源行动存在性；外层修饰器的链群存在性与调用者顺序未变，也没有被重排。全部传空表示显式清空，该轮及后续回退到空配置，不能重新找到清空前配置。没有配置时 owner 保留全部该项预算。转账对象是**结算时**接收 NFT 的当前持有人，不是配置时的持有人：配置只固定名单与比例，所有权在结算那一刻判定；NFT 转让后新持有人取得该轮分配（`forceClearJoinState` 同口径：处分权随当前持有人）。配置变更发 `RecipientsChanged`，按新表→旧表携带 `recipientIds`/`ratios`/`remarks` 与 `prevRecipientIds`/`prevRatios`/`prevRemarks`；`remarks` 每条不超过 `256` 字节，条数不超过 `MAX_RECIPIENTS_PER_ACTION`；单条超出回滚 `RemarkTooLong(index, length, maxLength)`。
 
-配置按 `sourceTokenAddress + groupId` 维护按轮枚举：本轮非空写入登记源行动、显式清空移除，`actionIdsWithRecipients(sourceTokenAddress, groupId, round, offset, limit, reverse)` 分页返回该轮有效的已配置源行动与真实总数（懒继承到不晚于该轮的最近记录；同轮配置更新会重写该轮快照）。该集合是**累计集合**而非本轮集合：跨轮继承的项仍占位并计入上限，单个 `(sourceTokenAddress, groupId)` 最多登记 `MAX_RECIPIENT_ACTIONS_PER_TOKEN_GROUP`（16）个源行动；配满后须先对其中一个已登记行动显式清空（传空表）才能为新行动让位。该集合用 swap-and-pop 删除：同一 `offset` 的返回内容不保证跨调用稳定，`reverse` 也不等于「新到旧」；调用方不得跨调用缓存 `offset`，也不得按「先拉首页再增量补页」拼接。`distribution(sourceTokenAddress, sourceActionId, groupId, round, groupReward)` 对任意金额按同规则试算（逐项向下取整、余数归 owner，100% 不下溢）。
+配置按 `sourceTokenAddress + groupId` 维护按轮枚举：本轮非空写入登记源行动、显式清空移除，`actionIdsWithRecipients(sourceTokenAddress, groupId, round, offset, limit, reverse)` 分页返回该轮有效的已配置源行动与真实总数（懒继承到不晚于该轮的最近记录；同轮配置更新会重写该轮快照）。该集合是**累计集合**而非本轮集合：跨轮继承的项仍占位并计入上限，单个 `(sourceTokenAddress, groupId)` 最多登记 `MAX_RECIPIENT_ACTIONS_PER_TOKEN_GROUP`（16）个源行动；配满后须先对其中一个已登记行动显式清空（传空表）才能为新行动让位。该集合用 swap-and-pop 删除：同一 `offset` 的返回内容不保证跨调用稳定，`reverse` 也不等于「新到旧」；调用方不得跨调用缓存 `offset`，也不得按「先拉首页再增量补页」拼接。`distribution(sourceTokenAddress, round, sourceActionId, groupId, groupReward)` 对任意金额按同规则试算（逐项向下取整、余数归 owner，100% 不下溢）。
 
 配置比例总和不得超过 `1e18`，超过回滚 `DistributionOverflow(configured, limit)`；正好 100% 合法。判据逐项前置：单项大于 `1e18` 时 `configured` 为该单项值，累计超过 `1e18` 时为「已累计 + 本项」，两种情况都不进入 `uint256` 溢出（不产生 `Panic`）。金额逐步向下取整：
 
